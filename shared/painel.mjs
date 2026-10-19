@@ -83,7 +83,9 @@ export function consultaPainel({ usuario, periodo = null }) {
 export function funilPainel(t) {
   return [['Base de prospects', t.total], ['Contactados', t.contactados], ['Atendidos', t.atendidos],
     ['Cadastrados no ERP', t.cadastrados], ['Crédito liberado', t.credito_liberado], ['Venda realizada', t.venda_realizada]]
-    .map(([rotulo, valor], i, l) => ({ rotulo, valor: Number(valor), taxa: i && Number(l[i - 1][1]) ? (Number(valor) / Number(l[i - 1][1])) * 100 : null }));
+    .map(([rotulo, valor], i, l) => ({ rotulo, valor: Number(valor),
+      pctBase: Number(t.total) ? (Number(valor) / Number(t.total)) * 100 : 0,                          // % sobre a base de prospects
+      taxa: i && Number(l[i - 1][1]) ? (Number(valor) / Number(l[i - 1][1])) * 100 : null }));          // passagem da etapa anterior
 }
 
 export const PERIODOS = Object.freeze({

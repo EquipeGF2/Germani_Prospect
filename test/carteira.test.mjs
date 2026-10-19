@@ -148,3 +148,15 @@ test('gestão filtra a lista por supervisor e por vendedor/representante; vended
   assert.equal((await linhas(consultaCarteira({ usuario: ADM, visao: 'cidade', filtros: { vendedorId: 3 } }))).length, 1);   // vale nas visões agrupadas
   assert.equal((await linhas(consultaCarteira({ usuario: REP, filtros: { supervisorId: 5, vendedorId: 3 } }))).length, 3);  // vendedor: sempre a própria carteira
 });
+
+test('computador: onda em ordem natural, rota em 2 níveis e filtro pela data do último registro', async () => {
+  const ADM = { id: 4, perfil: 'administrador' };
+  const ondas = await linhas(consultaCarteira({ usuario: ADM, visao: 'onda', ordemNatural: true }));
+  assert.deepEqual(ondas.map((o) => o.rotulo), ['Onda 1', 'Onda 2', '(sem onda)']);
+  const n1 = await linhas(consultaCarteira({ usuario: VEND, visao: 'rota', ordemNatural: true, rotaEmNiveis: true }));
+  assert.deepEqual(n1.map((x) => [x.rotulo, Number(x.prospects)]), [['Rota R7', 2]]);
+  const n2 = await linhas(consultaCarteira({ usuario: VEND, visao: 'rota', ordemNatural: true, rotaEmNiveis: true, filtros: { rota: 'R7' } }));
+  assert.deepEqual(n2.map((x) => x.rotulo), ['Subrota S1', 'Subrota S2']);
+  const porData = await linhas(consultaCarteira({ usuario: VEND, incluirForaDaLista: true, filtros: { dataDe: '2026-10-05', dataAte: '2026-10-05' } }));
+  assert.equal(porData.length, 1);                                     // só o atendido em 05/10
+});

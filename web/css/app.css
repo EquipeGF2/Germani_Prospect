@@ -281,7 +281,7 @@ td.pct { min-width: 96px; }
 .medidor { height: 8px; border-radius: 4px; background: #F6D9DB; overflow: hidden; margin: 8px 0 6px; }
 .medidor > span { display: block; height: 100%; border-radius: 4px; background: #9F1D24; }
 .chip-tipo { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: #F3F4F6; color: #374151; vertical-align: 1px; }
-.funil-barras .etapa { display: grid; grid-template-columns: 150px 1fr 76px 44px; align-items: center; gap: 12px; padding: 7px 0; font-size: 14px; }
+.funil-barras .etapa { display: grid; grid-template-columns: 150px 1fr 76px 56px; align-items: center; gap: 12px; padding: 7px 0; font-size: 14px; }
 .funil-barras .trilho { height: 22px; background: #F7F7F8; border-radius: 4px; overflow: hidden; }
 .funil-barras .trilho span { display: block; height: 100%; border-radius: 0 4px 4px 0; }
 .funil-barras .v { text-align: right; } .funil-barras .taxa { text-align: right; color: var(--suave); font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -355,3 +355,16 @@ td.pct { min-width: 96px; }
   .vis-arrojado .kpis-linha { grid-template-columns: repeat(3, 1fr); } .vis-arrojado .kpis-linha > div:nth-child(4) { border-left: 0; }
   .vis-arrojado .kpis-linha > div:nth-child(n+4) { border-top: 1px solid var(--borda); }
 }
+
+/* ---------- Lista principal / Acompanhamento no computador ---------- */
+.barra-carteira { display: flex; flex-wrap: wrap; gap: 12px 14px; align-items: flex-end; margin-bottom: 14px; }
+.barra-carteira .filtro label { font-size: 12px; margin-bottom: 4px; }
+.barra-carteira .busca { flex: 1 1 320px; } .barra-carteira .busca .barra-busca { margin: 0; }
+.barra-carteira .visoes { margin: 0; }
+.barra-carteira select { width: auto; min-width: 200px; max-width: 280px; }
+.barra-carteira input[type=date] { width: auto; }
+.tabela-carteira td { vertical-align: middle; }
+.tabela-carteira td.marca { width: 36px; } .tabela-carteira td.marca input { width: 18px; height: 18px; min-height: 0; accent-color: var(--destaque); }
+.tabela-carteira .nome { font-weight: 600; color: var(--texto); text-decoration: none; } .tabela-carteira .nome:hover { color: var(--destaque); text-decoration: underline; }
+.tabela-carteira small { display: block; color: var(--suave); font-size: 12px; margin-top: 2px; }
+.tabela-carteira .alerta-txt { color: var(--erro); }

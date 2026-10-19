@@ -71,6 +71,33 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.ok(funil.every((v, i) => i === 0 || v <= funil[i - 1]), `funil cresceu: ${funil}`);
   await foto('23-exemplo-periodo');
 
+  // lista principal no computador: barra única, cards × lista, ondas em ordem, rota em 2 níveis, data do último registro
+  await pagina.goto(`${base}#/carteira`);
+  await telaPronta();
+  assert.equal(await pagina.locator('.barra-carteira #busca').count(), 1);
+  assert.equal(await pagina.locator('.barra-carteira #filtro-supervisor').count(), 1);
+  assert.equal(await pagina.locator('#so-retornos').count(), 0, 'sem "só retornos" no computador');
+  await pagina.click('.exibicao a[data-exibicao="lista"]');
+  await pagina.waitForSelector('.tabela-carteira tbody tr');
+  await foto('25-lista-tabela');
+  await pagina.goto(`${base}#/carteira?visao=onda`);
+  await telaPronta();
+  const ondas = await pagina.locator('.lista-grupos .grupo b').allInnerTexts();
+  assert.deepEqual(ondas.filter((o) => o.startsWith('Onda')), [...ondas.filter((o) => o.startsWith('Onda'))].sort((x, y) => Number(x.slice(5)) - Number(y.slice(5))));
+  await pagina.goto(`${base}#/carteira?visao=rota`);
+  await telaPronta();
+  const rotas = await pagina.locator('.lista-grupos .grupo b').allInnerTexts();
+  assert.ok(rotas.length && rotas.every((r) => r.startsWith('Rota') || r === '(sem rota)'), `nível 1: ${rotas}`);
+  await pagina.click('.lista-grupos a.grupo >> nth=0');
+  await telaPronta();
+  assert.match(await pagina.evaluate(() => location.hash), /visao=rota.*rota=|rota=.*visao=rota/);
+  const subrotas = await pagina.locator('.lista-grupos .grupo b').allInnerTexts();
+  assert.ok(subrotas.every((r) => r.startsWith('Subrota') || r === '(sem subrota)'), `nível 2: ${subrotas}`);
+  await foto('26-rota-subrota');
+  await pagina.goto(`${base}#/carteira?aba=acompanhamento&visao=lista&dataDe=2026-10-01&dataAte=2026-10-09`);
+  await telaPronta();
+  assert.match(await pagina.locator('.chips').innerText(), /Último registro de 01\/10\/2026 até 09\/10\/2026/);
+
   // outros perfis com a senha de exemplo
   await pagina.click('.menu-sair');
   await entrar('gerente');

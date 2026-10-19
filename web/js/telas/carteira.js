@@ -1,5 +1,7 @@
 // Lista principal (Não contactado / Em prospecção) e Acompanhamento (demais status). docs/03 §6
 // Visões: lista, cidade, bairro, onda, status e — só vendedor — rota. Busca sem acento.
+// Computador: uma barra só (busca, visões, supervisor, vendedor, data do último registro), cards ou lista, onda em ordem
+// e rota em 2 níveis (rota → subrota). Celular: layout de sempre.
 import { bancoApp } from '../db.js';
 import { consultaCarteira, visoesPermitidas } from '../../shared/carteira.mjs';
 import { h, montar, mensagem, formatar, numeros } from '../ui.js';
@@ -7,7 +9,9 @@ import { gravarLote, lerLote, seloStatus } from './_carteira.js';
 
 const POR_PAGINA = 50;
 const NOMES_VISAO = { lista: 'Lista', cidade: 'Cidade', bairro: 'Bairro', onda: 'Onda', status: 'Status', rota: 'Rota' };
-const FILTROS = ['cidadeBusca', 'uf', 'bairroBusca', 'onda', 'rota', 'subrota', 'status', 'supervisorId', 'vendedorId', 'somenteRetornos'];
+const FILTROS = ['cidadeBusca', 'uf', 'bairroBusca', 'onda', 'rota', 'subrota', 'status', 'supervisorId', 'vendedorId', 'somenteRetornos', 'dataDe', 'dataAte'];
+const CHAVE_EXIBICAO = 'germani.carteiraExibicao';
+const ehCelular = () => matchMedia('(max-width: 900px)').matches;
 
 function lerEstado(parametros) {
   const e = { aba: parametros.get('aba') === 'acompanhamento' ? 'acompanhamento' : 'principal', visao: parametros.get('visao') ?? '',
@@ -62,6 +66,7 @@ function descreverFiltros(e) {
   if (f.onda) partes.push(['onda', `Onda ${f.onda}`]);
   if (f.rota) partes.push(['rota', `Rota ${f.rota}${f.subrota ? ' / ' + f.subrota : ''}`]);
   if (f.somenteRetornos) partes.push(['somenteRetornos', 'Só retornos vencidos/hoje']);
+  if (f.dataDe || f.dataAte) partes.push(['dataDe', `Último registro ${f.dataDe ? 'de ' + formatar.data(f.dataDe) : ''}${f.dataAte ? ' até ' + formatar.data(f.dataAte) : ''}`]);
   return partes;
 }
 
@@ -73,12 +78,18 @@ export async function render(conteudo, ctx) {
   if (!permitidas.includes(e.visao)) e.visao = 'lista';
   const podeRegistrar = usuario.perfil !== 'financeiro';
   const selecao = new Set(lerLote());
+  const computador = !ehCelular();
+  // ao cruzar o limite celular/computador a tela se redesenha no outro layout
+  const mq = matchMedia('(max-width: 900px)');
+  const troca = () => { mq.removeEventListener('change', troca); if (conteudo.isConnected) render(conteudo, ctx); };
+  mq.addEventListener('change', troca);
 
   // Na aba Acompanhamento a lista mostra a carteira fora da lista principal (por status)
   const filtros = { ...e.filtros, foraDaLista: e.aba === 'acompanhamento' && !e.filtros.status };
   let consulta;
   try {
-    consulta = consultaCarteira({ usuario, visao: e.visao, filtros, busca: e.busca, limite: POR_PAGINA + 1, deslocamento: e.pagina * POR_PAGINA });
+    consulta = consultaCarteira({ usuario, visao: e.visao, filtros, busca: e.busca, limite: POR_PAGINA + 1, deslocamento: e.pagina * POR_PAGINA,
+      ordemNatural: computador, rotaEmNiveis: computador });
   } catch (erro) {
     return montar(conteudo, mensagem(erro.message, 'erro'));
   }
@@ -107,31 +118,60 @@ export async function render(conteudo, ctx) {
       vendedores.map((v) => h('option', { value: v.id, selected: Number(v.id) === e.filtros.vendedorId }, `${v.nome} · ${papelDoAgente(v)}${v.codigo_erp ? ' · ' + v.codigo_erp : ''}`)));
     extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-vendedor' }, 'Vendedor / representante'), sel));
   }
-  extras.push(h('label', { class: 'marcador' },
-    h('input', { type: 'checkbox', id: 'so-retornos', checked: Boolean(e.filtros.somenteRetornos), onchange: (ev) => { location.hash = endereco(e, { filtros: { somenteRetornos: ev.target.checked }, pagina: 0 }); } }),
-    ' Só retornos vencidos/hoje'));
+  if (!computador) {
+    extras.push(h('label', { class: 'marcador' },
+      h('input', { type: 'checkbox', id: 'so-retornos', checked: Boolean(e.filtros.somenteRetornos), onchange: (ev) => { location.hash = endereco(e, { filtros: { somenteRetornos: ev.target.checked }, pagina: 0 }); } }),
+      ' Só retornos vencidos/hoje'));
+  }
+  let exibicao = 'cards';
+  try { exibicao = localStorage.getItem(CHAVE_EXIBICAO) === 'lista' ? 'lista' : 'cards'; } catch { /* padrão */ }
 
   const chips = descreverFiltros(e).map(([chave, texto]) => {
     const limpa = { [chave]: null };
     if (chave === 'cidadeBusca') Object.assign(limpa, { uf: null, bairroBusca: null });
     if (chave === 'rota') limpa.subrota = null;
+    if (chave === 'dataDe') limpa.dataAte = null;
     return h('a', { class: 'chip', href: endereco(e, { filtros: limpa, pagina: 0 }), title: 'Remover filtro' }, texto, ' ✕');
   });
 
   let corpo;
   if (e.visao === 'status') corpo = blocoStatus(e, linhas);
-  else if (e.visao === 'lista') corpo = blocoLista(e, linhas, { podeRegistrar, selecao, comRota: permitidas.includes('rota'), mostrarCarteira: usuario.perfil !== 'vendedor' });
-  else corpo = blocoGrupos(e, linhas);
+  else if (e.visao === 'lista') {
+    const opcoes = { podeRegistrar, selecao, comRota: permitidas.includes('rota'), mostrarCarteira: usuario.perfil !== 'vendedor' };
+    corpo = blocoLista(e, linhas, { ...opcoes, comoTabela: computador && exibicao === 'lista' });
+  } else corpo = blocoGrupos(e, linhas, { rotaEmNiveis: computador });
 
   const titulo = e.aba === 'acompanhamento' ? 'Acompanhamento' : 'Lista principal';
   const ajuda = e.aba === 'acompanhamento'
     ? 'Clientes que já saíram da lista principal: aguardando cadastro, análise financeira, aguardando pedido, venda realizada, sem interesse e inválidos. Todos continuam nos indicadores.'
     : 'Não contactados e em prospecção. Registrou atendido ou sem interesse, o cliente passa para o acompanhamento.';
+  if (!computador) {
+    return montar(conteudo,
+      h('h1', {}, titulo),
+      h('p', { class: 'ajuda' }, ajuda),
+      formBusca, visoes,
+      h('div', { class: 'filtros-linha' }, extras),
+      chips.length ? h('div', { class: 'chips' }, chips) : null,
+      corpo);
+  }
+
+  // computador: tudo numa barra só
+  const data = (id, rotulo, chave) => h('div', { class: 'filtro' }, h('label', { for: id }, rotulo),
+    h('input', { type: 'date', id, value: e.filtros[chave] ?? '', onchange: (ev) => { location.hash = endereco(e, { filtros: { [chave]: ev.target.value || null }, pagina: 0 }); } }));
+  const botoesExibicao = e.visao === 'lista' ? h('div', { class: 'filtro' }, h('label', {}, 'Exibir'),
+    h('div', { class: 'visoes exibicao', role: 'tablist' }, [['cards', 'Cards'], ['lista', 'Lista']].map(([k, t]) => h('a', {
+      href: '#', class: k === exibicao ? 'ativa' : '', dados: { exibicao: k },
+      onclick: (ev) => { ev.preventDefault(); try { localStorage.setItem(CHAVE_EXIBICAO, k); } catch { /* nada */ } render(conteudo, ctx); },
+    }, t)))) : null;
   montar(conteudo,
-    h('h1', {}, titulo),
-    h('p', { class: 'ajuda' }, ajuda),
-    formBusca, visoes,
-    h('div', { class: 'filtros-linha' }, extras),
+    h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo), h('p', {}, ajuda))),
+    h('div', { class: 'barra-carteira' },
+      h('div', { class: 'filtro busca' }, h('label', { for: 'busca' }, 'Buscar'), formBusca),
+      h('div', { class: 'filtro' }, h('label', {}, 'Visão'), visoes),
+      extras,
+      data('filtro-data-de', 'Último registro de', 'dataDe'),
+      data('filtro-data-ate', 'até', 'dataAte'),
+      botoesExibicao),
     chips.length ? h('div', { class: 'chips' }, chips) : null,
     corpo);
 }
@@ -151,14 +191,16 @@ function blocoStatus(e, linhas) {
   ].filter(Boolean).join(' · ') || ' '))));
 }
 
-function blocoGrupos(e, linhas) {
+function blocoGrupos(e, linhas, { rotaEmNiveis = false } = {}) {
   if (!linhas.length) return mensagem('Nada encontrado com esses filtros.', 'info');
   const filtroDo = (g) => ({
     cidade: { cidadeBusca: g.cidade_busca, uf: g.uf },
     bairro: { cidadeBusca: g.cidade_busca, uf: g.uf, bairroBusca: g.bairro_busca },
     onda: { onda: g.onda },
-    rota: { rota: g.rota, subrota: g.subrota },
+    rota: rotaEmNiveis && !e.filtros.rota ? { rota: g.rota } : { rota: g.rota, subrota: g.subrota },
   }[e.visao]);
+  // rota em 2 níveis: o 1º clique abre as subrotas da rota (continua na visão rota); o 2º abre a lista
+  const proximaVisao = rotaEmNiveis && e.visao === 'rota' && !e.filtros.rota ? 'rota' : 'lista';
   const total = linhas.reduce((s, g) => s + Number(g.prospects), 0);
   return h('div', {},
     numeros([['grupos', linhas.length], ['prospects', total], ['pendentes hoje', linhas.reduce((s, g) => s + Number(g.pendentes_hoje ?? 0), 0), 'alerta']]),
@@ -167,11 +209,11 @@ function blocoGrupos(e, linhas) {
       const semChave = Object.values(f).every((v) => v == null);
       const conteudo = [h('b', {}, g.rotulo), h('span', { class: 'ajuda' },
         `${g.prospects} prospect(s) · ${g.pendentes_hoje ?? 0} pendente(s) hoje · ${g.nao_contactados ?? 0} não contactado(s) · ${g.em_prospeccao ?? 0} em prospecção`)];
-      return semChave ? h('div', { class: 'grupo' }, conteudo) : h('a', { class: 'grupo', href: endereco({ ...e, visao: 'lista' }, { filtros: f, pagina: 0 }) }, conteudo);
+      return semChave ? h('div', { class: 'grupo' }, conteudo) : h('a', { class: 'grupo', href: endereco({ ...e, visao: proximaVisao }, { filtros: f, pagina: 0 }) }, conteudo);
     })));
 }
 
-function blocoLista(e, linhas, { podeRegistrar, selecao, comRota, mostrarCarteira }) {
+function blocoLista(e, linhas, { podeRegistrar, selecao, comRota, mostrarCarteira, comoTabela = false }) {
   const temMais = linhas.length > POR_PAGINA;
   const pagina = linhas.slice(0, POR_PAGINA);
   if (!pagina.length) return mensagem(e.busca ? `Nada encontrado para "${e.busca}".` : 'Nenhum prospect nesta lista.', 'info');
@@ -182,14 +224,14 @@ function blocoLista(e, linhas, { podeRegistrar, selecao, comRota, mostrarCarteir
     montar(barraLote, selecao.size
       ? [h('span', {}, `${selecao.size} selecionado(s)`),
         h('a', { class: 'botao', href: '#/lote' }, 'Sem interesse em lote'),
-        h('button', { class: 'secundario pequeno', onclick: () => { selecao.clear(); gravarLote([]); document.querySelectorAll('.cartao-prospect input[type=checkbox]').forEach((c) => { c.checked = false; }); atualizarBarra(); } }, 'Limpar seleção')]
+        h('button', { class: 'secundario pequeno', onclick: () => { selecao.clear(); gravarLote([]); document.querySelectorAll('input[data-lote]').forEach((c) => { c.checked = false; }); atualizarBarra(); } }, 'Limpar seleção')]
       : h('span', { class: 'ajuda' }, 'Marque os prospects para registrar "sem interesse" em lote.'));
   };
   if (loteVisivel) atualizarBarra();
 
   const cartoes = pagina.map((p) => {
     const marca = loteVisivel && Number(p.na_lista) ? h('input', {
-      type: 'checkbox', 'aria-label': `Selecionar ${p.razao_social}`, checked: selecao.has(Number(p.id)),
+      type: 'checkbox', 'aria-label': `Selecionar ${p.razao_social}`, checked: selecao.has(Number(p.id)), dados: { lote: p.id },
       onchange: (ev) => { if (ev.target.checked) selecao.add(Number(p.id)); else selecao.delete(Number(p.id)); gravarLote([...selecao]); atualizarBarra(); },
     }) : null;
     const info = [
@@ -204,6 +246,19 @@ function blocoLista(e, linhas, { podeRegistrar, selecao, comRota, mostrarCarteir
       Number(p.prazo_cadastro_vencido) ? h('span', { class: 'selo erro' }, 'Prazo de cadastro vencido') : null,
       p.dias_corridos != null ? h('span', { class: 'selo' }, `${p.dias_corridos} dia(s) corrido(s)`) : null,
     ];
+    if (comoTabela) {
+      return h('tr', {},
+        loteVisivel ? h('td', { class: 'marca' }, marca) : null,
+        h('td', {}, h('a', { href: `#/ficha?id=${p.id}`, class: 'nome' }, p.razao_social),
+          h('small', {}, [formatar.cnpj(p.cnpj), p.nome_fantasia && p.nome_fantasia !== p.razao_social ? p.nome_fantasia : null].filter(Boolean).join(' · '))),
+        h('td', {}, [p.cidade && `${p.cidade}/${p.uf ?? ''}`, p.bairro].filter(Boolean).join(' · ')),
+        h('td', {}, p.onda ? `Onda ${p.onda}` : ''),
+        comRota ? h('td', {}, p.rota ? `${p.rota}${p.subrota ? ' / ' + p.subrota : ''}` : '') : null,
+        mostrarCarteira ? h('td', {}, p.vendedor_nome) : null,
+        h('td', {}, seloStatus(p), Number(p.prazo_cadastro_vencido) ? h('small', { class: 'alerta-txt' }, 'prazo de cadastro vencido') : null),
+        h('td', { class: 'num' }, p.dias_corridos != null ? `${p.dias_corridos} d` : '—'),
+        h('td', {}, formatar.data(p.dt_ultimo_contato) || '—'));
+    }
     return h('div', { class: 'cartao-prospect' }, marca,
       h('a', { class: 'cartao-prospect-corpo', href: `#/ficha?id=${p.id}` },
         h('div', { class: 'cartao-prospect-topo' }, h('b', {}, p.razao_social), seloStatus(p)),
@@ -216,5 +271,11 @@ function blocoLista(e, linhas, { podeRegistrar, selecao, comRota, mostrarCarteir
     e.pagina > 0 ? h('a', { class: 'botao secundario', href: endereco(e, { pagina: e.pagina - 1 }) }, '‹ Anteriores') : null,
     h('span', { class: 'ajuda', style: 'align-self:center' }, `Página ${e.pagina + 1} · ${e.pagina * POR_PAGINA + 1}–${e.pagina * POR_PAGINA + pagina.length}`),
     temMais ? h('a', { class: 'botao secundario', href: endereco(e, { pagina: e.pagina + 1 }) }, 'Próximos ›') : null);
-  return h('div', {}, loteVisivel ? barraLote : null, h('div', { class: 'lista-prospects' }, cartoes), nav);
+  const corpo = comoTabela
+    ? h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela-carteira' },
+      h('thead', {}, h('tr', {}, [loteVisivel ? '' : null, 'Prospect', 'Cidade · bairro', 'Onda', comRota ? 'Rota' : null, mostrarCarteira ? 'Carteira' : null, 'Status', 'Dias', 'Último registro']
+        .filter((t) => t !== null).map((t) => h('th', { class: t === 'Dias' ? 'num' : '' }, t)))),
+      h('tbody', {}, cartoes)))
+    : h('div', { class: 'lista-prospects' }, cartoes);
+  return h('div', {}, loteVisivel ? barraLote : null, corpo, nav);
 }
