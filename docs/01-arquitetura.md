@@ -61,6 +61,13 @@ web/
 ├── js/sessao.js · js/ui.js       login e utilitários de tela (texto sempre por textContent)
 ├── js/arquivo.js                 leitura do arquivo escolhido (shared/planilha.mjs)
 └── js/telas/                     uma tela por arquivo; importam shared/ diretamente
+    ├── entrar · inicio
+    ├── carteira.js               lista principal + acompanhamento (shared/carteira.mjs)
+    ├── ficha.js                  ficha + linha do tempo (vw_movimentacoes)
+    ├── registrar.js              registro individual (shared/registro.mjs)
+    ├── lote.js                   sem interesse em lote (shared/lote.mjs)
+    ├── _carteira.js              abas, selo de status, seleção do lote (sessionStorage)
+    └── admin-*.js · _admin.js    administração (token de administração)
 ```
 `npm run site` monta `_site/` (web + shared + migrations + bibliotecas do navegador empacotadas com esbuild,
 versões travadas no package-lock). `test-telas/` testa as telas num Chromium real, em modo demonstração.

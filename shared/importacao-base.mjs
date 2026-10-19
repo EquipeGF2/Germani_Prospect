@@ -94,9 +94,10 @@ function codigo(valor) {
  * @param campos      objeto de extrairCampos
  * @param mapaStatus  config/mapa-status-planilha.json (chaves já normalizadas por normalizarMapaStatus)
  * @param hoje        AAAA-MM-DD (São Paulo)
+ * @param considerarDatas  false = ignora DT 1o / DT 2o e o Status Atual: todos entram como Não contactado
  * @returns {{ dados: object|null, erros: string[], avisos: string[] }}
  */
-export function analisarLinhaBase(campos, { mapaStatus, hoje }) {
+export function analisarLinhaBase(campos, { mapaStatus, hoje, considerarDatas = true }) {
   const erros = [];
   const avisos = [];
 
@@ -141,8 +142,8 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje }) {
   }
 
   // Tentativas de contato (DT 1o / DT 2o) + Status Atual
-  const d1 = analisarData(campos.dt_1);
-  const d2 = analisarData(campos.dt_2);
+  const d1 = considerarDatas ? analisarData(campos.dt_1) : {};
+  const d2 = considerarDatas ? analisarData(campos.dt_2) : {};
   if (d1.erro) erros.push(`DT 1o.contato: ${d1.erro}`);
   if (d2.erro) erros.push(`DT 2o.contato: ${d2.erro}`);
   if (d2.data && !d1.data && !d1.erro) erros.push('DT 2o.contato preenchida sem DT 1o.contato');
@@ -153,7 +154,10 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje }) {
   const resultadoFinal = mapaStatus[normalizarBusca(statusTexto)];
   const datas = [d1.data, d2.data].filter(Boolean);
   const tentativas = [];
-  if (resultadoFinal === undefined) {
+  if (!considerarDatas) {
+    // datas desconsideradas: sem tentativas, então o Status Atual não tem como ser aplicado
+    if (statusTexto && resultadoFinal !== 'sem_contato') avisos.push(`Status Atual "${statusTexto}" ignorado (datas de contato desconsideradas) — entra como Não contactado`);
+  } else if (resultadoFinal === undefined) {
     erros.push(`Status Atual não mapeado: "${statusTexto}" (defina como tratar este valor no mapeamento do Status Atual)`);
   } else if (resultadoFinal === 'sem_contato') {
     if (datas.length) erros.push(`Status Atual "${statusTexto}" indica sem contato, mas há data de contato`);
@@ -264,6 +268,14 @@ export function verificarConsistencia(resultados) {
 }
 
 /** Valores distintos da coluna "Status Atual" (sem acento/maiúsculas) com a quantidade de linhas — mapeamento na tela. */
+/** Quantas linhas têm DT 1o ou DT 2o preenchida (decide o padrão de "considerar datas"). */
+export function contarDatasPlanilha(linhas) {
+  const [cabecalho = [], ...corpo] = linhas;
+  const { indices } = mapearCabecalho(cabecalho);
+  const cols = [indices.dt_1, indices.dt_2].filter((i) => i != null);
+  return corpo.filter((l) => cols.some((i) => limparTexto(l[i]) !== null)).length;
+}
+
 export function contarStatusPlanilha(linhas) {
   const [cabecalho = [], ...corpo] = linhas;
   const { indices } = mapearCabecalho(cabecalho);

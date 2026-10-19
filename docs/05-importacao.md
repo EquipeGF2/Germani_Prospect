@@ -21,7 +21,18 @@ npm run importar:base -- base.xlsx --listar-status   # 1) ver os valores reais d
 #   → completar config/mapa-status-planilha.json
 npm run importar:base -- base.xlsx --simular         # 2) conferir o relatório
 npm run importar:base -- base.xlsx                   # 3) gravar
+#   --sem-datas  ignora DT 1o / DT 2o e o Status Atual · --com-datas  força considerar
 ```
+
+### Considerar ou não as datas de contato (DT 1o / DT 2o)
+Na tela (passo "Datas e status da planilha") há a marcação **Considerar DT 1o / DT 2o contato e o Status Atual**.
+- **Padrão:** marcada só se a planilha tiver alguma data preenchida (a tela mostra quantas linhas têm data).
+  Na planilha atual as duas colunas estão vazias → vem **desmarcada**.
+- **Desmarcada:** as duas datas e o Status Atual são ignorados; todo prospect novo entra como **Não contactado**,
+  sem registro de contato da planilha, com `dt_entrada_base` = dia da importação. Status Atual diferente de
+  "não contactado" gera só um **aviso** na linha (não rejeita). O mapeamento do Status Atual nem aparece.
+- **Marcada:** regras abaixo (datas viram registros "contato da planilha"; Status Atual aplicado à última data).
+- A escolha fica registrada em `importacoes.observacao` (`considerarDatas`) e no resumo da simulação.
 
 ### Layout (cabeçalho comparado sem acento, sem pontuação e sem diferenciar maiúsculas)
 
@@ -54,7 +65,7 @@ npm run importar:base -- base.xlsx                   # 3) gravar
 | 25 | Status Atual | resultado da **última** tentativa | via `config/mapa-status-planilha.json`; valor não mapeado → **rejeita** |
 | 26 | # Dias Corridos | — | ignorada: recalculada em `vw_prospects.dias_corridos` |
 
-### O que acontece com cada linha aceita
+### O que acontece com cada linha aceita (com datas consideradas)
 1. Supervisor (COD SUP) e vendedor (COD) são criados se não existirem — **sem senha**.
 2. CNPJ novo → prospect criado. CNPJ existente → **só dados cadastrais** são atualizados; status,
    contatos, histórico e vendedor não mudam (mudança de vendedor = transferência). Baixado não é tocado.

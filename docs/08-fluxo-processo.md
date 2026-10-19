@@ -6,7 +6,7 @@
 ```mermaid
 flowchart TD
     BASE([Planilha base — carga inicial]) --> NC[Não contactado]
-    BASE --> EP["Em prospecção<br/>(DT 1o/2o na planilha)"]
+    BASE --> EP["Em prospecção<br/>(DT 1o/2o na planilha, se consideradas)"]
     subgraph LP [" LISTA PRINCIPAL — prospecção (representante e vendedor) "]
         NC
         EP
@@ -37,13 +37,24 @@ flowchart TD
 
 | # | Etapa | Lista | Entra quando | Quem | Prazo / alerta |
 |---|---|---|---|---|---|
-| 0 | Não contactado / Em prospecção | principal | carga inicial | — | parado > 30 dias |
+| 0 | Não contactado / Em prospecção | principal | carga inicial (Em prospecção só se as datas DT 1o/2o forem consideradas) | — | parado > 30 dias |
 | 1 | **Aguardando cadastro** | acompanhamento | "Atendido" no mobile (ou "Pedido identificado") | representante / vendedor | **15 dias** para o cadastro |
 | 2 | **Análise financeira** | acompanhamento | CNPJ no arquivo de **cadastro** do ERP | importação (administrador) | **10 dias** para o OK |
 | 3 | **Aguardando pedido** | acompanhamento | **relatório de crédito** do ERP (forma de pagamento, prazo em dias, limite do CNPJ — ou do grupo se o do CNPJ estiver vazio) **ou** OK no console do analista | administrador (importação) / analista | — |
 | 4 | **Venda realizada** | acompanhamento | CNPJ no arquivo de **pedidos** do ERP | importação | final |
 | — | Sem interesse | acompanhamento | registro com justificativa | representante / vendedor | reabre com "Pedido identificado" |
 | — | Inválido | — | CNPJ no arquivo de baixados (a qualquer momento) | importação | congelado |
+
+## Onde cada etapa aparece no app
+
+| Etapa | Tela | Ação |
+|---|---|---|
+| Não contactado / Em prospecção | **Lista principal** (`#/carteira`) | abrir a ficha → **Registrar atendimento**; ou marcar vários → **Sem interesse em lote** |
+| Aguardando cadastro · Análise financeira · Aguardando pedido · Venda realizada · Sem interesse · Inválido | **Acompanhamento** (`#/carteira?aba=acompanhamento`) → cartão do status | consulta; novo registro enquanto o status aceitar |
+| Sem interesse → Aguardando cadastro | ficha → Registrar → **Reabrir: pedido identificado** | data de entrada do pedido |
+| Cadastro · Pedido · Baixa · Relatório de crédito | Administração → importações | arquivos do ERP |
+| Console do analista | (parte 4 do app) | — |
+| Todos | **Ficha** (`#/ficha`) → Histórico de movimentação | linha do tempo de cada movimento |
 
 ## Histórico de movimentação
 

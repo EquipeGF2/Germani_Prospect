@@ -39,7 +39,7 @@ export function visoesPermitidas(usuario) {
 }
 
 function escopo(usuario) {
-  if (usuario.perfil === 'administrador') return { where: [], args: [] };
+  if (usuario.perfil === 'administrador' || usuario.perfil === 'financeiro') return { where: [], args: [] };
   if (usuario.perfil === 'supervisor') return { where: ['supervisor_id = ?'], args: [usuario.id] };
   return { where: ['vendedor_id = ?'], args: [usuario.id] };
 }
@@ -48,7 +48,8 @@ function escopo(usuario) {
  * Monta a consulta da lista de prospects.
  * @param usuario  { id, perfil, tipo_atuacao }
  * @param visao    'lista' | 'cidade' | 'bairro' | 'onda' | 'status' | 'rota'
- * @param filtros  { cidadeBusca, uf, bairroBusca, onda, rota, subrota, status, somentePendentes, somenteRetornos, vendedorId }
+ * @param filtros  { cidadeBusca, uf, bairroBusca, onda, rota, subrota, status, somentePendentes, somenteRetornos, vendedorId, foraDaLista }
+ *                 `foraDaLista` = só o acompanhamento (quem já saiu da lista principal).
  *                 Informar `status` (ou abrir a visão 'status') mostra a carteira inteira, não só a lista.
  *                 `somenteRetornos` na lista = retornos da lista; com `status: 'aguardando_cadastro'` = retornos da negociação.
  * @param busca    texto livre (nome, CNPJ, cidade, bairro) — acentos ignorados
@@ -64,7 +65,8 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
 
   const { where, args } = escopo(usuario);
   // Aguardando cadastro, Sem interesse etc. só aparecem no acompanhamento (visão 'status' ou filtro de status)
-  if (!incluirForaDaLista && visao !== 'status' && !filtros.status) where.push('na_lista = 1');
+  if (!incluirForaDaLista && !filtros.foraDaLista && visao !== 'status' && !filtros.status) where.push('na_lista = 1');
+  if (filtros.foraDaLista) where.push('na_lista = 0');
   if (filtros.somentePendentes) where.push('pendente_hoje = 1');
   if (filtros.somenteRetornos) where.push('retorno_pendente = 1');
   if (filtros.status) { where.push('status_atual = ?'); args.push(filtros.status); }
@@ -130,4 +132,25 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
            ORDER BY pendentes_hoje DESC, prospects DESC, rotulo`,
     args,
   };
+}
+
+/** Ficha de um prospect (respeita o escopo do usuário). Sem linha = sem acesso ou inexistente. */
+export function consultaFicha({ usuario, prospectId }) {
+  const { where, args } = escopo(usuario);
+  where.push('id = ?');
+  args.push(prospectId);
+  return { sql: `SELECT * FROM vw_prospects WHERE ${where.join(' AND ')}`, args };
+}
+
+/** Remove da ficha o que o perfil não usa (representante não tem rota). */
+export function ajustarFicha(usuario, ficha) {
+  if (!ficha) return ficha;
+  const f = { ...ficha };
+  if (formaDeTrabalho(usuario) === 'representante' || f.vendedor_tipo_atuacao !== 'vendedor') { delete f.rota; delete f.subrota; }
+  return f;
+}
+
+/** Linha do tempo (histórico de movimentação) — chamar só depois de consultaFicha confirmar o acesso. */
+export function consultaLinhaTempo({ prospectId }) {
+  return { sql: 'SELECT * FROM vw_movimentacoes WHERE prospect_id = ? ORDER BY data_evento DESC, id DESC', args: [prospectId] };
 }

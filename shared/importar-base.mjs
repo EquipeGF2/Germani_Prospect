@@ -4,29 +4,31 @@
 //   * CNPJ novo → prospect "Não contactado" + tentativas de DT 1o/DT 2o como contatos de origem "importacao"
 //   * CNPJ existente → atualiza só dados cadastrais; status, contatos e vendedor NÃO mudam
 //   * prospect baixado (inválido) está congelado e não é tocado
-import { analisarLinhaBase, extrairCampos, linhaVazia, mapearCabecalho, verificarConsistencia } from './importacao-base.mjs';
+import { analisarLinhaBase, contarDatasPlanilha, extrairCampos, linhaVazia, mapearCabecalho, verificarConsistencia } from './importacao-base.mjs';
 import { normalizarBusca } from './texto.mjs';
 import { gravarEmLotes } from './gravacao.mjs';
 
 const CAMPOS_CADASTRAIS = ['razao_social', 'nome_fantasia', 'endereco', 'bairro', 'cidade', 'uf', 'cep', 'latitude', 'longitude',
   'telefone', 'tipologia_gtm', 'onda', 'tipo', 'rota', 'subrota', 'obs_planilha', 'busca', 'cidade_busca', 'bairro_busca', 'cnpj_secundario'];
 
-export function analisarPlanilhaBase(linhas, { mapaStatus, hoje }) {
+export function analisarPlanilhaBase(linhas, { mapaStatus, hoje, considerarDatas }) {
   const [cabecalho = [], ...corpo] = linhas;
   const mapa = mapearCabecalho(cabecalho);
   if (mapa.faltandoObrigatorias.length) {
     throw new Error(`colunas obrigatórias ausentes: ${mapa.faltandoObrigatorias.join(', ')}`);
   }
+  // padrão: considera as datas só se a planilha tiver alguma (DT 1o / DT 2o vazias → todos Não contactado)
+  const datas = considerarDatas ?? contarDatasPlanilha(linhas) > 0;
   let vazias = 0;
   const resultados = [];
   corpo.forEach((linha, i) => {
     if (linhaVazia(linha)) { vazias++; return; }
     const campos = extrairCampos(linha, mapa.indices);
-    const r = analisarLinhaBase(campos, { mapaStatus, hoje });
+    const r = analisarLinhaBase(campos, { mapaStatus, hoje, considerarDatas: datas });
     resultados.push({ numeroLinha: i + 2, bruto: campos, ...r });
   });
   const cadastros = verificarConsistencia(resultados);
-  return { mapa, resultados, vazias, ...cadastros };
+  return { mapa, resultados, vazias, considerarDatas: datas, ...cadastros };
 }
 
 async function idsUsuarios(db, perfil) {
@@ -50,8 +52,8 @@ async function garantirUsuarios(db, supervisores, vendedores) {
   return { sups, vends: await idsUsuarios(db, 'vendedor') };
 }
 
-export async function importarBase(db, { linhas, arquivoNome, arquivoSha256, executadoPor, mapaStatus, hoje, simular = false }) {
-  const analise = analisarPlanilhaBase(linhas, { mapaStatus, hoje });
+export async function importarBase(db, { linhas, arquivoNome, arquivoSha256, executadoPor, mapaStatus, hoje, considerarDatas, simular = false }) {
+  const analise = analisarPlanilhaBase(linhas, { mapaStatus, hoje, considerarDatas });
   const existentes = new Map((await db.execute('SELECT cnpj, vendedor_id, status_atual FROM prospects')).rows
     .map((r) => [r.cnpj, { vendedorId: Number(r.vendedor_id), status: r.status_atual }]));
 
@@ -64,13 +66,14 @@ export async function importarBase(db, { linhas, arquivoNome, arquivoSha256, exe
     rejeitadas: analise.resultados.length - aceitas.length,
     colunasNaoReconhecidas: analise.mapa.naoReconhecidas,
     colunasOpcionaisAusentes: analise.mapa.faltandoOpcionais,
+    considerarDatas: analise.considerarDatas,
   };
   if (simular) return { resumo, resultados: analise.resultados, importacaoId: null };
 
   const imp = await db.execute({
     sql: `INSERT INTO importacoes (tipo, arquivo_nome, arquivo_sha256, executado_por, observacao)
           VALUES ('base_prospects', ?, ?, ?, ?) RETURNING id`,
-    args: [arquivoNome, arquivoSha256, executadoPor, JSON.stringify({ vazias: analise.vazias })],
+    args: [arquivoNome, arquivoSha256, executadoPor, JSON.stringify({ vazias: analise.vazias, considerarDatas: analise.considerarDatas })],
   });
   const importacaoId = Number(imp.rows[0].id);
 

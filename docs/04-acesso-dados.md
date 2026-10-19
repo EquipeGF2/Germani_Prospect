@@ -8,9 +8,9 @@ Sem servidor (ADR-0001), o app fala SQL com o Turso. Para manter o banco íntegr
 | Tela | Fonte | Filtro obrigatório na consulta |
 |---|---|---|
 | Lista de prospects (lista · cidade · bairro · rota) | `consultaCarteira()` de `shared/carteira.mjs` sobre `vw_prospects` | escopo e visões pelo usuário: representante sem rota; vendedor com rota; supervisor = equipe |
-| Acompanhamento por status (carteira inteira) | `consultaCarteira({ visao: 'status' })` e `consultaCarteira({ filtros: { status } })` | idem |
+| Acompanhamento por status (carteira inteira) | `consultaCarteira({ visao: 'status', filtros: { foraDaLista: true } })` e `consultaCarteira({ filtros: { status } })` | idem |
 | Retornos hoje | lista: `consultaCarteira({ filtros: { somenteRetornos: true } })` · negociação (no acompanhamento): `consultaCarteira({ filtros: { status: 'aguardando_cadastro', somenteRetornos: true } })` | idem carteira |
-| Ficha (linha do tempo) | `vw_prospects` + `vw_movimentacoes` | `prospect_id` |
+| Ficha (linha do tempo) | `consultaFicha()` (escopo do usuário; sem linha = sem acesso) + `ajustarFicha()` (tira rota do representante) + `consultaLinhaTempo()` sobre `vw_movimentacoes` | `prospect_id`, só depois da ficha abrir |
 | Histórico de movimentação (filtros/relatório) | `consultaMovimentacoes()` de `shared/indicadores.mjs` | vendedor: própria carteira na data; supervisor: equipe |
 | Console financeiro | `consultaFilaAnalise()` de `shared/financeiro.mjs` | perfil financeiro / administrador |
 | Formulário de contato | `motivos_sem_interesse WHERE ativo = 1 AND uso_app = 1 ORDER BY ordem`, `parametros` | — |
@@ -28,6 +28,7 @@ VALUES (:uuid_do_aparelho, :prospect, :usuario, :registros_atuais + 1 /* prospec
         :canal, :resultado, :motivo, :obs, normalizarBusca(:obs), :retorno,
         :data_pedido /* só em "pedido identificado" */, :lat_aparelho, :lng_aparelho);
 ```
+- Na tela: `comandoRegistrarContato()` de `shared/registro.mjs` monta este INSERT (UUID, tentativa + 1, observação sem acento).
 - Validar antes com `validarContato()` (`shared/status.mjs`) — mesma regra do banco, mensagem amigável.
 - O banco recusa com mensagem clara: prospect que não aceita contato (venda/baixado), sem permissão, tentativa fora de sequência,
   data anterior ao último contato, motivo inválido, motivo que exige observação.

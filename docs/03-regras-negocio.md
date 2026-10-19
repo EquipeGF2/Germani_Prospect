@@ -49,6 +49,12 @@ Regras:
 - **Correção** = novo registro. Nada é editado.
 - O que fazer depois com os "Sem interesse" será decidido (ver 07).
 
+**Na tela** (`#/registrar`, [`web/js/telas/registrar.js`](../web/js/telas/registrar.js) +
+[`shared/registro.mjs`](../shared/registro.mjs)): o botão **Registrar atendimento** aparece na ficha de todo cliente
+que aceita registro. "Reabrir: pedido identificado" só aparece para quem está **Sem interesse**; "Retornar em"
+só aparece em Atendido / pedido identificado. Data padrão = hoje no aparelho, limitada entre o último registro e hoje.
+Depois de gravar, volta para a ficha, que já mostra o novo status e o movimento na linha do tempo.
+
 ### 2.1 Registro em lote
 
 Implementação: [`shared/lote.mjs`](../shared/lote.mjs) · testes: [`test/lote.test.mjs`](../test/lote.test.mjs).
@@ -60,6 +66,10 @@ Implementação: [`shared/lote.mjs`](../shared/lote.mjs) · testes: [`test/lote.
 - Cada item vira um registro normal (mesmas regras do banco) com o mesmo `lote_id`.
 - Item inválido (sem motivo, outra carteira, baixado…) é devolvido com o motivo; **os demais gravam**.
 - "Pedido identificado" não entra em lote: cada pedido tem a sua data.
+- **Na tela** (`#/lote`): marca-se os clientes na lista principal (a seleção fica só nesta aba do navegador) →
+  **Sem interesse em lote** → motivo/observação do lote e, se quiser, por cliente → grava. O resultado mostra
+  gravados × recusados (com o motivo); os recusados continuam selecionados. Atendido em lote existe em
+  `shared/lote.mjs`, mas a tela oferece só sem interesse.
 
 ### Motivos de recusa (lista inicial, editável)
 
@@ -163,6 +173,18 @@ movimentação conta sempre nos indicadores.
 - **Cidade / Bairro:** para os dois perfis. Total, pendentes hoje, não contactados, em prospecção, atendidos
   e o centro do grupo para **abrir no mapa**. **Nenhuma distância é calculada** (ADR-0005).
 - Cada linha traz `dias_corridos` (desde o 1º atendimento) e `status_descricao`.
+
+**Nas telas** ([`web/js/telas/carteira.js`](../web/js/telas/carteira.js)):
+- `#/carteira` = **Lista principal**; `#/carteira?aba=acompanhamento` = **Acompanhamento** (`filtros.foraDaLista`:
+  só quem saiu da lista principal; abre nos cartões por status).
+- Visões em botões; tocar num grupo (cidade, bairro, onda, rota, status) abre a lista já filtrada. Os filtros
+  ativos aparecem como etiquetas removíveis. Supervisor e administrador escolhem o vendedor da equipe.
+- Cada cartão: razão social, selo do status, CNPJ, fantasia, bairro/cidade, onda, rota (só vendedor),
+  "atendido em…", dias corridos, retorno vencido e prazo de cadastro vencido. 50 por página.
+- **Ficha** (`#/ficha`): situação (status, dias corridos, registros, datas, prazos, motivo, cadastro e pedido do
+  ERP), crédito liberado (forma, prazo, limite e se veio do grupo, restrição), **histórico de movimentação**
+  (data, status antes → depois, detalhe, quem fez, origem, carteira da época) e cadastro com Ligar / WhatsApp
+  (telefone com DDD) / Ver no mapa (coordenadas da base). Ficha fora do escopo do usuário não abre.
 
 ## 7. Montagem de rotas (somente vendedor)
 

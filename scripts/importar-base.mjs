@@ -3,6 +3,8 @@
 //   npm run importar:base -- caminho/base.xlsx --listar-status   (mostra os valores de "Status Atual")
 //   npm run importar:base -- caminho/base.xlsx --simular         (valida tudo, não grava)
 //   npm run importar:base -- caminho/base.xlsx                   (grava)
+//   --com-datas / --sem-datas  considerar ou ignorar DT 1o / DT 2o e o Status Atual
+//                              (padrão: considera só se a planilha tiver alguma data preenchida)
 // Relatório de todas as linhas em relatorios/ (pasta fora do git).
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -21,13 +23,15 @@ const { values: op, positionals } = parseArgs({
   options: {
     simular: { type: 'boolean', default: false },
     'listar-status': { type: 'boolean', default: false },
+    'com-datas': { type: 'boolean', default: false },
+    'sem-datas': { type: 'boolean', default: false },
     'mapa-status': { type: 'string', default: new URL('../config/mapa-status-planilha.json', import.meta.url).pathname },
     'executado-por': { type: 'string' },
   },
 });
 const arquivo = positionals[0];
 if (!arquivo) {
-  console.error('uso: npm run importar:base -- <arquivo.xlsx|.csv> [--simular] [--listar-status]');
+  console.error('uso: npm run importar:base -- <arquivo.xlsx|.csv> [--simular] [--listar-status] [--com-datas|--sem-datas]');
   process.exit(1);
 }
 
@@ -59,6 +63,7 @@ const { resumo, resultados, importacaoId } = await importarBase(db, {
   executadoPor: executor(op['executado-por']),
   mapaStatus,
   hoje: hojeSaoPaulo(),
+  considerarDatas: op['com-datas'] ? true : op['sem-datas'] ? false : undefined,
   simular: op.simular,
 });
 db.close();

@@ -44,6 +44,10 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('a:text("Base de prospects")');
   await pagina.setInputFiles('#arquivo-base', 'exemplos/base-ficticia.xlsx');
   await pagina.click('button:text("Ler arquivo")');
+  await pagina.waitForSelector('text=Datas de contato da planilha');
+  assert.ok(await pagina.isChecked('#considerar-datas'), 'planilha com datas: considera por padrão');
+  await foto('03a-base-datas');
+  await pagina.click('#continuar-datas');
   await pagina.waitForSelector('text=Como tratar cada valor');
   await foto('03-base-status');
   await pagina.click('button:text("Simular importação")');
@@ -138,6 +142,70 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   assert.match(await pagina.locator('#usuario-topo').innerText(), /Vendedor/);
   await pagina.goto(`${base}#/admin/usuarios`);
   await pagina.waitForSelector('text=exclusiva do administrador');
+
+  // 8. lista principal do vendedor (com visão por rota) → ficha → registrar atendido
+  await pagina.goto(`${base}#/inicio`);
+  await pagina.waitForSelector('text=na lista principal');
+  await foto('10b-inicio-vendedor');
+  await pagina.click('nav.abas a:text("Lista principal")');
+  await pagina.waitForSelector('.cartao-prospect');
+  assert.ok(await pagina.locator('.visoes a:text("Rota")').count(), 'vendedor tem visão por rota');
+  await foto('11-lista-principal');
+  const primeiro = (await pagina.locator('.cartao-prospect-corpo b').first().innerText()).trim();
+  await pagina.fill('#busca', primeiro.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
+  await pagina.click('button:text("Buscar")');
+  await pagina.waitForSelector('.chip, .cartao-prospect');
+  assert.ok((await pagina.locator('.cartao-prospect').count()) >= 1, 'busca sem acento encontra o prospect');
+  await pagina.click('.cartao-prospect-corpo >> nth=0');
+  await pagina.waitForSelector('text=Histórico de movimentação');
+  await pagina.click('a:text("Registrar atendimento")');
+  await pagina.waitForSelector('text=Não atendeu? Não precisa registrar.');
+  await pagina.click('label.opcao:has-text("Sem interesse")');
+  await pagina.click('button:text("Gravar registro")');
+  await pagina.waitForSelector('text=motivo obrigatório');                // validação antes de enviar
+  await pagina.click('label.opcao:has-text("Atendido")');
+  await foto('12-registrar');
+  await pagina.click('button:text("Gravar registro")');
+  await pagina.waitForSelector('text=Atendido registrado.');
+  await pagina.waitForSelector('text=Histórico de movimentação');
+  assert.match(await texto(), /Aguardando cadastro · atendido em \d{2}\/\d{2}\/\d{4}/);
+  assert.match(await texto(), /→ Aguardando cadastro/);                  // linha do tempo mostra o movimento
+  await foto('13-ficha');
+  const cnpjAtendido = (await pagina.locator('.dado:has(span:text-is("CNPJ")) b').innerText()).replace(/\D/g, '');
+
+  // 9. o atendido saiu da lista principal; "sem interesse" em lote para 2 prospects
+  await pagina.goto(`${base}#/carteira`);
+  await pagina.waitForSelector('.cartao-prospect');
+  await pagina.fill('#busca', cnpjAtendido);
+  await pagina.click('button:text("Buscar")');
+  await pagina.waitForSelector(`text=Nada encontrado para "${cnpjAtendido}"`);   // atendido saiu da lista principal
+  await pagina.goto(`${base}#/carteira`);
+  await pagina.waitForSelector('.cartao-prospect');
+  await pagina.check('.cartao-prospect input[type=checkbox] >> nth=0');
+  await pagina.check('.cartao-prospect input[type=checkbox] >> nth=1');
+  await pagina.waitForSelector('text=2 selecionado(s)');
+  await pagina.click('a:text("Sem interesse em lote")');
+  await pagina.waitForSelector('text=Gravar 2 registro(s)');
+  await pagina.selectOption('#motivo-lote', { label: 'Preço acima do praticado' });
+  await pagina.locator('.lote-item select').nth(1).selectOption({ label: 'Já tem fornecedor / contrato' });
+  await foto('14-lote');
+  await pagina.click('button:text("Gravar 2 registro(s)")');
+  await pagina.waitForSelector('text=Lote gravado');
+  assert.match(await texto(), /2\s+gravados/);
+
+  // 10. acompanhamento por status → lista dos sem interesse → ficha com o motivo individual
+  await pagina.click('nav.abas a:text("Acompanhamento")');
+  await pagina.waitForSelector('.status-cartao');
+  await foto('15-acompanhamento');
+  await pagina.click('.status-cartao:has-text("Sem interesse")');
+  await pagina.waitForSelector('.cartao-prospect');
+  assert.equal(await pagina.locator('.cartao-prospect').count(), 2);
+  await pagina.click('.cartao-prospect-corpo >> nth=0');
+  await pagina.waitForSelector('text=Histórico de movimentação');
+  assert.match(await texto(), /(Preço acima do praticado|Já tem fornecedor)/);
+  assert.ok(await pagina.locator('a:text("Registrar atendimento")').count(), 'sem interesse pode ser reaberto');
+  await pagina.click('a:text("Registrar atendimento")');
+  await pagina.waitForSelector('label.opcao:has-text("pedido identificado")');
 });
 
 test('telas cabem no celular (sem rolagem horizontal da página)', async () => {
@@ -147,5 +215,17 @@ test('telas cabem no celular (sem rolagem horizontal da página)', async () => {
   const larguras = await cel.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
   assert.ok(larguras[0] <= larguras[1], `página mais larga que a tela: ${larguras}`);
   if (FOTOS) await cel.screenshot({ path: path.join(FOTOS, '10-celular-entrar.png') });
+  // a carteira cabe no celular (o administrador vê tudo; a base de demonstração é carregada na mesma página)
+  await cel.fill('#login', 'admin');
+  await cel.fill('#senha', 'demo1234');
+  await cel.click('button[type=submit]');
+  await cel.waitForSelector('h1:text("Administração")');
+  for (const tela of ['#/inicio', '#/admin/usuarios', '#/carteira', '#/carteira?aba=acompanhamento', '#/carteira?visao=cidade']) {
+    await cel.goto(`${base}${tela}`);
+    await cel.waitForSelector('h1');
+    const [larg, vis] = await cel.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+    assert.ok(larg <= vis, `${tela} mais larga que a tela: ${larg} > ${vis}`);
+  }
+  if (FOTOS) await cel.screenshot({ path: path.join(FOTOS, '16-celular-carteira.png'), fullPage: true });
   await cel.close();
 });

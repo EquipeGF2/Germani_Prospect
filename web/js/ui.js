@@ -25,7 +25,9 @@ export function montar(destino, ...nos) {
 
 export function aviso(texto, tipo = 'ok') {
   const el = h('div', { class: `aviso ${tipo}` }, texto);
-  document.getElementById('avisos').append(el);
+  const pilha = document.getElementById('avisos');
+  pilha.append(el);
+  while (pilha.children.length > 3) pilha.firstElementChild.remove();
   setTimeout(() => el.remove(), tipo === 'erro' ? 7000 : 3500);
 }
 

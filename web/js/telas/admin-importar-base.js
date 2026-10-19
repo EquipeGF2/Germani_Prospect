@@ -1,7 +1,7 @@
 import { bancoAdmin } from '../db.js';
 import { lerArquivo } from '../arquivo.js';
 import { importarBase } from '../../shared/importar-base.mjs';
-import { contarStatusPlanilha, mapearCabecalho, normalizarMapaStatus } from '../../shared/importacao-base.mjs';
+import { contarDatasPlanilha, contarStatusPlanilha, mapearCabecalho, normalizarMapaStatus } from '../../shared/importacao-base.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, passos, comEspera, aviso, tabela, formatar } from '../ui.js';
 import { abasAdmin } from './_admin.js';
@@ -14,7 +14,7 @@ const OPCOES = [
   ['sem_interesse', 'Sem interesse'],
   ['', '— rejeitar estas linhas —'],
 ];
-const ETAPAS = ['Arquivo', 'Status da planilha', 'Simulação', 'Gravação'];
+const ETAPAS = ['Arquivo', 'Datas e status da planilha', 'Simulação', 'Gravação'];
 
 export async function render(conteudo, ctx) {
   const db = await bancoAdmin();
@@ -23,12 +23,28 @@ export async function render(conteudo, ctx) {
   const area = h('div');
   let planilha = null;
   let mapa = {};
+  let considerarDatas = false;
 
   const arquivo = h('input', { type: 'file', accept: '.xlsx,.csv', id: 'arquivo-base' });
   const bLer = h('button', { onclick: async () => {
     planilha = await comEspera(bLer, () => lerArquivo(arquivo.files[0]));
-    if (planilha) etapaStatus();
+    if (planilha) etapaDatas();
   } }, 'Ler arquivo');
+
+  // DT 1o / DT 2o: considerar ou não (padrão = só se a planilha tiver alguma data)
+  function etapaDatas() {
+    const comData = contarDatasPlanilha(planilha.linhas);
+    considerarDatas = comData > 0;
+    const marca = h('input', { type: 'checkbox', id: 'considerar-datas', checked: considerarDatas, onchange: (ev) => { considerarDatas = ev.target.checked; } });
+    montar(area, passos(ETAPAS, 1), h('div', { class: 'cartao' }, cabecalhoInfo(),
+      h('h2', {}, 'Datas de contato da planilha'),
+      h('p', {}, comData ? `${formatar.numero(comData)} linha(s) com DT 1o.contato ou DT 2o.contato preenchida.` : 'As colunas DT 1o.contato e DT 2o.contato estão vazias em todas as linhas.'),
+      h('label', { class: 'marcador', for: 'considerar-datas' }, marca, ' Considerar DT 1o / DT 2o contato e o Status Atual'),
+      h('p', { class: 'ajuda' }, 'Desmarcado: as duas datas e o Status Atual são ignorados e todos os prospects entram como Não contactado (sem histórico de contato da planilha). Marcado: as datas viram registros "contato da planilha" e o Status Atual é aplicado à última data.'),
+      h('div', { class: 'acoes' },
+        h('button', { id: 'continuar-datas', onclick: (ev) => (considerarDatas ? etapaStatus() : simular(ev.currentTarget)) }, 'Continuar'),
+        h('button', { class: 'secundario', onclick: () => render(conteudo, ctx) }, 'Trocar arquivo'))));
+  }
 
   function cabecalhoInfo() {
     const m = mapearCabecalho(planilha.linhas[0] ?? []);
@@ -44,6 +60,7 @@ export async function render(conteudo, ctx) {
     mapa = Object.fromEntries(valores.map((v) => [v.chave, padrao[v.chave] ?? '']));
     const bSimular = h('button', { onclick: () => simular(bSimular) }, 'Simular importação');
     montar(area, passos(ETAPAS, 1), h('div', { class: 'cartao' }, cabecalhoInfo(),
+      h('p', {}, 'Datas de contato: ', h('b', {}, 'consideradas'), ' · ', h('a', { href: '#', onclick: (ev) => { ev.preventDefault(); etapaDatas(); } }, 'alterar')),
       h('h2', {}, 'Como tratar cada valor de "Status Atual"'),
       h('p', { class: 'ajuda' }, 'Vale para a ÚLTIMA data de contato da linha (DT 2o ou, se vazia, DT 1o). Valores marcados para rejeitar viram linhas rejeitadas no relatório — nada é adivinhado.'),
       tabela([
@@ -57,7 +74,7 @@ export async function render(conteudo, ctx) {
 
   const parametros = () => ({
     linhas: planilha.linhas, arquivoNome: planilha.nome, arquivoSha256: planilha.sha256, executadoPor: ctx.usuario.login,
-    mapaStatus: Object.fromEntries(Object.entries(mapa).filter(([, v]) => v)), hoje: hojeSaoPaulo(),
+    mapaStatus: Object.fromEntries(Object.entries(mapa).filter(([, v]) => v)), hoje: hojeSaoPaulo(), considerarDatas,
   });
   const paraTela = (resultados) => resultados.map((r) => ({ numeroLinha: r.numeroLinha, resultado: r.dados ? 'aceita' : 'rejeitada',
     cnpj: r.dados?.prospect.cnpj ?? r.bruto.cnpj ?? null, mensagens: r.dados ? r.avisos : r.erros }));
@@ -67,9 +84,10 @@ export async function render(conteudo, ctx) {
     if (!r) return;
     const bGravar = h('button', { onclick: () => gravar(bGravar) }, `Confirmar e gravar ${formatar.numero(r.resumo.novos + r.resumo.atualizados)} linhas`);
     montar(area, passos(ETAPAS, 2),
+      mensagem(r.resumo.considerarDatas ? 'Datas de contato (DT 1o / DT 2o) e Status Atual: considerados.' : 'Datas de contato (DT 1o / DT 2o) e Status Atual: ignorados — todos os novos entram como Não contactado.', 'info'),
       mensagem(`Simulação: ${formatar.numero(r.resumo.novos)} prospects novos e ${formatar.numero(r.resumo.atualizados)} já existentes (só dados cadastrais são atualizados; status, histórico e vendedor não mudam). Nada foi gravado ainda.`, 'info'),
       blocoResultado({ titulo: 'Resultado da simulação', resumo: { ...r.resumo, aceitas: r.resumo.novos + r.resumo.atualizados }, resultados: paraTela(r.resultados), nomeRelatorio: `simulacao-base-${hojeSaoPaulo()}.csv` }),
-      h('div', { class: 'acoes' }, bGravar, h('button', { class: 'secundario', onclick: etapaStatus }, 'Voltar e ajustar o status')));
+      h('div', { class: 'acoes' }, bGravar, h('button', { class: 'secundario', onclick: () => (considerarDatas ? etapaStatus() : etapaDatas()) }, considerarDatas ? 'Voltar e ajustar o status' : 'Voltar')));
   }
 
   async function gravar(botao) {

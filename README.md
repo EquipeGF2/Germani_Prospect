@@ -4,7 +4,7 @@ Controle de prospecção de novos clientes da **GERMANI Alimentos**: cada CNPJ q
 um ponto de controle. O representante/vendedor registra os atendimentos; cadastro, pedido e CNPJs
 baixados entram por arquivos do ERP Senior; o supervisor acompanha cobertura e conversão.
 
-**Sistema:** GERMANI · **Estado:** ativo · **Fase atual:** F1 parte 1 pronta (login + administração pela tela).
+**Sistema:** GERMANI · **Estado:** ativo · **Fase atual:** F1 partes 1 a 3 prontas (administração; lista principal, acompanhamento e ficha; registro individual e em lote).
 
 Stack: **Turso (libSQL)** + **GitHub** (Actions, Secrets, Pages). Sem servidor — ver
 [ADR-0001](docs/adr/0001-turso-direto-github-pages.md).
@@ -15,7 +15,7 @@ Requisitos: Node.js 22.9+.
 
 ```bash
 npm ci
-npm test                                   # 94 testes, banco SQLite em memória
+npm test                                   # 96 testes, banco SQLite em memória
 TURSO_DATABASE_URL=file:dados/local.db npm run migrate
 npm run exemplo:planilha                   # gera exemplos/base-ficticia.xlsx (dados fictícios)
 TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-ficticia.xlsx
@@ -26,8 +26,19 @@ TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-fi
 ```bash
 npm run site        # monta _site/ (modo demonstração sem token)
 npm run servir      # http://localhost:8080 — login admin / demo1234
-npm run test:telas  # testa as telas num Chromium real
+npm run test:telas  # testa as telas num Chromium real (fluxo do administrador e do vendedor)
 ```
+
+| Tela | Quem | O que faz |
+|---|---|---|
+| `#/inicio` | todos | números da carteira e atalhos |
+| `#/carteira` | todos (escopo do perfil) | **lista principal** (não contactado / em prospecção): visões lista · cidade · bairro · onda · rota (só vendedor), busca sem acento, filtros, seleção para lote |
+| `#/carteira?aba=acompanhamento` | todos | **acompanhamento**: cartões por status → lista do status |
+| `#/ficha?id=` | todos | situação, dias corridos, prazos, crédito, **histórico de movimentação**, cadastro, ligar / WhatsApp / mapa |
+| `#/registrar?id=` | vendedor, supervisor, admin | Atendido · Sem interesse (motivo) · Reabrir com pedido identificado |
+| `#/lote` | vendedor, supervisor, admin | sem interesse em lote (motivo do lote e/ou por cliente) |
+| `#/admin/...` | administrador | importações, usuários, parâmetros (token de administração) |
+
 Publicação: workflow **Publicar app (GitHub Pages)** — ver [docs/06-operacao.md](docs/06-operacao.md) §3–4.
 
 ## Variáveis de ambiente
@@ -48,7 +59,7 @@ variables → Actions → `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN`. Detalhes em
 | Comando | O que faz |
 |---|---|
 | `npm run migrate` | aplica `db/migrations/*.sql` (também pelo workflow *Migrar banco (produção)*) |
-| `npm run importar:base -- arq.xlsx [--listar-status] [--simular]` | carga inicial da planilha base |
+| `npm run importar:base -- arq.xlsx [--listar-status] [--simular] [--com-datas\|--sem-datas]` | carga inicial da planilha base (datas DT 1o/2o: consideradas só se preenchidas, ou conforme a opção) |
 | `npm run importar:eventos -- --tipo cadastro\|pedido\|baixa arq [--col-...] [--simular]` | arquivos do ERP e CNPJs baixados |
 | `npm run importar:tipos -- arq.xlsx [--col-codigo COD] [--col-tipo TIPO] [--simular]` | lista de quem é representante e quem é vendedor |
 | `npm run importar:credito -- arq.xlsx [--simular]` | relatório de crédito (forma, prazo, limite) → Aguardando pedido |

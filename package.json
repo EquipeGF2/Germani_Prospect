@@ -18,7 +18,7 @@
     "exemplo:planilha": "node scripts/gerar-planilha-ficticia.mjs",
     "site": "node scripts/montar-site.mjs",
     "servir": "node scripts/servir.mjs",
-    "test:telas": "node scripts/montar-site.mjs && node --test test-telas/"
+    "test:telas": "node scripts/montar-site.mjs && node --test test-telas/*.test.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.17.0",

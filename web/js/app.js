@@ -6,6 +6,10 @@ import { h, montar, mensagem } from './ui.js';
 const ROTAS = [
   { caminho: '/entrar', tela: () => import('./telas/entrar.js'), publica: true },
   { caminho: '/inicio', tela: () => import('./telas/inicio.js') },
+  { caminho: '/carteira', tela: () => import('./telas/carteira.js') },
+  { caminho: '/ficha', tela: () => import('./telas/ficha.js') },
+  { caminho: '/registrar', tela: () => import('./telas/registrar.js'), perfis: ['administrador', 'supervisor', 'vendedor'] },
+  { caminho: '/lote', tela: () => import('./telas/lote.js'), perfis: ['administrador', 'supervisor', 'vendedor'] },
   { caminho: '/admin', tela: () => import('./telas/admin-inicio.js'), perfis: ['administrador'] },
   { caminho: '/admin/acesso', tela: () => import('./telas/admin-acesso.js'), perfis: ['administrador'], semToken: true },
   { caminho: '/admin/importar/base', tela: () => import('./telas/admin-importar-base.js'), perfis: ['administrador'] },
@@ -40,13 +44,12 @@ async function navegar() {
   const rota = ROTAS.find((r) => r.caminho === caminho) ?? (usuario ? ROTAS.find((r) => r.caminho === '/inicio') : null);
   if (!rota || (!rota.publica && !usuario)) return irPara('/entrar');
   if (rota.perfis && !rota.perfis.includes(usuario.perfil)) {
-    return montar(conteudo, mensagem('Esta área é exclusiva do administrador.', 'erro'));
+    return montar(conteudo, mensagem(rota.caminho.startsWith('/admin') ? 'Esta área é exclusiva do administrador.' : 'Seu perfil não tem acesso a esta tela.', 'erro'));
   }
   if (rota.caminho.startsWith('/admin') && !rota.semToken && !temTokenAdmin()) {
     return irPara(`/admin/acesso?volta=${encodeURIComponent(caminho)}`);
   }
   montar(conteudo, h('p', { class: 'carregando' }, 'Carregando…'));
-  document.getElementById('avisos').replaceChildren();
   try {
     const modulo = await rota.tela();
     await modulo.render(conteudo, { usuario, parametros: new URLSearchParams(consulta), irPara });

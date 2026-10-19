@@ -137,3 +137,26 @@ test('importação de eventos: pedido, cadastro e baixados; não-prospect fica i
   const imps = (await db.execute("SELECT * FROM importacoes WHERE tipo <> 'base_prospects'")).rows;
   assert.ok(imps.every((i) => Number(i.linhas_lidas) === Number(i.linhas_aceitas) + Number(i.linhas_rejeitadas) + Number(i.linhas_ignoradas)));
 });
+
+test('DT 1o / DT 2o vazias (ou desconsideradas): todos entram como Não contactado, Status Atual ignorado com aviso', async () => {
+  const db = await bancoTeste();
+  // planilha sem nenhuma data → padrão desconsidera; status "Sem interesse" não é aplicado (não há data)
+  const r = await importar(db, [linha({ cnpj: cnpjTeste(1), status: 'Sem interesse' }), linha({ cnpj: cnpjTeste(2), status: 'Ligar amanhã' })]);
+  assert.equal(r.resumo.considerarDatas, false);
+  assert.equal(r.resumo.rejeitadas, 0);
+  assert.match(r.resultados[0].avisos.join(' '), /ignorado \(datas de contato desconsideradas\)/);
+  // com datas na planilha, mas o administrador escolheu não considerar
+  const db2 = await bancoTeste();
+  const r2 = await importarBase(db2, { linhas: [CAB, linha({ cnpj: cnpjTeste(3), dt1: '01/09/2026', status: 'Em prospecção' })], arquivoNome: 't', arquivoSha256: 'x',
+    executadoPor: 'teste', mapaStatus: MAPA, hoje: HOJE, considerarDatas: false });
+  assert.equal(r2.resumo.considerarDatas, false);
+  for (const banco of [db, db2]) {
+    const p = (await banco.execute('SELECT status_atual, tentativas, dt_primeiro_contato, dt_entrada_base FROM prospects')).rows;
+    assert.ok(p.every((x) => x.status_atual === 'nao_contactado' && Number(x.tentativas) === 0 && x.dt_primeiro_contato === null && x.dt_entrada_base === HOJE));
+    assert.equal(Number((await banco.execute('SELECT count(*) n FROM contatos')).rows[0].n), 0);
+  }
+  // padrão com alguma data na planilha = considera
+  const db3 = await bancoTeste();
+  const r3 = await importar(db3, [linha({ cnpj: cnpjTeste(4), dt1: '01/09/2026', status: 'Em prospecção' }), linha({ cnpj: cnpjTeste(5) })]);
+  assert.equal(r3.resumo.considerarDatas, true);
+});

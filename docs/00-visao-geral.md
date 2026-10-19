@@ -50,7 +50,8 @@ arquivos do ERP.
 |---|---|---|
 | **Backend** | estrutura do repositório, banco, vínculos, regras, importações, testes, documentação | **esta entrega** |
 | F1 — App · parte 1 | login; **administração pela tela**: base de prospects (com mapeamento do Status Atual), representantes/vendedores, cadastro/pedidos/baixados, histórico de importações, usuários e senhas, parâmetros; modo demonstração; publicação no GitHub Pages | **pronta** |
-| F1 — App · partes 2 a 5 | **tudo pela tela**: login; lista principal e acompanhamento (lista/cidade/bairro/onda/status/rota); ficha com histórico de movimentação; registrar atendido/sem interesse (também em lote); rotas do vendedor; console financeiro; painel e indicadores; **administração** (importações da base, tipos, cadastro, pedidos e baixados; usuários e senhas; parâmetros); exportação XLSX | a fazer — a carga real acontece só depois |
+| F1 — App · partes 2 e 3 | lista principal e acompanhamento (lista/cidade/bairro/onda/status/rota); busca e filtros; ficha com histórico de movimentação; registrar atendido / sem interesse / reabrir com pedido; sem interesse em lote | **pronta** (2026-10-19) |
+| F1 — App · partes 4 e 5 | console financeiro; painel e indicadores; rotas do vendedor; exportação XLSX | a fazer — a carga real acontece depois |
 | F2 — Campo | modo offline (rotas já estão no backend; sem cálculo de distância — ADR-0005) | a fazer |
 | F3 — Financeiro | pedidos cancelados por restrição financeira (processo a definir) | a definir |
 
