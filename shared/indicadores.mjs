@@ -124,3 +124,25 @@ export function calcularPercentuais(l) {
     pct_conversao: razao(l.vendas, l.contactados),
   };
 }
+
+/**
+ * Execução das rotas no período (planejado × atendido). Rotas canceladas ficam fora.
+ * agrupar: 'geral' | 'vendedor' | 'supervisor'
+ */
+export function consultaExecucaoRotas({ agrupar = 'geral', inicio, fim, filtros = {} } = {}) {
+  if (!inicio || !fim) throw new Error('informe início e fim do período');
+  const g = { geral: ["'geral'", "'Total geral'"], vendedor: ['e.vendedor_id', 'e.vendedor_nome'], supervisor: ['e.supervisor_id', 'COALESCE(s.nome, e.vendedor_nome)'] }[agrupar];
+  if (!g) throw new Error(`agrupamento inválido: ${agrupar}`);
+  const where = ["e.situacao <> 'cancelada'", 'e.data_rota BETWEEN ? AND ?'];
+  const args = [inicio, fim];
+  if (filtros.vendedorId) { where.push('e.vendedor_id = ?'); args.push(filtros.vendedorId); }
+  if (filtros.supervisorId) { where.push('e.supervisor_id = ?'); args.push(filtros.supervisorId); }
+  return {
+    sql: `SELECT ${g[0]} AS chave, MIN(${g[1]}) AS rotulo, COUNT(*) AS rotas,
+                 SUM(e.paradas_planejadas) AS paradas_planejadas, SUM(e.paradas_atendidas) AS paradas_atendidas
+            FROM vw_rotas_execucao e LEFT JOIN usuarios s ON s.id = e.supervisor_id
+           WHERE ${where.join(' AND ')}
+           GROUP BY 1 ORDER BY rotulo`,
+    args,
+  };
+}

@@ -28,8 +28,8 @@ Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 
 | Perfil | No app | Por importação (administrador) |
 |---|---|---|
-| Representante | lista de prospects por lista, cidade e bairro (**sem rota**) + acompanhamento por status; registra visita/contato, interesse e **falta de interesse** | — |
-| Vendedor | o mesmo, com visão mais ampla: **rota e subrota** | — |
+| Representante | **filtro e consulta**: lista principal por lista, cidade e bairro (**sem rota**) + acompanhamento; registra as datas de atendimento e de **sem interesse** | — |
+| Vendedor | o mesmo + **montagem de rotas** e visão por rota/subrota | — |
 | Supervisor | o mesmo, para a sua equipe; acompanha painel; redistribui carteira | — |
 | Administrador | tudo | base inicial de prospects; cadastro de clientes do ERP; pedidos do ERP; CNPJs baixados; usuários e senhas |
 
@@ -42,7 +42,7 @@ arquivos do ERP.
 |---|---|---|
 | **Backend** | estrutura do repositório, banco, vínculos, regras, importações, testes, documentação | **esta entrega** |
 | F1 — App | login, carteira, ficha, registrar contato, painel do supervisor, exportação XLSX | a fazer |
-| F2 — Campo | proximidade, rota do dia, GPS, offline | a fazer |
+| F2 — Campo | modo offline (rotas já estão no backend; sem cálculo de distância — ADR-0005) | a fazer |
 | F3 — Financeiro | pedidos cancelados por restrição financeira (processo a definir) | a definir |
 
 ## Índice

@@ -22,6 +22,9 @@ erDiagram
     importacoes ||--o{ prospects : "origem"
     importacoes ||--o{ contatos : "tentativas da planilha"
     importacoes ||--o{ eventos_erp : "arquivo do ERP"
+    usuarios ||--o{ rotas : "vendedor (nunca representante)"
+    rotas ||--o{ rota_paradas : "ordem"
+    prospects ||--o{ rota_paradas : ""
 ```
 
 ## Tabelas
@@ -30,7 +33,7 @@ erDiagram
 
 | Tabela | Para quê | Observações |
 |---|---|---|
-| `parametros` | prazos e limites editáveis | `tentativas_maximas`=2, `dias_entre_tentativas`=7, `prazo_cadastro_dias`=15, `prazo_analise_financeira_dias`=10, `dias_alerta_sem_lancamento`=7, `dias_alerta_sem_movimento`=30, `raio_gps_metros`=200. Alteração gera linha em `auditoria`. |
+| `parametros` | prazos e limites editáveis | `tentativas_maximas`=2, `dias_entre_tentativas`=7, `prazo_cadastro_dias`=15, `prazo_analise_financeira_dias`=10, `dias_alerta_sem_lancamento`=7, `dias_alerta_sem_movimento`=30. Alteração gera linha em `auditoria`. |
 | `status` | os 7 status, cor e como contam nos indicadores | `aceita_contato`, `lista_trabalho` (aparece na lista de prospects), `conta_contactado`, `conta_carteira` (inválido = 0). |
 | `motivos_sem_interesse` | lista de motivos de recusa | `exige_observacao` (Outro), `uso_app` = 0 para motivos do sistema (`SEM_RETORNO`, `NAO_INFORMADO`). |
 
@@ -80,6 +83,17 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 `contatos.id` é texto (UUID gerado no aparelho): reenviar o mesmo contato após ficar offline não duplica.
 `(prospect_id, numero_tentativa)` é único e precisa ser sequencial.
 
+### Rotas (plano de trabalho do vendedor)
+
+| Tabela | Conteúdo | Regras (triggers) |
+|---|---|---|
+| `rotas` | vendedor, data, nome, situação (`planejada` · `concluida` · `cancelada`) | só usuário vendedor com `tipo_atuacao = 'vendedor'`; não muda de dono; encerrada fica travada; nunca apagada (cancelar) |
+| `rota_paradas` | rota, prospect, ordem | prospect da carteira do vendedor da rota, da lista principal ou em negociação; editável só enquanto a rota está planejada |
+
+Rota é **plano**: pode ser reordenada enquanto planejada. O que foi feito é medido pelos contatos
+(`vw_rota_paradas.atendida` = contato do vendedor naquele prospect na data da rota). Ordem manual — sem
+cálculo de distância ([ADR-0005](adr/0005-sem-calculo-de-distancia.md)).
+
 ### Auditoria de carga
 
 | Tabela | Conteúdo |
@@ -96,6 +110,8 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 | `vw_prospects` | carteira/ficha: prospect + status (nome, cor) + vendedor + supervisor + motivo + `vendedor_tipo_atuacao`, `status_descricao` ("Em negociação · atendido em dd/mm/aaaa"), `dias_corridos` (desde o 1º atendimento), `na_lista`, `pendente_hoje`, `retorno_pendente`, `com_interesse`, `prazo_cadastro_vencido`, `em_analise_financeira`, `dias_sem_movimento`, `parado` |
 | `vw_linha_tempo` | linha do tempo da ficha (contatos + eventos ERP + transferências) |
 | `vw_ultimo_lancamento` | dias sem lançar por vendedor (bloco de atenção) |
+| `vw_rota_paradas` | paradas de cada rota, na ordem, com dados do prospect e `atendida` |
+| `vw_rotas_execucao` | por rota: paradas planejadas × atendidas (vendedor, equipe) |
 | `vw_ranking_motivos` | motivos finais de "sem interesse" por vendedor/supervisor |
 
 ## Índices

@@ -20,7 +20,7 @@
         └─────────────────────┘
 ```
 
-Decisão e riscos: [ADR-0001](adr/0001-turso-direto-github-pages.md).
+Decisão e riscos: [ADR-0001](adr/0001-turso-direto-github-pages.md). Sem cálculo de distância: [ADR-0005](adr/0005-sem-calculo-de-distancia.md).
 
 ## Pastas do repositório
 
@@ -37,7 +37,8 @@ Decisão e riscos: [ADR-0001](adr/0001-turso-direto-github-pages.md).
 │   ├── status.mjs               status, canais, resultados, validação do formulário
 │   ├── senha.mjs                hash PBKDF2 (Web Crypto)
 │   ├── importacao-base.mjs      layout e validação da planilha base
-│   ├── carteira.mjs             lista de prospects: visões lista/cidade/bairro/rota e escopo por usuário
+│   ├── carteira.mjs             lista principal e acompanhamento: visões lista/cidade/bairro/status/rota
+│   ├── rotas.mjs                montagem de rotas do vendedor (ordem sugerida sem distância, link do mapa)
 │   └── indicadores.mjs          SQL dos indicadores (posição e atividade)
 ├── lib/                         código Node usado pelos scripts (banco, planilhas, importações)
 ├── scripts/                     linha de comando: migrate, importar-base, importar-eventos, usuarios, planilha fictícia
@@ -54,7 +55,8 @@ A pasta `web/` (app) entra na F1. Ela vai importar `shared/` diretamente, sem du
 |---|---|---|
 | Motivo obrigatório em "sem interesse" | CHECK em `contatos` | `validarContato` |
 | Data de retorno (opcional) não anterior ao contato | CHECK em `contatos` | `validarContato` |
-| Representante não usa rota; vendedor usa | coluna `usuarios.tipo_atuacao` | `shared/carteira.mjs` (visões e colunas) |
+| Representante não usa rota; vendedor usa | coluna `usuarios.tipo_atuacao` + trigger `trg_rotas_somente_vendedor` | `shared/carteira.mjs`, `shared/rotas.mjs` |
+| Rota encerrada travada; parada só da própria carteira | triggers `trg_rotas_*`, `trg_rota_paradas_*` | — |
 | Saída da lista (Em negociação, 2 sem interesse, ERP) sem sair dos indicadores | `status.lista_trabalho` + `vw_prospects.na_lista` | `shared/carteira.mjs` |
 | 2 atendimentos sem interesse → Sem interesse | trigger `trg_contatos_aplicar` + `parametros` | — |
 | Vendedor só registra na própria carteira | trigger `trg_contatos_validar` | filtro das telas |

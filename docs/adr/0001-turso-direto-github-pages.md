@@ -22,10 +22,10 @@ projetos com **frontend estático no GitHub Pages falando direto com o Turso**, 
 | Token | Onde fica | Permissões |
 |---|---|---|
 | **Administrativo** | `.env` da máquina do administrador + Secret `TURSO_AUTH_TOKEN` do GitHub (migrações) | total |
-| **App** (fase do app) | embutido no site publicado | `all:data_read`, `contatos:data_add`, `transferencias:data_add` (+ o mínimo que os triggers exigirem — ver "Verificar") |
+| **App** (fase do app) | embutido no site publicado | `all:data_read`, `contatos:data_add`, `transferencias:data_add`, `rotas:data_add,data_update`, `rota_paradas:data_add,data_update,data_delete` (+ o mínimo que os triggers exigirem — ver "Verificar") |
 
-O token do app **não tem** `schema_*` (não derruba trigger), `data_delete` (não apaga nada) nem
-`data_update` em `usuarios`/`parametros`/`contatos`.
+O token do app **não tem** `schema_*` (não derruba trigger), `data_delete` fora de `rota_paradas` (o plano de
+rota é editável; o histórico não) nem `data_update` em `usuarios`/`parametros`/`contatos`.
 
 ## Consequência que precisa estar clara
 
@@ -59,8 +59,8 @@ própria carteira na interface), não como barreira de segurança contra quem te
 - **Função serverless gratuita** (ex.: Cloudflare Workers) entre o app e o Turso: o token sai do
   navegador e o filtro "só a própria carteira" passa a valer de verdade. Um componente a mais.
 
-O banco já foi desenhado para as três opções: o app só faz `SELECT` em views e `INSERT` em `contatos` /
-`transferencias` — trocar o transporte não muda o modelo.
+O banco já foi desenhado para as três opções: o app só faz `SELECT` em views, `INSERT` em `contatos` /
+`transferencias` e edita o plano de rotas — trocar o transporte não muda o modelo.
 
 ## Verificar antes do app
 

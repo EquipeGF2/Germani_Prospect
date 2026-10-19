@@ -102,7 +102,7 @@ Numa data passada D, o status de cada prospect é o da última linha de `histori
 Contatos registrados · contatos com interesse · prospects contactados · primeiros contatos · encerrados sem interesse ·
 cadastros no ERP · pedidos · baixas.
 
-Ambos contam **toda a base** (dentro e fora da lista) e podem ser agrupados por **total geral, vendedor,
+Mais a **execução de rotas** (planejadas × atendidas, §7). Todos contam **toda a base** (dentro e fora da lista) e podem ser agrupados por **total geral, vendedor,
 supervisor (= equipe), cidade, bairro e rota** e filtrados por
 vendedor, supervisor, cidade, bairro e UF. O agrupamento por **rota considera só prospects de vendedores**
 (representante não tem rota).
@@ -114,22 +114,45 @@ vendedor, supervisor, cidade, bairro e UF. O agrupamento por **rota considera s�
 
 Implementação: [`shared/carteira.mjs`](../shared/carteira.mjs) · testes: [`test/carteira.test.mjs`](../test/carteira.test.mjs).
 
+Todos os registros da base são **prospects** — para representante e para vendedor.
+
+| Lista | Conteúdo |
+|---|---|
+| **Principal (prospects)** | Não contactado · Em prospecção — é onde se vai atrás do cliente |
+| **Secundária (acompanhamento da efetivação do pedido)** | Em negociação (atendido em dd/mm, aguardando cadastro/pedido) e demais status para consulta |
+
+Entrar em negociação **tira o cliente da lista principal e o leva para o acompanhamento**. Toda essa
+movimentação conta sempre nos indicadores.
+
 | | Representante | Vendedor | Supervisor / admin |
 |---|---|---|---|
-| Forma de trabalho | visita a carteira | atendimento mais amplo (telefone, WhatsApp, visita) | gestão |
-| Visões | **Lista · Cidade · Bairro · Status** | Lista · Cidade · Bairro · Status · **Rota** (rota/subrota) | todas |
-| Rota / subrota | **nunca** (não agrupa, não filtra, não recebe as colunas) | sim | só nos prospects de vendedores |
+| Papel no app | **filtro e consulta** + registro das datas de atendimento / sem interesse | o mesmo + **montagem de rotas** (§7) | gestão |
+| Visões | Lista · Cidade · Bairro · Status | Lista · Cidade · Bairro · Status · **Rota** (rota/subrota) | todas |
+| Rota / subrota | **nunca** (não agrupa, não filtra, não recebe as colunas, não monta rota) | sim | consulta as rotas da equipe |
 | Escopo | própria carteira | própria carteira | equipe / tudo |
 
 - A forma de trabalho vem de `usuarios.tipo_atuacao` (`representante` | `vendedor`), informada pelo
   administrador numa **lista** (`npm run importar:tipos`, ver 05 §3) ou individualmente
   (`npm run usuarios -- tipo <login> representante|vendedor`). Sem definição = representante.
-- **Lista (preferencial):** só Não contactado / Em prospecção — nunca Em negociação —, ordenados por pendentes de hoje, retornos, próxima ação,
-  cidade, bairro, nome. Filtros: pendentes hoje, retornos pendentes, cidade, bairro, UF, rota/subrota (vendedor).
+- **Lista principal:** ordenada por pendentes de hoje, retornos, próxima ação, cidade, bairro, nome.
+  Filtros: pendentes hoje, retornos pendentes, cidade, bairro, UF, rota/subrota (vendedor).
   Busca por nome, CNPJ (com ou sem pontuação), cidade ou bairro, **sem acento**.
-- **Status (acompanhamento):** todos os status com quantidade, retornos pendentes, prazos de cadastro vencidos e
-  média de dias corridos. Tocar num status abre a lista daquele status — **inclusive fora da lista de prospects**
-  (Em negociação "atendido em", Sem interesse com motivo, Cadastrado, Venda, Inválido).
-- **Cidade / Bairro / Rota:** agrupamentos com total, pendentes hoje, não contactados, em prospecção, com interesse
-  e o centro geográfico (lat/long média) para abrir no mapa. Tocar num grupo abre a lista filtrada.
+- **Acompanhamento (visão Status):** todos os status com quantidade, retornos pendentes, prazos de cadastro
+  vencidos e média de dias corridos. Tocar num status abre a lista daquele status.
+- **Cidade / Bairro:** para os dois perfis. Total, pendentes hoje, não contactados, em prospecção, com interesse
+  e o centro do grupo para **abrir no mapa**. **Nenhuma distância é calculada** (ADR-0005).
 - Cada linha traz `dias_corridos` (desde o 1º atendimento) e `status_descricao`.
+
+## 7. Montagem de rotas (somente vendedor)
+
+Implementação: [`shared/rotas.mjs`](../shared/rotas.mjs) · testes: [`test/rotas.test.mjs`](../test/rotas.test.mjs).
+
+1. O vendedor cria a rota do dia (`comandoCriarRota`) — o banco recusa representante e supervisor.
+2. Escolhe os prospects (da própria carteira, da lista principal ou em negociação) a partir das visões
+   cidade/bairro/rota; a **ordem sugerida** agrupa cidade → bairro → rota/subrota da planilha → endereço
+   (`sugerirOrdem`). Ele reordena à mão (`comandosSalvarParadas`).
+3. No dia, abre cada parada no mapa do celular (`linkMapa`) e registra o contato normalmente.
+4. Conclui ou cancela a rota (`comandoEncerrarRota`); a partir daí ela fica travada.
+
+**Execução** (`vw_rotas_execucao`, `consultaExecucaoRotas`): paradas planejadas × atendidas (contato do vendedor
+no prospect na data da rota), por vendedor, equipe e geral — rotas canceladas ficam fora.

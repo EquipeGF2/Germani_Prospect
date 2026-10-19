@@ -35,8 +35,7 @@ INSERT INTO parametros (chave, valor, tipo, descricao) VALUES
   ('prazo_cadastro_dias',           '15',  'inteiro', 'Prazo, a partir do interesse declarado, para o cliente aparecer cadastrado no ERP'),
   ('prazo_analise_financeira_dias', '10',  'inteiro', 'Dias de análise financeira após a entrada do pedido'),
   ('dias_alerta_sem_lancamento',    '7',   'inteiro', 'Vendedor sem registrar contato há mais de N dias entra no bloco de atenção'),
-  ('dias_alerta_sem_movimento',     '30',  'inteiro', 'Prospect ativo sem movimento há mais de N dias entra no bloco de atenção'),
-  ('raio_gps_metros',               '200', 'inteiro', 'Raio para considerar a visita confirmada pelo GPS');
+  ('dias_alerta_sem_movimento',     '30',  'inteiro', 'Prospect ativo sem movimento há mais de N dias entra no bloco de atenção');
 
 -- ---------------------------------------------------------------------
 -- Status (tabela de referência; regras de transição ficam nos triggers)
@@ -271,10 +270,9 @@ CREATE TABLE contatos (
   observacao             TEXT,
   observacao_busca       TEXT,                           -- sem acento, para palavras-chave
   data_retorno           TEXT CHECK (data_retorno IS NULL OR date(data_retorno) = data_retorno),
+  -- posição do aparelho, opcional e só como registro: o sistema NÃO calcula distância (ADR-0005)
   latitude               REAL,
   longitude              REAL,
-  distancia_m            REAL,
-  gps_confirmado         INTEGER CHECK (gps_confirmado IS NULL OR gps_confirmado IN (0,1)),
   origem                 TEXT NOT NULL DEFAULT 'app' CHECK (origem IN ('app','importacao')),
   importacao_id          INTEGER REFERENCES importacoes(id),
   CHECK (resultado <> 'sem_interesse' OR motivo_id IS NOT NULL),
@@ -474,6 +472,84 @@ BEGIN
 END;
 
 -- ---------------------------------------------------------------------
+-- Montagem de rotas (somente vendedor — representante não tem rota)
+-- Rota é PLANO de trabalho: pode ser editada enquanto 'planejada'. O que foi feito fica em contatos.
+-- Ordem das paradas é manual (ou sugerida por cidade/bairro/rota da planilha) — sem cálculo de distância.
+-- ---------------------------------------------------------------------
+CREATE TABLE rotas (
+  id            INTEGER PRIMARY KEY,
+  vendedor_id   INTEGER NOT NULL REFERENCES usuarios(id),
+  data_rota     TEXT NOT NULL CHECK (date(data_rota) = data_rota),
+  nome          TEXT,
+  situacao      TEXT NOT NULL DEFAULT 'planejada' CHECK (situacao IN ('planejada','concluida','cancelada')),
+  criado_em     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  atualizado_em TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX ix_rotas_vendedor_data ON rotas (vendedor_id, data_rota);
+
+CREATE TABLE rota_paradas (
+  rota_id      INTEGER NOT NULL REFERENCES rotas(id),
+  prospect_id  INTEGER NOT NULL REFERENCES prospects(id),
+  ordem        INTEGER NOT NULL CHECK (ordem >= 1),
+  PRIMARY KEY (rota_id, prospect_id)
+);
+
+CREATE TRIGGER trg_rotas_somente_vendedor
+BEFORE INSERT ON rotas
+WHEN NOT EXISTS (SELECT 1 FROM usuarios u WHERE u.id = NEW.vendedor_id AND u.ativo = 1
+                  AND u.perfil = 'vendedor' AND u.tipo_atuacao = 'vendedor')
+BEGIN
+  SELECT RAISE(ABORT, 'montagem de rota é exclusiva do vendedor (representante não tem rota)');
+END;
+
+CREATE TRIGGER trg_rotas_dono_fixo
+BEFORE UPDATE OF vendedor_id ON rotas
+BEGIN
+  SELECT RAISE(ABORT, 'rota não muda de vendedor');
+END;
+
+CREATE TRIGGER trg_rotas_encerrada
+BEFORE UPDATE ON rotas
+WHEN OLD.situacao <> 'planejada'
+BEGIN
+  SELECT RAISE(ABORT, 'rota concluída ou cancelada não pode ser alterada');
+END;
+
+CREATE TRIGGER trg_rotas_sem_delete
+BEFORE DELETE ON rotas
+BEGIN
+  SELECT RAISE(ABORT, 'rotas não são apagadas: use situacao = cancelada');
+END;
+
+CREATE TRIGGER trg_rota_paradas_validar
+BEFORE INSERT ON rota_paradas
+BEGIN
+  SELECT RAISE(ABORT, 'rota concluída ou cancelada não pode ser alterada')
+  WHERE (SELECT situacao FROM rotas WHERE id = NEW.rota_id) <> 'planejada';
+  SELECT RAISE(ABORT, 'prospect não pertence à carteira do vendedor da rota')
+  WHERE (SELECT vendedor_id FROM prospects WHERE id = NEW.prospect_id) <> (SELECT vendedor_id FROM rotas WHERE id = NEW.rota_id);
+  SELECT RAISE(ABORT, 'na rota só entram prospects da lista principal ou em negociação')
+  WHERE NOT EXISTS (SELECT 1 FROM prospects p JOIN status s ON s.codigo = p.status_atual
+                     WHERE p.id = NEW.prospect_id AND (s.lista_trabalho = 1 OR p.status_atual = 'em_negociacao'));
+END;
+
+CREATE TRIGGER trg_rota_paradas_upd
+BEFORE UPDATE ON rota_paradas
+BEGIN
+  SELECT RAISE(ABORT, 'rota concluída ou cancelada não pode ser alterada')
+  WHERE (SELECT situacao FROM rotas WHERE id = OLD.rota_id) <> 'planejada';
+  SELECT RAISE(ABORT, 'parada não muda de rota nem de prospect')
+  WHERE NEW.rota_id <> OLD.rota_id OR NEW.prospect_id <> OLD.prospect_id;
+END;
+
+CREATE TRIGGER trg_rota_paradas_del
+BEFORE DELETE ON rota_paradas
+WHEN (SELECT situacao FROM rotas WHERE id = OLD.rota_id) <> 'planejada'
+BEGIN
+  SELECT RAISE(ABORT, 'rota concluída ou cancelada não pode ser alterada');
+END;
+
+-- ---------------------------------------------------------------------
 -- Auditoria de ações administrativas
 -- ---------------------------------------------------------------------
 CREATE TABLE auditoria (
@@ -594,3 +670,25 @@ SELECT m.codigo, m.descricao, p.vendedor_id,
   JOIN usuarios v ON v.id = p.vendedor_id
  WHERE p.status_atual = 'sem_interesse'
  GROUP BY m.codigo, m.descricao, p.vendedor_id;
+
+-- Execução das rotas: parada atendida = existe contato do vendedor da rota naquele prospect na data da rota.
+-- Conta para os indicadores (planejado × atendido), por vendedor, equipe e geral.
+CREATE VIEW vw_rota_paradas AS
+SELECT r.id AS rota_id, r.vendedor_id, r.data_rota, r.nome AS rota_nome, r.situacao,
+       rp.ordem, rp.prospect_id, p.razao_social, p.nome_fantasia, p.endereco, p.bairro, p.cidade, p.uf,
+       p.latitude, p.longitude, p.telefone, p.status_atual,
+       CASE WHEN EXISTS (SELECT 1 FROM contatos c WHERE c.prospect_id = rp.prospect_id
+                          AND c.usuario_id = r.vendedor_id AND c.data_contato = r.data_rota) THEN 1 ELSE 0 END AS atendida
+  FROM rotas r
+  JOIN rota_paradas rp ON rp.rota_id = r.id
+  JOIN prospects p ON p.id = rp.prospect_id;
+
+CREATE VIEW vw_rotas_execucao AS
+SELECT r.id AS rota_id, r.vendedor_id, v.nome AS vendedor_nome, COALESCE(v.supervisor_id, v.id) AS supervisor_id,
+       r.data_rota, r.nome, r.situacao,
+       COUNT(x.prospect_id)            AS paradas_planejadas,
+       COALESCE(SUM(x.atendida), 0)    AS paradas_atendidas
+  FROM rotas r
+  JOIN usuarios v ON v.id = r.vendedor_id
+  LEFT JOIN vw_rota_paradas x ON x.rota_id = r.id
+ GROUP BY r.id;

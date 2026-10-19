@@ -17,4 +17,5 @@ Atualizado em 2026-10-19. Cada item diz o que já está implementado como padrã
 | 11 | Permissões do token do app × triggers | — | itens "Verificar" do [ADR-0001](adr/0001-turso-direto-github-pages.md) |
 | 12 | Login | usuário + senha gerada pelo administrador | — |
 | 14 | Quem é representante e quem é vendedor | **resolvido:** lista do administrador (`npm run importar:tipos`, docs/05 §3); sem definição = representante | enviar a lista |
-| 15 | "Front mais amplo" do vendedor | vendedor tem a visão de rota/subrota além de lista/cidade/bairro, sempre na própria carteira | o vendedor deve ver prospects além da própria carteira (ex.: toda a rota)? |
+| 15 | "Front mais amplo" do vendedor | **resolvido:** montagem de rotas (docs/03 §7) + visão por rota/subrota, na própria carteira | — |
+| 16 | Representante registra "com interesse"? | sim — mesmo formulário do vendedor; o que muda é não ter rota | confirmar |

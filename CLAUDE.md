@@ -13,6 +13,7 @@ Sistema **GERMANI** (guarda-chuva GERMANI), estado **ativo**. Português do Bras
 - UPDATE/DELETE em contatos, eventos_erp, historico_status, transferencias, importacao_linhas, auditoria.
 - Alterar `prospects.status_atual` fora dos triggers.
 - Inventar layout de arquivo do ERP: colunas vêm por parâmetro até a amostra real chegar.
+- Calcular distância por geolocalização (ADR-0005). Dar rota ao representante.
 
 ## Comandos
-`npm test` · `npm run migrate` · `npm run importar:base` · `npm run importar:eventos` · `npm run usuarios`
+`npm test` · `npm run migrate` · `npm run importar:base` · `npm run importar:eventos` · `npm run importar:tipos` · `npm run usuarios`
