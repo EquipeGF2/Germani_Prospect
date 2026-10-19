@@ -15,7 +15,7 @@ Sem servidor (ADR-0001), o app fala SQL com o Turso. Para manter o banco íntegr
 | Console financeiro (`#/financeiro`) | `consultaFilaAnalise({ incluirLiberados: true })` de `shared/financeiro.mjs`; tela de liberação usa `consultaFicha()` | perfil financeiro / administrador |
 | Formulário de contato | `motivos_sem_interesse WHERE ativo = 1 AND uso_app = 1 ORDER BY ordem`, `parametros` | — |
 | Painel | `shared/indicadores.mjs` (`consultaPosicao`, `consultaAtividade`, `consultaExecucaoRotas`), `vw_ultimo_lancamento`, `vw_ranking_motivos`, `vw_prospects` (alertas) | supervisor: o próprio `supervisor_id` |
-| Início (dashboard) | `consultaPainel()`, `lerParametrosPainel()`, `diasUteisCampanha()` de `shared/painel.mjs` | escopo pelo perfil: supervisor = equipe; vendedor = própria carteira |
+| Início (dashboard) | `consultaPainel({ periodo })`, `resolverPeriodo()`, `funilPainel()`, `lerParametrosPainel()`, `diasUteisCampanha()` de `shared/painel.mjs` | escopo pelo perfil: supervisor = equipe; vendedor = própria carteira |
 | Login | `usuarios` (login, senha_hash, perfil, ativo) + `conferirSenha()` | — |
 
 ## O app GRAVA (somente inclusão)

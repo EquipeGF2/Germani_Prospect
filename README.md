@@ -15,7 +15,7 @@ Requisitos: Node.js 22.9+.
 
 ```bash
 npm ci
-npm test                                   # 100 testes, banco SQLite em memória
+npm test                                   # 103 testes, banco SQLite em memória
 TURSO_DATABASE_URL=file:dados/local.db npm run migrate
 npm run exemplo:planilha                   # gera exemplos/base-ficticia.xlsx (dados fictícios)
 TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-ficticia.xlsx
@@ -25,7 +25,7 @@ TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-fi
 
 ```bash
 npm run site        # monta _site/ (modo demonstração sem token)
-npm run servir      # http://localhost:8080 — login admin / demo1234
+npm run servir      # http://localhost:8080 — login admin / demo1234; no Início, "Carregar dados de exemplo"
 npm run test:telas  # testa as telas num Chromium real (fluxo do administrador e do vendedor)
 ```
 
@@ -33,7 +33,7 @@ Navegação pelo **menu lateral** (grupos Prospecção e Administração; recolh
 
 | Tela | Quem | O que faz |
 |---|---|---|
-| `#/inicio` | todos (escopo do perfil) | **dashboard de acompanhamento**: geral, por supervisor (seletor para admin/gerente) e por agente; dias úteis, pipeline, conversão |
+| `#/inicio` | todos (escopo do perfil) | **dashboard de acompanhamento** — no computador, 3 visualizações à escolha (Executivo · Arrojado · Equipe) e filtro por período; no celular, cartões |
 | `#/carteira` | todos (escopo do perfil) | **lista principal** (não contactado / em prospecção): visões lista · cidade · bairro · onda · rota (só vendedor), busca sem acento, filtros, seleção para lote |
 | `#/carteira?aba=acompanhamento` | todos | **acompanhamento**: cartões por status → lista do status |
 | `#/ficha?id=` | todos | situação, dias corridos, prazos, crédito, **histórico de movimentação**, cadastro, ligar / WhatsApp / mapa |

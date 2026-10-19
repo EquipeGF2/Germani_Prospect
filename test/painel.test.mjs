@@ -93,3 +93,34 @@ test('migração 0002 preserva usuários e carteira já existentes', async () =>
   await assert.rejects(db.execute("INSERT INTO usuarios (perfil, codigo_erp, nome, nome_busca, login, supervisor_id) VALUES ('vendedor', '99', 'X', 'X', 'x99', 2)"), /perfil supervisor/);
   await db.execute("INSERT INTO usuarios (perfil, nome, nome_busca, login) VALUES ('gerente', 'G', 'G', 'g')");
 });
+
+test('período: presets, posição atual × eventos no período, funil cumulativo e dias úteis no período', async () => {
+  const { resolverPeriodo, funilPainel } = await import('../shared/painel.mjs');
+  const base = { hoje: '2026-10-21', inicioCampanha: '2026-10-01' };
+  assert.equal(resolverPeriodo('atual', base), null);
+  assert.deepEqual(resolverPeriodo('campanha', base), { inicio: '2026-10-01', fim: '2026-10-21' });
+  assert.deepEqual(resolverPeriodo('semana', base), { inicio: '2026-10-19', fim: '2026-10-21' });   // 21/10/2026 é quarta
+  assert.deepEqual(resolverPeriodo('mes', base), { inicio: '2026-10-01', fim: '2026-10-21' });
+  assert.deepEqual(resolverPeriodo('dias30', base), { inicio: '2026-09-22', fim: '2026-10-21' });
+  assert.deepEqual(resolverPeriodo('personalizado', { ...base, de: '2026-10-10', ate: '2026-10-05' }), { inicio: '2026-10-05', fim: '2026-10-10' });
+  assert.equal(resolverPeriodo('personalizado', { ...base, de: '' }), null);
+
+  const db = await bancoTeste();
+  await criarEquipe(db);
+  const ids = [];
+  for (let n = 1; n <= 4; n++) ids.push(await criarProspect(db, { n, vendedorId: 2 }));
+  await registrarContato(db, { prospectId: ids[0], resultado: 'atendido', data: '2026-09-20' });          // antes do período
+  await registrarContato(db, { prospectId: ids[1], resultado: 'atendido', data: '2026-10-05' });
+  await evento(db, { prospectId: ids[1], tipo: 'pedido', data: '2026-10-08', documento: 'P' });            // venda sem crédito: entra no funil inteiro
+  await registrarContato(db, { prospectId: ids[2], resultado: 'sem_interesse', data: '2026-10-06', motivo: 'PRECO' });
+  const ADM = { id: 4, perfil: 'administrador' };
+  const atual = somarPainel((await db.execute(consultaPainel({ usuario: ADM }))).rows);
+  assert.deepEqual([atual.total, atual.contactados, atual.atendidos, atual.cadastrados, atual.credito_liberado, atual.venda_realizada, atual.sem_interesse], [4, 3, 2, 1, 1, 1, 1]);
+  assert.deepEqual(funilPainel(atual).map((e) => e.valor), [4, 3, 2, 1, 1, 1]);   // nunca cresce
+  const out = somarPainel((await db.execute(consultaPainel({ usuario: ADM, periodo: { inicio: '2026-10-01', fim: '2026-10-31' } }))).rows);
+  assert.deepEqual([out.total, out.nao_contactado, out.contactados, out.atendidos, out.cadastrados, out.venda_realizada, out.sem_interesse], [4, 1, 2, 1, 1, 1, 1]);
+  assert.deepEqual(funilPainel(out).map((e) => e.valor), [4, 2, 1, 1, 1, 1]);
+  assert.equal(out.pct_conversao, 50);
+  assert.equal(await diasUteisCampanha(db, { inicio: '2026-10-01', hoje: '2026-10-21', periodo: { inicio: '2026-10-12', fim: '2026-10-16' } }), 4); // 12/10 feriado
+  assert.equal(await diasUteisCampanha(db, { inicio: '2026-10-01', hoje: '2026-10-21', periodo: { inicio: '2026-09-01', fim: '2026-12-31' } }), 14);
+});
