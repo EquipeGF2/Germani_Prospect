@@ -14,5 +14,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # testes usam SQLite em memória; nunca acessam o Turso
+      # regras e importações: SQLite em memória; nunca acessa o Turso
       - run: npm test
+      # telas no navegador (modo demonstração) com o Chrome do runner
+      - run: npm run test:telas
+        env:
+          CHROMIUM_PATH: /usr/bin/google-chrome

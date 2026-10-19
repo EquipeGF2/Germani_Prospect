@@ -154,7 +154,7 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje }) {
   const datas = [d1.data, d2.data].filter(Boolean);
   const tentativas = [];
   if (resultadoFinal === undefined) {
-    erros.push(`Status Atual não mapeado: "${statusTexto}" (ajuste config/mapa-status-planilha.json)`);
+    erros.push(`Status Atual não mapeado: "${statusTexto}" (defina como tratar este valor no mapeamento do Status Atual)`);
   } else if (resultadoFinal === 'sem_contato') {
     if (datas.length) erros.push(`Status Atual "${statusTexto}" indica sem contato, mas há data de contato`);
   } else if (!datas.length) {
@@ -261,4 +261,20 @@ export function verificarConsistencia(resultados) {
     vendedores: [...vendedores.entries()].map(([codigo, v]) => ({ codigo, nome: v.nome, supervisorCodigo: v.supervisor })),
     supervisores: [...supervisores.entries()].map(([codigo, nome]) => ({ codigo, nome })),
   };
+}
+
+/** Valores distintos da coluna "Status Atual" (sem acento/maiúsculas) com a quantidade de linhas — mapeamento na tela. */
+export function contarStatusPlanilha(linhas) {
+  const [cabecalho = [], ...corpo] = linhas;
+  const { indices } = mapearCabecalho(cabecalho);
+  const grupos = new Map(); // chave → { valor (1º visto), quantidade }
+  for (const l of corpo) {
+    if (linhaVazia(l)) continue;
+    const valor = limparTexto(extrairCampos(l, indices).status_planilha) ?? '';
+    const chave = normalizarBusca(valor);
+    const g = grupos.get(chave) ?? { valor, chave, quantidade: 0 };
+    g.quantidade++;
+    grupos.set(chave, g);
+  }
+  return [...grupos.values()].sort((a, b) => b.quantidade - a.quantidade);
 }

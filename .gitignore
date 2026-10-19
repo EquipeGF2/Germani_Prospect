@@ -12,3 +12,6 @@ relatorios/
 *.db
 *.db-*
 .DS_Store
+
+# site montado (npm run site)
+_site/

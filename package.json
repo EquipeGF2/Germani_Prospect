@@ -14,11 +14,19 @@
     "importar:eventos": "node --env-file-if-exists=.env scripts/importar-eventos.mjs",
     "importar:tipos": "node --env-file-if-exists=.env scripts/importar-tipos.mjs",
     "usuarios": "node --env-file-if-exists=.env scripts/usuarios.mjs",
-    "exemplo:planilha": "node scripts/gerar-planilha-ficticia.mjs"
+    "exemplo:planilha": "node scripts/gerar-planilha-ficticia.mjs",
+    "site": "node scripts/montar-site.mjs",
+    "servir": "node scripts/servir.mjs",
+    "test:telas": "node scripts/montar-site.mjs && node --test test-telas/"
   },
   "dependencies": {
     "@libsql/client": "^0.17.0",
     "exceljs": "^4.4.0",
     "jszip": "^3.10.2"
+  },
+  "devDependencies": {
+    "@libsql/client-wasm": "^0.18.0",
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.64.1"
   }
 }

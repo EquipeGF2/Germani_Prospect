@@ -1,0 +1,95 @@
+import { bancoAdmin } from '../db.js';
+import { lerArquivo } from '../arquivo.js';
+import { importarBase } from '../../shared/importar-base.mjs';
+import { contarStatusPlanilha, mapearCabecalho, normalizarMapaStatus } from '../../shared/importacao-base.mjs';
+import { hojeSaoPaulo } from '../../shared/datas.mjs';
+import { h, montar, mensagem, passos, comEspera, aviso, tabela, formatar } from '../ui.js';
+import { abasAdmin } from './_admin.js';
+import { blocoResultado } from './_resultado.js';
+
+const OPCOES = [
+  ['sem_contato', 'Não contactado (sem datas de contato)'],
+  ['contato_planilha', 'Em prospecção (houve contato, sem resultado)'],
+  ['atendido', 'Atendido → Aguardando cadastro'],
+  ['sem_interesse', 'Sem interesse'],
+  ['', '— rejeitar estas linhas —'],
+];
+const ETAPAS = ['Arquivo', 'Status da planilha', 'Simulação', 'Gravação'];
+
+export async function render(conteudo, ctx) {
+  const db = await bancoAdmin();
+  const padrao = normalizarMapaStatus(await (await fetch('config/mapa-status-planilha.json')).json());
+  const ja = Number((await db.execute('SELECT count(*) n FROM prospects')).rows[0].n);
+  const area = h('div');
+  let planilha = null;
+  let mapa = {};
+
+  const arquivo = h('input', { type: 'file', accept: '.xlsx,.csv', id: 'arquivo-base' });
+  const bLer = h('button', { onclick: async () => {
+    planilha = await comEspera(bLer, () => lerArquivo(arquivo.files[0]));
+    if (planilha) etapaStatus();
+  } }, 'Ler arquivo');
+
+  function cabecalhoInfo() {
+    const m = mapearCabecalho(planilha.linhas[0] ?? []);
+    return h('div', {},
+      h('p', {}, `${planilha.nome} · ${planilha.observacao} · ${formatar.numero(planilha.linhas.length - 1)} linhas abaixo do cabeçalho`),
+      m.faltandoObrigatorias.length ? mensagem(`Colunas obrigatórias ausentes: ${m.faltandoObrigatorias.join(', ')}. Confira o arquivo.`, 'erro') : null,
+      m.faltandoOpcionais.length ? mensagem(`Colunas opcionais ausentes (ficam vazias): ${m.faltandoOpcionais.join(', ')}`, 'info') : null,
+      m.naoReconhecidas.length ? mensagem(`Colunas não reconhecidas (ignoradas): ${m.naoReconhecidas.join(', ')}`, 'info') : null);
+  }
+
+  function etapaStatus() {
+    const valores = contarStatusPlanilha(planilha.linhas);
+    mapa = Object.fromEntries(valores.map((v) => [v.chave, padrao[v.chave] ?? '']));
+    const bSimular = h('button', { onclick: () => simular(bSimular) }, 'Simular importação');
+    montar(area, passos(ETAPAS, 1), h('div', { class: 'cartao' }, cabecalhoInfo(),
+      h('h2', {}, 'Como tratar cada valor de "Status Atual"'),
+      h('p', { class: 'ajuda' }, 'Vale para a ÚLTIMA data de contato da linha (DT 2o ou, se vazia, DT 1o). Valores marcados para rejeitar viram linhas rejeitadas no relatório — nada é adivinhado.'),
+      tabela([
+        { titulo: 'Valor na planilha', valor: (v) => v.valor === '' ? '(vazio)' : v.valor },
+        { titulo: 'Linhas', valor: (v) => formatar.numero(v.quantidade), classe: 'num' },
+        { titulo: 'Tratar como', valor: (v) => h('select', { 'aria-label': `status ${v.valor}`, onchange: (ev) => { mapa[v.chave] = ev.target.value; } },
+          OPCOES.map(([valor, texto]) => h('option', { value: valor, selected: (mapa[v.chave] ?? '') === valor }, texto))) },
+      ], valores),
+      h('div', { class: 'acoes' }, bSimular, h('button', { class: 'secundario', onclick: () => render(conteudo, ctx) }, 'Trocar arquivo'))));
+  }
+
+  const parametros = () => ({
+    linhas: planilha.linhas, arquivoNome: planilha.nome, arquivoSha256: planilha.sha256, executadoPor: ctx.usuario.login,
+    mapaStatus: Object.fromEntries(Object.entries(mapa).filter(([, v]) => v)), hoje: hojeSaoPaulo(),
+  });
+  const paraTela = (resultados) => resultados.map((r) => ({ numeroLinha: r.numeroLinha, resultado: r.dados ? 'aceita' : 'rejeitada',
+    cnpj: r.dados?.prospect.cnpj ?? r.bruto.cnpj ?? null, mensagens: r.dados ? r.avisos : r.erros }));
+
+  async function simular(botao) {
+    const r = await comEspera(botao, () => importarBase(db, { ...parametros(), simular: true }));
+    if (!r) return;
+    const bGravar = h('button', { onclick: () => gravar(bGravar) }, `Confirmar e gravar ${formatar.numero(r.resumo.novos + r.resumo.atualizados)} linhas`);
+    montar(area, passos(ETAPAS, 2),
+      mensagem(`Simulação: ${formatar.numero(r.resumo.novos)} prospects novos e ${formatar.numero(r.resumo.atualizados)} já existentes (só dados cadastrais são atualizados; status, histórico e vendedor não mudam). Nada foi gravado ainda.`, 'info'),
+      blocoResultado({ titulo: 'Resultado da simulação', resumo: { ...r.resumo, aceitas: r.resumo.novos + r.resumo.atualizados }, resultados: paraTela(r.resultados), nomeRelatorio: `simulacao-base-${hojeSaoPaulo()}.csv` }),
+      h('div', { class: 'acoes' }, bGravar, h('button', { class: 'secundario', onclick: etapaStatus }, 'Voltar e ajustar o status')));
+  }
+
+  async function gravar(botao) {
+    const r = await comEspera(botao, () => importarBase(db, parametros()));
+    if (!r) return;
+    aviso('Importação gravada.');
+    montar(area, passos(ETAPAS, 4),
+      mensagem(`Importação nº ${r.importacaoId} concluída. Próximo passo: informar quem é representante e quem é vendedor, e liberar o acesso da equipe.`, 'ok'),
+      blocoResultado({ titulo: `Importação nº ${r.importacaoId}`, resumo: r.resumo, resultados: paraTela(r.resultados), nomeRelatorio: `importacao-${r.importacaoId}-base.csv` }),
+      h('div', { class: 'acoes' }, h('a', { class: 'botao', href: '#/admin/importar/tipos' }, 'Representantes / vendedores'),
+        h('a', { class: 'botao secundario', href: '#/admin/usuarios' }, 'Usuários e senhas')));
+  }
+
+  montar(area, passos(ETAPAS, 0), h('div', { class: 'cartao' },
+    h('div', { class: 'campo' }, h('label', { for: 'arquivo-base' }, 'Planilha base (.xlsx ou .csv)'), arquivo),
+    h('p', { class: 'ajuda' }, 'Layout: CNPJ, Razão social, Nome Fantasia, Endereço, Bairro, Cidade, Estado, Código Postal, Latitude, Longitude, TIPOLOGIA GTM, Telefone, ONDA, CNPJ, TIPO, COD SUP, SUPERVISOR, COD, NOME, ROTA, SUBROTA, OBS, DT 1o.contato, DT 2o.contato, Status Atual, # Dias Corridos.'),
+    bLer,
+    h('p', { class: 'ajuda', style: 'margin-top:12px' }, 'Para testar: ', h('a', { href: 'exemplos/base-ficticia.xlsx', download: true }, 'baixe a planilha fictícia'), '.')));
+
+  montar(conteudo, abasAdmin('/admin/importar/base'), h('h1', {}, 'Base de prospects'),
+    ja ? mensagem(`A base já tem ${formatar.numero(ja)} prospects. Reimportar só atualiza dados cadastrais — status, histórico e vendedor não mudam.`, 'info') : null,
+    area);
+}

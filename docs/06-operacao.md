@@ -23,13 +23,38 @@ Guarde o token administrativo num gerenciador de senhas. Ele **nunca** vai para 
 > **Atenção:** um Secret do GitHub injetado na publicação do Pages acaba dentro do JavaScript público.
 > Por isso o site usa **outro** token, com permissões finas, e nunca o administrativo.
 
-Token do app (gerar na F1, depois de concluir os itens "Verificar" do ADR-0001):
+Os comandos dos tokens do app e de administração estão na seção 3.
+
+## 3. Tokens: app e administração
+
+**Token do app** (vai embutido no site — permissões restritas):
 ```bash
 turso db tokens create germani-prospect -p all:data_read -p contatos:data_add -p transferencias:data_add \
   -p rotas:data_add,data_update -p rota_paradas:data_add,data_update,data_delete -p liberacoes_credito:data_add
 ```
+Cadastre em GitHub → Settings → Secrets and variables → Actions: **variável** `TURSO_DATABASE_URL` e **secret** `TURSO_APP_TOKEN`.
 
-## 3. Aplicar a estrutura do banco
+**Token de administração** (NÃO vai para o GitHub: o administrador cola na tela "Acesso de administração",
+e ele fica só naquela aba do navegador):
+```bash
+turso db tokens create germani-prospect -p all:data_read \
+  -p prospects:data_add,data_update -p usuarios:data_add,data_update -p parametros:data_update \
+  -p importacoes:data_add,data_update -p importacao_linhas:data_add -p contatos:data_add \
+  -p eventos_erp:data_add -p auditoria:data_add -p liberacoes_credito:data_add -p transferencias:data_add
+```
+Antes da carga real, conferir os itens "Verificar" do ADR-0001 (escritas feitas pelos triggers, como
+`movimentacoes`, podem exigir permissão também).
+
+## 4. Publicar o app (GitHub Pages)
+
+1. Settings → Pages → **Source: GitHub Actions** (uma vez).
+2. Actions → **Publicar app (GitHub Pages)** → Run workflow (ou automático a cada push na `main`).
+3. Sem `TURSO_APP_TOKEN`, o site sai em **modo demonstração**: banco temporário no navegador, login
+   `admin` / `demo1234`, planilha fictícia para testar a carga. Com o token, sai em produção.
+
+Local: `npm run site && npm run servir` → http://localhost:8080 (modo demonstração).
+
+## 5. Aplicar a estrutura do banco
 
 - **Pelo GitHub:** Actions → *Migrar banco (produção)* → *Run workflow* → digitar `MIGRAR`.
   O workflow roda os testes antes e usa os Secrets. (Ele usa o ambiente `producao`; em
@@ -39,10 +64,10 @@ turso db tokens create germani-prospect -p all:data_read -p contatos:data_add -p
 Migração aplicada nunca é editada: o `migrate` compara o SHA-256 e para se o arquivo mudou.
 Mudança de estrutura = novo arquivo `db/migrations/0002_....sql`.
 
-## 4. Primeira carga — roteiro
+## 6. Primeira carga — roteiro
 
-> **Definitivo: a carga será feita pela tela de administração (F1), não por comandos.** O roteiro abaixo é a
-> contingência por linha de comando e mostra a ordem das etapas, que é a mesma na tela.
+> **Definitivo: a carga é feita pela tela de administração** (Administração → Base de prospects →
+> Representantes/vendedores → Usuários). O roteiro abaixo é a contingência por linha de comando, na mesma ordem.
 
 ```bash
 npm ci
@@ -60,7 +85,7 @@ npm run usuarios -- senha 1101                       # para cada vendedor/superv
 
 As senhas são geradas aleatoriamente e mostradas **uma vez**; entregue-as por canal privado.
 
-## 5. Desenvolvimento local sem tocar a produção
+## 7. Desenvolvimento local sem tocar a produção
 ```bash
 TURSO_DATABASE_URL=file:dados/local.db npm run migrate
 npm run exemplo:planilha
@@ -68,12 +93,12 @@ TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-fi
 ```
 `dados/` está no `.gitignore`. Os testes (`npm test`) usam banco em memória.
 
-## 6. Backup
+## 8. Backup
 - Verificar no painel do Turso o restore pontual disponível no plano contratado.
 - Cópia manual: `turso db shell germani-prospect .dump > backup-AAAA-MM-DD.sql` — guardar fora do
   repositório (contém dados pessoais).
 
-## 7. Rotação de credenciais (saída de alguém, suspeita de vazamento)
+## 9. Rotação de credenciais (saída de alguém, suspeita de vazamento)
 1. `turso db tokens invalidate germani-prospect` — invalida **todos** os tokens do banco.
 2. Gerar novo token administrativo e novo token do app.
 3. Atualizar o `.env` e o Secret `TURSO_AUTH_TOKEN`; republicar o site com o novo token do app.

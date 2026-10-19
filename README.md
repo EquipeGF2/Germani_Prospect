@@ -4,7 +4,7 @@ Controle de prospecção de novos clientes da **GERMANI Alimentos**: cada CNPJ q
 um ponto de controle. O representante/vendedor registra os atendimentos; cadastro, pedido e CNPJs
 baixados entram por arquivos do ERP Senior; o supervisor acompanha cobertura e conversão.
 
-**Sistema:** GERMANI · **Estado:** ativo · **Fase atual:** backend (banco, regras, importações) — o app vem na F1.
+**Sistema:** GERMANI · **Estado:** ativo · **Fase atual:** F1 parte 1 pronta (login + administração pela tela).
 
 Stack: **Turso (libSQL)** + **GitHub** (Actions, Secrets, Pages). Sem servidor — ver
 [ADR-0001](docs/adr/0001-turso-direto-github-pages.md).
@@ -15,11 +15,20 @@ Requisitos: Node.js 22.9+.
 
 ```bash
 npm ci
-npm test                                   # 86 testes, banco SQLite em memória
+npm test                                   # 90 testes, banco SQLite em memória
 TURSO_DATABASE_URL=file:dados/local.db npm run migrate
 npm run exemplo:planilha                   # gera exemplos/base-ficticia.xlsx (dados fictícios)
 TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-ficticia.xlsx
 ```
+
+## App (telas)
+
+```bash
+npm run site        # monta _site/ (modo demonstração sem token)
+npm run servir      # http://localhost:8080 — login admin / demo1234
+npm run test:telas  # testa as telas num Chromium real
+```
+Publicação: workflow **Publicar app (GitHub Pages)** — ver [docs/06-operacao.md](docs/06-operacao.md) §3–4.
 
 ## Variáveis de ambiente
 
@@ -27,7 +36,9 @@ TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-fi
 |---|---|
 | `TURSO_DATABASE_URL` | `libsql://...` (produção) ou `file:dados/local.db` (local) |
 | `TURSO_AUTH_TOKEN` | token administrativo do Turso (só `.env` e GitHub Secrets) |
-| `GERMANI_EXECUTADO_POR` | nome gravado nas importações e na auditoria |
+| `GERMANI_EXECUTADO_POR` | nome gravado nas importações e na auditoria (scripts) |
+| `TURSO_APP_TOKEN` | token do **app** (montagem do site; permissões restritas) |
+| `GERMANI_MODO` | `producao` ou `demonstracao` (padrão: produção se houver token do app) |
 
 Copie `.env.example` para `.env`. O `.env` nunca vai para o Git. No GitHub: Settings → Secrets and
 variables → Actions → `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN`. Detalhes em [docs/06-operacao.md](docs/06-operacao.md).
@@ -47,7 +58,7 @@ Como importar as planilhas: [docs/05-importacao.md](docs/05-importacao.md).
 
 ## Deploy
 - **Banco:** Actions → *Migrar banco (produção)* → digitar `MIGRAR`.
-- **App (F1):** GitHub Pages a partir de `web/` — a definir junto com o token do app (ADR-0001).
+- **App:** Actions → *Publicar app (GitHub Pages)*; sem token do app, publica em modo demonstração.
 
 ## Documentação
 [Visão geral](docs/00-visao-geral.md) · [Arquitetura](docs/01-arquitetura.md) ·

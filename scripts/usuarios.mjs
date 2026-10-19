@@ -1,90 +1,49 @@
 #!/usr/bin/env node
-// Administração de usuários (executar localmente com o .env do administrador).
+// Contingência por linha de comando — a operação normal é pela tela de administração.
 //   npm run usuarios -- listar
 //   npm run usuarios -- criar-admin <login> "<Nome>"
 //   npm run usuarios -- criar-financeiro <login> "<Nome>"   analista do console de crédito
-//   npm run usuarios -- senha <login>          gera senha provisória (troca obrigatória no 1º acesso)
-//   npm run usuarios -- tipo <login> representante|vendedor   forma de trabalho (representante não tem rota)
-//   npm run usuarios -- desativar <login>
-//   npm run usuarios -- ativar <login>
-import { randomInt } from 'node:crypto';
+//   npm run usuarios -- senha <login>                       gera senha provisória
+//   npm run usuarios -- tipo <login> representante|vendedor
+//   npm run usuarios -- desativar <login> | ativar <login>
 import { abrir } from '../lib/db.mjs';
 import { executor } from '../lib/cli.mjs';
-import { gerarHashSenha } from '../shared/senha.mjs';
-import { normalizarBusca } from '../shared/texto.mjs';
+import { criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../shared/usuarios.mjs';
 
 const [comando, login, nome] = process.argv.slice(2);
-const TIPOS = ['representante', 'vendedor'];
 const db = await abrir();
 const quem = executor();
 
-async function auditar(acao, entidadeId, detalhes = {}) {
-  await db.execute({
-    sql: 'INSERT INTO auditoria (executado_por, acao, entidade, entidade_id, detalhes) VALUES (?, ?, ?, ?, ?)',
-    args: [quem, acao, 'usuarios', String(entidadeId), JSON.stringify(detalhes)],
-  });
-}
-
-function senhaProvisoria() {
-  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-  return Array.from({ length: 10 }, () => alfabeto[randomInt(alfabeto.length)]).join('');
-}
-
-async function exigirUsuario(l) {
-  const r = await db.execute({ sql: 'SELECT id, nome, perfil FROM usuarios WHERE login = ?', args: [l] });
+async function idDe(l) {
+  const r = await db.execute({ sql: 'SELECT id FROM usuarios WHERE login = ?', args: [l] });
   if (!r.rows.length) throw new Error(`usuário não encontrado: ${l}`);
-  return r.rows[0];
+  return Number(r.rows[0].id);
 }
 
 switch (comando) {
-  case 'listar': {
-    const r = await db.execute(`SELECT u.login, u.perfil, u.tipo_atuacao, u.codigo_erp, u.nome, s.nome AS supervisor, u.ativo,
-                                       CASE WHEN u.senha_hash IS NULL THEN 'sem acesso' WHEN u.senha_provisoria = 1 THEN 'provisória' ELSE 'ok' END AS senha
-                                  FROM usuarios u LEFT JOIN usuarios s ON s.id = u.supervisor_id
-                                 ORDER BY u.perfil, u.nome`);
-    console.table(r.rows.map((x) => ({ ...x })));
+  case 'listar':
+    console.table((await listarUsuarios(db)).map((u) => ({ login: u.login, perfil: u.perfil, tipo: u.tipo_atuacao, nome: u.nome, supervisor: u.supervisor_nome, ativo: u.ativo, senha: u.situacao_senha })));
     break;
-  }
   case 'criar-admin':
   case 'criar-financeiro': {
-    const perfil = comando === 'criar-admin' ? 'administrador' : 'financeiro';
-    if (!login || !nome) throw new Error(`uso: ${comando} <login> "<Nome>"`);
-    const senha = senhaProvisoria();
-    const r = await db.execute({
-      sql: `INSERT INTO usuarios (perfil, nome, nome_busca, login, senha_hash) VALUES (?, ?, ?, ?, ?) RETURNING id`,
-      args: [perfil, nome, normalizarBusca(nome), login, await gerarHashSenha(senha)],
-    });
-    await auditar(`criar_${perfil}`, r.rows[0].id, { login });
-    console.log(`Usuário ${perfil} criado. Login: ${login}  Senha provisória: ${senha}`);
+    const r = await criarUsuarioSistema(db, { perfil: comando === 'criar-admin' ? 'administrador' : 'financeiro', login, nome, executadoPor: quem });
+    console.log(`Usuário criado. Login: ${r.login}  Senha provisória: ${r.senha}`);
     break;
   }
   case 'senha': {
-    const u = await exigirUsuario(login);
-    const senha = senhaProvisoria();
-    await db.execute({
-      sql: `UPDATE usuarios SET senha_hash = ?, senha_provisoria = 1, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`,
-      args: [await gerarHashSenha(senha), u.id],
-    });
-    await auditar('senha_provisoria', u.id);
-    console.log(`${u.nome} (${u.perfil}) — login: ${login}  senha provisória: ${senha}`);
+    const r = await redefinirSenha(db, { usuarioId: await idDe(login), executadoPor: quem });
+    console.log(`Login: ${r.login}  senha provisória: ${r.senha}`);
     break;
   }
-  case 'tipo': {
-    if (!TIPOS.includes(nome)) throw new Error('uso: tipo <login> representante|vendedor');
-    const u = await exigirUsuario(login);
-    await db.execute({ sql: `UPDATE usuarios SET tipo_atuacao = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`, args: [nome, u.id] });
-    await auditar('tipo_atuacao', u.id, { tipo: nome });
-    console.log(`${u.nome}: ${nome}`);
+  case 'tipo':
+    await definirTipoAtuacao(db, { usuarioId: await idDe(login), tipo: nome, executadoPor: quem });
+    console.log(`${login}: ${nome}`);
     break;
-  }
   case 'desativar':
-  case 'ativar': {
-    const u = await exigirUsuario(login);
-    await db.execute({ sql: `UPDATE usuarios SET ativo = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`, args: [comando === 'ativar' ? 1 : 0, u.id] });
-    await auditar(comando, u.id);
-    console.log(`${u.nome}: ${comando === 'ativar' ? 'ativado' : 'desativado'}`);
+  case 'ativar':
+    await definirAtivo(db, { usuarioId: await idDe(login), ativo: comando === 'ativar', executadoPor: quem });
+    console.log(`${login}: ${comando === 'ativar' ? 'ativado' : 'desativado'}`);
     break;
-  }
   default:
     console.error('comandos: listar | criar-admin <login> "<Nome>" | criar-financeiro <login> "<Nome>" | senha <login> | tipo <login> representante|vendedor | desativar <login> | ativar <login>');
     process.exitCode = 1;

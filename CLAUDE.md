@@ -7,6 +7,7 @@ Sistema **GERMANI** (guarda-chuva GERMANI), estado **ativo**. Português do Bras
 - Regras de status vivem nos **triggers** de `db/migrations/`. Mudou regra → nova migração `NNNN_*.sql`
   (nunca edite uma migração aplicada) + teste em `test/regras-banco.test.mjs` + doc 03.
 - `shared/` não pode depender de Node (é usado também pelo app no navegador).
+- Telas em `web/js/telas/`: só textContent (nunca innerHTML com dado do banco); regra de negócio fica em `shared/`.
 
 ## Não fazer
 - Commitar planilhas, relatórios, `.env` ou tokens (repositório público).
@@ -16,4 +17,4 @@ Sistema **GERMANI** (guarda-chuva GERMANI), estado **ativo**. Português do Bras
 - Calcular distância por geolocalização (ADR-0005). Dar rota ao representante.
 
 ## Comandos
-`npm test` · `npm run migrate` · `npm run importar:base` · `npm run importar:eventos` · `npm run importar:tipos` · `npm run usuarios`
+`npm test` · `npm run test:telas` · `npm run site` · `npm run servir` · `npm run migrate` · `npm run importar:base` · `npm run importar:eventos` · `npm run importar:tipos` · `npm run usuarios`
