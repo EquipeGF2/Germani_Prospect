@@ -5,15 +5,18 @@
 //     agrupa por cidade → bairro → rota/subrota da planilha → endereço; o vendedor ajusta à mão.
 //   * As coordenadas servem só para abrir o mapa do próprio celular.
 import { formaDeTrabalho } from './carteira.mjs';
+import { normalizarBusca } from './texto.mjs';
 
-const chave = (v) => (v == null ? '￿' : String(v)); // vazios por último
+const chave = (v) => (v == null || v === '' ? '￿' : String(v)); // vazios por último
+// usa a forma normalizada gravada; se a linha não a trouxer, normaliza aqui (acento não separa grupos)
+const norm = (p, campo) => chave(p[`${campo}_busca`] ?? (p[campo] == null ? null : normalizarBusca(p[campo])));
 
-/** Ordem sugerida das paradas (sem distância). Recebe linhas de vw_prospects; devolve os ids na ordem. */
+/** Ordem sugerida das paradas (sem distância). Recebe linhas da carteira; devolve os ids na ordem. */
 export function sugerirOrdem(prospects) {
   return [...prospects]
     .sort((a, b) =>
-      chave(a.cidade_busca).localeCompare(chave(b.cidade_busca)) ||
-      chave(a.bairro_busca).localeCompare(chave(b.bairro_busca)) ||
+      norm(a, 'cidade').localeCompare(norm(b, 'cidade')) ||
+      norm(a, 'bairro').localeCompare(norm(b, 'bairro')) ||
       chave(a.rota).localeCompare(chave(b.rota), 'pt-BR', { numeric: true }) ||
       chave(a.subrota).localeCompare(chave(b.subrota), 'pt-BR', { numeric: true }) ||
       chave(a.endereco).localeCompare(chave(b.endereco), 'pt-BR', { numeric: true }) ||

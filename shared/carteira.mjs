@@ -16,7 +16,7 @@ import { normalizarBusca } from './texto.mjs';
 
 export const VISOES = Object.freeze(['lista', 'cidade', 'bairro', 'status', 'rota']);
 
-const COLUNAS_LISTA = ['id', 'cnpj', 'razao_social', 'nome_fantasia', 'endereco', 'bairro', 'cidade', 'uf', 'cep',
+const COLUNAS_LISTA = ['id', 'cnpj', 'razao_social', 'nome_fantasia', 'endereco', 'bairro', 'bairro_busca', 'cidade', 'cidade_busca', 'uf', 'cep',
   'latitude', 'longitude', 'telefone', 'tipologia_gtm', 'status_atual', 'status_nome', 'status_descricao', 'status_cor',
   'tentativas', 'dt_primeiro_contato', 'dt_segundo_contato', 'dt_ultimo_contato', 'dt_interesse', 'data_proxima_acao',
   'dias_corridos', 'pendente_hoje', 'retorno_pendente', 'na_lista', 'com_interesse', 'prazo_cadastro_vencido',

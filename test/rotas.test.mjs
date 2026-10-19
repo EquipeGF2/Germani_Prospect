@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, evento, registrarContato } from './auxiliar.mjs';
 import { comandoCriarRota, comandoEncerrarRota, comandosSalvarParadas, consultaParadas, linkMapa, sugerirOrdem } from '../shared/rotas.mjs';
 import { consultaExecucaoRotas } from '../shared/indicadores.mjs';
+import { consultaCarteira } from '../shared/carteira.mjs';
 
 const REP = { id: 2, perfil: 'vendedor', tipo_atuacao: 'representante' };
 const VEND = { id: 3, perfil: 'vendedor', tipo_atuacao: 'vendedor' };
@@ -32,9 +33,12 @@ test('representante não monta rota (app e banco)', async () => {
   await assert.rejects(db.execute("INSERT INTO rotas (vendedor_id, data_rota) VALUES (1, '2026-10-20')"), /exclusiva do vendedor/); // supervisor
 });
 
-test('ordem sugerida por cidade → bairro, sem distância', async () => {
-  const linhas = (await db.execute('SELECT * FROM vw_prospects WHERE vendedor_id = 3')).rows;
+test('ordem sugerida por cidade → bairro, sem distância (a partir da lista da carteira)', async () => {
+  const linhas = (await db.execute(consultaCarteira({ usuario: VEND }))).rows;
   assert.deepEqual(sugerirOrdem(linhas), [p.c, p.b, p.a]); // Estrela/Centro, Lajeado/Americano, Lajeado/Centro
+  // sem as colunas normalizadas, normaliza na hora (acento não separa grupos)
+  const crus = [{ id: 1, cidade: 'Lajeado', bairro: 'São Cristóvão' }, { id: 2, cidade: 'Lajeado', bairro: 'Americano' }, { id: 3, cidade: 'Lajeado', bairro: 'SAO CRISTOVAO' }];
+  assert.deepEqual(sugerirOrdem(crus), [2, 1, 3]);
 });
 
 test('monta, reordena e mede a execução da rota; tudo entra nos indicadores', async () => {
