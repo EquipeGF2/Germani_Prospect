@@ -14,7 +14,7 @@ Atualizado em 2026-10-19. Cada item diz o que já está implementado como padrã
 | 9 | Códigos de supervisor e representante | espaços separados (podem repetir número sem conflito) | confirmar se supervisor também tem carteira própria (COD = COD SUP) |
 | 10 | Canal das tentativas da planilha | `nao_informado` | — |
 | 11 | Permissões do token do app × triggers | — | itens "Verificar" do [ADR-0001](adr/0001-turso-direto-github-pages.md) |
-| 12 | Login | usuário + senha gerada pelo administrador | — |
+| 12 | Login | usuário + senha definida pelo administrador (ou gerada); não há troca obrigatória no 1º acesso | — |
 | 14 | Quem é representante e quem é vendedor | **resolvido:** lista do administrador (`npm run importar:tipos`, docs/05 §3); sem definição = representante | enviar a lista |
 | 15 | "Front mais amplo" do vendedor | **resolvido:** montagem de rotas (docs/03 §7) + visão por rota/subrota, na própria carteira | — |
 | 16 | Registros do app | **resolvido:** atendido · sem interesse (também em lote) · reabrir com pedido identificado; "não atendido" não gera registro | — |

@@ -58,13 +58,28 @@ test('contagem de "Status Atual" para o mapeamento na tela', () => {
   assert.equal(r[0].chave, 'SEM INTERESSE');
 });
 
-test('administrador com senha inicial informada (workflow "Criar administrador"): continua provisória; curta é recusada', async () => {
+test('senha definida pelo administrador (tela e workflow "Criar administrador"): vale como definitiva; curta é recusada', async () => {
   const db = await bancoTeste();
   const a = await criarUsuarioSistema(db, { perfil: 'administrador', login: 'chefe', nome: 'Chefe Teste', executadoPor: 'actions', senha: 'inicial-123' });
   const u = (await db.execute({ sql: 'SELECT * FROM usuarios WHERE id = ?', args: [a.id] })).rows[0];
   assert.equal(u.perfil, 'administrador');
-  assert.equal(Number(u.senha_provisoria), 1, 'troca obrigatória no primeiro acesso');
+  assert.equal(Number(u.senha_provisoria), 0, 'definida pelo administrador');
   assert.ok(await conferirSenha('inicial-123', u.senha_hash));
   await assert.rejects(criarUsuarioSistema(db, { perfil: 'administrador', login: 'outro', nome: 'Outro Teste', executadoPor: 'actions', senha: '1234' }), /ao menos 8 caracteres/);
   assert.equal((await db.execute("SELECT COUNT(*) n FROM usuarios WHERE login = 'outro'")).rows[0].n, 0);
+});
+
+test('administrador define a senha de um usuário existente; sem senha informada, gera provisória', async () => {
+  const db = await bancoTeste();
+  await criarEquipe(db);
+  await redefinirSenha(db, { usuarioId: 2, executadoPor: 'adm', senha: 'definida-pelo-adm' });
+  const u = (await db.execute('SELECT senha_hash, senha_provisoria FROM usuarios WHERE id = 2')).rows[0];
+  assert.ok(await conferirSenha('definida-pelo-adm', u.senha_hash));
+  assert.equal(Number(u.senha_provisoria), 0);
+  assert.equal((await db.execute("SELECT COUNT(*) n FROM auditoria WHERE acao = 'senha_definida'")).rows[0].n, 1);
+  await assert.rejects(redefinirSenha(db, { usuarioId: 2, executadoPor: 'adm', senha: 'curta' }), /ao menos 8 caracteres/);
+  assert.ok(await conferirSenha('definida-pelo-adm', (await db.execute('SELECT senha_hash FROM usuarios WHERE id = 2')).rows[0].senha_hash), 'senha recusada não altera nada');
+  const g = await redefinirSenha(db, { usuarioId: 2, executadoPor: 'adm' });
+  assert.equal(Number((await db.execute('SELECT senha_provisoria FROM usuarios WHERE id = 2')).rows[0].senha_provisoria), 1);
+  assert.match(g.senha, /^[A-Za-z0-9]{10}$/);
 });

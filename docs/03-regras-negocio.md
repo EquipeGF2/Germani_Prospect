@@ -186,9 +186,12 @@ movimentação conta sempre nos indicadores.
   cartão mostra de quem é a carteira.
 - Cada cartão: razão social, selo do status, CNPJ, fantasia, bairro/cidade, onda, rota (só vendedor),
   "atendido em…", dias corridos, retorno vencido e prazo de cadastro vencido. 50 por página.
-- **Computador** (Lista principal e Acompanhamento; o celular não muda): **numa linha só** — busca, visão (lista de seleção), supervisor, vendedor/representante,
+- **Computador** (Lista principal e Acompanhamento; o celular não muda): **numa linha só** — busca, visão (lista de seleção), **onda**, supervisor, vendedor/representante,
   **filtro por data** (de/até sobre a data do último registro — `filtros.dataDe`/`dataAte` em `dt_ultimo_contato`) e
   **Exibir: Cards | Lista** (tabela; escolha guardada no navegador) numa só barra. Sem o atalho "só retornos vencidos hoje".
+  Em **Lista** (tabela), o **rótulo de cada coluna ordena** (1º clique crescente ▲, 2º decrescente ▼, 3º volta à ordem de
+  trabalho): prospect, cidade · bairro, onda (1, 2, 3…), rota, carteira, status (ordem do processo), dias e último registro.
+  A ordenação é feita no banco (`ordenar` em `consultaCarteira`, só chaves conhecidas), então vale para todas as páginas.
   Ondas sempre em ordem natural (Onda 1, 2, 3…, `ordemNatural`). **Rota em dois níveis** (`rotaEmNiveis`): nível 1 = rota;
   clicar abre o nível 2 = subrotas daquela rota; clicar na subrota abre a lista.
 - **Ficha** (`#/ficha`): situação (status, dias corridos, registros, datas, prazos, motivo, cadastro e pedido do
@@ -236,10 +239,11 @@ Fila com os clientes em Análise financeira (mais antigos primeiro, dias em aná
 sim/não** e **limite**. Boleto exige limite maior que zero.
 
 **Na tela** (menu *Financeiro → Console de crédito*, `#/financeiro`; o analista entra direto nela):
-- indicadores **compactos** (uma faixa baixa, a lista tem o destaque): em análise, fora do prazo (10 dias), liberados aguardando pedido;
+- **os cards são o filtro** (sem abas): em análise · fora do prazo (10 dias) · liberados aguardando pedido — clicar no card mostra
+  esses clientes; cards e busca na mesma linha, a lista com o destaque;
 - abas **Em análise** (mais antigos primeiro, dias em análise, prazo; vencido em vermelho) e **Liberados · aguardando
   pedido** (mais recentes primeiro, com a condição: forma · prazo · limite · restrição); busca por cliente, CNPJ,
-  cód. ERP, cidade ou vendedor — abas e busca na mesma linha;
+  cód. ERP, cidade ou vendedor;
 - **Liberar crédito** (`#/financeiro/liberar`): forma (antecipado / à vista / boleto — três cards lado a lado, sem quebra), prazo em dias, limite (R$,
   aceita "12.500,00"), data (entre o cadastro no ERP e hoje), restrição sim/não, observação. Grava e o cliente
   vai para Aguardando pedido;

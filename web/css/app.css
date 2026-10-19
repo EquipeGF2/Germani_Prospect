@@ -31,6 +31,14 @@ a { color: var(--destaque); }
   font: 700 18px "IBM Plex Sans Condensed", sans-serif; flex: none; }
 .marca-nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: 700 1.05rem "IBM Plex Sans Condensed", sans-serif; letter-spacing: .02em; white-space: nowrap; }
 .marca-nome b { color: #F3A6AA; font-weight: 600; }
+/* logotipo (quando web/img/logo-germani.jpg existe): placa branca no topo do menu; recolhido = só a sigla */
+.marca-logo, .logo-entrada { display: none; }
+.com-logo .marca-logo { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.com-logo .marca-logo img { height: 40px; max-width: 150px; object-fit: contain; background: #fff; border-radius: 8px; padding: 3px 8px; }
+.com-logo .marca-logo b { color: #F3A6AA; font: 600 1rem "IBM Plex Sans Condensed", sans-serif; white-space: nowrap; }
+.com-logo .marca-nome, .com-logo .casca:not(.recolhido) .marca-sigla { display: none; }
+.com-logo .casca.recolhido .marca-logo { display: none; }
+.com-logo .logo-entrada { display: block; max-width: 260px; max-height: 120px; margin: 0 auto 14px; object-fit: contain; }
 #menu { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 12px 10px; }
 .menu-grupo + .menu-grupo { margin-top: 18px; }
 .menu-titulo { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--lateral-suave); padding: 0 12px 6px; white-space: nowrap; }
@@ -133,9 +141,25 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .numeros.compactos .numero.ok { border-top-color: var(--borda); border-left-color: var(--ok); }
 .numeros.compactos .numero.erro { border-top-color: var(--borda); border-left-color: var(--erro); }
 .numeros.compactos .numero.alerta { border-top-color: var(--borda); border-left-color: var(--alerta); }
+/* Usuários: cadastro de novo usuário numa linha */
+.linha-novo-usuario { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; padding: 12px 16px; margin-bottom: 14px; }
+.linha-novo-usuario .tit { align-self: center; margin-right: 4px; }
+.linha-novo-usuario label { font-size: 12px; margin-bottom: 4px; }
+.linha-novo-usuario select, .linha-novo-usuario input { width: 190px; } .linha-novo-usuario .nome { flex: 1 1 220px; } .linha-novo-usuario .nome input { width: 100%; }
+.linha-novo-usuario small { flex-basis: 100%; margin: 0; }
+
+.definir-senha { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.definir-senha .campo-senha { width: 160px; min-height: 34px; padding: 6px 8px; }
+.linha-novo-usuario #novo-senha { width: 150px; }
+/* cards que filtram: clicáveis, o selecionado fica destacado */
+.numeros.filtrantes { margin: 0; flex-wrap: nowrap; }
+.numeros.filtrantes .numero { cursor: pointer; text-decoration: none; color: inherit; font: inherit; background: #fff; white-space: nowrap; }
+.numeros.filtrantes .numero:hover { border-color: var(--destaque); }
+.numeros.filtrantes .numero.ativo { background: var(--destaque-claro); border-color: var(--destaque); box-shadow: 0 0 0 1px var(--destaque) inset; }
 .barra-console { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-bottom: 14px; }
 .barra-console .visoes { margin: 0; flex: 0 0 auto; }
-.barra-console .barra-busca { flex: 1 1 320px; margin: 0; }
+.barra-console .barra-busca { flex: 1 1 200px; margin: 0; }
+.barra-console > select { flex: 0 0 180px; }
 .selo { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: var(--texto); }
 .selo.aceita, .selo.ok, .selo.concluida { background: #DCFCE7; color: #14532D; }
 .selo.rejeitada, .selo.falhou, .selo.erro { background: #FEE4E2; color: #7A271A; }
@@ -383,7 +407,10 @@ td.pct { min-width: 96px; }
 .barra-carteira .busca button { padding: 8px 12px; }
 .barra-carteira .visoes { margin: 0; }
 .barra-carteira select { font-size: 14px; padding: 8px 10px; width: 160px; min-width: 100px; max-width: 100%; }
-.barra-carteira #filtro-visao { width: 115px; }
+.barra-carteira #filtro-visao { width: 110px; } .barra-carteira #filtro-onda { width: 100px; }
+.barra-carteira #filtro-supervisor, .barra-carteira #filtro-vendedor { width: 150px; }
+.tabela-carteira th a.ordenar { color: inherit; text-decoration: none; white-space: nowrap; }
+.tabela-carteira th a.ordenar:hover, .tabela-carteira th a.ordenar.ativa { color: var(--destaque); }
 .barra-carteira .datas { display: flex; gap: 6px; }
 .barra-carteira input[type=date] { width: 122px; font-size: 13.5px; padding: 8px 8px; }
 .barra-carteira .exibicao a { padding: 6px 10px; }
@@ -393,3 +420,8 @@ td.pct { min-width: 96px; }
 .tabela-carteira .nome { font-weight: 600; color: var(--texto); text-decoration: none; } .tabela-carteira .nome:hover { color: var(--destaque); text-decoration: underline; }
 .tabela-carteira small { display: block; color: var(--suave); font-size: 12px; margin-top: 2px; }
 .tabela-carteira .alerta-txt { color: var(--erro); }
+@media (max-width: 900px) {
+  .numeros.filtrantes { flex-wrap: wrap; }
+  .numeros.filtrantes .numero { white-space: normal; }
+  .barra-console > select, .linha-novo-usuario select, .linha-novo-usuario input, .linha-novo-usuario > div { width: 100%; }
+}

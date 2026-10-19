@@ -3,9 +3,10 @@
 import { bancoApp } from '../db.js';
 import { consultaFilaAnalise, FORMAS_PAGAMENTO } from '../../shared/financeiro.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
-import { h, montar, mensagem, formatar, numeros, tabela, selo } from '../ui.js';
+import { h, montar, mensagem, formatar, cartoesFiltro, tabela, selo } from '../ui.js';
 
-const ABAS = { analise: 'Em análise', liberados: 'Liberados · aguardando pedido' };
+// os cards são o filtro: em análise · fora do prazo (em análise vencidos) · liberados aguardando pedido
+const ABAS = ['analise', 'vencidos', 'liberados'];
 
 export function descreverCredito(p) {
   if (!p.forma_pagamento) return '';
@@ -18,7 +19,7 @@ export function descreverCredito(p) {
 
 export async function render(conteudo, { usuario, parametros }) {
   const db = await bancoApp();
-  const aba = parametros.get('aba') === 'liberados' ? 'liberados' : 'analise';
+  const aba = ABAS.includes(parametros.get('aba')) ? parametros.get('aba') : 'analise';
   const busca = parametros.get('busca') ?? '';
   const todos = (await db.execute(consultaFilaAnalise({ usuario, incluirLiberados: true }))).rows;
   const emAnalise = todos.filter((p) => p.status_atual === 'analise_financeira');
@@ -27,7 +28,8 @@ export async function render(conteudo, { usuario, parametros }) {
   const vencidos = emAnalise.filter((p) => Number(p.analise_financeira_vencida)).length;
   const termo = normalizarBusca(busca);
   const termoCnpj = termo.replace(/[.\-\/\s]/g, '');
-  const linhas = (aba === 'analise' ? emAnalise : liberados).filter((p) => !termo
+  const daAba = { analise: emAnalise, vencidos: emAnalise.filter((p) => Number(p.analise_financeira_vencida)), liberados }[aba];
+  const linhas = daAba.filter((p) => !termo
     || normalizarBusca(`${p.razao_social} ${p.nome_fantasia ?? ''} ${p.cidade ?? ''} ${p.vendedor_nome}`).includes(termo)
     || (termoCnpj && String(p.cnpj).startsWith(termoCnpj)) || String(p.codigo_cliente_erp ?? '') === busca.trim());
 
@@ -46,7 +48,7 @@ export async function render(conteudo, { usuario, parametros }) {
     { titulo: 'Carteira', valor: (p) => h('div', {}, p.vendedor_nome, h('div', { class: 'ajuda', style: 'margin:0' }, p.supervisor_nome ?? '')) },
     { titulo: 'Cadastro ERP', valor: (p) => formatar.data(p.dt_cadastro_erp) },
   ];
-  if (aba === 'analise') {
+  if (aba !== 'liberados') {
     colunas.push(
       { titulo: 'Dias em análise', classe: 'num', valor: (p) => (Number(p.analise_financeira_vencida)
         ? selo(`${p.dias_em_analise} · vencido`, 'erro') : selo(String(p.dias_em_analise ?? 0), 'ok')) },
@@ -62,14 +64,14 @@ export async function render(conteudo, { usuario, parametros }) {
   montar(conteudo,
     h('h1', {}, 'Console de crédito'),
     h('p', { class: 'ajuda' }, 'Clientes cadastrados no ERP aguardando o OK do financeiro. A liberação sempre ocorre: informe a condição (antecipado, à vista ou boleto), o prazo, o limite e se há restrição. O cliente passa para Aguardando pedido. O relatório de crédito do ERP faz o mesmo em lote.'),
-    numeros([['em análise', emAnalise.length, emAnalise.length ? 'alerta' : ''], ['fora do prazo', vencidos, vencidos ? 'erro' : ''],
-      ['liberados aguardando pedido', liberados.length, 'ok']], { compacto: true }),
-    // abas e busca numa linha só; os números ficam compactos para dar ênfase à lista
+    // cards (que são o filtro) e busca numa linha só; a lista fica com o destaque
     h('div', { class: 'barra-console' },
-      h('div', { class: 'visoes' }, Object.entries(ABAS).map(([k, t]) => h('a', { href: endereco({ aba: k }), class: k === aba ? 'ativa' : '' },
-        `${t} (${k === 'analise' ? emAnalise.length : liberados.length})`))),
+      cartoesFiltro([
+        { chave: 'analise', rotulo: 'em análise', valor: emAnalise.length, tipo: emAnalise.length ? 'alerta' : '', ativo: aba === 'analise', href: endereco({ aba: 'analise' }) },
+        { chave: 'vencidos', rotulo: 'fora do prazo', valor: vencidos, tipo: vencidos ? 'erro' : '', ativo: aba === 'vencidos', href: endereco({ aba: 'vencidos' }) },
+        { chave: 'liberados', rotulo: 'liberados aguardando pedido', valor: liberados.length, tipo: 'ok', ativo: aba === 'liberados', href: endereco({ aba: 'liberados' }) }]),
       h('form', { class: 'barra-busca', onsubmit: (ev) => { ev.preventDefault(); location.hash = endereco({ busca: campo.value.trim() }); } },
         campo, h('button', { type: 'submit' }, 'Buscar'))),
     linhas.length ? tabela(colunas, linhas)
-      : mensagem(busca ? `Nada encontrado para "${busca}".` : aba === 'analise' ? 'Nenhum cliente aguardando análise.' : 'Nenhum cliente liberado aguardando pedido.', 'info'));
+      : mensagem(busca ? `Nada encontrado para "${busca}".` : { analise: 'Nenhum cliente aguardando análise.', vencidos: 'Nenhum cliente fora do prazo.', liberados: 'Nenhum cliente liberado aguardando pedido.' }[aba], 'info'));
 }

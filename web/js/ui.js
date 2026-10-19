@@ -58,6 +58,18 @@ export function numeros(itens, { compacto = false } = {}) {
   return h('div', { class: compacto ? 'numeros compactos' : 'numeros' }, itens.map(([rotulo, valor, tipo]) => h('div', { class: `numero ${tipo ?? ''}` }, h('b', {}, formatar.numero(valor)), h('span', {}, rotulo))));
 }
 
+/**
+ * Cards compactos que funcionam como filtro (o próprio card é o filtro — sem abas/seletor à parte).
+ * itens: { rotulo, valor, tipo?, ativo?, href? , aoClicar?, chave? }
+ */
+export function cartoesFiltro(itens) {
+  return h('div', { class: 'numeros compactos filtrantes', role: 'tablist' }, itens.map((i) => h(i.href ? 'a' : 'button', {
+    class: `numero ${i.tipo ?? ''} ${i.ativo ? 'ativo' : ''}`, role: 'tab', 'aria-selected': i.ativo ? 'true' : 'false',
+    href: i.href ?? null, type: i.href ? null : 'button', dados: i.chave ? { filtro: i.chave } : null,
+    onclick: i.aoClicar ?? null,
+  }, h('b', {}, formatar.numero(i.valor)), h('span', {}, i.rotulo))));
+}
+
 export function selo(texto, classe = '') {
   return h('span', { class: `selo ${classe}` }, texto);
 }

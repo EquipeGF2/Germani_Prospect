@@ -86,7 +86,25 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForSelector('.tabela-carteira tbody tr');
   const umaLinha = () => pagina.locator('.barra-carteira > *').evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().bottom))).size);
   assert.equal(await umaLinha(), 1, 'filtros da lista numa linha só (1440 px, admin)');
+  // rótulo da coluna ordena: Prospect crescente, depois decrescente
+  await pagina.click('.tabela-carteira th a[data-ordem="prospect"]');
+  await pagina.waitForFunction(() => location.hash.includes('ordem=prospect') && !location.hash.includes('dir=desc'));
+  await telaPronta();
+  const nomesAsc = await pagina.locator('.tabela-carteira tbody a.nome').allInnerTexts();
+  assert.deepEqual(nomesAsc, [...nomesAsc].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
+  await pagina.click('.tabela-carteira th a[data-ordem="prospect"]');
+  await pagina.waitForFunction(() => location.hash.includes('dir=desc'));
+  await telaPronta();
+  assert.match(await pagina.locator('.tabela-carteira th a.ativa').innerText(), /▼/);
+  // filtro por onda
+  await pagina.selectOption('#filtro-onda', '2');
+  await pagina.waitForFunction(() => location.hash.includes('onda=2'));
+  await telaPronta();
+  assert.ok((await pagina.locator('.tabela-carteira tbody td:nth-child(4)').allInnerTexts()).every((t) => t === 'Onda 2'));
+  assert.equal(await umaLinha(), 1, 'com o filtro de onda continua numa linha');
   await foto('25-lista-tabela');
+  await pagina.goto(`${base}#/carteira`);
+  await telaPronta();
   await pagina.goto(`${base}#/carteira?visao=onda`);
   await telaPronta();
   const ondas = await pagina.locator('.lista-grupos .grupo b').allInnerTexts();
@@ -119,6 +137,15 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await entrar('financeiro');
   await pagina.waitForSelector('h1:text("Console de crédito")');
   assert.ok(await pagina.locator('table tbody tr').count() >= 0);
+  assert.equal(await pagina.locator('.barra-console .visoes').count(), 0, 'sem abas: os cards são o filtro');
+  const topoConsole = await pagina.locator('.barra-console > *').evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().top))).size);
+  assert.equal(topoConsole, 1, 'cards e busca numa linha');
+  await pagina.click('.filtrantes [data-filtro="liberados"]');
+  await pagina.waitForFunction(() => location.hash.includes('aba=liberados'));
+  await telaPronta();
+  assert.ok(await pagina.locator('.filtrantes [data-filtro="liberados"].ativo').count());
+  await pagina.click('.filtrantes [data-filtro="analise"]');
+  await telaPronta();
   await foto('24-exemplo-console');
   await pagina.click('a:text("Liberar crédito") >> nth=0');
   await pagina.waitForSelector('h1:text("Liberar crédito")');
