@@ -13,7 +13,7 @@ let db;
 //  P5 v2 baixa 05/10                               → invalido (sai do denominador)
 //  P6 v2 sem_interesse 01/10 + sem_conclusao 08/10 → sem_interesse
 //  P7 v3 não contactado (Lajeado)
-//  P8 v3 com_interesse 15/10                       → em_prospeccao com interesse (Lajeado)
+//  P8 v3 com_interesse 15/10                       → em_negociacao (Lajeado)
 //  P9 v3 pedido 16/10 sem contato                  → venda_realizada (convertido sem registro)
 //  P10 v3 não contactado
 before(async () => {
@@ -67,7 +67,7 @@ test('posição numa data passada usa o histórico (09/10)', async () => {
   const [g] = await rodar(consultaPosicao({ agrupar: 'geral', data: '2026-10-09' }));
   assert.equal(Number(g.invalidos), 1);       // P5 baixado em 05/10
   assert.equal(Number(g.contactados), 4);     // P2 P3 P4 P6
-  assert.equal(Number(g.com_interesse_aguardando_cadastro), 2); // P3 P4
+  assert.equal(Number(g.em_negociacao), 2);   // P3 P4 aguardando cadastro
   assert.equal(Number(g.sem_interesse), 1);   // P6 encerrado em 08/10
   assert.equal(Number(g.vendas), 0);
 });

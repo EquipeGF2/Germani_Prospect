@@ -55,8 +55,8 @@ A pasta `web/` (app) entra na F1. Ela vai importar `shared/` diretamente, sem du
 | Motivo obrigatório em "sem interesse" | CHECK em `contatos` | `validarContato` |
 | Data de retorno (opcional) não anterior ao contato | CHECK em `contatos` | `validarContato` |
 | Representante não usa rota; vendedor usa | coluna `usuarios.tipo_atuacao` | `shared/carteira.mjs` (visões e colunas) |
-| Limite de 2 atendimentos / saída da lista | trigger `trg_contatos_validar` + `vw_prospects.na_lista` | `shared/carteira.mjs` |
-| 2 tentativas → sai da fila | trigger `trg_contatos_aplicar` + `parametros` | — |
+| Saída da lista (Em negociação, 2 sem interesse, ERP) sem sair dos indicadores | `status.lista_trabalho` + `vw_prospects.na_lista` | `shared/carteira.mjs` |
+| 2 atendimentos sem interesse → Sem interesse | trigger `trg_contatos_aplicar` + `parametros` | — |
 | Vendedor só registra na própria carteira | trigger `trg_contatos_validar` | filtro das telas |
 | CNPJ válido (inclusive alfanumérico) | `length = 14` | `analisarCnpj` |
 | Histórico imutável | triggers `*_imutavel_*` | — |

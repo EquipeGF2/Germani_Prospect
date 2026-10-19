@@ -3,10 +3,11 @@
 //   * POSIÇÃO  — foto da carteira numa data (status de cada prospect naquele dia, via historico_status)
 //   * ATIVIDADE — o que aconteceu dentro de um período (contatos, encerramentos, cadastros, pedidos)
 //
+// Tudo o que acontece na base conta aqui — inclusive prospects fora da lista de trabalho
+// (Em negociação, Sem interesse, Cadastrado, Venda, Inválido). Painel por equipe = agrupar 'supervisor'.
 // Fórmulas (posição):
 //   carteira_valida  = total − inválidos
 //   contactados      = status com conta_contactado = 1 (tudo exceto "Não contactado" e "Inválido")
-//   com interesse aguardando cadastro = Em prospecção com interesse registrado até a data
 //   pct_contactado   = contactados ÷ carteira_valida
 //   pct_cadastro     = (cadastrados ERP + vendas) ÷ contactados
 //   pct_conversao    = vendas ÷ contactados
@@ -53,11 +54,10 @@ export function consultaPosicao({ agrupar = 'geral', data = null, filtros } = {}
   const statusExpr = data
     ? `(SELECT h.status_novo FROM historico_status h WHERE h.prospect_id = p.id AND h.data_evento <= ? ORDER BY h.id DESC LIMIT 1)`
     : 'p.status_atual';
-  const interesseExpr = data ? '(p.dt_interesse IS NOT NULL AND p.dt_interesse <= ?)' : '(p.dt_interesse IS NOT NULL)';
-  const args = data ? [data, data, ...f.args] : [...f.args];
+  const args = data ? [data, ...f.args] : [...f.args];
   const sql = `
 WITH base AS (
-  SELECT ${g.chave} AS chave, ${g.rotulo} AS rotulo, ${statusExpr} AS status, ${interesseExpr} AS interesse
+  SELECT ${g.chave} AS chave, ${g.rotulo} AS rotulo, ${statusExpr} AS status
     FROM prospects p
     JOIN usuarios v ON v.id = p.vendedor_id
     LEFT JOIN usuarios sup ON sup.id = v.supervisor_id
@@ -70,7 +70,7 @@ SELECT b.chave, MIN(b.rotulo) AS rotulo,
        SUM(s.conta_contactado)                                      AS contactados,
        SUM(b.status = 'nao_contactado')                             AS nao_contactados,
        SUM(b.status = 'em_prospeccao')                              AS em_prospeccao,
-       SUM(b.status = 'em_prospeccao' AND b.interesse)              AS com_interesse_aguardando_cadastro,
+       SUM(b.status = 'em_negociacao')                              AS em_negociacao,
        SUM(b.status = 'sem_interesse')                              AS sem_interesse,
        SUM(b.status = 'cadastrado_erp')                             AS cadastrados_erp,
        SUM(b.status = 'venda_realizada')                            AS vendas

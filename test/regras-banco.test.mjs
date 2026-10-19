@@ -42,16 +42,12 @@ test('data de retorno é opcional, mas não pode ser anterior ao contato', async
   assert.equal((await prospect(db, id)).data_proxima_acao, '2026-10-08');
 });
 
-test('não existe mais o status "Em negociação"', async () => {
-  const r = await db.execute("SELECT count(*) n FROM status WHERE codigo = 'em_negociacao'");
-  assert.equal(Number(r.rows[0].n), 0);
-});
-
-test('duas tentativas sem interesse → sai da fila como "Sem interesse"', async () => {
+test('duas tentativas sem interesse → sai da lista como "Sem interesse", mas aceita novos contatos', async () => {
   const id = await criarProspect(db, { n: 1 });
   await registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-01' });
   let p = await prospect(db, id);
   assert.equal(p.status_atual, 'em_prospeccao');
+  assert.equal(p.na_lista, 1);
   assert.equal(p.tentativas, 1);
   assert.equal(p.dt_primeiro_contato, '2026-10-01');
   assert.equal(p.data_proxima_acao, '2026-10-08'); // dias_entre_tentativas = 7
@@ -60,9 +56,19 @@ test('duas tentativas sem interesse → sai da fila como "Sem interesse"', async
   assert.equal(p.status_atual, 'sem_interesse');
   assert.equal(p.dt_segundo_contato, '2026-10-08');
   assert.equal(p.data_proxima_acao, null);
+  assert.equal(p.na_lista, 0);
   assert.equal(p.pendente_hoje, 0);
-  assert.equal(p.motivo_sem_interesse, 'Sem retorno após as tentativas');
-  await assert.rejects(registrarContato(db, { prospectId: id, resultado: 'com_interesse', data: '2026-10-10' }), /carteira ativa|limite de atendimentos/);
+  assert.equal(p.motivo_sem_interesse, 'Preço acima do praticado'); // "sem conclusão" não apaga o motivo informado
+  // sem limite: 3º contato continua possível
+  await registrarContato(db, { prospectId: id, resultado: 'sem_conclusao', data: '2026-10-10' });
+  assert.equal((await prospect(db, id)).status_atual, 'sem_interesse');
+  // e um novo interesse reabre como Em negociação
+  await registrarContato(db, { prospectId: id, resultado: 'com_interesse', data: '2026-10-15' });
+  p = await prospect(db, id);
+  assert.equal(p.status_atual, 'em_negociacao');
+  assert.equal(p.tentativas, 4);
+  assert.equal(p.dias_corridos > 0, true);
+  assert.equal(p.dt_primeiro_contato, '2026-10-01'); // dias corridos contam do 1º atendimento
 });
 
 test('motivo da última tentativa é o motivo final', async () => {
@@ -85,37 +91,53 @@ test('tentativas máximas é parâmetro editável (e a alteração é auditada)'
   assert.equal(JSON.parse(a.rows[0].detalhes).para, '3');
 });
 
-test('com interesse: continua "Em prospecção", marca interesse e abre prazo de cadastro (15 dias)', async () => {
+test('com interesse → Em negociação (atendido em dd/mm), aguardando cadastro, fora da lista', async () => {
   const id = await criarProspect(db, { n: 1 });
   await registrarContato(db, { prospectId: id, resultado: 'com_interesse', retorno: '2026-10-04', data: '2026-10-01' });
   const p = await prospect(db, id);
-  assert.equal(p.status_atual, 'em_prospeccao');
-  assert.equal(p.com_interesse, 1);
+  assert.equal(p.status_atual, 'em_negociacao');
+  assert.equal(p.status_descricao, 'Em negociação · atendido em 01/10/2026');
   assert.equal(p.data_proxima_acao, '2026-10-04');
+  assert.equal(p.retorno_pendente, 1);
   assert.equal(p.prazo_cadastro_ate, '2026-10-16');
-  assert.equal(p.na_lista, 1);
+  assert.equal(p.prazo_cadastro_vencido, 1);
+  assert.equal(p.na_lista, 0);
 });
 
-test('2 atendimentos: sai da lista em qualquer resultado, mas continua nos indicadores', async () => {
-  const a = await criarProspect(db, { n: 1 });
-  await registrarContato(db, { prospectId: a, resultado: 'sem_conclusao', data: '2026-10-01' });
-  await registrarContato(db, { prospectId: a, resultado: 'com_interesse', data: '2026-10-05' });
-  const p = await prospect(db, a);
-  assert.equal(p.status_atual, 'em_prospeccao'); // com interesse: aguarda cadastro no ERP
-  assert.equal(p.com_interesse, 1);
-  assert.equal(p.na_lista, 0);
-  assert.equal(p.pendente_hoje, 0);
+test('em negociação: sem conclusão mantém; sem interesse encerra; contatos sem limite', async () => {
+  const id = await criarProspect(db, { n: 1 });
+  await registrarContato(db, { prospectId: id, resultado: 'com_interesse', data: '2026-10-01' });
+  for (const d of ['2026-10-02', '2026-10-03', '2026-10-04']) await registrarContato(db, { prospectId: id, resultado: 'sem_conclusao', data: d });
+  let p = await prospect(db, id);
+  assert.equal(p.status_atual, 'em_negociacao');
+  assert.equal(p.tentativas, 4);
+  assert.equal(p.status_descricao, 'Em negociação · atendido em 01/10/2026');
+  await registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'PEDIDO_MINIMO', data: '2026-10-07' });
+  p = await prospect(db, id);
+  assert.equal(p.status_atual, 'sem_interesse');
+  assert.equal(p.motivo_sem_interesse, 'Pedido mínimo alto');
+});
+
+test('contato em cliente já cadastrado no ERP só registra (status não muda)', async () => {
+  const id = await criarProspect(db, { n: 1 });
+  await registrarContato(db, { prospectId: id, resultado: 'com_interesse', data: '2026-10-01' });
+  await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-03', documento: 'C1' });
+  await registrarContato(db, { prospectId: id, resultado: 'sem_conclusao', data: '2026-10-05' });
+  const p = await prospect(db, id);
+  assert.equal(p.status_atual, 'cadastrado_erp');
   assert.equal(p.data_proxima_acao, null);
-  assert.equal(p.prazo_cadastro_ate, '2026-10-20');
-  await assert.rejects(registrarContato(db, { prospectId: a, resultado: 'sem_conclusao', data: '2026-10-06' }), /limite de atendimentos/);
+});
+
+test('tudo conta para os indicadores, mesmo fora da lista', async () => {
+  const a = await criarProspect(db, { n: 1 });
+  await registrarContato(db, { prospectId: a, resultado: 'com_interesse', data: '2026-10-01' });
   const b = await criarProspect(db, { n: 2 });
-  await registrarContato(db, { prospectId: b, resultado: 'com_interesse', data: '2026-10-01' });
+  await registrarContato(db, { prospectId: b, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-01' });
   await registrarContato(db, { prospectId: b, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-03' });
-  assert.equal((await prospect(db, b)).status_atual, 'sem_interesse');
   const r = await db.execute('SELECT count(*) n FROM vw_prospects WHERE na_lista = 1');
   assert.equal(Number(r.rows[0].n), 0);
   const ind = await db.execute("SELECT count(*) n FROM prospects WHERE status_atual <> 'nao_contactado'");
-  assert.equal(Number(ind.rows[0].n), 2); // contam como contactados nos indicadores
+  assert.equal(Number(ind.rows[0].n), 2);
 });
 
 test('pedido tira da lista e continua nos indicadores', async () => {
@@ -197,7 +219,7 @@ test('CNPJ baixado: inválido, congelado, impossibilitado de faturamento, histó
   assert.equal(p.dt_baixa, '2026-10-10');
   assert.equal(p.dt_primeiro_contato, '2026-10-01');
   await assert.rejects(evento(db, { prospectId: id, tipo: 'pedido', data: '2026-10-11', documento: 'P1' }), /impossibilitado de faturamento/);
-  await assert.rejects(registrarContato(db, { prospectId: id, resultado: 'sem_conclusao', data: '2026-10-12' }), /carteira ativa/);
+  await assert.rejects(registrarContato(db, { prospectId: id, resultado: 'sem_conclusao', data: '2026-10-12' }), /não aceita novo contato/);
   await assert.rejects(db.execute({ sql: "UPDATE prospects SET razao_social = 'X' WHERE id = ?", args: [id] }), /congelado/);
   const c = await db.execute({ sql: 'SELECT count(*) n FROM contatos WHERE prospect_id = ?', args: [id] });
   assert.equal(Number(c.rows[0].n), 1);

@@ -29,7 +29,7 @@ before(async () => {
   await criarProspect(db, { n: 6, vendedorId: 3, cidade: 'Lajeado', bairro: 'Centro', rota: 'R7', subrota: 'S2' });
   const p7 = await criarProspect(db, { n: 7, vendedorId: 3, cidade: 'Lajeado', bairro: 'Florestal', rota: 'R8' });
   await registrarContato(db, { prospectId: p7, usuarioId: 3, resultado: 'sem_conclusao', data: '2026-10-01' });
-  await registrarContato(db, { prospectId: p7, usuarioId: 3, resultado: 'com_interesse', data: '2026-10-05' }); // 2º atendimento: sai da lista
+  await registrarContato(db, { prospectId: p7, usuarioId: 3, resultado: 'com_interesse', data: '2026-10-05' }); // em negociação: sai da lista
 });
 
 const linhas = async (q) => (await db.execute(q)).rows;
@@ -39,8 +39,8 @@ test('forma de trabalho e visões: representante sem rota; vendedor e gestão co
   assert.equal(formaDeTrabalho({ id: 9, perfil: 'vendedor', tipo_atuacao: null }), 'representante'); // não definido = mais restrito
   assert.equal(formaDeTrabalho(VEND), 'vendedor');
   assert.equal(formaDeTrabalho(SUP), 'gestao');
-  assert.deepEqual(visoesPermitidas(REP), ['lista', 'cidade', 'bairro']);
-  assert.deepEqual(visoesPermitidas(VEND), ['lista', 'cidade', 'bairro', 'rota']);
+  assert.deepEqual(visoesPermitidas(REP), ['lista', 'cidade', 'bairro', 'status']);
+  assert.deepEqual(visoesPermitidas(VEND), ['lista', 'cidade', 'bairro', 'status', 'rota']);
   assert.throws(() => consultaCarteira({ usuario: REP, visao: 'rota' }), /não disponível para representante/);
   assert.throws(() => consultaCarteira({ usuario: REP, filtros: { rota: 'R1' } }), /não trabalha com rota/);
 });
@@ -55,7 +55,7 @@ test('lista do representante: só a própria carteira, só o que está na lista,
   assert.equal(todos.length, 4);
 });
 
-test('lista do vendedor: com rota/subrota; prospect com 2 atendimentos fora da lista', async () => {
+test('lista do vendedor: com rota/subrota; prospect em negociação fora da lista', async () => {
   const r = await linhas(consultaCarteira({ usuario: VEND }));
   assert.equal(r.length, 2);
   assert.deepEqual(r.map((x) => x.rota), ['R7', 'R7']);
@@ -97,9 +97,21 @@ test('indicadores continuam contando quem saiu da lista; agrupamento por bairro 
   const [g] = await linhas(consultaPosicao({ agrupar: 'geral' }));
   assert.equal(Number(g.total), 7);
   assert.equal(Number(g.vendas), 1);
-  assert.equal(Number(g.com_interesse_aguardando_cadastro), 1);
+  assert.equal(Number(g.em_negociacao), 1);
   const b = await linhas(consultaPosicao({ agrupar: 'bairro' }));
   assert.equal(Number(b.find((x) => x.rotulo === 'Centro — Lajeado/RS').total), 2);
   const r = await linhas(consultaPosicao({ agrupar: 'rota' }));
   assert.deepEqual(r.map((x) => x.rotulo).sort(), ['R7 / S1', 'R7 / S2', 'R8']); // só prospects de vendedor
+});
+
+test('acompanhamento por status: carteira inteira, inclusive o que saiu da lista', async () => {
+  const r = await linhas(consultaCarteira({ usuario: VEND, visao: 'status' }));
+  const por = Object.fromEntries(r.map((x) => [x.status_atual, Number(x.prospects)]));
+  assert.deepEqual(por, { nao_contactado: 2, em_prospeccao: 0, em_negociacao: 1, sem_interesse: 0, cadastrado_erp: 0, venda_realizada: 0, invalido: 0 });
+  const neg = await linhas(consultaCarteira({ usuario: VEND, filtros: { status: 'em_negociacao' } }));
+  assert.equal(neg.length, 1);
+  assert.equal(neg[0].status_descricao, 'Em negociação · atendido em 05/10/2026');
+  assert.equal(neg[0].dt_primeiro_contato, '2026-10-01');
+  const rep = Object.fromEntries((await linhas(consultaCarteira({ usuario: REP, visao: 'status' }))).map((x) => [x.status_atual, Number(x.prospects)]));
+  assert.equal(rep.venda_realizada, 1); // representante também acompanha por status
 });

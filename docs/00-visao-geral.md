@@ -10,14 +10,17 @@ tentativas de contato e o supervisor acompanha cobertura e conversão.
 ## Fluxo do prospect (resumo)
 
 ```
- planilha base ──► Não contactado ──(1º atendimento)──► Em prospecção ──(2º atendimento)──┬─ sem interesse ──► Sem interesse
-                                                         (com ou sem interesse)          └─ com interesse ──► aguarda cadastro no ERP
+ planilha base ──► Não contactado ──(atendimento sem interesse)──► Em prospecção ──(2º sem interesse)──► Sem interesse
+                         │                                              │
+                         └──────────────(com interesse)─────────────────┴──► Em negociação · atendido em dd/mm
+                                                                              (aguarda cadastro no ERP)
  arquivo ERP de cadastro ──► Cadastrado no ERP          arquivo ERP de pedidos ──► Venda realizada (final)
  arquivo de CNPJs baixados ──► Inválido (congelado, impossibilitado de faturamento)
 ```
 
-Com **pedido** ou após **2 atendimentos** o prospect sai da lista de trabalho do vendedor, mas segue
-contando em todos os indicadores.
+A **lista de prospects** mostra só Não contactado e Em prospecção. Todo o resto continua visível no
+**acompanhamento por status** do vendedor e **sempre conta nos indicadores** de cada equipe e no geral.
+Contatos não têm limite; os dias corridos contam sempre do 1º atendimento.
 
 Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 
@@ -25,8 +28,8 @@ Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 
 | Perfil | No app | Por importação (administrador) |
 |---|---|---|
-| Representante | consulta a própria carteira por lista, cidade e bairro (**sem rota**); registra visita/contato e **falta de interesse** | — |
-| Vendedor | o mesmo, com visão mais ampla: **rota e subrota** além de lista, cidade e bairro | — |
+| Representante | lista de prospects por lista, cidade e bairro (**sem rota**) + acompanhamento por status; registra visita/contato, interesse e **falta de interesse** | — |
+| Vendedor | o mesmo, com visão mais ampla: **rota e subrota** | — |
 | Supervisor | o mesmo, para a sua equipe; acompanha painel; redistribui carteira | — |
 | Administrador | tudo | base inicial de prospects; cadastro de clientes do ERP; pedidos do ERP; CNPJs baixados; usuários e senhas |
 

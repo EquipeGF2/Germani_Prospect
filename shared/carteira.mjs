@@ -2,23 +2,25 @@
 // docs/03-regras-negocio.md §6
 //
 // Duas formas de trabalho:
-//   * REPRESENTANTE — visita a carteira. Visões: lista, cidade, bairro. NÃO tem rota:
+//   * REPRESENTANTE — visita a carteira. Visões: lista, cidade, bairro, status. NÃO tem rota:
 //     não agrupa, não filtra e não recebe as colunas rota/subrota.
-//   * VENDEDOR      — atendimento mais amplo. Visões: lista, cidade, bairro, rota (rota + subrota).
+//   * VENDEDOR      — atendimento mais amplo. Visões: lista, cidade, bairro, status, rota (rota + subrota).
 //   * supervisor / administrador — todas as visões, sobre a equipe / sobre tudo.
 // tipo_atuacao NULL é tratado como representante (a forma mais restrita).
 //
-// A lista mostra só o que está NA LISTA de trabalho (vw_prospects.na_lista = 1): sem pedido, cadastro
-// ou baixa e abaixo do limite de atendimentos. `incluirForaDaLista` serve para consulta/histórico.
-// Indicadores não usam este módulo (contam a carteira inteira — shared/indicadores.mjs).
+// Lista de prospects = só Não contactado / Em prospecção (vw_prospects.na_lista = 1).
+// Acompanhamento = visão 'status' (ou filtro de status): mostra a carteira inteira por status, inclusive
+// Em negociação, Sem interesse, Cadastrado, Venda e Inválido — para o vendedor seguir o andamento.
+// Indicadores não usam este módulo (contam tudo — shared/indicadores.mjs).
 import { normalizarBusca } from './texto.mjs';
 
-export const VISOES = Object.freeze(['lista', 'cidade', 'bairro', 'rota']);
+export const VISOES = Object.freeze(['lista', 'cidade', 'bairro', 'status', 'rota']);
 
 const COLUNAS_LISTA = ['id', 'cnpj', 'razao_social', 'nome_fantasia', 'endereco', 'bairro', 'cidade', 'uf', 'cep',
-  'latitude', 'longitude', 'telefone', 'tipologia_gtm', 'status_atual', 'status_nome', 'status_cor', 'tentativas',
-  'dt_primeiro_contato', 'dt_segundo_contato', 'dt_ultimo_contato', 'data_proxima_acao', 'dias_corridos',
-  'pendente_hoje', 'na_lista', 'com_interesse', 'prazo_cadastro_vencido', 'vendedor_id', 'vendedor_nome'];
+  'latitude', 'longitude', 'telefone', 'tipologia_gtm', 'status_atual', 'status_nome', 'status_descricao', 'status_cor',
+  'tentativas', 'dt_primeiro_contato', 'dt_segundo_contato', 'dt_ultimo_contato', 'dt_interesse', 'data_proxima_acao',
+  'dias_corridos', 'pendente_hoje', 'retorno_pendente', 'na_lista', 'com_interesse', 'prazo_cadastro_vencido',
+  'motivo_sem_interesse', 'dt_cadastro_erp', 'dt_pedido', 'numero_pedido', 'dt_baixa', 'vendedor_id', 'vendedor_nome'];
 // rota/subrota só existem para prospects de vendedor (nunca de representante), mesmo na visão de gestão
 const COLUNAS_ROTA = [
   "CASE WHEN vendedor_tipo_atuacao = 'vendedor' THEN rota END AS rota",
@@ -33,7 +35,7 @@ export function formaDeTrabalho(usuario) {
 
 /** Visões que o usuário pode abrir. */
 export function visoesPermitidas(usuario) {
-  return formaDeTrabalho(usuario) === 'representante' ? ['lista', 'cidade', 'bairro'] : [...VISOES];
+  return formaDeTrabalho(usuario) === 'representante' ? ['lista', 'cidade', 'bairro', 'status'] : [...VISOES];
 }
 
 function escopo(usuario) {
@@ -45,8 +47,9 @@ function escopo(usuario) {
 /**
  * Monta a consulta da lista de prospects.
  * @param usuario  { id, perfil, tipo_atuacao }
- * @param visao    'lista' | 'cidade' | 'bairro' | 'rota'
- * @param filtros  { cidadeBusca, uf, bairroBusca, rota, subrota, status, somentePendentes, vendedorId }
+ * @param visao    'lista' | 'cidade' | 'bairro' | 'status' | 'rota'
+ * @param filtros  { cidadeBusca, uf, bairroBusca, rota, subrota, status, somentePendentes, somenteRetornos, vendedorId }
+ *                 Informar `status` (ou abrir a visão 'status') mostra a carteira inteira, não só a lista.
  * @param busca    texto livre (nome, CNPJ, cidade, bairro) — acentos ignorados
  * @returns {{ sql: string, args: any[], colunas?: string[] }}
  */
@@ -59,8 +62,9 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   if (!comRota && (filtros.rota || filtros.subrota)) throw new Error('representante não trabalha com rota');
 
   const { where, args } = escopo(usuario);
-  if (!incluirForaDaLista) where.push('na_lista = 1');
+  if (!incluirForaDaLista && visao !== 'status' && !filtros.status && !filtros.somenteRetornos) where.push('na_lista = 1');
   if (filtros.somentePendentes) where.push('pendente_hoje = 1');
+  if (filtros.somenteRetornos) where.push('retorno_pendente = 1');
   if (filtros.status) { where.push('status_atual = ?'); args.push(filtros.status); }
   if (filtros.vendedorId && usuario.perfil !== 'vendedor') { where.push('vendedor_id = ?'); args.push(filtros.vendedorId); }
   if (filtros.cidadeBusca) { where.push('cidade_busca = ?'); args.push(filtros.cidadeBusca); }
@@ -82,9 +86,24 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
     return {
       colunas: colunas.map((c) => c.split(' AS ').pop()),
       sql: `SELECT ${colunas.join(', ')} FROM vw_prospects ${filtro}
-            ORDER BY pendente_hoje DESC, COALESCE(data_proxima_acao, '0000-00-00'), cidade_busca, bairro_busca, razao_social
+            ORDER BY pendente_hoje DESC, retorno_pendente DESC, COALESCE(data_proxima_acao, '0000-00-00'), cidade_busca, bairro_busca, razao_social
             LIMIT ? OFFSET ?`,
       args: [...args, limite, deslocamento],
+    };
+  }
+
+  if (visao === 'status') {
+    return {
+      sql: `SELECT s.codigo AS status_atual, s.nome AS rotulo, s.cor AS status_cor, s.ordem, s.lista_trabalho AS na_lista,
+                   COUNT(p.id)                        AS prospects,
+                   COALESCE(SUM(p.retorno_pendente), 0) AS retornos_pendentes,
+                   COALESCE(SUM(p.prazo_cadastro_vencido), 0) AS prazos_cadastro_vencidos,
+                   CAST(ROUND(AVG(p.dias_corridos)) AS INTEGER) AS media_dias_corridos
+              FROM status s
+              LEFT JOIN (SELECT * FROM vw_prospects ${filtro}) p ON p.status_atual = s.codigo
+             GROUP BY s.codigo
+             ORDER BY s.ordem`,
+      args,
     };
   }
 

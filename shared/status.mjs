@@ -3,14 +3,19 @@
 export const STATUS = Object.freeze({
   NAO_CONTACTADO: 'nao_contactado',
   EM_PROSPECCAO: 'em_prospeccao',
+  EM_NEGOCIACAO: 'em_negociacao',
   SEM_INTERESSE: 'sem_interesse',
   CADASTRADO_ERP: 'cadastrado_erp',
   VENDA_REALIZADA: 'venda_realizada',
   INVALIDO: 'invalido',
 });
 
-/** Status em que o vendedor ainda trabalha o prospect (aceitam novo contato). */
-export const STATUS_ATIVOS = Object.freeze([STATUS.NAO_CONTACTADO, STATUS.EM_PROSPECCAO]);
+/** Status que aparecem na lista de prospects (os demais só saem da lista — continuam nos indicadores). */
+export const STATUS_LISTA = Object.freeze([STATUS.NAO_CONTACTADO, STATUS.EM_PROSPECCAO]);
+
+/** Status que aceitam novo contato (não há limite de contatos). */
+export const STATUS_ACEITAM_CONTATO = Object.freeze([STATUS.NAO_CONTACTADO, STATUS.EM_PROSPECCAO, STATUS.EM_NEGOCIACAO,
+  STATUS.SEM_INTERESSE, STATUS.CADASTRADO_ERP]);
 
 /** Tipo de atuação: representante (sem rota) · vendedor (com rota/subrota). NULL é tratado como representante. */
 export const TIPOS_ATUACAO = Object.freeze(['representante', 'vendedor']);

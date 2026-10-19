@@ -8,8 +8,8 @@ Sem servidor (ADR-0001), o app fala SQL com o Turso. Para manter o banco íntegr
 | Tela | Fonte | Filtro obrigatório na consulta |
 |---|---|---|
 | Lista de prospects (lista · cidade · bairro · rota) | `consultaCarteira()` de `shared/carteira.mjs` sobre `vw_prospects` | escopo e visões pelo usuário: representante sem rota; vendedor com rota; supervisor = equipe |
-| Consulta de prospects fora da lista (encerrados, vendidos, baixados) | `consultaCarteira({ incluirForaDaLista: true })` | idem |
-| Retornos hoje | `vw_prospects WHERE pendente_hoje = 1` | idem carteira |
+| Acompanhamento por status (carteira inteira) | `consultaCarteira({ visao: 'status' })` e `consultaCarteira({ filtros: { status } })` | idem |
+| Retornos hoje | `consultaCarteira({ filtros: { somenteRetornos: true } })` (inclui Em negociação) | idem carteira |
 | Ficha | `vw_prospects` + `vw_linha_tempo` | `prospect_id` |
 | Formulário de contato | `motivos_sem_interesse WHERE ativo = 1 AND uso_app = 1 ORDER BY ordem`, `parametros` | — |
 | Painel | `shared/indicadores.mjs` (`consultaPosicao`, `consultaAtividade`), `vw_ultimo_lancamento`, `vw_ranking_motivos`, `vw_prospects` (alertas) | supervisor: o próprio `supervisor_id` |
@@ -26,7 +26,7 @@ VALUES (:uuid_do_aparelho, :prospect, :usuario, :tentativas_atuais + 1, :data_do
         :canal, :resultado, :motivo, :obs, normalizarBusca(:obs), :retorno, :lat, :lng, :dist, :gps);
 ```
 - Validar antes com `validarContato()` (`shared/status.mjs`) — mesma regra do banco, mensagem amigável.
-- O banco recusa com mensagem clara: fora da carteira ativa, limite de atendimentos atingido, sem permissão, tentativa fora de sequência,
+- O banco recusa com mensagem clara: prospect que não aceita contato (venda/baixado), sem permissão, tentativa fora de sequência,
   data anterior ao último contato, motivo inválido, motivo que exige observação.
 - `numero_tentativa` fora de sequência indica que outro aparelho registrou antes: recarregar a ficha.
 
