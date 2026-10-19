@@ -53,3 +53,11 @@ jobs:
           GERMANI_SENHA_INICIAL: ${{ secrets.ADMIN_SENHA_INICIAL }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      - name: Conferir o login como o site faz
+        run: node scripts/conferir-acesso.mjs
+        env:
+          CONF_LOGIN: ${{ github.event.inputs.login }}
+          CONF_SENHA: ${{ secrets.ADMIN_SENHA_INICIAL }}
+          SITE_URL: ${{ vars.TURSO_DATABASE_URL }}
+          SITE_TOKEN: ${{ secrets.TURSO_APP_TOKEN }}
+          ADMIN_URL: ${{ secrets.TURSO_DATABASE_URL }}

@@ -72,7 +72,12 @@ Local: `npm run site && npm run servir` → http://localhost:8080 (modo demonstr
 2. Actions → *Criar administrador* → *Run workflow* → login (ex.: `genaro`), nome completo e `CRIAR`.
    O workflow aplica as migrações pendentes e cria o administrador com essa senha.
 3. Entrar no site com o login e a senha. Para mudar a senha depois: Administração → Usuários → *Definir senha*.
-4. (Opcional) apagar o Secret `ADMIN_SENHA_INICIAL`. Rodar de novo com o mesmo login dá erro (login já existe).
+4. (Opcional) apagar o Secret `ADMIN_SENHA_INICIAL`. Rodar de novo com o mesmo login **redefine a senha** com a do Secret
+   (e reativa o usuário).
+
+O último passo do workflow, **"Conferir o login como o site faz"**, entra no banco com a mesma URL e o mesmo token do site
+(variável `TURSO_DATABASE_URL` + secret `TURSO_APP_TOKEN`) e mostra OK/ERRO para: site fora do modo demonstração, site e
+workflows no mesmo banco, usuário encontrado pelo token do app e senha conferindo. Nunca imprime senha nem token.
 
 Migração aplicada nunca é editada: o `migrate` compara o SHA-256 e para se o arquivo mudou.
 Mudança de estrutura = novo arquivo `db/migrations/NNNN_....sql`. **Depois de cada merge que traz migração nova,
@@ -129,5 +134,5 @@ TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-fi
 
 ## Logotipo
 
-O site usa o arquivo `web/img/logo-germani.jpg` (se existir) no topo do menu (em placa branca; menu recolhido = sigla "G")
+O site usa o arquivo `web/logo-germani.jpg` (se existir) no topo do menu (em placa branca; menu recolhido = sigla "G")
 e na tela de entrada. Sem o arquivo, fica a marca em texto. Para trocar: substituir o arquivo (JPG ou mesma extensão) e publicar.

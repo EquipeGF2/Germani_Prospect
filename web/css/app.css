@@ -31,7 +31,7 @@ a { color: var(--destaque); }
   font: 700 18px "IBM Plex Sans Condensed", sans-serif; flex: none; }
 .marca-nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; font: 700 1.05rem "IBM Plex Sans Condensed", sans-serif; letter-spacing: .02em; white-space: nowrap; }
 .marca-nome b { color: #F3A6AA; font-weight: 600; }
-/* logotipo (quando web/img/logo-germani.jpg existe): placa branca no topo do menu; recolhido = só a sigla */
+/* logotipo (quando web/logo-germani.jpg existe): placa branca no topo do menu; recolhido = só a sigla */
 .marca-logo, .logo-entrada { display: none; }
 .com-logo .marca-logo { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .com-logo .marca-logo img { height: 40px; max-width: 150px; object-fit: contain; background: #fff; border-radius: 8px; padding: 3px 8px; }
