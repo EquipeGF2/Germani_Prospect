@@ -36,15 +36,21 @@ function papelDe(usuario) {
 
 async function navegar() {
   const alvo = location.hash;
-  const conteudo = document.getElementById('conteudo');
-  conteudo.dataset.pronto = '';
+  const area = document.getElementById('conteudo');
+  area.dataset.pronto = '';
+  // cada navegação desenha no seu próprio contêiner: se uma tela anterior ainda estiver carregando,
+  // ela termina num contêiner que já saiu da página e não sobrescreve a tela atual
+  const conteudo = h('div', { class: 'tela' });
+  area.replaceChildren(conteudo);
   const [caminho, consulta = ''] = (location.hash.replace(/^#/, '') || '/inicio').split('?');
   const usuario = usuarioAtual();
   atualizarCasca({ usuario, caminho, consulta, papel: usuario ? papelDe(usuario) : '', aoSair: () => { sair(); irPara('/entrar'); } });
   const rota = ROTAS.find((r) => r.caminho === caminho) ?? (usuario ? ROTAS.find((r) => r.caminho === '/inicio') : null);
   if (!rota || (!rota.publica && !usuario)) return irPara('/entrar');
   if (rota.perfis && !rota.perfis.includes(usuario.perfil)) {
-    return montar(conteudo, mensagem(rota.caminho.startsWith('/admin') ? 'Esta área é exclusiva do administrador.' : 'Seu perfil não tem acesso a esta tela.', 'erro'));
+    montar(conteudo, mensagem(rota.caminho.startsWith('/admin') ? 'Esta área é exclusiva do administrador.' : 'Seu perfil não tem acesso a esta tela.', 'erro'));
+    area.dataset.pronto = alvo;
+    return;
   }
   if (rota.caminho.startsWith('/admin') && !rota.semToken && !temTokenAdmin()) {
     return irPara(`/admin/acesso?volta=${encodeURIComponent(caminho)}`);
@@ -57,7 +63,8 @@ async function navegar() {
     console.error(e);
     montar(conteudo, mensagem(`Erro ao abrir a tela: ${e.message}`, 'erro'));
   }
-  conteudo.dataset.pronto = alvo;   // tela desenhada para este endereço (os testes de tela esperam por isso)
+  if (area.firstChild !== conteudo) return;   // o usuário já foi para outra tela
+  area.dataset.pronto = alvo;   // tela desenhada para este endereço (os testes de tela esperam por isso)
   window.scrollTo(0, 0);
 }
 
