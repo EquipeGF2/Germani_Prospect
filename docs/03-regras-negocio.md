@@ -260,7 +260,7 @@ testes: [`test/painel.test.mjs`](../test/painel.test.mjs).
 | Bloco | Conteúdo |
 |---|---|
 | Geral | **Total de prospects** (carteira válida: sem inválidos) · **Não contactado** · **Sem interesse** · **Crédito liberado** · **Venda realizada**, cada um com % da base |
-| Valores | **Dias úteis da campanha** (seg–sex desde `data_inicio_campanha` até hoje, menos os `feriados` cadastrados) · **Potencial do pipeline de abertura** = total × `percentual_pipeline`% × `valor_medio_cliente` · **Valor de conversão** = vendas × `valor_medio_cliente` |
+| Valores | **Dias úteis da campanha** (seg–sex desde `data_inicio_campanha` até hoje, menos os `feriados` cadastrados) · **Potencial do pipeline de abertura** = total × `percentual_pipeline`% × `valor_medio_cliente` · **Valor de conversão** = vendas × `valor_medio_cliente` (estimado) · **Valor dos pedidos** = soma real de `eventos_erp.valor` dos pedidos importados |
 | Visão por supervisor | seletor de supervisor (lembrado na aba) → os mesmos cards + agentes de vendas (vendedores × representantes) |
 | Consolidado por agente | agente, tipo, total, não contactado, sem interesse, crédito liberado, venda realizada, **% contactado** = (total − não contactado) ÷ total, **% conversão** = vendas ÷ contactados; total do supervisor; tocar no agente abre a carteira dele. No celular, um cartão por agente. |
 
@@ -277,12 +277,12 @@ testes: [`test/painel.test.mjs`](../test/painel.test.mjs).
 ### 10.1 Visualizações (computador) e período
 
 - **Celular:** o Início não muda — layout de cartões, sempre a posição atual.
-- **Computador:** três visualizações, escolhidas por cada usuário (guardada no navegador):
-  - **Executivo** — faixa com vendas (número de destaque) e % de conversão, cobertura da base (barra), valor de conversão e
+- **Computador:** três visualizações, escolhidas por cada usuário numa lista de seleção (guardada no navegador):
+  - **Executivo** — faixa com vendas (número de destaque) e % de conversão, cobertura da base (barra), valor de conversão, valor dos pedidos e
     pipeline; funil em barras horizontais; agentes ordenados por vendas com a barra de % contactado.
-  - **Arrojado** — faixa escura com valor de conversão, pipeline e dias úteis; linha de 5 indicadores; funil em colunas;
+  - **Arrojado** — faixa escura com valor de conversão, valor dos pedidos, pipeline e dias úteis; linha de 5 indicadores; funil em colunas;
     ranking de agentes (3 primeiros em destaque).
-  - **Equipe** — linha fina de indicadores; um cartão por supervisor (clicar abre a equipe); barras por agente
+  - **Equipe** — linha fina de indicadores (inclui valor de conversão e valor dos pedidos); um cartão por supervisor com o valor em pedidos (clicar abre a equipe); barras por agente
     (carteira × contactados × atendidos) e o funil da equipe.
 - **Funil** (cumulativo, nunca cresce): base → contactados → atendidos → cadastrados no ERP → crédito liberado → venda;
   o **% de cada etapa é sempre sobre a base de prospects** (`pctBase`);
@@ -292,7 +292,7 @@ testes: [`test/painel.test.mjs`](../test/painel.test.mjs).
 - Filtros do Início (período, supervisor, **visualização em lista de seleção**) ficam na linha do título, inclusive com o
   período personalizado aberto;
   "sem interesse" fica fora do funil. Uma só cor (vermelho GERMANI, do claro ao escuro).
-- **Período** (só no computador): *Posição atual* (padrão — foto da carteira hoje) · desde o início da campanha · hoje ·
+- **Período** (só no computador): *Posição atual* (padrão — foto da carteira hoje) · desde o início (da campanha) · hoje ·
   esta semana · este mês · últimos 30 dias · personalizado (de/até). Com período, contam os **eventos no período**:
   contactado = algum registro no período (ou avanço de etapa); atendido, cadastro, crédito e venda pela data do evento,
   de forma cumulativa; sem interesse = encerrado no período. Total e não contactado continuam sendo a posição atual;

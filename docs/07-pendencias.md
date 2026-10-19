@@ -10,7 +10,7 @@ Atualizado em 2026-10-19. Cada item diz o que já está implementado como padrã
 | 4 | Análise financeira | **resolvido:** começa no arquivo de cadastro; termina com o OK do analista — a liberação sempre ocorre, com condição (à vista/antecipado ou a prazo), restrição de crédito sim/não e limite estipulado → Aguardando pedido; 10 dias = alerta | — |
 | 18 | Arquivos do ERP × status do app | **resolvido:** cadastro e pedido prevalecem para qualquer cliente (inclusive Sem interesse) | — |
 | 7 | Destino dos "Sem interesse" | saem da fila e ficam disponíveis em relatório | definir a ação posterior |
-| 8 | Layout dos arquivos do ERP (cadastro, pedidos) e de baixados | colunas informadas na linha de comando | enviar amostras para fixar o layout |
+| 8 | Layout dos arquivos do ERP (cadastro, pedidos) e de baixados | colunas informadas na tela ou na linha de comando; no de pedidos, a coluna do **valor do pedido** é opcional (migração 0004) | enviar amostras para fixar o layout e confirmar o nome da coluna de valor |
 | 9 | Códigos de supervisor e representante | espaços separados (podem repetir número sem conflito) | confirmar se supervisor também tem carteira própria (COD = COD SUP) |
 | 10 | Canal das tentativas da planilha | `nao_informado` | — |
 | 11 | Permissões do token do app × triggers | — | itens "Verificar" do [ADR-0001](adr/0001-turso-direto-github-pages.md) |
