@@ -1,0 +1,34 @@
+# Aplica as migrações de db/migrations no Turso de produção.
+# Execução manual: Actions → "Migrar banco (produção)" → Run workflow → digite MIGRAR.
+# Secrets necessários (Settings → Secrets and variables → Actions):
+#   TURSO_DATABASE_URL, TURSO_AUTH_TOKEN (token administrativo)
+name: Migrar banco (produção)
+on:
+  workflow_dispatch:
+    inputs:
+      confirmacao:
+        description: 'Digite MIGRAR para confirmar'
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: migracao-producao
+  cancel-in-progress: false
+jobs:
+  migrar:
+    if: ${{ github.event.inputs.confirmacao == 'MIGRAR' }}
+    runs-on: ubuntu-latest
+    environment: producao
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Aplicar migrações
+        run: npm run migrate
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}

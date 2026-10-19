@@ -1,0 +1,23 @@
+{
+  "name": "germani-prospect",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Controle de prospecção de novos clientes — GERMANI Alimentos",
+  "type": "module",
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
+    "importar:base": "node --env-file-if-exists=.env scripts/importar-base.mjs",
+    "importar:eventos": "node --env-file-if-exists=.env scripts/importar-eventos.mjs",
+    "usuarios": "node --env-file-if-exists=.env scripts/usuarios.mjs",
+    "exemplo:planilha": "node scripts/gerar-planilha-ficticia.mjs"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.0",
+    "exceljs": "^4.4.0",
+    "jszip": "^3.10.2"
+  }
+}

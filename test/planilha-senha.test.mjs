@@ -1,0 +1,61 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
+import { lerCsvTexto, lerPlanilha } from '../lib/planilha.mjs';
+import { conferirSenha, gerarHashSenha } from '../shared/senha.mjs';
+import { validarContato } from '../shared/status.mjs';
+
+test('CSV com ";", aspas e decimal com vírgula', () => {
+  const { linhas, separador } = lerCsvTexto('CNPJ;Nome;Lat\r\n"11.222.333/0001-81";"Mercado ""Bom"";Ltda";-29,71\r\n');
+  assert.equal(separador, ';');
+  assert.deepEqual(linhas[1], ['11.222.333/0001-81', 'Mercado "Bom";Ltda', '-29,71']);
+});
+
+test('CSV em Windows-1252 (padrão Senior) é decodificado', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'gp-'));
+  const arq = path.join(dir, 'a.csv');
+  await writeFile(arq, Buffer.from([0x43, 0x69, 0x64, 0x61, 0x64, 0x65, 0x0a, 0x56, 0x65, 0x6e, 0xe2, 0x6e, 0x63, 0x69, 0x6f, 0x0a])); // "Venâncio" em latin1
+  const r = await lerPlanilha(arq);
+  assert.equal(r.linhas[1][0], 'Venâncio');
+});
+
+test('.xlsx malformado do Senior (caminhos com "\\" e styles.xml quebrado) é lido após reempacotar', async () => {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('S');
+  ws.addRow(['CNPJ', 'Razão social']);
+  ws.addRow(['11222333000181', 'Mercado Teste']);
+  const bom = await wb.xlsx.writeBuffer();
+  const zip = await JSZip.loadAsync(bom);
+  const ruim = new JSZip();
+  for (const [nome, f] of Object.entries(zip.files)) {
+    if (f.dir) continue;
+    const conteudo = nome.endsWith('styles.xml') ? '<styleSheet><quebrado' : await f.async('uint8array');
+    ruim.file(nome.startsWith('xl/') ? nome.replace(/\//g, '\\') : nome, conteudo);
+  }
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'gp-'));
+  const arq = path.join(dir, 'senior.xlsx');
+  await writeFile(arq, await ruim.generateAsync({ type: 'nodebuffer' }));
+  const r = await lerPlanilha(arq);
+  assert.match(r.observacao, /reempacotar/);
+  assert.deepEqual(r.linhas[1], ['11222333000181', 'Mercado Teste']);
+});
+
+test('senha: PBKDF2 confere e rejeita', async () => {
+  const h = await gerarHashSenha('segredo-123');
+  assert.match(h, /^pbkdf2\$210000\$/);
+  assert.equal(await conferirSenha('segredo-123', h), true);
+  assert.equal(await conferirSenha('segredo-124', h), false);
+  assert.equal(await conferirSenha('x', null), false);
+  await assert.rejects(gerarHashSenha('curta'));
+});
+
+test('validação do formulário de contato espelha o banco', () => {
+  assert.deepEqual(validarContato({ canal: 'visita', resultado: 'sem_conclusao', dataContato: '2026-10-01' }), []);
+  assert.match(validarContato({ canal: 'visita', resultado: 'sem_interesse', dataContato: '2026-10-01' }).join(), /motivo obrigatório/);
+  assert.match(validarContato({ canal: 'visita', resultado: 'com_interesse', dataContato: '2026-10-01' }).join(), /retorno obrigatória/);
+  assert.match(validarContato({ canal: 'fax', resultado: 'x', dataContato: '' }).join(), /canal.*resultado.*data/);
+});

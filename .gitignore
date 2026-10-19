@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+# planilhas e relatórios reais NUNCA vão para o repositório (ele é público)
+dados/
+relatorios/
+*.xlsx
+*.xls
+*.csv
+!exemplos/*.xlsx
+*.db
+*.db-*
+.DS_Store
