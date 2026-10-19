@@ -9,7 +9,7 @@
 | Aguardando cadastro | app (**atendido** ou **pedido identificado**) — "Aguardando cadastro · atendido em dd/mm/aaaa" ou "· pedido informado em dd/mm/aaaa"; aguarda o CNPJ aparecer nos arquivos de cadastro/pedido | não (acompanhamento) | sim | sim | sim |
 | Sem interesse | app ("sem interesse", com justificativa) | não | sim | sim | sim |
 | Análise financeira | arquivo de **cadastro** do Senior | não | sim (só registra; status não muda) | sim | sim |
-| Aguardando pedido | **OK do analista financeiro** no console (condição + restrição + limite) | não | sim (só registra) | sim | sim |
+| Aguardando pedido | **relatório de crédito** do ERP ou **OK do analista** no console (forma, prazo, limite) | não | sim (só registra) | sim | sim |
 | Venda realizada | arquivo de pedidos do Senior (**final**) | não | não | sim | sim |
 | Inválido (baixado) | arquivo de CNPJs baixados | não — **congelado** | não | não | **não** |
 
@@ -178,24 +178,32 @@ Implementação: [`shared/rotas.mjs`](../shared/rotas.mjs) · testes: [`test/rot
 **Execução** (`vw_rotas_execucao`, `consultaExecucaoRotas`): paradas planejadas × atendidas (contato do vendedor
 no prospect na data da rota), por vendedor, equipe e geral — rotas canceladas ficam fora.
 
-## 8. Análise financeira — console do analista
+## 8. Análise financeira → Aguardando pedido (duas possibilidades)
 
-Implementação: [`shared/financeiro.mjs`](../shared/financeiro.mjs) · testes: [`test/financeiro.test.mjs`](../test/financeiro.test.mjs).
+A importação do arquivo de **cadastro** coloca o cliente em **Análise financeira** (prazo de 10 dias = alerta).
+A análise termina, e o cliente vai para **Aguardando pedido**, de uma destas formas — ambas gravam em
+`liberacoes_credito` e no histórico de movimentação. **A liberação sempre ocorre.**
 
-1. A importação do arquivo de **cadastro** coloca o cliente em **Análise financeira** (prazo de 10 dias).
-2. O console (`consultaFilaAnalise`) lista todos os clientes com cadastro realizado, mais antigos primeiro,
-   com dias em análise e prazo vencido. Acesso: perfil **financeiro** ou administrador.
-3. **A liberação sempre ocorre.** O analista informa (`comandoLiberarCredito`):
-   - **condição:** venda **à vista / antecipada** ou **a prazo**;
-   - **restrição de crédito:** sim ou não;
-   - **limite estipulado** (R$): obrigatório; a prazo exige limite maior que zero, à vista/antecipado aceita zero.
+### 8.1 Relatório de crédito do ERP (rotina) — `shared/importar-credito.mjs`
+Colunas: **CNPJ · Cód interno · Razão social · Forma de pagamento · Prazo de pagamento · Limite de crédito CNPJ ·
+Limite de crédito grupo · Data de cadastro**.
 
-   → **Aguardando pedido**. Fica em `liberacoes_credito` e no histórico de movimentação
-   (ex.: "a prazo · com restrição de crédito · limite R$ 5000.00").
-4. A importação do arquivo de **pedidos** leva a **Venda realizada**.
+| Regra | Como funciona |
+|---|---|
+| Limite | **Limite do CNPJ preenchido → vale o do CNPJ** (o do grupo é ignorado). **CNPJ vazio → vale o do grupo.** Os dois vazios: limite 0 (aviso); boleto sem limite é rejeitado. A origem do limite (CNPJ / grupo) fica registrada. |
+| Forma de pagamento | **antecipado · à vista · boleto**. Os valores do arquivo são mapeados na tela (sugestões automáticas para "ANTECIPADO", "A VISTA", "BOLETO"…); valor não mapeado = linha rejeitada. |
+| Prazo | só a **quantidade de dias** (ex.: 28). Vazio = 0. |
+| Cliente ainda sem cadastro | (Não contactado, Em prospecção, Aguardando cadastro, Sem interesse) o relatório registra **também o cadastro** (data de cadastro + cód. interno) e em seguida a liberação. |
+| Já em Aguardando pedido | crédito diferente = nova liberação (correção); igual = ignorado. |
+| Venda realizada | ignorado (o status não muda). · CNPJ baixado: rejeitado. · Fora da base: ignorado. |
+| Data da liberação | dia da importação (nunca antes do cadastro). |
 
-Correção de uma liberação = nova liberação (o cliente em Aguardando pedido aceita nova liberação; nada é apagado).
-Não existe "crédito negado": o cliente com risco é liberado **com restrição** (e, se for o caso, só à vista/antecipado).
+### 8.2 Console do analista (casos pontuais) — `shared/financeiro.mjs`
+Fila com os clientes em Análise financeira (mais antigos primeiro, dias em análise, prazo vencido). O analista
+(perfil **financeiro** ou administrador) informa **forma de pagamento**, **prazo (dias)**, **restrição de crédito
+sim/não** e **limite**. Boleto exige limite maior que zero.
+
+Em ambos: correção = nova liberação; nada é apagado.
 
 ## 9. Histórico de movimentação
 

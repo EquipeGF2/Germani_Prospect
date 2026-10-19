@@ -17,4 +17,4 @@ Sistema **GERMANI** (guarda-chuva GERMANI), estado **ativo**. Português do Bras
 - Calcular distância por geolocalização (ADR-0005). Dar rota ao representante.
 
 ## Comandos
-`npm test` · `npm run test:telas` · `npm run site` · `npm run servir` · `npm run migrate` · `npm run importar:base` · `npm run importar:eventos` · `npm run importar:tipos` · `npm run usuarios`
+`npm test` · `npm run test:telas` · `npm run site` · `npm run servir` · `npm run migrate` · `npm run importar:base` · `npm run importar:eventos` · `npm run importar:tipos` · `npm run importar:credito` · `npm run usuarios`

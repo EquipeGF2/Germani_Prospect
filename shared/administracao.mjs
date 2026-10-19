@@ -21,6 +21,7 @@ export const NOMES_IMPORTACAO = Object.freeze({
   cadastro_erp: 'Cadastro (ERP)',
   pedido_erp: 'Pedidos (ERP)',
   cnpj_baixado: 'CNPJs baixados',
+  credito_erp: 'Relatório de crédito',
 });
 
 export async function listarImportacoes(db, { limite = 100 } = {}) {

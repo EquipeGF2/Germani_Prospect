@@ -133,7 +133,7 @@ END;
 -- ---------------------------------------------------------------------
 CREATE TABLE importacoes (
   id                INTEGER PRIMARY KEY,
-  tipo              TEXT NOT NULL CHECK (tipo IN ('base_prospects','cadastro_erp','pedido_erp','cnpj_baixado','tipo_atuacao')),
+  tipo              TEXT NOT NULL CHECK (tipo IN ('base_prospects','cadastro_erp','pedido_erp','cnpj_baixado','tipo_atuacao','credito_erp')),
   arquivo_nome      TEXT NOT NULL,
   arquivo_sha256    TEXT NOT NULL,
   executado_por     TEXT NOT NULL,
@@ -208,8 +208,11 @@ CREATE TABLE prospects (
   numero_pedido            TEXT,
   analise_financeira_ate   TEXT,
   dt_liberacao_credito     TEXT,            -- OK do analista financeiro
+  -- crédito vigente (última liberação — console ou relatório de crédito)
+  forma_pagamento          TEXT CHECK (forma_pagamento IS NULL OR forma_pagamento IN ('antecipado','a_vista','boleto')),
+  prazo_pagamento_dias     INTEGER,
   limite_credito           REAL,
-  condicao_pagamento       TEXT CHECK (condicao_pagamento IS NULL OR condicao_pagamento IN ('a_vista_antecipado','a_prazo')),
+  limite_credito_origem    TEXT CHECK (limite_credito_origem IS NULL OR limite_credito_origem IN ('cnpj','grupo','informado')),
   com_restricao_credito    INTEGER CHECK (com_restricao_credito IS NULL OR com_restricao_credito IN (0,1)),
   situacao_cadastral       TEXT NOT NULL DEFAULT 'ativa' CHECK (situacao_cadastral IN ('ativa','baixada')),
   dt_baixa                 TEXT,
@@ -450,23 +453,34 @@ BEGIN
 END;
 
 -- ---------------------------------------------------------------------
--- Análise financeira — OK do analista no console (perfil financeiro ou administrador)
--- Mostra os clientes em "Análise financeira" (cadastro importado). A liberação SEMPRE ocorre: o analista informa
--- a condição (à vista/antecipado ou a prazo), se há restrição de crédito e o limite estipulado → "Aguardando pedido".
--- Somente inclusão: correção = nova liberação.
+-- Análise financeira → Aguardando pedido. Duas formas, ambas gravam aqui (somente inclusão):
+--   * console: o analista informa forma de pagamento, prazo, restrição sim/não e o limite (origem 'console');
+--   * relatório de crédito do ERP (importação): CNPJ, cód. interno, forma, prazo, limite CNPJ, limite grupo,
+--     data de cadastro. Limite efetivo = limite do CNPJ; se vazio, limite do grupo (origem 'importacao').
+-- A liberação SEMPRE ocorre. Correção = nova liberação.
 -- ---------------------------------------------------------------------
 CREATE TABLE liberacoes_credito (
-  id                 INTEGER PRIMARY KEY,
-  prospect_id        INTEGER NOT NULL REFERENCES prospects(id),
-  usuario_id         INTEGER NOT NULL REFERENCES usuarios(id),   -- analista
-  data_liberacao     TEXT NOT NULL CHECK (date(data_liberacao) = data_liberacao),
-  -- a liberação SEMPRE ocorre; o analista informa condição, restrição e limite estipulado
-  condicao_pagamento TEXT NOT NULL CHECK (condicao_pagamento IN ('a_vista_antecipado','a_prazo')),
-  com_restricao      INTEGER NOT NULL CHECK (com_restricao IN (0,1)),
-  limite_credito     REAL NOT NULL CHECK (limite_credito >= 0),
-  observacao         TEXT,
-  registrado_em      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  CHECK (condicao_pagamento <> 'a_prazo' OR limite_credito > 0)   -- a prazo exige limite
+  id                   INTEGER PRIMARY KEY,
+  prospect_id          INTEGER NOT NULL REFERENCES prospects(id),
+  origem               TEXT NOT NULL CHECK (origem IN ('console','importacao')),
+  usuario_id           INTEGER REFERENCES usuarios(id),        -- analista (console)
+  importacao_id        INTEGER REFERENCES importacoes(id),     -- relatório de crédito
+  data_liberacao       TEXT NOT NULL CHECK (date(data_liberacao) = data_liberacao),
+  forma_pagamento      TEXT NOT NULL CHECK (forma_pagamento IN ('antecipado','a_vista','boleto')),
+  prazo_pagamento_dias INTEGER NOT NULL DEFAULT 0 CHECK (prazo_pagamento_dias >= 0),
+  limite_cnpj          REAL CHECK (limite_cnpj IS NULL OR limite_cnpj >= 0),
+  limite_grupo         REAL CHECK (limite_grupo IS NULL OR limite_grupo >= 0),
+  limite_credito       REAL NOT NULL CHECK (limite_credito >= 0),   -- efetivo
+  limite_origem        TEXT NOT NULL CHECK (limite_origem IN ('cnpj','grupo','informado')),
+  com_restricao        INTEGER CHECK (com_restricao IS NULL OR com_restricao IN (0,1)),  -- informado no console
+  observacao           TEXT,
+  registrado_em        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  CHECK (origem <> 'console' OR (usuario_id IS NOT NULL AND com_restricao IS NOT NULL)),
+  CHECK (origem <> 'importacao' OR importacao_id IS NOT NULL),
+  CHECK (forma_pagamento <> 'boleto' OR limite_credito > 0),        -- boleto (a prazo) exige limite
+  -- limite do CNPJ prevalece; o do grupo só vale quando o do CNPJ está vazio
+  CHECK (limite_origem <> 'cnpj'  OR (limite_cnpj IS NOT NULL AND limite_credito = limite_cnpj)),
+  CHECK (limite_origem <> 'grupo' OR (limite_cnpj IS NULL AND limite_grupo IS NOT NULL AND limite_credito = limite_grupo))
 );
 CREATE INDEX ix_liberacoes_prospect ON liberacoes_credito (prospect_id);
 
@@ -474,7 +488,8 @@ CREATE TRIGGER trg_liberacoes_validar
 BEFORE INSERT ON liberacoes_credito
 BEGIN
   SELECT RAISE(ABORT, 'somente o analista financeiro ou o administrador libera crédito')
-  WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE id = NEW.usuario_id AND ativo = 1 AND perfil IN ('financeiro','administrador'));
+  WHERE NEW.origem = 'console'
+    AND NOT EXISTS (SELECT 1 FROM usuarios WHERE id = NEW.usuario_id AND ativo = 1 AND perfil IN ('financeiro','administrador'));
   SELECT RAISE(ABORT, 'cliente não está em análise financeira (ou aguardando pedido, para correção)')
   WHERE (SELECT status_atual FROM prospects WHERE id = NEW.prospect_id) NOT IN ('analise_financeira','aguardando_pedido');
   SELECT RAISE(ABORT, 'data da liberação anterior ao cadastro no ERP')
@@ -487,16 +502,21 @@ BEGIN
   INSERT INTO movimentacoes (prospect_id, tipo, status_anterior, status_novo, data_evento, origem, referencia, usuario_id, vendedor_id, detalhe)
   SELECT p.id, 'liberacao_credito', p.status_atual, 'aguardando_pedido', NEW.data_liberacao, 'financeiro', CAST(NEW.id AS TEXT),
          NEW.usuario_id, p.vendedor_id,
-         CASE NEW.condicao_pagamento WHEN 'a_prazo' THEN 'a prazo' ELSE 'à vista / antecipado' END
-           || ' · ' || CASE NEW.com_restricao WHEN 1 THEN 'com restrição de crédito' ELSE 'sem restrição' END
+         CASE NEW.forma_pagamento WHEN 'antecipado' THEN 'antecipado' WHEN 'a_vista' THEN 'à vista' ELSE 'boleto' END
+           || CASE WHEN NEW.prazo_pagamento_dias > 0 THEN ' ' || NEW.prazo_pagamento_dias || ' dias' ELSE '' END
            || ' · limite R$ ' || printf('%.2f', NEW.limite_credito)
+           || CASE NEW.limite_origem WHEN 'cnpj' THEN ' (CNPJ)' WHEN 'grupo' THEN ' (grupo)' ELSE '' END
+           || CASE NEW.com_restricao WHEN 1 THEN ' · com restrição de crédito' WHEN 0 THEN ' · sem restrição' ELSE '' END
+           || CASE NEW.origem WHEN 'importacao' THEN ' · relatório de crédito' ELSE ' · console' END
            || COALESCE(' — ' || NEW.observacao, '')
     FROM prospects p WHERE p.id = NEW.prospect_id;
   UPDATE prospects SET
     status_atual = 'aguardando_pedido',
     dt_liberacao_credito = NEW.data_liberacao,
+    forma_pagamento = NEW.forma_pagamento,
+    prazo_pagamento_dias = NEW.prazo_pagamento_dias,
     limite_credito = NEW.limite_credito,
-    condicao_pagamento = NEW.condicao_pagamento,
+    limite_credito_origem = NEW.limite_origem,
     com_restricao_credito = NEW.com_restricao,
     atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now')
   WHERE id = NEW.prospect_id;

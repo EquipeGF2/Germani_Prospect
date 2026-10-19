@@ -6,6 +6,7 @@ const ABAS = [
   ['/admin/importar/base', 'Base de prospects'],
   ['/admin/importar/tipos', 'Representantes / vendedores'],
   ['/admin/importar/erp', 'Cadastro · Pedidos · Baixados'],
+  ['/admin/importar/credito', 'Relatório de crédito'],
   ['/admin/importacoes', 'Importações'],
   ['/admin/usuarios', 'Usuários'],
   ['/admin/parametros', 'Parâmetros'],

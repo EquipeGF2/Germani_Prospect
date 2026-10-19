@@ -97,6 +97,22 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('text=2 movimento(s) gravado(s)');
   await foto('08-cadastro-erp');
 
+  // 4b. relatório de crédito: o 1º cadastrado (análise financeira) + o 3º da base (sem cadastro ainda)
+  const cnpj3 = analisarCnpj(linhas[3][0]).cnpj;
+  const credito = path.join(tmp, 'credito.csv');
+  await writeFile(credito, `CNPJ;Cód interno;Razão social;Forma de pagamento;Prazo de pagamento;Limite de crédito CNPJ;Limite de crédito grupo;Data de cadastro\n${cnpjs[0]};C1;X;BOLETO;28;15.000,00;50.000,00;15/10/2026\n${cnpj3};C9;Y;Pix;0;;;16/10/2026\n`);
+  await pagina.click('a:text("Relatório de crédito")');
+  await pagina.setInputFiles('#arquivo-credito', credito);
+  await pagina.click('button:text("Ler arquivo")');
+  await pagina.waitForSelector('text=Como tratar cada forma de pagamento');
+  await pagina.selectOption('select[aria-label="forma Pix"]', 'a_vista');
+  await pagina.click('button:text("Simular")');
+  await pagina.waitForSelector('text=Resultado da simulação');
+  assert.match(await texto(), /2 liberação\(ões\) de crédito, 1 com cadastro registrado pelo relatório/);
+  await pagina.click('button:text("Confirmar e gravar")');
+  await pagina.waitForSelector('text=passaram para Aguardando pedido');
+  await foto('08b-credito');
+
   // 5. parâmetros
   await pagina.click('a:text("Parâmetros")');
   await pagina.fill('input[aria-label=prazo_cadastro_dias]', '20');
@@ -109,7 +125,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('table');
   assert.match(await texto(), /Cadastro \(ERP\)/);
   await pagina.click('a:text("Ver linhas") >> nth=0');
-  await pagina.waitForSelector('text=Importação nº 3');
+  await pagina.waitForSelector('text=Importação nº 4'); // a mais recente: relatório de crédito
   await foto('09-importacoes');
 
   // 7. vendedor entra com a senha gerada (mesmo banco: a sessão do demo continua na página)

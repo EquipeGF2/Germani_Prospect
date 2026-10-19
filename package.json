@@ -13,6 +13,7 @@
     "importar:base": "node --env-file-if-exists=.env scripts/importar-base.mjs",
     "importar:eventos": "node --env-file-if-exists=.env scripts/importar-eventos.mjs",
     "importar:tipos": "node --env-file-if-exists=.env scripts/importar-tipos.mjs",
+    "importar:credito": "node --env-file-if-exists=.env scripts/importar-credito.mjs",
     "usuarios": "node --env-file-if-exists=.env scripts/usuarios.mjs",
     "exemplo:planilha": "node scripts/gerar-planilha-ficticia.mjs",
     "site": "node scripts/montar-site.mjs",

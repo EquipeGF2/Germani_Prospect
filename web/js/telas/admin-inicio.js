@@ -16,6 +16,7 @@ export async function render(conteudo, { irPara }) {
     ['#/admin/importar/tipos', '2 · Representantes / vendedores', 'Quem tem rota (vendedor) e quem não tem'],
     ['#/admin/usuarios', '3 · Usuários e senhas', 'Liberar acesso da equipe, criar analista financeiro'],
     ['#/admin/importar/erp', '4 · Cadastro · Pedidos · Baixados', 'Arquivos do ERP (rotina)'],
+    ['#/admin/importar/credito', '5 · Relatório de crédito', 'Forma, prazo e limite → Aguardando pedido'],
     ['#/admin/importacoes', 'Importações', 'Histórico e relatório linha a linha'],
     ['#/admin/parametros', 'Parâmetros', 'Prazos e alertas'],
   ];

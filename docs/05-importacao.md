@@ -89,7 +89,25 @@ npm run importar:eventos -- --tipo baixa    baixados.csv --col-cnpj "CNPJ" --dat
 
 Quando o layout real chegar, os nomes de coluna viram padrão no script (ver 07-pendencias).
 
-## 3. Lista de representantes e vendedores (forma de trabalho)
+## 3. Relatório de crédito (rotina)
+
+Tela **Administração → Relatório de crédito** (contingência: `npm run importar:credito -- arquivo.xlsx`).
+
+| Coluna | Uso |
+|---|---|
+| CNPJ * | localiza o prospect |
+| Cód interno | código do cliente no ERP (registrado no cadastro, se o cliente ainda não tinha) |
+| Razão social | conferência (diferente da base = aviso) |
+| Forma de pagamento * | antecipado · à vista · boleto (mapeado na tela) |
+| Prazo de pagamento | quantidade de dias |
+| Limite de crédito CNPJ | prevalece quando preenchido |
+| Limite de crédito grupo | usado só quando o do CNPJ está vazio |
+| Data de cadastro * | data do cadastro no ERP |
+
+Efeito: Análise financeira → **Aguardando pedido** (regras em docs/03 §8.1). As colunas são reconhecidas pelo
+nome (com variações) e podem ser escolhidas na tela.
+
+## 4. Lista de representantes e vendedores (forma de trabalho)
 
 Quando a planilha base não informa quem é **representante** (sem rota) e quem é **vendedor** (com rota),
 o administrador envia uma lista simples — rode depois da carga da base:
@@ -113,6 +131,6 @@ npm run importar:tipos -- tipos.xlsx --col-codigo "Código" --col-tipo "Função
 - Ao final, o resumo avisa quantos ainda estão **sem tipo** (tratados como representante).
 - Para um ajuste pontual: `npm run usuarios -- tipo <login> representante|vendedor`.
 
-## 4. Planilha fictícia para testes
+## 5. Planilha fictícia para testes
 `npm run exemplo:planilha` gera `exemplos/base-ficticia.xlsx` no layout real, com CNPJs inventados
 (10% alfanuméricos) e 2 linhas com erro proposital.
