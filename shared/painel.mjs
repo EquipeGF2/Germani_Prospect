@@ -7,6 +7,7 @@
 //   funil cumulativo: contactados ⊇ atendidos ⊇ cadastrados ⊇ crédito liberado ⊇ venda (quem chegou à etapa ou além)
 //   % contactado = contactados ÷ total · % conversão = venda realizada ÷ contactados
 // Filtro de período (resolverPeriodo): sem período = posição atual; com período = eventos com data no período.
+import { datasDeFeriado } from './feriados.mjs';
 
 export const PERFIS_VISAO_TOTAL = Object.freeze(['administrador', 'gerente', 'financeiro']);
 export const PARAMETROS_PAINEL = Object.freeze(['data_inicio_campanha', 'percentual_pipeline', 'valor_medio_cliente']);
@@ -166,6 +167,5 @@ export async function lerParametrosPainel(db) {
 export async function diasUteisCampanha(db, { inicio, hoje, periodo = null }) {
   const de = periodo && periodo.inicio > inicio ? periodo.inicio : inicio;
   const ate = periodo && periodo.fim < hoje ? periodo.fim : hoje;
-  const r = await db.execute({ sql: 'SELECT DISTINCT data FROM feriados WHERE data BETWEEN ? AND ?', args: [de, ate] });
-  return diasUteis(de, ate, new Set(r.rows.map((x) => x.data)));
+  return diasUteis(de, ate, de <= ate ? await datasDeFeriado(db, { inicio: de, fim: ate }) : new Set());
 }

@@ -72,6 +72,7 @@ rodar o workflow de novo** (ele só aplica as que faltam).
 |---|---|
 | `0001_inicial` | estrutura completa |
 | `0002_gerente_feriados_painel` | perfil gerente comercial, tabela `feriados`, parâmetros do painel (início da campanha, % do pipeline, valor por cliente) |
+| `0003_feriados_automaticos` | nacionais passam a ser calculados (saem da tabela); coluna `recorrente` (repete todo ano) |
 
 ## 6. Primeira carga — roteiro
 

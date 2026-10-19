@@ -261,8 +261,9 @@ testes: [`test/painel.test.mjs`](../test/painel.test.mjs).
   Não separa com ou sem restrição.
 - **Escopo:** administrador, **gerente comercial** e analista financeiro veem tudo e escolhem o supervisor;
   **supervisor** vê só a própria equipe (sem seletor); vendedor/representante vê só a própria carteira.
-- **Feriados** (Administração → Feriados): todo feriado cadastrado sai da contagem — cadastre os estaduais e
-  municipais que valem para a operação.
+- **Feriados** (Administração → Feriados): os **nacionais são automáticos** para qualquer ano (datas fixas + Sexta-feira
+  Santa calculada pela Páscoa) — ninguém precisa lançar o ano seguinte. Estaduais e municipais são cadastrados na tela;
+  marcando **repete todo ano** valem para todos os anos. Todos saem da contagem de dias úteis.
 - **Gerente comercial** (perfil `gerente`): vê tudo e age em qualquer carteira (registro, lote, transferência);
   **não libera crédito** (trigger de `liberacoes_credito`) e não acessa a administração.
 

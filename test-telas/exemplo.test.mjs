@@ -82,7 +82,8 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await foto('24-exemplo-console');
   await pagina.click('.menu-sair');
   const supervisor = await pagina.evaluate(async () => {
-    const { bancoApp } = await import('./js/db.js');
+    const v = new URL(document.querySelector('script[type=module]').src).search;   // mesma versão do app (?v=…) = mesmo banco
+    const { bancoApp } = await import(`./js/db.js${v}`);
     return (await (await bancoApp()).execute("SELECT login FROM usuarios WHERE perfil = 'supervisor' ORDER BY login LIMIT 1")).rows[0].login;
   });
   await entrar(supervisor);

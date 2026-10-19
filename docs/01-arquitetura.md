@@ -74,7 +74,8 @@ web/
     └── admin-*.js                administração (token de administração), inclusive admin-feriados.js
 ```
 `npm run site` monta `_site/` (web + shared + migrations + bibliotecas do navegador empacotadas com esbuild,
-versões travadas no package-lock). `test-telas/` testa as telas num Chromium real, em modo demonstração.
+versões travadas no package-lock). Cada publicação carimba a versão nos endereços dos módulos (`js/app.js?v=…`), para o
+navegador nunca misturar arquivos novos com antigos do cache do GitHub Pages. `test-telas/` testa as telas num Chromium real, em modo demonstração.
 
 ## Onde cada regra vive
 
