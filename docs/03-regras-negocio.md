@@ -265,3 +265,29 @@ testes: [`test/painel.test.mjs`](../test/painel.test.mjs).
   municipais que valem para a operação.
 - **Gerente comercial** (perfil `gerente`): vê tudo e age em qualquer carteira (registro, lote, transferência);
   **não libera crédito** (trigger de `liberacoes_credito`) e não acessa a administração.
+
+### 10.1 Visualizações (computador) e período
+
+- **Celular:** o Início não muda — layout de cartões, sempre a posição atual.
+- **Computador:** três visualizações, escolhidas por cada usuário (guardada no navegador):
+  - **Executivo** — faixa com vendas (número de destaque) e % de conversão, cobertura da base (barra), valor de conversão e
+    pipeline; funil em barras horizontais; agentes ordenados por vendas com a barra de % contactado.
+  - **Arrojado** — faixa escura com valor de conversão, pipeline e dias úteis; linha de 5 indicadores; funil em colunas;
+    ranking de agentes (3 primeiros em destaque).
+  - **Equipe** — linha fina de indicadores; um cartão por supervisor (clicar abre a equipe); barras por agente
+    (carteira × contactados × atendidos) e o funil da equipe.
+- **Funil** (cumulativo, nunca cresce): base → contactados → atendidos → cadastrados no ERP → crédito liberado → venda;
+  "sem interesse" fica fora do funil. Uma só cor (vermelho GERMANI, do claro ao escuro).
+- **Período** (só no computador): *Posição atual* (padrão — foto da carteira hoje) · desde o início da campanha · hoje ·
+  esta semana · este mês · últimos 30 dias · personalizado (de/até). Com período, contam os **eventos no período**:
+  contactado = algum registro no período (ou avanço de etapa); atendido, cadastro, crédito e venda pela data do evento,
+  de forma cumulativa; sem interesse = encerrado no período. Total e não contactado continuam sendo a posição atual;
+  dias úteis = dentro do período (limitados à campanha e a hoje). O período fica no endereço (`#/inicio?periodo=…`).
+
+### 10.2 Dados de exemplo (modo demonstração)
+
+No modo demonstração, o administrador vê no Início **Carregar dados de exemplo** enquanto o banco do navegador está vazio
+([`shared/exemplo.mjs`](../shared/exemplo.mjs)). Ele importa a base fictícia, define vendedores/representantes, libera o
+acesso de todos com a senha `demo1234` (inclusive `gerente` e `financeiro`) e simula a campanha com as **rotinas reais**:
+atendimentos e sem interesse dos vendedores, arquivo de cadastro do ERP, liberações no console e arquivo de pedidos —
+com o histórico de movimentação completo. Sorteio com semente fixa; nunca roda em produção (só existe no modo demonstração).

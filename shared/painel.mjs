@@ -4,29 +4,69 @@
 //   administrador, gerente comercial, analista financeiro → tudo (com seletor de supervisor)
 //   supervisor → só a própria equipe · vendedor/representante → só a própria carteira
 // Contagens sobre a carteira válida (status.conta_carteira = 1: inválidos/baixados ficam fora).
-//   crédito liberado = clientes que já tiveram crédito liberado (console ou relatório), mesmo que depois virem venda
-//   % contactado = (total − não contactado) ÷ total · % conversão = venda realizada ÷ contactados
+//   funil cumulativo: contactados ⊇ atendidos ⊇ cadastrados ⊇ crédito liberado ⊇ venda (quem chegou à etapa ou além)
+//   % contactado = contactados ÷ total · % conversão = venda realizada ÷ contactados
+// Filtro de período (resolverPeriodo): sem período = posição atual; com período = eventos com data no período.
 
 export const PERFIS_VISAO_TOTAL = Object.freeze(['administrador', 'gerente', 'financeiro']);
 export const PARAMETROS_PAINEL = Object.freeze(['data_inicio_campanha', 'percentual_pipeline', 'valor_medio_cliente']);
 
 export const vePainelCompleto = (usuario) => PERFIS_VISAO_TOTAL.includes(usuario?.perfil);
 
-/** Linhas por agente de vendas, já no escopo do usuário. */
-export function consultaPainel({ usuario }) {
+// Etapas do funil, cumulativas ("chegou pelo menos até aqui"), para o funil nunca crescer de uma etapa para a outra.
+const ETAPA = {
+  venda: "p.status_atual = 'venda_realizada'",
+  credito: "(p.dt_liberacao_credito IS NOT NULL OR p.status_atual = 'venda_realizada')",
+  cadastro: "(p.dt_cadastro_erp IS NOT NULL OR p.dt_liberacao_credito IS NOT NULL OR p.status_atual = 'venda_realizada')",
+  atendido: "(p.dt_atendido IS NOT NULL OR p.dt_cadastro_erp IS NOT NULL OR p.dt_liberacao_credito IS NOT NULL OR p.status_atual = 'venda_realizada')",
+};
+// No período: o evento da etapa (ou de uma etapa posterior) caiu no período — também cumulativo.
+const NO_PERIODO = {
+  venda: ["CASE WHEN p.status_atual = 'venda_realizada' THEN p.dt_pedido END"],
+  credito: ['p.dt_liberacao_credito'],
+  cadastro: ['p.dt_cadastro_erp'],
+  atendido: ['p.dt_atendido'],
+};
+const CUMULATIVO = { venda: ['venda'], credito: ['credito', 'venda'], cadastro: ['cadastro', 'credito', 'venda'], atendido: ['atendido', 'cadastro', 'credito', 'venda'] };
+
+/**
+ * Linhas por agente de vendas, já no escopo do usuário.
+ * Sem período = posição atual (foto da carteira hoje). Com `periodo` { inicio, fim } = o que aconteceu no período:
+ * contactado = algum registro no período (ou avanço de etapa); atendidos ⊇ cadastrados ⊇ crédito ⊇ vendas pela data do evento
+ * (cumulativo: quem avançou para uma etapa posterior no período conta nas anteriores); sem interesse = encerrado no período.
+ * Total e não contactado continuam sendo a posição atual da carteira.
+ */
+export function consultaPainel({ usuario, periodo = null }) {
   if (!usuario?.id || !usuario?.perfil) throw new Error('usuário obrigatório');
   const where = ['s.conta_carteira = 1'];
+  const escopo = [];
+  if (usuario.perfil === 'supervisor') { where.push('COALESCE(v.supervisor_id, v.id) = ?'); escopo.push(usuario.id); }
+  else if (!vePainelCompleto(usuario)) { where.push('v.id = ?'); escopo.push(usuario.id); }
   const args = [];
-  if (usuario.perfil === 'supervisor') { where.push('COALESCE(v.supervisor_id, v.id) = ?'); args.push(usuario.id); }
-  else if (!vePainelCompleto(usuario)) { where.push('v.id = ?'); args.push(usuario.id); }
+  let colunas;
+  if (periodo) {
+    const entre = (expr) => { args.push(periodo.inicio, periodo.fim); return `${expr} BETWEEN ? AND ?`; };
+    const etapa = (k) => `(${CUMULATIVO[k].flatMap((e) => NO_PERIODO[e]).map(entre).join(' OR ')})`;
+    // a ordem de montagem segue a ordem das colunas no SELECT (os "?" são posicionais)
+    const contactado = `SUM(EXISTS (SELECT 1 FROM contatos c WHERE c.prospect_id = p.id AND ${entre('c.data_contato')}) OR ${etapa('atendido')})`;
+    colunas = [contactado, `SUM(${etapa('atendido')})`, `SUM(${etapa('cadastro')})`, `SUM(${etapa('credito')})`, `SUM(${etapa('venda')})`,
+      `SUM(p.status_atual = 'sem_interesse' AND ${entre('p.dt_ultimo_contato')})`];
+  } else {
+    colunas = ["SUM(p.status_atual <> 'nao_contactado')", `SUM(${ETAPA.atendido})`, `SUM(${ETAPA.cadastro})`, `SUM(${ETAPA.credito})`,
+      `SUM(${ETAPA.venda})`, "SUM(p.status_atual = 'sem_interesse')"];
+  }
+  const [contactados, atendidos, cadastrados, credito, venda, sem] = colunas;
   return {
     sql: `SELECT v.id AS agente_id, v.nome AS agente_nome, v.perfil AS agente_perfil, v.tipo_atuacao,
                  COALESCE(v.supervisor_id, v.id) AS supervisor_id, COALESCE(sup.nome, v.nome) AS supervisor_nome,
-                 COUNT(*)                                       AS total,
-                 SUM(p.status_atual = 'nao_contactado')         AS nao_contactado,
-                 SUM(p.status_atual = 'sem_interesse')          AS sem_interesse,
-                 SUM(p.dt_liberacao_credito IS NOT NULL)        AS credito_liberado,
-                 SUM(p.status_atual = 'venda_realizada')        AS venda_realizada
+                 COUNT(*)                                AS total,
+                 SUM(p.status_atual = 'nao_contactado')  AS nao_contactado,
+                 ${contactados} AS contactados,
+                 ${atendidos} AS atendidos,
+                 ${cadastrados} AS cadastrados,
+                 ${credito} AS credito_liberado,
+                 ${venda} AS venda_realizada,
+                 ${sem} AS sem_interesse
             FROM prospects p
             JOIN status s   ON s.codigo = p.status_atual
             JOIN usuarios v ON v.id = p.vendedor_id
@@ -34,11 +74,46 @@ export function consultaPainel({ usuario }) {
            WHERE ${where.join(' AND ')}
            GROUP BY v.id
            ORDER BY v.nome`,
-    args,
+    args: [...args, ...escopo],
   };
 }
 
-const CAMPOS = ['total', 'nao_contactado', 'sem_interesse', 'credito_liberado', 'venda_realizada'];
+/** Funil (base → venda) a partir de uma linha somada. */
+export function funilPainel(t) {
+  return [['Base de prospects', t.total], ['Contactados', t.contactados], ['Atendidos', t.atendidos],
+    ['Cadastrados no ERP', t.cadastrados], ['Crédito liberado', t.credito_liberado], ['Venda realizada', t.venda_realizada]]
+    .map(([rotulo, valor], i, l) => ({ rotulo, valor: Number(valor), taxa: i && Number(l[i - 1][1]) ? (Number(valor) / Number(l[i - 1][1])) * 100 : null }));
+}
+
+export const PERIODOS = Object.freeze({
+  atual: 'Posição atual',
+  campanha: 'Desde o início da campanha',
+  hoje: 'Hoje',
+  semana: 'Esta semana',
+  mes: 'Este mês',
+  dias30: 'Últimos 30 dias',
+  personalizado: 'Personalizado',
+});
+
+/** Converte a escolha do filtro em { inicio, fim } (AAAA-MM-DD) ou null para a posição atual. */
+export function resolverPeriodo(chave, { hoje, inicioCampanha, de, ate }) {
+  const d = new Date(`${hoje}T12:00:00Z`);
+  const iso = (x) => x.toISOString().slice(0, 10);
+  switch (chave) {
+    case 'campanha': return { inicio: inicioCampanha, fim: hoje };
+    case 'hoje': return { inicio: hoje, fim: hoje };
+    case 'semana': { const seg = new Date(d); seg.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return { inicio: iso(seg), fim: hoje }; }
+    case 'mes': return { inicio: `${hoje.slice(0, 7)}-01`, fim: hoje };
+    case 'dias30': { const i = new Date(d); i.setUTCDate(d.getUTCDate() - 29); return { inicio: iso(i), fim: hoje }; }
+    case 'personalizado': {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(de ?? '') || !/^\d{4}-\d{2}-\d{2}$/.test(ate ?? '')) return null;
+      return de <= ate ? { inicio: de, fim: ate } : { inicio: ate, fim: de };
+    }
+    default: return null;
+  }
+}
+
+const CAMPOS = ['total', 'nao_contactado', 'contactados', 'atendidos', 'cadastrados', 'sem_interesse', 'credito_liberado', 'venda_realizada'];
 
 /** Soma linhas de agentes e calcula os percentuais. */
 export function somarPainel(linhas) {
@@ -48,8 +123,8 @@ export function somarPainel(linhas) {
     representantes: linhas.filter((l) => l.tipo_atuacao !== 'vendedor').length };
 }
 
-export function percentuais({ total, nao_contactado, venda_realizada }) {
-  const contactados = Number(total) - Number(nao_contactado);
+export function percentuais({ total, nao_contactado, contactados: c, venda_realizada }) {
+  const contactados = c == null ? Number(total) - Number(nao_contactado) : Number(c);
   return {
     contactados,
     pct_contactado: Number(total) ? (contactados / Number(total)) * 100 : 0,
@@ -87,8 +162,10 @@ export async function lerParametrosPainel(db) {
   return Object.fromEntries(r.rows.map((x) => [x.chave, x.valor]));
 }
 
-/** Dias úteis da campanha até `hoje`, com os feriados do banco. */
-export async function diasUteisCampanha(db, { inicio, hoje }) {
-  const r = await db.execute({ sql: 'SELECT DISTINCT data FROM feriados WHERE data BETWEEN ? AND ?', args: [inicio, hoje] });
-  return diasUteis(inicio, hoje, new Set(r.rows.map((x) => x.data)));
+/** Dias úteis da campanha até `hoje` (ou dentro do período, limitado ao início da campanha e a hoje), com os feriados do banco. */
+export async function diasUteisCampanha(db, { inicio, hoje, periodo = null }) {
+  const de = periodo && periodo.inicio > inicio ? periodo.inicio : inicio;
+  const ate = periodo && periodo.fim < hoje ? periodo.fim : hoje;
+  const r = await db.execute({ sql: 'SELECT DISTINCT data FROM feriados WHERE data BETWEEN ? AND ?', args: [de, ate] });
+  return diasUteis(de, ate, new Set(r.rows.map((x) => x.data)));
 }

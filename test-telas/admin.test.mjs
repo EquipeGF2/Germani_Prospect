@@ -39,7 +39,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('.aviso.erro');
   await pagina.fill('#senha', 'demo1234');
   await pagina.click('button[type=submit]');
-  await pagina.waitForSelector('h1:text("Dashboard de acompanhamento")');   // Início = painel
+  await pagina.waitForSelector('.painel-web');   // Início = painel (computador)
   assert.equal(await pagina.locator('#menu a[title="Visão geral"]').count(), 0);
   await foto('02-inicio-vazio');
 
@@ -155,25 +155,29 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('text=Feriado excluído.');
   assert.equal(await pagina.locator('td:has-text("Santa Cruz do Sul/RS")').count(), 0);
 
-  // 5c. Início com a base carregada: 120 prospects, 2 com crédito liberado; seletor de supervisor
+  // 5c. Início no computador (visão Executivo): 120 prospects; Arrojado mostra 2 com crédito liberado; seletor de supervisor
   await pagina.click('#menu a[title="Início"]');
-  await pagina.waitForSelector('#painel-supervisor');
-  const kpi = (n) => pagina.locator('.kpis').first().locator('.kpi').nth(n).locator('.valor').innerText();
-  assert.equal(await kpi(0), '120');
-  assert.equal(await kpi(3), '2');
-  const supervisores = await pagina.locator('#painel-supervisor option').allInnerTexts();
-  assert.ok(supervisores.length >= 2, 'mais de um supervisor na base fictícia');
-  await pagina.selectOption('#painel-supervisor', { label: supervisores[1] });
-  await pagina.waitForSelector(`text=Supervisor: ${supervisores[1]}`);
-  assert.ok((await pagina.locator('.tabela-agentes tbody tr').count()) >= 1);
-  await foto('09b-inicio-painel');
-  await pagina.setViewportSize({ width: 390, height: 844 });                 // o mesmo painel no celular
+  await pagina.waitForSelector('.vis-executivo');
+  assert.match(await texto(), /de 120 contactados/);
+  await pagina.click('.controles-painel .visoes a[data-visao="arrojado"]');
+  await pagina.waitForSelector('.vis-arrojado');
+  assert.equal(await pagina.locator('.kpis-linha > div').nth(3).locator('.v').innerText(), '2');
+  const opcoesSup = await pagina.locator('#painel-supervisor option').allInnerTexts();
+  assert.ok(opcoesSup.length >= 3 && opcoesSup[0] === 'Todos os supervisores');
+  await pagina.selectOption('#painel-supervisor', { index: 2 });
+  await pagina.waitForFunction(() => document.querySelector('.kpis-linha .v')?.textContent !== '120');   // só a equipe escolhida
+  await foto('09b-inicio-arrojado');
+  await pagina.click('.controles-painel .visoes a[data-visao="executivo"]');
+  await pagina.waitForSelector('.vis-executivo');
+  await pagina.setViewportSize({ width: 390, height: 844 });                 // celular: layout de sempre (cartões)
   await pagina.waitForSelector('.agentes-cartoes .agente');
+  assert.equal(await pagina.locator('.controles-painel').count(), 0, 'no celular não há visualizações nem período');
   await pagina.waitForFunction(() => document.getElementById('lateral').getBoundingClientRect().right <= 0);   // menu recolhido (fim da animação)
   const [largura, janela] = await pagina.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
   assert.ok(largura <= janela, `painel mais largo que o celular: ${largura}`);
   await foto('09c-inicio-celular');
   await pagina.setViewportSize({ width: 1280, height: 900 });
+  await pagina.waitForSelector('.vis-executivo');
 
   // 5d. lista principal do administrador: filtro por supervisor e por vendedor/representante
   await pagina.click('#menu a[title="Lista principal"]');
@@ -209,7 +213,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.fill('#login', '1201');
   await pagina.fill('#senha', senhaVendedor);
   await pagina.click('button:text("Entrar")');
-  await pagina.waitForSelector('text=Sua carteira: registros e status atual');
+  await pagina.waitForSelector('h1:text("Sua carteira")');
   assert.equal(await pagina.locator('#painel-supervisor').count(), 0, 'vendedor não escolhe supervisor');
   await foto('10a-inicio-vendedor');
   assert.match(await pagina.locator('#usuario-lateral').innerText(), /Vendedor/);
@@ -219,7 +223,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
 
   // 8. lista principal do vendedor (com visão por rota) → ficha → registrar atendido
   await pagina.goto(`${base}#/inicio`);
-  await pagina.waitForSelector('h1:text("Dashboard de acompanhamento")');
+  await pagina.waitForSelector('.painel-web');
   await foto('10b-inicio-vendedor');
   await pagina.click('#menu a[title="Lista principal"]');
   await pagina.waitForSelector('.cartao-prospect');
@@ -343,7 +347,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   assert.match(await pagina.locator('#usuario-lateral').innerText(), /Gerente comercial/);
   assert.equal(await pagina.locator('#menu a[title="Console de crédito"]').count(), 0);
   assert.equal(await pagina.locator('#menu a[title="Usuários"]').count(), 0);
-  await pagina.click('.tabela-agentes tbody a >> nth=0');                    // agente → carteira dele
+  await pagina.click('.lista-agentes a >> nth=0');                           // agente → carteira dele
   await pagina.waitForSelector('.cartao-prospect');
   await pagina.click('.cartao-prospect-corpo >> nth=0');
   await pagina.click('a:text("Registrar atendimento")');
