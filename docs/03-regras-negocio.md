@@ -9,7 +9,7 @@
 | Aguardando cadastro | app (**atendido** ou **pedido identificado**) — "Aguardando cadastro · atendido em dd/mm/aaaa" ou "· pedido informado em dd/mm/aaaa"; aguarda o CNPJ aparecer nos arquivos de cadastro/pedido | não (acompanhamento) | sim | sim | sim |
 | Sem interesse | app ("sem interesse", com justificativa) | não | sim | sim | sim |
 | Análise financeira | arquivo de **cadastro** do Senior | não | sim (só registra; status não muda) | sim | sim |
-| Aguardando pedido | **OK do analista financeiro** no console (limite + a prazo/à vista) | não | sim (só registra) | sim | sim |
+| Aguardando pedido | **OK do analista financeiro** no console (condição + restrição + limite) | não | sim (só registra) | sim | sim |
 | Venda realizada | arquivo de pedidos do Senior (**final**) | não | não | sim | sim |
 | Inválido (baixado) | arquivo de CNPJs baixados | não — **congelado** | não | não | **não** |
 
@@ -183,12 +183,17 @@ Implementação: [`shared/financeiro.mjs`](../shared/financeiro.mjs) · testes: 
 1. A importação do arquivo de **cadastro** coloca o cliente em **Análise financeira** (prazo de 10 dias).
 2. O console (`consultaFilaAnalise`) lista todos os clientes com cadastro realizado, mais antigos primeiro,
    com dias em análise e prazo vencido. Acesso: perfil **financeiro** ou administrador.
-3. O analista informa o **limite de crédito liberado** (> 0) e se foi **a prazo** ou **à vista**
-   (`comandoLiberarCredito`) → **Aguardando pedido**. Fica em `liberacoes_credito` e no histórico de movimentação.
+3. **A liberação sempre ocorre.** O analista informa (`comandoLiberarCredito`):
+   - **condição:** venda **à vista / antecipada** ou **a prazo**;
+   - **restrição de crédito:** sim ou não;
+   - **limite estipulado** (R$): obrigatório; a prazo exige limite maior que zero, à vista/antecipado aceita zero.
+
+   → **Aguardando pedido**. Fica em `liberacoes_credito` e no histórico de movimentação
+   (ex.: "a prazo · com restrição de crédito · limite R$ 5000.00").
 4. A importação do arquivo de **pedidos** leva a **Venda realizada**.
 
 Correção de uma liberação = nova liberação (o cliente em Aguardando pedido aceita nova liberação; nada é apagado).
-Crédito **negado**: ainda não tem caminho (ver 07).
+Não existe "crédito negado": o cliente com risco é liberado **com restrição** (e, se for o caso, só à vista/antecipado).
 
 ## 9. Histórico de movimentação
 

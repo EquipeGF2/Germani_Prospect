@@ -23,7 +23,7 @@ flowchart TD
         SI
     end
     AC -- "importação: arquivo de CADASTRO (ERP)" --> AF
-    AF -- "console do analista: limite de crédito<br/>+ a prazo / à vista" --> AP
+    AF -- "console do analista (liberação sempre ocorre):<br/>à vista/antecipado ou a prazo · restrição sim/não · limite" --> AP
     AP -- "importação: arquivo de PEDIDOS (ERP)" --> VR
     AC -. "pedido no ERP antes" .-> VR
     AF -. "pedido no ERP antes do OK" .-> VR
@@ -40,7 +40,7 @@ flowchart TD
 | 0 | Não contactado / Em prospecção | principal | carga inicial | — | parado > 30 dias |
 | 1 | **Aguardando cadastro** | acompanhamento | "Atendido" no mobile (ou "Pedido identificado") | representante / vendedor | **15 dias** para o cadastro |
 | 2 | **Análise financeira** | acompanhamento | CNPJ no arquivo de **cadastro** do ERP | importação (administrador) | **10 dias** para o OK |
-| 3 | **Aguardando pedido** | acompanhamento | OK no console: **limite de crédito** + **a prazo / à vista** | analista financeiro | — |
+| 3 | **Aguardando pedido** | acompanhamento | OK no console: **à vista/antecipado ou a prazo**, **restrição de crédito sim/não**, **limite estipulado** | analista financeiro | — |
 | 4 | **Venda realizada** | acompanhamento | CNPJ no arquivo de **pedidos** do ERP | importação | final |
 | — | Sem interesse | acompanhamento | registro com justificativa | representante / vendedor | reabre com "Pedido identificado" |
 | — | Inválido | — | CNPJ no arquivo de baixados (a qualquer momento) | importação | congelado |
@@ -62,7 +62,3 @@ Cada linha guarda data, status antes → depois, **quem fez**, **de quem era a c
 - "Não atendido" não gera registro; dias corridos contam sempre do 1º registro.
 - Saiu da lista principal → continua no acompanhamento e **em todos os indicadores**.
 - Representante: filtro, consulta e registros. Vendedor: também monta rotas. Nenhuma distância é calculada.
-
-## Em aberto
-- Crédito **negado** pelo analista: hoje o console só registra liberação. Precisa de um caminho
-  (ex.: "Restrição financeira")?

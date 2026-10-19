@@ -66,7 +66,7 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 | Busca | `busca` (razão + fantasia + CNPJ + cidade + bairro, sem acento, maiúsculas), `cidade_busca`, `bairro_busca` |
 | Carteira | `vendedor_id` (o supervisor vem de `usuarios.supervisor_id`) |
 | Estado (só triggers mexem) | `status_atual` (Não contactado · Em prospecção · Aguardando cadastro · Sem interesse · Análise financeira · Aguardando pedido · Venda realizada · Inválido), `tentativas`, `dt_primeiro_contato`, `dt_segundo_contato`, `dt_ultimo_contato`, `data_proxima_acao`, `motivo_sem_interesse_id`, `dt_atendido`, `dt_pedido_informado`, `prazo_cadastro_ate` |
-| ERP / crédito | `dt_cadastro_erp`, `codigo_cliente_erp`, `analise_financeira_ate`, `dt_liberacao_credito`, `limite_credito`, `condicao_pagamento`, `convertido_sem_registro`, `dt_pedido`, `numero_pedido` |
+| ERP / crédito | `dt_cadastro_erp`, `codigo_cliente_erp`, `analise_financeira_ate`, `dt_liberacao_credito`, `limite_credito`, `condicao_pagamento`, `com_restricao_credito`, `convertido_sem_registro`, `dt_pedido`, `numero_pedido` |
 | Baixa | `situacao_cadastral` (`ativa`/`baixada`), `dt_baixa` |
 | Origem | `importacao_id`, `dt_entrada_base` (data de referência do 1º registro no histórico) |
 
@@ -78,7 +78,7 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 | Tabela | Quem grava | Efeito (trigger) |
 |---|---|---|
 | `contatos` | app (vendedor/supervisor/admin) e importação inicial (DT 1o / DT 2o) | aplica a regra de status, datas de tentativa, próxima ação, motivo final |
-| `liberacoes_credito` | analista financeiro (console) | limite de crédito + a prazo/à vista → `aguardando_pedido` |
+| `liberacoes_credito` | analista financeiro (console) | `condicao_pagamento` (`a_vista_antecipado` · `a_prazo`), `com_restricao` (0/1), `limite_credito` (≥ 0; > 0 a prazo) → `aguardando_pedido` |
 | `eventos_erp` | importação de arquivos do ERP / baixados | cadastro → `analise_financeira`; pedido → `venda_realizada`; baixa → `invalido` + congelado |
 | `transferencias` | supervisor da equipe ou administrador | troca `prospects.vendedor_id` |
 | `movimentacoes` | **somente triggers** | **histórico de movimentação do cliente**: uma linha por movimento (entrada na base, contato da planilha, atendido, sem interesse, pedido identificado, cadastro, liberação de crédito, pedido, baixa, transferência) com status antes → depois, data, origem, **quem fez**, **vendedor dono da carteira no dia** e detalhe |

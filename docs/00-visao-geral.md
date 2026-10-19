@@ -15,7 +15,7 @@ atendimentos e as faltas de interesse, e o supervisor acompanha cobertura e conv
           │                                          │ arquivo de CADASTRO (ERP)
           │                                          ▼
           │                                    2 Análise financeira (10 dias)
-          │                                          │ OK do analista: limite + a prazo/à vista
+          │                                          │ OK do analista: condição + restrição + limite
           │                                          ▼
           │                                    3 Aguardando pedido
           │                                          │ arquivo de PEDIDOS (ERP)
@@ -37,7 +37,7 @@ Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 |---|---|---|
 | Representante | **filtro e consulta**: lista principal por lista, cidade e bairro (**sem rota**) + acompanhamento; registra **atendido / sem interesse** (também em lote) e reabre com pedido identificado | — |
 | Vendedor | o mesmo + **montagem de rotas** e visão por rota/subrota | — |
-| Analista financeiro | console de crédito: informa limite liberado e a prazo/à vista dos clientes cadastrados | — |
+| Analista financeiro | console de crédito: libera sempre, informando à vista/antecipado ou a prazo, restrição de crédito e limite | — |
 | Supervisor | o mesmo, para a sua equipe; acompanha painel; redistribui carteira | — |
 | Administrador | tudo | base inicial de prospects; cadastro de clientes do ERP; pedidos do ERP; CNPJs baixados; usuários e senhas |
 

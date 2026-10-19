@@ -1,9 +1,10 @@
 // Console do analista financeiro. docs/03-regras-negocio.md §8
 // Fila: clientes em "Análise financeira" (o arquivo de cadastro do ERP foi importado).
-// O analista informa o limite de crédito liberado e a condição (a prazo / à vista) → "Aguardando pedido".
+// A liberação SEMPRE ocorre. O analista informa: condição (à vista/antecipado ou a prazo), restrição de crédito
+// (sim/não) e o limite estipulado → "Aguardando pedido".
 // O banco confere tudo de novo (trg_liberacoes_validar) e grava o movimento no histórico.
 
-export const CONDICOES = Object.freeze({ a_prazo: 'Liberado a prazo', a_vista: 'Liberado à vista' });
+export const CONDICOES = Object.freeze({ a_vista_antecipado: 'À vista / antecipado', a_prazo: 'A prazo' });
 
 function exigirAnalista(usuario) {
   if (!['financeiro', 'administrador'].includes(usuario?.perfil)) throw new Error('somente o analista financeiro ou o administrador libera crédito');
@@ -21,7 +22,7 @@ export function consultaFilaAnalise({ usuario, filtros = {}, incluirLiberados = 
     sql: `SELECT id, cnpj, razao_social, nome_fantasia, cidade, uf, telefone, vendedor_nome, supervisor_nome,
                  codigo_cliente_erp, dt_cadastro_erp, analise_financeira_ate, analise_financeira_vencida,
                  CAST(julianday(date('now','-3 hours')) - julianday(dt_cadastro_erp) AS INTEGER) AS dias_em_analise,
-                 status_atual, status_nome, limite_credito, condicao_pagamento, dt_liberacao_credito, dias_corridos
+                 status_atual, status_nome, limite_credito, condicao_pagamento, com_restricao_credito, dt_liberacao_credito, dias_corridos
             FROM vw_prospects WHERE ${where.join(' AND ')}
            ORDER BY status_atual = 'aguardando_pedido', dt_cadastro_erp, razao_social`,
     args,
@@ -29,23 +30,26 @@ export function consultaFilaAnalise({ usuario, filtros = {}, incluirLiberados = 
 }
 
 /** Valida o formulário de liberação (mesmas regras do banco). */
-export function validarLiberacao({ limiteCredito, condicaoPagamento, dataLiberacao }) {
+export function validarLiberacao({ limiteCredito, condicaoPagamento, comRestricao, dataLiberacao }) {
   const erros = [];
+  const vazio = limiteCredito == null || String(limiteCredito).trim() === '';
   const valor = typeof limiteCredito === 'string' ? Number(limiteCredito.replace(/\./g, '').replace(',', '.')) : Number(limiteCredito);
-  if (!Number.isFinite(valor) || valor <= 0) erros.push('informe o limite de crédito liberado (maior que zero)');
-  if (!CONDICOES[condicaoPagamento]) erros.push('informe se foi liberado a prazo ou à vista');
+  if (!CONDICOES[condicaoPagamento]) erros.push('informe a condição: à vista / antecipado ou a prazo');
+  if (typeof comRestricao !== 'boolean') erros.push('informe se a liberação tem restrição de crédito');
+  if (vazio || !Number.isFinite(valor) || valor < 0) erros.push('informe o limite estipulado (R$)');
+  else if (condicaoPagamento === 'a_prazo' && valor === 0) erros.push('venda a prazo exige limite maior que zero');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataLiberacao ?? '')) erros.push('data da liberação obrigatória');
   return { erros, valor };
 }
 
 /** Comando de liberação (OK do analista). */
-export function comandoLiberarCredito({ usuario, prospectId, limiteCredito, condicaoPagamento, dataLiberacao, observacao = null }) {
+export function comandoLiberarCredito({ usuario, prospectId, limiteCredito, condicaoPagamento, comRestricao, dataLiberacao, observacao = null }) {
   exigirAnalista(usuario);
-  const { erros, valor } = validarLiberacao({ limiteCredito, condicaoPagamento, dataLiberacao });
+  const { erros, valor } = validarLiberacao({ limiteCredito, condicaoPagamento, comRestricao, dataLiberacao });
   if (erros.length) throw new Error(erros.join('; '));
   return {
-    sql: `INSERT INTO liberacoes_credito (prospect_id, usuario_id, data_liberacao, limite_credito, condicao_pagamento, observacao)
-          VALUES (?, ?, ?, ?, ?, ?)`,
-    args: [prospectId, usuario.id, dataLiberacao, valor, condicaoPagamento, observacao?.trim() || null],
+    sql: `INSERT INTO liberacoes_credito (prospect_id, usuario_id, data_liberacao, condicao_pagamento, com_restricao, limite_credito, observacao)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: [prospectId, usuario.id, dataLiberacao, condicaoPagamento, comRestricao ? 1 : 0, valor, observacao?.trim() || null],
   };
 }
