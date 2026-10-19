@@ -36,9 +36,9 @@ export async function listarUsuarios(db) {
 }
 
 /**
- * Cria administrador, gerente comercial ou analista financeiro. Devolve a senha provisória (mostrar uma vez).
- * `senha` (opcional): senha inicial informada (ex.: Secret do GitHub no workflow "Criar administrador"); continua
- * provisória — o usuário troca no primeiro acesso.
+ * Cria administrador, gerente comercial ou analista financeiro.
+ * `senha` (opcional, mín. 8 caracteres): senha definida pelo administrador (tela de usuários ou Secret do workflow
+ * "Criar administrador"). Sem ela, gera uma senha provisória, devolvida para mostrar uma vez.
  */
 export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPor, senha: senhaInicial = null }) {
   if (!PERFIS_SISTEMA.includes(perfil)) throw new Error('perfil deve ser administrador, gerente ou financeiro');
@@ -48,21 +48,24 @@ export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPo
   if (n.length < 3) throw new Error('informe o nome');
   const senha = senhaInicial ?? gerarSenhaProvisoria();
   const r = await db.execute({
-    sql: 'INSERT INTO usuarios (perfil, nome, nome_busca, login, senha_hash) VALUES (?, ?, ?, ?, ?) RETURNING id',
-    args: [perfil, n, normalizarBusca(n), l, await gerarHashSenha(senha)],
+    sql: 'INSERT INTO usuarios (perfil, nome, nome_busca, login, senha_hash, senha_provisoria) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
+    args: [perfil, n, normalizarBusca(n), l, await gerarHashSenha(senha), senhaInicial ? 0 : 1],
   });
   const id = Number(r.rows[0].id);
   await db.execute(auditoria(executadoPor, `criar_${perfil}`, id, { login: l }));
   return { id, login: l, senha };
 }
 
-/** Gera nova senha provisória (também libera o acesso de quem veio da importação sem senha). */
-export async function redefinirSenha(db, { usuarioId, executadoPor }) {
-  const senha = gerarSenhaProvisoria();
+/**
+ * Define a senha do usuário (também libera o acesso de quem veio da importação sem senha).
+ * `senha` informada pelo administrador (mín. 8 caracteres); sem ela, gera uma senha provisória.
+ */
+export async function redefinirSenha(db, { usuarioId, executadoPor, senha: definida = null }) {
+  const senha = definida ?? gerarSenhaProvisoria();
   const hash = await gerarHashSenha(senha);
   const r = await db.batch([
-    { sql: "UPDATE usuarios SET senha_hash = ?, senha_provisoria = 1, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? RETURNING login", args: [hash, usuarioId] },
-    auditoria(executadoPor, 'senha_provisoria', usuarioId),
+    { sql: "UPDATE usuarios SET senha_hash = ?, senha_provisoria = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? RETURNING login", args: [hash, definida ? 0 : 1, usuarioId] },
+    auditoria(executadoPor, definida ? 'senha_definida' : 'senha_provisoria', usuarioId),
   ], 'write');
   if (!r[0].rows.length) throw new Error('usuário não encontrado');
   return { login: r[0].rows[0].login, senha };

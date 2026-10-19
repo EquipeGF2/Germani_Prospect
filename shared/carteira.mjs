@@ -38,6 +38,19 @@ export function visoesPermitidas(usuario) {
   return formaDeTrabalho(usuario) === 'representante' ? VISOES.filter((v) => v !== 'rota') : [...VISOES];
 }
 
+// Ordenação da lista pelos rótulos das colunas (tela do computador, exibição em lista). Só chaves conhecidas viram SQL.
+const natural = (c) => `${c} IS NULL, length(${c}), ${c}`;
+export const ORDENACOES = Object.freeze({
+  prospect: (d) => `razao_social ${d}`,
+  cidade: (d) => `cidade_busca ${d}, bairro_busca ${d}`,
+  onda: (d) => `onda IS NULL, length(onda) ${d}, onda ${d}`,
+  rota: (d) => `rota IS NULL, length(rota) ${d}, rota ${d}, subrota ${d}`,
+  carteira: (d) => `vendedor_nome ${d}`,
+  status: (d) => `(SELECT CASE s.codigo WHEN 'sem_interesse' THEN 100 WHEN 'invalido' THEN 101 ELSE s.ordem END FROM status s WHERE s.codigo = status_atual) ${d}`,
+  dias: (d) => `dias_corridos IS NULL, dias_corridos ${d}`,
+  ultimo: (d) => `dt_ultimo_contato IS NULL, dt_ultimo_contato ${d}`,
+});
+
 function escopo(usuario) {
   if (['administrador', 'gerente', 'financeiro'].includes(usuario.perfil)) return { where: [], args: [] };
   if (usuario.perfil === 'supervisor') return { where: ['supervisor_id = ?'], args: [usuario.id] };
@@ -53,13 +66,14 @@ function escopo(usuario) {
  *                 `dataDe` / `dataAte` (AAAA-MM-DD): data do último registro do prospect.
  * @param ordemNatural  onda e rota em ordem (Onda 1, 2, 3…) em vez de por pendências (tela do computador)
  * @param rotaEmNiveis  visão rota em 2 níveis: rotas; com `filtros.rota`, as subrotas daquela rota (tela do computador)
+ * @param ordenar  lista: { campo: chave de ORDENACOES, desc } — clique no rótulo da coluna; sem campo = ordem de trabalho
  *                 `foraDaLista` = só o acompanhamento (quem já saiu da lista principal).
  *                 Informar `status` (ou abrir a visão 'status') mostra a carteira inteira, não só a lista.
  *                 `somenteRetornos` na lista = retornos da lista; com `status: 'aguardando_cadastro'` = retornos da negociação.
  * @param busca    texto livre (nome, CNPJ, cidade, bairro) — acentos ignorados
  * @returns {{ sql: string, args: any[], colunas?: string[] }}
  */
-export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca = '', incluirForaDaLista = false, limite = 200, deslocamento = 0, ordemNatural = false, rotaEmNiveis = false }) {
+export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca = '', incluirForaDaLista = false, limite = 200, deslocamento = 0, ordemNatural = false, rotaEmNiveis = false, ordenar = null }) {
   if (!usuario?.id || !usuario?.perfil) throw new Error('usuário obrigatório');
   if (!VISOES.includes(visao)) throw new Error(`visão inválida: ${visao}`);
   const permitidas = visoesPermitidas(usuario);
@@ -95,10 +109,12 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
 
   if (visao === 'lista') {
     const colunas = comRota ? [...COLUNAS_LISTA, ...COLUNAS_ROTA] : COLUNAS_LISTA;
+    const porColuna = ORDENACOES[ordenar?.campo] && (ordenar.campo !== 'rota' || comRota)
+      ? `${ORDENACOES[ordenar.campo](ordenar.desc ? 'DESC' : 'ASC')}, razao_social, ` : '';
     return {
       colunas: colunas.map((c) => c.split(' AS ').pop()),
       sql: `SELECT ${colunas.join(', ')} FROM vw_prospects ${filtro}
-            ORDER BY pendente_hoje DESC, retorno_pendente DESC, COALESCE(data_proxima_acao, '0000-00-00'), cidade_busca, bairro_busca, razao_social
+            ORDER BY ${porColuna}pendente_hoje DESC, retorno_pendente DESC, COALESCE(data_proxima_acao, '0000-00-00'), cidade_busca, bairro_busca, razao_social
             LIMIT ? OFFSET ?`,
       args: [...args, limite, deslocamento],
     };
@@ -154,6 +170,11 @@ export function consultaFicha({ usuario, prospectId }) {
   return { sql: `SELECT vw_prospects.*,
                        (SELECT SUM(e.valor) FROM eventos_erp e WHERE e.prospect_id = vw_prospects.id AND e.tipo = 'pedido') AS valor_pedidos
                   FROM vw_prospects WHERE ${where.join(' AND ')}`, args };
+}
+
+/** Ondas existentes na base (para o filtro), em ordem natural: 1, 2, 3… */
+export function consultaOndas() {
+  return { sql: `SELECT DISTINCT onda FROM prospects WHERE onda IS NOT NULL AND onda <> '' ORDER BY ${natural('onda')}`, args: [] };
 }
 
 /** Remove da ficha o que o perfil não usa (representante não tem rota). */

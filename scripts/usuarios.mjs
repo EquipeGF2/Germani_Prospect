@@ -30,7 +30,7 @@ switch (comando) {
     const senhaInicial = process.env.GERMANI_SENHA_INICIAL || null;
     const r = await criarUsuarioSistema(db, { perfil: comando === 'criar-admin' ? 'administrador' : 'financeiro', login, nome, executadoPor: quem, senha: senhaInicial });
     // senha vinda do ambiente nunca é impressa (o log do Actions de repositório público é público)
-    console.log(senhaInicial ? `Usuário criado. Login: ${r.login}  Senha: a do Secret (trocar no primeiro acesso)`
+    console.log(senhaInicial ? `Usuário criado. Login: ${r.login}  Senha: a do Secret ADMIN_SENHA_INICIAL`
       : `Usuário criado. Login: ${r.login}  Senha provisória: ${r.senha}`);
     break;
   }

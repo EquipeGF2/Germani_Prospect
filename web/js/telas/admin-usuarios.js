@@ -1,7 +1,7 @@
 import { bancoAdmin } from '../db.js';
 import { criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../../shared/usuarios.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
-import { h, montar, tabela, aviso, comEspera, selo, numeros } from '../ui.js';
+import { h, montar, tabela, aviso, comEspera, selo, cartoesFiltro } from '../ui.js';
 import { NOMES_PERFIL } from '../app.js';
 
 const SITUACAO = { sem_acesso: ['sem acesso', 'alerta'], provisoria: ['senha provisória', 'ok'], ok: ['ativo', 'ok'] };
@@ -11,11 +11,12 @@ export async function render(conteudo, ctx) {
   const quem = ctx.usuario.login;
   const todos = await listarUsuarios(db);
   const senhaArea = h('div');
-  const busca = h('input', { placeholder: 'Buscar por nome, login ou código', 'aria-label': 'Buscar' });
-  const filtroPerfil = h('select', { 'aria-label': 'Perfil' }, h('option', { value: '' }, 'Todos os perfis'),
+  const busca = h('input', { type: 'search', placeholder: 'Buscar por nome, login ou código', 'aria-label': 'Buscar' });
+  const filtroPerfil = h('select', { 'aria-label': 'Perfil', id: 'filtro-perfil' }, h('option', { value: '' }, 'Todos os perfis'),
     Object.entries(NOMES_PERFIL).map(([v, t]) => h('option', { value: v }, t)));
-  const filtroSituacao = h('select', { 'aria-label': 'Situação' }, h('option', { value: '' }, 'Qualquer situação'),
-    h('option', { value: 'sem_acesso' }, 'Sem acesso liberado'), h('option', { value: 'sem_tipo' }, 'Vendedor sem tipo'));
+  // situação: escolhida pelos cards (o próprio card é o filtro)
+  const filtroSituacao = { value: '' };
+  const cardsArea = h('div');
   const listaArea = h('div');
 
   function mostrarSenha(login, senha) {
@@ -27,7 +28,16 @@ export async function render(conteudo, ctx) {
     senhaArea.scrollIntoView({ behavior: 'smooth' });
   }
 
+  function desenharCards() {
+    const escolher = (v) => () => { filtroSituacao.value = v; desenhar(); };
+    montar(cardsArea, cartoesFiltro([
+      { chave: 'todos', rotulo: 'usuários', valor: todos.length, ativo: !filtroSituacao.value, aoClicar: escolher('') },
+      { chave: 'sem_acesso', rotulo: 'sem acesso liberado', valor: todos.filter((u) => u.situacao_senha === 'sem_acesso').length, tipo: 'alerta', ativo: filtroSituacao.value === 'sem_acesso', aoClicar: escolher('sem_acesso') },
+      { chave: 'sem_tipo', rotulo: 'vendedores sem tipo', valor: todos.filter((u) => u.perfil === 'vendedor' && !u.tipo_atuacao).length, tipo: 'alerta', ativo: filtroSituacao.value === 'sem_tipo', aoClicar: escolher('sem_tipo') }]));
+  }
+
   function desenhar() {
+    desenharCards();
     const termo = normalizarBusca(busca.value);
     const lista = todos.filter((u) => (!filtroPerfil.value || u.perfil === filtroPerfil.value)
       && (filtroSituacao.value !== 'sem_acesso' || u.situacao_senha === 'sem_acesso')
@@ -49,16 +59,29 @@ export async function render(conteudo, ctx) {
       { titulo: 'Prospects', campo: 'prospects', classe: 'num' },
       { titulo: 'Acesso', valor: (u) => Number(u.ativo) ? selo(...SITUACAO[u.situacao_senha]) : selo('desativado', 'erro') },
       { titulo: 'Ações', valor: (u) => {
-        const bSenha = h('button', { class: 'pequeno', onclick: async () => {
-          const r = await comEspera(bSenha, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem }));
-          if (r) { u.situacao_senha = 'provisoria'; mostrarSenha(r.login, r.senha); desenhar(); }
-        } }, u.situacao_senha === 'sem_acesso' ? 'Liberar acesso' : 'Nova senha');
+        // o administrador define a senha de cada usuário (mín. 8); "Gerar" cria uma provisória aleatória
+        const acoes = h('div', { class: 'acoes', style: 'margin:0' });
+        const bSenha = h('button', { class: 'pequeno', dados: { senha: u.login }, onclick: () => {
+          const campo = h('input', { type: 'password', class: 'campo-senha', autocomplete: 'new-password', placeholder: 'mín. 8 caracteres', 'aria-label': `nova senha de ${u.login}` });
+          const bSalvar = h('button', { class: 'pequeno', type: 'submit' }, 'Salvar');
+          const bGerar = h('button', { class: 'pequeno secundario', type: 'button', onclick: async () => {
+            const r = await comEspera(bGerar, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem }));
+            if (r) { u.situacao_senha = 'provisoria'; mostrarSenha(r.login, r.senha); desenhar(); }
+          } }, 'Gerar');
+          montar(acoes, h('form', { class: 'definir-senha', onsubmit: async (ev) => {
+            ev.preventDefault();
+            const r = await comEspera(bSalvar, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem, senha: campo.value }));
+            if (r) { u.situacao_senha = 'ok'; aviso(`Senha de ${u.login} definida.`); desenhar(); }
+          } }, campo, bSalvar, bGerar, h('button', { class: 'pequeno secundario', type: 'button', onclick: desenhar }, 'Cancelar')));
+          campo.focus();
+        } }, u.situacao_senha === 'sem_acesso' ? 'Liberar acesso' : 'Definir senha');
         const bAtivo = h('button', { class: 'pequeno secundario', onclick: async () => {
           if (u.id === ctx.usuario.id) return aviso('Você não pode desativar o próprio usuário.', 'erro');
           const ok = await comEspera(bAtivo, async () => { await definirAtivo(db, { usuarioId: u.id, ativo: !Number(u.ativo), executadoPor: quem }); return true; });
           if (ok) { u.ativo = Number(u.ativo) ? 0 : 1; desenhar(); }
         } }, Number(u.ativo) ? 'Desativar' : 'Ativar');
-        return h('div', { class: 'acoes', style: 'margin:0' }, bSenha, bAtivo);
+        montar(acoes, bSenha, bAtivo);
+        return acoes;
       } },
     ], lista, { vazio: 'Nenhum usuário com esse filtro.' }));
   }
@@ -66,28 +89,30 @@ export async function render(conteudo, ctx) {
   const perfilNovo = h('select', { id: 'novo-perfil' }, h('option', { value: 'financeiro' }, 'Analista financeiro'), h('option', { value: 'gerente' }, 'Gerente comercial'), h('option', { value: 'administrador' }, 'Administrador'));
   const loginNovo = h('input', { id: 'novo-login', autocapitalize: 'none' });
   const nomeNovo = h('input', { id: 'novo-nome' });
+  const senhaNova = h('input', { id: 'novo-senha', type: 'password', autocomplete: 'new-password', placeholder: 'vazio = gerar' });
   const bCriar = h('button', { type: 'submit' }, 'Criar usuário');
-  const formNovo = h('form', { class: 'cartao', onsubmit: async (ev) => {
+  const formNovo = h('form', { class: 'cartao linha-novo-usuario', onsubmit: async (ev) => {
     ev.preventDefault();
-    const r = await comEspera(bCriar, () => criarUsuarioSistema(db, { perfil: perfilNovo.value, login: loginNovo.value, nome: nomeNovo.value, executadoPor: quem }));
-    if (r) { mostrarSenha(r.login, r.senha); todos.splice(0, todos.length, ...(await listarUsuarios(db))); formNovo.reset(); desenhar(); }
+    const senha = senhaNova.value || null;
+    const r = await comEspera(bCriar, () => criarUsuarioSistema(db, { perfil: perfilNovo.value, login: loginNovo.value, nome: nomeNovo.value, executadoPor: quem, senha }));
+    if (r) { if (senha) aviso(`Usuário ${r.login} criado com a senha definida.`); else mostrarSenha(r.login, r.senha); todos.splice(0, todos.length, ...(await listarUsuarios(db))); formNovo.reset(); desenhar(); }
   } },
-  h('h2', {}, 'Novo administrador ou analista financeiro'),
-  h('p', { class: 'ajuda' }, 'Supervisores e vendedores são criados pela importação da base (código do ERP).'),
-  h('div', { class: 'linha-campos' },
-    h('div', {}, h('label', { for: 'novo-perfil' }, 'Perfil'), perfilNovo),
-    h('div', {}, h('label', { for: 'novo-login' }, 'Login'), loginNovo),
-    h('div', {}, h('label', { for: 'novo-nome' }, 'Nome'), nomeNovo),
-    h('div', {}, bCriar)));
+  // linha única: título curto + campos + botão (supervisores e vendedores vêm da importação da base)
+  h('b', { class: 'tit' }, 'Novo usuário'),
+  h('div', {}, h('label', { for: 'novo-perfil' }, 'Perfil'), perfilNovo),
+  h('div', {}, h('label', { for: 'novo-login' }, 'Login'), loginNovo),
+  h('div', { class: 'nome' }, h('label', { for: 'novo-nome' }, 'Nome'), nomeNovo),
+  h('div', {}, h('label', { for: 'novo-senha' }, 'Senha (mín. 8)'), senhaNova),
+  bCriar,
+  h('small', { class: 'ajuda' }, 'Supervisores e vendedores vêm da importação da base (código do ERP).'));
 
-  [busca, filtroPerfil, filtroSituacao].forEach((c) => c.addEventListener('input', desenhar));
+  [busca, filtroPerfil].forEach((c) => c.addEventListener('input', desenhar));
   montar(conteudo,
     h('h1', {}, 'Usuários'),
-    numeros([['usuários', todos.length], ['sem acesso liberado', todos.filter((u) => u.situacao_senha === 'sem_acesso').length, 'alerta'],
-      ['vendedores sem tipo', todos.filter((u) => u.perfil === 'vendedor' && !u.tipo_atuacao).length, 'alerta']]),
+    // 1ª linha: cards (filtro) + busca + perfil · 2ª: cadastro de novo usuário · depois a lista
+    h('div', { class: 'barra-console' }, cardsArea, h('div', { class: 'barra-busca' }, busca), filtroPerfil),
+    formNovo,
     senhaArea,
-    h('div', { class: 'linha-campos', style: 'margin-bottom:12px' }, busca, filtroPerfil, filtroSituacao),
-    listaArea,
-    formNovo);
+    listaArea);
   desenhar();
 }

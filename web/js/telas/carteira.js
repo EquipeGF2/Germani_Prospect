@@ -3,7 +3,7 @@
 // Computador: uma barra só (busca, visões, supervisor, vendedor, data do último registro), cards ou lista, onda em ordem
 // e rota em 2 níveis (rota → subrota). Celular: layout de sempre.
 import { bancoApp } from '../db.js';
-import { consultaCarteira, visoesPermitidas } from '../../shared/carteira.mjs';
+import { consultaCarteira, consultaOndas, ORDENACOES, visoesPermitidas } from '../../shared/carteira.mjs';
 import { h, montar, mensagem, formatar, numeros } from '../ui.js';
 import { gravarLote, lerLote, seloStatus } from './_carteira.js';
 
@@ -15,7 +15,8 @@ const ehCelular = () => matchMedia('(max-width: 900px)').matches;
 
 function lerEstado(parametros) {
   const e = { aba: parametros.get('aba') === 'acompanhamento' ? 'acompanhamento' : 'principal', visao: parametros.get('visao') ?? '',
-    busca: parametros.get('busca') ?? '', pagina: Math.max(0, Number(parametros.get('pagina')) || 0), filtros: {} };
+    busca: parametros.get('busca') ?? '', pagina: Math.max(0, Number(parametros.get('pagina')) || 0), filtros: {},
+    ordem: ORDENACOES[parametros.get('ordem')] ? parametros.get('ordem') : '', desc: parametros.get('dir') === 'desc' };
   for (const f of FILTROS) if (parametros.get(f)) e.filtros[f] = parametros.get(f);
   if (e.filtros.vendedorId) e.filtros.vendedorId = Number(e.filtros.vendedorId);
   if (e.filtros.supervisorId) e.filtros.supervisorId = Number(e.filtros.supervisorId);
@@ -31,6 +32,7 @@ function endereco(e, muda = {}) {
   if (n.visao && n.visao !== 'lista') q.set('visao', n.visao);
   if (n.busca) q.set('busca', n.busca);
   for (const [k, v] of Object.entries(n.filtros)) if (v != null && v !== '' && v !== false) q.set(k, v === true ? '1' : v);
+  if (n.ordem) { q.set('ordem', n.ordem); if (n.desc) q.set('dir', 'desc'); }
   if (n.pagina) q.set('pagina', n.pagina);
   const s = q.toString();
   return `#/carteira${s ? '?' + s : ''}`;
@@ -89,12 +91,13 @@ export async function render(conteudo, ctx) {
   let consulta;
   try {
     consulta = consultaCarteira({ usuario, visao: e.visao, filtros, busca: e.busca, limite: POR_PAGINA + 1, deslocamento: e.pagina * POR_PAGINA,
-      ordemNatural: computador, rotaEmNiveis: computador });
+      ordemNatural: computador, rotaEmNiveis: computador, ordenar: computador && e.ordem ? { campo: e.ordem, desc: e.desc } : null });
   } catch (erro) {
     return montar(conteudo, mensagem(erro.message, 'erro'));
   }
   const linhas = (await db.execute(consulta)).rows;
-  const [supervisores, vendedores] = await Promise.all([supervisoresDoEscopo(db, usuario), vendedoresDoEscopo(db, usuario, e.filtros.supervisorId)]);
+  const [supervisores, vendedores, ondas] = await Promise.all([supervisoresDoEscopo(db, usuario), vendedoresDoEscopo(db, usuario, e.filtros.supervisorId),
+    computador ? db.execute(consultaOndas()).then((r) => r.rows.map((x) => String(x.onda))) : []]);
 
   const campoBusca = h('input', { type: 'search', id: 'busca', value: e.busca, placeholder: 'Nome, CNPJ, cidade ou bairro', 'aria-label': 'Buscar prospect' });
   const formBusca = h('form', { class: 'barra-busca', onsubmit: (ev) => { ev.preventDefault(); location.hash = endereco(e, { busca: campoBusca.value.trim(), pagina: 0 }); } },
@@ -158,6 +161,9 @@ export async function render(conteudo, ctx) {
   // computador: todos os filtros numa linha só (visão em lista, datas lado a lado)
   const data = (id, rotulo, chave) => h('input', { type: 'date', id, 'aria-label': rotulo, value: e.filtros[chave] ?? '',
     onchange: (ev) => { location.hash = endereco(e, { filtros: { [chave]: ev.target.value || null }, pagina: 0 }); } });
+  const selOnda = ondas.length ? h('div', { class: 'filtro' }, h('label', { for: 'filtro-onda' }, 'Onda'),
+    h('select', { id: 'filtro-onda', onchange: (ev) => { location.hash = endereco(e, { filtros: { onda: ev.target.value || null }, pagina: 0 }); } },
+      h('option', { value: '' }, 'Todas'), ondas.map((o) => h('option', { value: o, selected: o === String(e.filtros.onda ?? '') }, `Onda ${o}`)))) : null;
   const selVisao = h('select', { id: 'filtro-visao', 'aria-label': 'Visão', onchange: (ev) => { location.hash = endereco(e, { visao: ev.target.value, pagina: 0 }); } },
     visoesDaAba.map((v) => h('option', { value: v, selected: v === e.visao }, NOMES_VISAO[v])));
   const botoesExibicao = e.visao === 'lista' ? h('div', { class: 'filtro' }, h('label', {}, 'Exibir'),
@@ -170,6 +176,7 @@ export async function render(conteudo, ctx) {
     h('div', { class: 'barra-carteira' },
       h('div', { class: 'filtro busca' }, h('label', { for: 'busca' }, 'Buscar'), formBusca),
       h('div', { class: 'filtro' }, h('label', { for: 'filtro-visao' }, 'Visão'), selVisao),
+      selOnda,
       extras,
       h('div', { class: 'filtro' }, h('label', { for: 'filtro-data-de' }, 'Último registro (de · até)'),
         h('div', { class: 'datas' }, data('filtro-data-de', 'Último registro de', 'dataDe'), data('filtro-data-ate', 'Último registro até', 'dataAte'))),
@@ -275,8 +282,13 @@ function blocoLista(e, linhas, { podeRegistrar, selecao, comRota, mostrarCarteir
     temMais ? h('a', { class: 'botao secundario', href: endereco(e, { pagina: e.pagina + 1 }) }, 'Próximos ›') : null);
   const corpo = comoTabela
     ? h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela-carteira' },
-      h('thead', {}, h('tr', {}, [loteVisivel ? '' : null, 'Prospect', 'Cidade · bairro', 'Onda', comRota ? 'Rota' : null, mostrarCarteira ? 'Carteira' : null, 'Status', 'Dias', 'Último registro']
-        .filter((t) => t !== null).map((t) => h('th', { class: t === 'Dias' ? 'num' : '' }, t)))),
+      h('thead', {}, h('tr', {}, [loteVisivel ? ['', null] : null, ['Prospect', 'prospect'], ['Cidade · bairro', 'cidade'], ['Onda', 'onda'], comRota ? ['Rota', 'rota'] : null,
+        mostrarCarteira ? ['Carteira', 'carteira'] : null, ['Status', 'status'], ['Dias', 'dias'], ['Último registro', 'ultimo']]
+        .filter(Boolean).map(([t, chave]) => h('th', { class: t === 'Dias' ? 'num' : '', 'aria-sort': chave && e.ordem === chave ? (e.desc ? 'descending' : 'ascending') : null },
+          // rótulo = ordenação: 1º clique crescente, 2º decrescente, 3º volta à ordem de trabalho
+          chave ? h('a', { class: `ordenar ${e.ordem === chave ? 'ativa' : ''}`, dados: { ordem: chave }, title: 'Ordenar',
+            href: endereco(e, e.ordem !== chave ? { ordem: chave, desc: false, pagina: 0 } : !e.desc ? { desc: true, pagina: 0 } : { ordem: '', desc: false, pagina: 0 }) },
+          t, e.ordem === chave ? (e.desc ? ' ▼' : ' ▲') : '') : t)))),
       h('tbody', {}, cartoes)))
     : h('div', { class: 'lista-prospects' }, cartoes);
   return h('div', {}, loteVisivel ? barraLote : null, corpo, nav);

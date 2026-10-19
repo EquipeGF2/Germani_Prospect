@@ -18,7 +18,7 @@ Guarde o token administrativo num gerenciador de senhas. Ele **nunca** vai para 
 |---|---|---|
 | `.env` na máquina do administrador (copiar de `.env.example`) | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `GERMANI_EXECUTADO_POR` | importações, usuários, migração manual |
 | GitHub → Settings → Secrets and variables → **Actions** → *Repository secrets* | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | workflows "Migrar banco (produção)" e "Criar administrador" |
-| idem | `ADMIN_SENHA_INICIAL` (mín. 8 caracteres) | senha inicial do workflow "Criar administrador" — provisória (troca no 1º acesso); pode ser apagado depois |
+| idem | `ADMIN_SENHA_INICIAL` (mín. 8 caracteres) | senha do administrador criado pelo workflow "Criar administrador"; pode ser apagado depois |
 | Site publicado (F1) | token **do app**, com permissões restritas | ver ADR-0001 — é visível para quem abre o site |
 
 > **Atenção:** um Secret do GitHub injetado na publicação do Pages acaba dentro do JavaScript público.
@@ -70,8 +70,8 @@ Local: `npm run site && npm run servir` → http://localhost:8080 (modo demonstr
 1. Settings → Secrets and variables → Actions → *New repository secret*: `ADMIN_SENHA_INICIAL` = senha inicial
    (mín. 8 caracteres). O valor nunca aparece no log nem no repositório (que é público).
 2. Actions → *Criar administrador* → *Run workflow* → login (ex.: `genaro`), nome completo e `CRIAR`.
-   O workflow aplica as migrações pendentes e cria o administrador com essa senha, marcada como provisória.
-3. Entrar no site com o login e a senha; o sistema pede a troca da senha no primeiro acesso.
+   O workflow aplica as migrações pendentes e cria o administrador com essa senha.
+3. Entrar no site com o login e a senha. Para mudar a senha depois: Administração → Usuários → *Definir senha*.
 4. (Opcional) apagar o Secret `ADMIN_SENHA_INICIAL`. Rodar de novo com o mesmo login dá erro (login já existe).
 
 Migração aplicada nunca é editada: o `migrate` compara o SHA-256 e para se o arquivo mudou.
@@ -104,7 +104,9 @@ npm run usuarios -- listar
 npm run usuarios -- senha 1101                       # para cada vendedor/supervisor que vai usar o app
 ```
 
-As senhas são geradas aleatoriamente e mostradas **uma vez**; entregue-as por canal privado.
+Pela tela (Administração → Usuários) o administrador **define a senha de cada usuário** (mín. 8 caracteres) — no cadastro
+do novo usuário ou em *Definir senha* / *Liberar acesso* na lista; "Gerar" cria uma aleatória, mostrada **uma vez**.
+Pela linha de comando as senhas são geradas aleatoriamente. Entregue-as por canal privado.
 
 ## 7. Desenvolvimento local sem tocar a produção
 ```bash
@@ -124,3 +126,8 @@ TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-fi
 2. Gerar novo token administrativo e novo token do app.
 3. Atualizar o `.env` e o Secret `TURSO_AUTH_TOKEN`; republicar o site com o novo token do app.
 4. Desativar o usuário que saiu: `npm run usuarios -- desativar <login>`.
+
+## Logotipo
+
+O site usa o arquivo `web/img/logo-germani.jpg` (se existir) no topo do menu (em placa branca; menu recolhido = sigla "G")
+e na tela de entrada. Sem o arquivo, fica a marca em texto. Para trocar: substituir o arquivo (JPG ou mesma extensão) e publicar.

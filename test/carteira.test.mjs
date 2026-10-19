@@ -2,7 +2,7 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, evento, registrarContato } from './auxiliar.mjs';
-import { consultaCarteira, formaDeTrabalho, visoesPermitidas } from '../shared/carteira.mjs';
+import { consultaCarteira, consultaOndas, formaDeTrabalho, ORDENACOES, visoesPermitidas } from '../shared/carteira.mjs';
 import { consultaPosicao } from '../shared/indicadores.mjs';
 import { formatarCnpj } from '../shared/cnpj.mjs';
 
@@ -161,4 +161,24 @@ test('computador: onda em ordem natural, rota em 2 níveis e filtro pela data do
   assert.deepEqual(n2.map((x) => x.rotulo), ['Subrota S1', 'Subrota S2']);
   const porData = await linhas(consultaCarteira({ usuario: VEND, incluirForaDaLista: true, filtros: { dataDe: '2026-10-05', dataAte: '2026-10-05' } }));
   assert.equal(porData.length, 1);                                     // só o atendido em 05/10
+});
+
+test('lista ordenada pelos rótulos das colunas (crescente/decrescente) e ondas para o filtro', async () => {
+  const ADM = { id: 4, perfil: 'administrador' };
+  const nomes = async (ordenar) => (await linhas(consultaCarteira({ usuario: ADM, ordenar }))).map((p) => p.razao_social);
+  const asc = await nomes({ campo: 'prospect' });
+  assert.deepEqual(asc, [...asc].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
+  assert.deepEqual(await nomes({ campo: 'prospect', desc: true }), [...asc].reverse());
+  const porOnda = (await linhas(consultaCarteira({ usuario: ADM, ordenar: { campo: 'onda' } }))).map((p) => p.onda ?? null);
+  assert.deepEqual(porOnda, [...porOnda].sort((a, b) => (a == null) - (b == null) || String(a).length - String(b).length || String(a).localeCompare(String(b))));
+  for (const campo of Object.keys(ORDENACOES)) {                       // toda coluna ordena nos dois sentidos sem erro
+    if (campo === 'rota') continue;
+    await linhas(consultaCarteira({ usuario: ADM, ordenar: { campo } }));
+    await linhas(consultaCarteira({ usuario: ADM, ordenar: { campo, desc: true }, filtros: { foraDaLista: true } }));
+  }
+  await linhas(consultaCarteira({ usuario: VEND, ordenar: { campo: 'rota', desc: true } }));
+  // campo desconhecido é ignorado (nunca vira SQL)
+  assert.deepEqual(await nomes({ campo: 'razao_social; DROP TABLE prospects' }), await nomes(null));
+  assert.deepEqual((await linhas(consultaOndas())).map((o) => o.onda), ['1', '2']);
+  assert.ok((await linhas(consultaCarteira({ usuario: ADM, filtros: { onda: '1' } }))).every((p) => p.onda === '1'));
 });

@@ -77,16 +77,28 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   // 3. usuários: liberar acesso do vendedor 1201
   await pagina.click('#menu a[title="Usuários"]');
   await pagina.fill('input[aria-label=Buscar]', '1201');
+  // o administrador define a senha do vendedor (curta é recusada)
   await pagina.click('button:text("Liberar acesso")');
-  await pagina.waitForSelector('.senha-gerada');
-  const senhaVendedor = (await pagina.locator('.senha-gerada').innerText()).trim();
-  assert.match(senhaVendedor, /^[A-Za-z0-9]{10}$/);
+  await pagina.fill('.definir-senha .campo-senha', 'curta');
+  await pagina.click('.definir-senha button:text("Salvar")');
+  await pagina.waitForSelector('text=ao menos 8 caracteres');
+  const senhaVendedor = 'vendedor-1201';
+  await pagina.fill('.definir-senha .campo-senha', senhaVendedor);
   await foto('07-usuarios-senha');
+  await pagina.click('.definir-senha button:text("Salvar")');
+  await pagina.waitForSelector('text=Senha de 1201 definida.');
+  // cards = filtro de situação
+  await pagina.fill('input[aria-label=Buscar]', '');
+  await pagina.click('.filtrantes [data-filtro="sem_acesso"]');
+  assert.ok(await pagina.locator('.filtrantes [data-filtro="sem_acesso"].ativo').count());
+  assert.equal(await pagina.locator('button:text("Definir senha")').count(), 0, 'só quem está sem acesso');
+  await pagina.click('.filtrantes [data-filtro="todos"]');
   await pagina.fill('#novo-login', 'analista');
   await pagina.fill('#novo-nome', 'Analista Financeiro Teste');
+  const senhaAnalista = 'analista-2026';
+  await pagina.fill('#novo-senha', senhaAnalista);                       // senha definida pelo administrador
   await pagina.click('button:text("Criar usuário")');
-  await pagina.waitForSelector('text=Senha provisória de analista');
-  const senhaAnalista = (await pagina.locator('.senha-gerada').last().innerText()).trim();
+  await pagina.waitForSelector('text=Usuário analista criado com a senha definida.');
   await pagina.selectOption('#novo-perfil', 'gerente');
   await pagina.fill('#novo-login', 'gerente');
   await pagina.fill('#novo-nome', 'Gerente Comercial Teste');
@@ -326,7 +338,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('button:text("Liberar crédito")');
   await pagina.waitForSelector('text=passou para Aguardando pedido');
   await pagina.waitForSelector('text=Nenhum cliente aguardando análise.');
-  await pagina.click('.visoes a:has-text("Liberados")');
+  await pagina.click('.filtrantes [data-filtro="liberados"]');
   await pagina.waitForSelector('td:has-text("Boleto · 28 dias · R$ 12.500,00")');
   await foto('21-liberados');
   await pagina.click('a:text("Corrigir") >> nth=0');
@@ -336,7 +348,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('label.opcao:has-text("Com restrição")');
   await pagina.click('button:text("Gravar nova liberação")');
   await pagina.waitForSelector('text=passou para Aguardando pedido');
-  await pagina.click('.visoes a:has-text("Liberados")');
+  await pagina.click('.filtrantes [data-filtro="liberados"]');
   await pagina.waitForSelector('td:has-text("com restrição")');
   await pagina.click('td a >> nth=0');
   await pagina.waitForSelector('text=Histórico de movimentação');

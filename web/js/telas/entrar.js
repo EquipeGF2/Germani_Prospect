@@ -10,6 +10,7 @@ export async function render(conteudo, { irPara }) {
     const u = await comEspera(botao, () => entrar(login.value, senha.value));
     if (u) irPara(u.perfil === 'financeiro' ? '/financeiro' : '/inicio');
   } },
+  h('img', { class: 'logo-entrada', src: 'img/logo-germani.jpg', alt: 'GERMANI' }),
   h('h1', {}, 'Entrar'),
   h('p', { class: 'ajuda' }, 'Use o login e a senha recebidos do administrador.'),
   h('div', { class: 'campo' }, h('label', { for: 'login' }, 'Login'), login),
