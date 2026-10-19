@@ -160,3 +160,22 @@ test('DT 1o / DT 2o vazias (ou desconsideradas): todos entram como Não contacta
   const r3 = await importar(db3, [linha({ cnpj: cnpjTeste(4), dt1: '01/09/2026', status: 'Em prospecção' }), linha({ cnpj: cnpjTeste(5) })]);
   assert.equal(r3.resumo.considerarDatas, true);
 });
+
+test('importação de pedidos com valor (migração 0004): "1.234,56" e números; vazio avisa; inválido é rejeitado', async () => {
+  const db = await bancoTeste();
+  await importar(db, [linha({ cnpj: cnpjTeste(1) }), linha({ cnpj: cnpjTeste(2) }), linha({ cnpj: cnpjTeste(3) }), linha({ cnpj: cnpjTeste(4) })]);
+  const base = { hoje: HOJE, arquivoNome: 'p.csv', arquivoSha256: 'x', executadoPor: 'teste' };
+  const linhas = [['CNPJ', 'Data', 'Pedido', 'Valor Total'],
+    [cnpjTeste(1), '15/10/2026', '1', 'R$ 1.234,56'], [cnpjTeste(2), '15/10/2026', '2', 800], [cnpjTeste(3), '15/10/2026', '3', ''], [cnpjTeste(4), '15/10/2026', '4', 'abc']];
+  const r = await importarEventos(db, { ...base, tipo: 'pedido', linhas, colunas: { cnpj: 'CNPJ', data: 'Data', documento: 'Pedido', valor: 'Valor Total' } });
+  assert.deepEqual([r.resumo.aceitas, r.resumo.rejeitadas], [3, 1]);
+  assert.match(r.resultados[2].avisos.join(), /pedido sem valor/);
+  assert.match(r.resultados[3].erros.join(), /valor do pedido inválido/);
+  const v = (await db.execute("SELECT documento, valor FROM eventos_erp WHERE tipo = 'pedido' ORDER BY documento")).rows.map((x) => [x.documento, x.valor]);
+  assert.deepEqual(v, [['1', 1234.56], ['2', 800], ['3', null]]);
+  // valor só existe em pedido e nunca negativo
+  const pid = (await db.execute('SELECT id FROM prospects LIMIT 1')).rows[0].id;
+  const imp = (await db.execute("INSERT INTO importacoes (tipo, arquivo_nome, arquivo_sha256, executado_por) VALUES ('cadastro_erp','t','x','t') RETURNING id")).rows[0].id;
+  await assert.rejects(db.execute({ sql: "INSERT INTO eventos_erp (prospect_id, tipo, data_evento, documento, valor, importacao_id) VALUES (?, 'cadastro', '2026-10-15', 'C9', 10, ?)", args: [pid, imp] }), /CHECK constraint/);
+  await assert.rejects(db.execute({ sql: "INSERT INTO eventos_erp (prospect_id, tipo, data_evento, documento, valor, importacao_id) VALUES (?, 'pedido', '2026-10-15', 'P9', -1, ?)", args: [pid, imp] }), /CHECK constraint/);
+});

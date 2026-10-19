@@ -3,6 +3,7 @@
 //   npm run importar:eventos -- --tipo cadastro arquivo.xlsx --col-cnpj "CNPJ" --col-data "Data Cadastro" --col-documento "Cód. Cliente"
 //   npm run importar:eventos -- --tipo pedido   arquivo.xlsx --col-cnpj "CNPJ" --col-data "Data Pedido"  --col-documento "Nº Pedido"
 //   npm run importar:eventos -- --tipo baixa    arquivo.csv  --col-cnpj "CNPJ" --data-padrao 2026-10-19
+//   pedidos com valor: --col-valor "Valor Total" (opcional; "1.234,56" ou 1234.56)
 //   --listar-colunas mostra o cabeçalho do arquivo · --simular valida sem gravar
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -20,6 +21,7 @@ const { values: op, positionals } = parseArgs({
     'col-cnpj': { type: 'string', default: 'CNPJ' },
     'col-data': { type: 'string' },
     'col-documento': { type: 'string' },
+    'col-valor': { type: 'string' },
     'data-padrao': { type: 'string' },
     simular: { type: 'boolean', default: false },
     'listar-colunas': { type: 'boolean', default: false },
@@ -28,7 +30,7 @@ const { values: op, positionals } = parseArgs({
 });
 const arquivo = positionals[0];
 if (!arquivo || (!op.tipo && !op['listar-colunas'])) {
-  console.error('uso: npm run importar:eventos -- --tipo <cadastro|pedido|baixa> <arquivo> --col-cnpj X [--col-data Y | --data-padrao AAAA-MM-DD] [--col-documento Z] [--simular]');
+  console.error('uso: npm run importar:eventos -- --tipo <cadastro|pedido|baixa> <arquivo> --col-cnpj X [--col-data Y | --data-padrao AAAA-MM-DD] [--col-documento Z] [--col-valor V] [--simular]');
   process.exit(1);
 }
 const planilha = await lerPlanilha(arquivo);
@@ -48,7 +50,7 @@ const db = await abrir();
 const { resumo, resultados, importacaoId } = await importarEventos(db, {
   tipo: op.tipo,
   linhas: planilha.linhas,
-  colunas: { cnpj: op['col-cnpj'], data: op['col-data'], documento: op['col-documento'] },
+  colunas: { cnpj: op['col-cnpj'], data: op['col-data'], documento: op['col-documento'], valor: op['col-valor'] },
   dataPadrao,
   hoje: hojeSaoPaulo(),
   arquivoNome: path.basename(arquivo),

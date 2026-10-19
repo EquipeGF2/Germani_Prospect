@@ -114,7 +114,7 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
               FROM status s
               LEFT JOIN (SELECT * FROM vw_prospects ${filtro}) p ON p.status_atual = s.codigo
              GROUP BY s.codigo
-             ORDER BY s.ordem`,
+             ORDER BY CASE s.codigo WHEN 'sem_interesse' THEN 100 WHEN 'invalido' THEN 101 ELSE s.ordem END`,   // na ordem do processo; encerrados por último
       args,
     };
   }
@@ -151,7 +151,9 @@ export function consultaFicha({ usuario, prospectId }) {
   const { where, args } = escopo(usuario);
   where.push('id = ?');
   args.push(prospectId);
-  return { sql: `SELECT * FROM vw_prospects WHERE ${where.join(' AND ')}`, args };
+  return { sql: `SELECT vw_prospects.*,
+                       (SELECT SUM(e.valor) FROM eventos_erp e WHERE e.prospect_id = vw_prospects.id AND e.tipo = 'pedido') AS valor_pedidos
+                  FROM vw_prospects WHERE ${where.join(' AND ')}`, args };
 }
 
 /** Remove da ficha o que o perfil não usa (representante não tem rota). */

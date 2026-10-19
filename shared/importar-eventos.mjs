@@ -9,6 +9,7 @@ import { analisarData } from './datas.mjs';
 import { chaveCabecalho, limparTexto } from './texto.mjs';
 import { linhaVazia } from './importacao-base.mjs';
 import { gravarEmLotes } from './gravacao.mjs';
+import { lerValor } from './financeiro.mjs';
 
 export const TIPOS_EVENTO = Object.freeze({ cadastro: 'cadastro_erp', pedido: 'pedido_erp', baixa: 'cnpj_baixado' });
 
@@ -21,7 +22,7 @@ function localizar(cabecalho, nome, obrigatoria) {
 
 /**
  * @param tipo           'cadastro' | 'pedido' | 'baixa'
- * @param colunas        { cnpj, data, documento } — nomes das colunas no arquivo
+ * @param colunas        { cnpj, data, documento, valor } — nomes das colunas no arquivo (valor: só pedidos, opcional)
  * @param dataPadrao     usada quando o arquivo não tem coluna de data (ex.: lista de baixados)
  */
 export async function importarEventos(db, { tipo, linhas, colunas, dataPadrao, hoje, arquivoNome, arquivoSha256, executadoPor, simular = false }) {
@@ -31,6 +32,7 @@ export async function importarEventos(db, { tipo, linhas, colunas, dataPadrao, h
   const iCnpj = localizar(cabecalho, colunas.cnpj, true);
   const iData = localizar(cabecalho, colunas.data, true);
   const iDoc = localizar(cabecalho, colunas.documento, true);
+  const iValor = tipo === 'pedido' ? localizar(cabecalho, colunas.valor, true) : undefined;
 
   const prospects = new Map((await db.execute('SELECT id, cnpj, status_atual FROM prospects')).rows.map((r) => [r.cnpj, { id: Number(r.id), status: r.status_atual }]));
   const jaImportados = new Set((await db.execute({ sql: "SELECT prospect_id, COALESCE(documento,'') d FROM eventos_erp WHERE tipo = ?", args: [tipo] }))
@@ -53,13 +55,16 @@ export async function importarEventos(db, { tipo, linhas, colunas, dataPadrao, h
     if (d.data > hoje) { r.erros.push(`data no futuro: ${d.data}`); r.resultado = 'rejeitada'; return; }
     const documento = iDoc === undefined ? null : limparTexto(linha[iDoc])?.replace(/\.0+$/, '') ?? null;
     if (tipo === 'pedido' && !documento) { r.erros.push('número do pedido vazio'); r.resultado = 'rejeitada'; return; }
+    const valor = iValor === undefined ? null : lerValor(linha[iValor]);
+    if (Number.isNaN(valor) || valor < 0) { r.erros.push(`valor do pedido inválido: "${linha[iValor] ?? ''}"`); r.resultado = 'rejeitada'; return; }
+    if (iValor !== undefined && valor === null) r.avisos.push('pedido sem valor');
     const p = prospects.get(cnpj);
     if (!p) { r.erros.push('CNPJ não está na base de prospects'); r.resultado = 'ignorada'; return; }
     const chave = `${p.id}|${tipo === 'baixa' ? '' : documento ?? ''}`;
     if (jaImportados.has(chave) || vistos.has(chave)) { r.erros.push('evento já importado'); r.resultado = 'ignorada'; return; }
     if (tipo === 'baixa' && p.status === 'invalido') { r.erros.push('CNPJ já registrado como baixado'); r.resultado = 'ignorada'; return; }
     vistos.add(chave);
-    r.evento = { prospectId: p.id, data: d.data, documento: tipo === 'baixa' ? null : documento };
+    r.evento = { prospectId: p.id, data: d.data, documento: tipo === 'baixa' ? null : documento, valor };
   });
 
   const contar = () => ({
@@ -79,8 +84,8 @@ export async function importarEventos(db, { tipo, linhas, colunas, dataPadrao, h
   try {
     const aGravar = resultados.filter((r) => r.resultado === 'aceita');
     const g = await gravarEmLotes(db, aGravar, (r) => [{
-      sql: 'INSERT INTO eventos_erp (prospect_id, tipo, data_evento, documento, importacao_id) VALUES (?, ?, ?, ?, ?)',
-      args: [r.evento.prospectId, tipo, r.evento.data, r.evento.documento, importacaoId],
+      sql: 'INSERT INTO eventos_erp (prospect_id, tipo, data_evento, documento, valor, importacao_id) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [r.evento.prospectId, tipo, r.evento.data, r.evento.documento, r.evento.valor, importacaoId],
     }]);
     g.forEach((x, i) => { if (!x.ok) { aGravar[i].erros.push(`banco recusou: ${x.erro}`); aGravar[i].resultado = 'rejeitada'; } });
 

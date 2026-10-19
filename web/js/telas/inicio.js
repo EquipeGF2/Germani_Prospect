@@ -36,7 +36,7 @@ function valores(t, p, primeiro) {
     h('div', { class: 'kpi dinheiro' }, h('div', { class: 'rotulo' }, 'Potencial do pipeline de abertura'), h('div', { class: 'valor' }, formatar.moeda(v.pipeline)),
       h('div', { class: 'detalhe' }, h('b', {}, pctPipe), ' da base de prospects × ', h('b', {}, valor))),
     h('div', { class: 'kpi ganho' }, h('div', { class: 'rotulo' }, 'Valor de conversão'), h('div', { class: 'valor' }, formatar.moeda(v.conversao)),
-      h('div', { class: 'detalhe' }, 'Venda realizada × ', h('b', {}, valor))));
+      h('div', { class: 'detalhe' }, 'Venda realizada × ', h('b', {}, valor), ' · pedidos: ', h('b', { id: 'valor-pedidos' }, formatar.moeda(Number(t.valor_pedidos))))));
 }
 
 function barra(valor, classe = '') {
@@ -138,6 +138,11 @@ function meter(valor) {
   return h('div', { class: 'medidor' }, h('span', { style: `width:${Math.min(100, Math.max(0, valor)).toFixed(2)}%` }));
 }
 
+function rotuloPedidos(t) {
+  const n = Number(t.qtd_pedidos);
+  return n ? `${formatar.numero(n)} pedido(s) importado(s) do ERP` : 'nenhum pedido importado';
+}
+
 function linkAgente(l, gestao) {
   return gestao ? h('a', { href: `#/carteira?vendedorId=${l.agente_id}`, title: 'Abrir a carteira' }, l.agente_nome) : l.agente_nome;
 }
@@ -177,6 +182,7 @@ function visaoExecutivo({ t, agentesDaVez, p, dias, gestao }) {
       h('div', {}, h('div', { class: 'r' }, 'Cobertura da base'), h('div', { class: 'media' }, pct1(pr.pct_contactado)), meter(pr.pct_contactado),
         h('div', { class: 's' }, h('b', {}, formatar.numero(t.contactados)), ` de ${formatar.numero(t.total)} contactados`)),
       h('div', {}, h('div', { class: 'r' }, 'Valor de conversão'), h('div', { class: 'media' }, formatar.moeda(v.conversao)), h('div', { class: 's' }, `vendas × ${formatar.moeda(Number(p.valor_medio_cliente))}`)),
+      h('div', {}, h('div', { class: 'r' }, 'Valor dos pedidos'), h('div', { class: 'media', id: 'valor-pedidos' }, formatar.moeda(Number(t.valor_pedidos))), h('div', { class: 's' }, rotuloPedidos(t))),
       h('div', {}, h('div', { class: 'r' }, 'Potencial do pipeline'), h('div', { class: 'media' }, moedaCurta(v.pipeline)),
         h('div', { class: 's' }, `${p.percentual_pipeline}% da base × ${formatar.moeda(Number(p.valor_medio_cliente))} · ${dias} dia(s) útil(eis)`))),
     h('div', { class: 'duas' },
@@ -200,6 +206,7 @@ function visaoArrojado({ t, agentesDaVez, p, dias, gestao, titulo, subtitulo }) 
       h('div', { class: 'tit' }, h('h2', {}, titulo), h('p', {}, subtitulo)),
       h('div', { class: 'herois' },
         h('div', {}, h('div', { class: 'r' }, 'Valor de conversão'), h('div', { class: 'v' }, formatar.moeda(v.conversao)), h('div', { class: 'd' }, `${formatar.numero(t.venda_realizada)} vendas × ${formatar.moeda(Number(p.valor_medio_cliente))}`)),
+        h('div', {}, h('div', { class: 'r' }, 'Valor dos pedidos'), h('div', { class: 'v', id: 'valor-pedidos' }, formatar.moeda(Number(t.valor_pedidos))), h('div', { class: 'd' }, rotuloPedidos(t))),
         h('div', {}, h('div', { class: 'r' }, 'Potencial do pipeline'), h('div', { class: 'v' }, moedaCurta(v.pipeline)), h('div', { class: 'd' }, `${p.percentual_pipeline}% da base de prospects × ${formatar.moeda(Number(p.valor_medio_cliente))}`)),
         h('div', {}, h('div', { class: 'r' }, 'Dias úteis'), h('div', { class: 'v' }, String(dias)), h('div', { class: 'd' }, `campanha desde ${formatar.data(p.data_inicio_campanha)}`)))),
     h('section', { class: 'kpis-linha' },
@@ -230,12 +237,13 @@ function visaoEquipe({ linhas, t, p, dias, gestao, supervisores, supAtual, aoEsc
       h('span', { class: 'mini' },
         h('span', {}, h('b', {}, formatar.numero(x.venda_realizada)), 'vendas'),
         h('span', {}, h('b', {}, pct1(x.pct_conversao)), 'conversão'),
-        h('span', {}, h('b', {}, moedaCurta(x.venda_realizada * Number(p.valor_medio_cliente))), 'valor')));
+        h('span', {}, h('b', {}, moedaCurta(Number(x.valor_pedidos))), 'em pedidos')));
   })) : null;
   return h('div', { class: 'vis-equipe' },
     h('section', { class: 'kpis-fina' },
       kpi('Prospects', formatar.numero(t.total)), kpi('Não contactados', formatar.numero(t.nao_contactado)), kpi('Sem interesse', formatar.numero(t.sem_interesse)),
-      kpi('Crédito liberado', formatar.numero(t.credito_liberado)), kpi('Vendas', formatar.numero(t.venda_realizada), true), kpi('Valor de conversão', moedaCurta(v.conversao), true)),
+      kpi('Crédito liberado', formatar.numero(t.credito_liberado)), kpi('Vendas', formatar.numero(t.venda_realizada), true), kpi('Valor de conversão', moedaCurta(v.conversao), true),
+      kpi('Valor dos pedidos', moedaCurta(Number(t.valor_pedidos)), true)),
     cartoes ? [h('div', { class: 'tit' }, h('h2', {}, 'Supervisores'), h('span', {}, 'Clique para ver a equipe')), cartoes] : null,
     h('div', { class: 'duas' },
       h('section', { class: 'painel' },
@@ -253,7 +261,7 @@ function visaoEquipe({ linhas, t, p, dias, gestao, supervisores, supAtual, aoEsc
           h('small', {}, ts.total ? pct1((e.valor / ts.total) * 100) : '')))),
         h('div', { class: 'etp' }, h('span', {}, 'Sem interesse'), h('span', {}, h('b', {}, formatar.numero(ts.sem_interesse)))),
         h('p', { class: 's', style: 'margin:14px 0 0' }, 'Valor de conversão ', h('b', {}, formatar.moeda(ts.venda_realizada * Number(p.valor_medio_cliente))),
-          ` · ${dias} dia(s) útil(eis)`))));
+          ' · valor dos pedidos ', h('b', {}, formatar.moeda(Number(ts.valor_pedidos))), ` · ${dias} dia(s) útil(eis)`))));
 }
 
 function renderComputador(conteudo, { usuario, linhas, p, dias, periodo, chavePeriodo, parametros }) {
@@ -284,12 +292,10 @@ function renderComputador(conteudo, { usuario, linhas, p, dias, periodo, chavePe
   const selSup = h('select', { id: 'painel-supervisor', 'aria-label': 'Supervisor', onchange: (ev) => {
     sup = Number(ev.target.value) || null; guardar(CHAVE_SUP, ev.target.value, sessionStorage); desenhar();
   } }, h('option', { value: '' }, 'Todos os supervisores'), supervisores.map((s) => h('option', { value: s.id, selected: s.id === sup }, s.nome)));
-  const botoesVisao = h('div', { class: 'visoes', role: 'tablist', 'aria-label': 'Visualização' }, Object.entries(VISOES_WEB).map(([k, t]) =>
-    h('a', { href: '#', role: 'tab', class: k === visao ? 'ativa' : '', dados: { visao: k }, onclick: (ev) => {
-      ev.preventDefault(); visao = k; guardar(CHAVE_VISAO, k);
-      botoesVisao.querySelectorAll('a').forEach((a) => a.classList.toggle('ativa', a.dataset.visao === k));
-      desenhar();
-    } }, t)));
+  // visualização em lista (ocupa menos espaço que os botões, sobretudo com o período personalizado aberto)
+  const selVisao = h('select', { id: 'painel-visao', 'aria-label': 'Visualização', onchange: (ev) => {
+    visao = ev.target.value; guardar(CHAVE_VISAO, visao); desenhar();
+  } }, Object.entries(VISOES_WEB).map(([k, t]) => h('option', { value: k, selected: k === visao }, t)));
   const rotuloPeriodo = periodo ? `Eventos de ${formatar.data(periodo.inicio)} a ${formatar.data(periodo.fim)}` : 'Posição atual da carteira';
   const titulo = completo ? 'Campanha de prospecção' : usuario.perfil === 'supervisor' ? 'Sua equipe' : 'Sua carteira';
   const area = h('div', { class: 'painel-web' });
@@ -318,7 +324,7 @@ function renderComputador(conteudo, { usuario, linhas, p, dias, periodo, chavePe
       h('div', { class: 'controles-painel' },
         h('div', { class: 'filtro' }, h('label', { for: 'painel-periodo' }, 'Período'), h('div', { class: 'periodo' }, selPeriodo, campoDe, campoAte, botaoAplicar)),
         filtroSup,
-        h('div', { class: 'filtro' }, h('label', {}, 'Visualização'), botoesVisao))),
+        h('div', { class: 'filtro' }, h('label', { for: 'painel-visao' }, 'Visualização'), selVisao))),
     area);
   desenhar();
 }

@@ -106,8 +106,9 @@ export async function carregarExemplo(db, { linhasBase, mapaStatus, hoje, gerarH
     if (data <= hoje) pedidos.push({ ...l, data, numero: `P${String(l.id).padStart(6, '0')}` });
   }
   if (pedidos.length) {
-    await importarEventos(db, { tipo: 'pedido', linhas: [['CNPJ', 'DATA', 'PEDIDO'], ...pedidos.map((x) => [x.cnpj, x.data, x.numero])],
-      colunas: { cnpj: 'CNPJ', data: 'DATA', documento: 'PEDIDO' }, hoje, arquivoNome: 'pedidos (exemplo)', arquivoSha256: 'exemplo', executadoPor: quem });
+    // valor do pedido fictício, derivado do id (não mexe na sequência do sorteio)
+    await importarEventos(db, { tipo: 'pedido', linhas: [['CNPJ', 'DATA', 'PEDIDO', 'VALOR'], ...pedidos.map((x) => [x.cnpj, x.data, x.numero, 650 + ((Number(x.id) * 389) % 2200)])],
+      colunas: { cnpj: 'CNPJ', data: 'DATA', documento: 'PEDIDO', valor: 'VALOR' }, hoje, arquivoNome: 'pedidos (exemplo)', arquivoSha256: 'exemplo', executadoPor: quem });
   }
   return { prospects: lista.length, contatos, atendidos: atendidos.length, cadastrados: cadastrados.length, liberados: liberados.length, vendas: pedidos.length };
 }

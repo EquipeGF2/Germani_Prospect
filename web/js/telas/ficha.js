@@ -52,7 +52,7 @@ export async function render(conteudo, { usuario, parametros }) {
       dado('Prazo da análise financeira', p.status_atual === 'analise_financeira' ? formatar.data(p.analise_financeira_ate) : null),
       dado('Motivo (sem interesse)', p.status_atual === 'sem_interesse' ? p.motivo_sem_interesse : null),
       dado('Cadastro no ERP', p.dt_cadastro_erp ? `${formatar.data(p.dt_cadastro_erp)}${p.codigo_cliente_erp ? ' · cód. ' + p.codigo_cliente_erp : ''}` : null),
-      dado('Pedido', p.dt_pedido ? `${formatar.data(p.dt_pedido)}${p.numero_pedido ? ' · nº ' + p.numero_pedido : ''}` : null),
+      dado('Pedido', p.dt_pedido ? `${formatar.data(p.dt_pedido)}${p.numero_pedido ? ' · nº ' + p.numero_pedido : ''}${p.valor_pedidos != null ? ' · ' + formatar.moeda(Number(p.valor_pedidos)) : ''}` : null),
       dado('Baixa do CNPJ', formatar.data(p.dt_baixa))),
     [Number(p.prazo_cadastro_vencido) ? mensagem('Prazo de cadastro vencido.', 'erro') : null,
       Number(p.analise_financeira_vencida) ? mensagem('Análise financeira fora do prazo.', 'erro') : null,

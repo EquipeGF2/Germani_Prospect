@@ -63,11 +63,13 @@ export async function render(conteudo, { usuario, parametros }) {
     h('h1', {}, 'Console de crédito'),
     h('p', { class: 'ajuda' }, 'Clientes cadastrados no ERP aguardando o OK do financeiro. A liberação sempre ocorre: informe a condição (antecipado, à vista ou boleto), o prazo, o limite e se há restrição. O cliente passa para Aguardando pedido. O relatório de crédito do ERP faz o mesmo em lote.'),
     numeros([['em análise', emAnalise.length, emAnalise.length ? 'alerta' : ''], ['fora do prazo', vencidos, vencidos ? 'erro' : ''],
-      ['liberados aguardando pedido', liberados.length, 'ok']]),
-    h('form', { class: 'barra-busca', onsubmit: (ev) => { ev.preventDefault(); location.hash = endereco({ busca: campo.value.trim() }); } },
-      campo, h('button', { type: 'submit' }, 'Buscar')),
-    h('div', { class: 'visoes' }, Object.entries(ABAS).map(([k, t]) => h('a', { href: endereco({ aba: k }), class: k === aba ? 'ativa' : '' },
-      `${t} (${k === 'analise' ? emAnalise.length : liberados.length})`))),
+      ['liberados aguardando pedido', liberados.length, 'ok']], { compacto: true }),
+    // abas e busca numa linha só; os números ficam compactos para dar ênfase à lista
+    h('div', { class: 'barra-console' },
+      h('div', { class: 'visoes' }, Object.entries(ABAS).map(([k, t]) => h('a', { href: endereco({ aba: k }), class: k === aba ? 'ativa' : '' },
+        `${t} (${k === 'analise' ? emAnalise.length : liberados.length})`))),
+      h('form', { class: 'barra-busca', onsubmit: (ev) => { ev.preventDefault(); location.hash = endereco({ busca: campo.value.trim() }); } },
+        campo, h('button', { type: 'submit' }, 'Buscar'))),
     linhas.length ? tabela(colunas, linhas)
       : mensagem(busca ? `Nada encontrado para "${busca}".` : aba === 'analise' ? 'Nenhum cliente aguardando análise.' : 'Nenhum cliente liberado aguardando pedido.', 'info'));
 }

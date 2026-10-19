@@ -54,8 +54,8 @@ export function tabela(colunas, linhas, { vazio = 'Nenhum registro.' } = {}) {
       h('tbody', {}, linhas.map((l) => h('tr', {}, colunas.map((c) => h('td', { class: c.classe }, c.valor ? c.valor(l) : l[c.campo] ?? '')))))));
 }
 
-export function numeros(itens) {
-  return h('div', { class: 'numeros' }, itens.map(([rotulo, valor, tipo]) => h('div', { class: `numero ${tipo ?? ''}` }, h('b', {}, formatar.numero(valor)), h('span', {}, rotulo))));
+export function numeros(itens, { compacto = false } = {}) {
+  return h('div', { class: compacto ? 'numeros compactos' : 'numeros' }, itens.map(([rotulo, valor, tipo]) => h('div', { class: `numero ${tipo ?? ''}` }, h('b', {}, formatar.numero(valor)), h('span', {}, rotulo))));
 }
 
 export function selo(texto, classe = '') {

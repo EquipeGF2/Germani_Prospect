@@ -11,8 +11,8 @@ import { descreverCredito } from './financeiro.js';
 
 const AJUDA_FORMA = { antecipado: 'pagamento antes do faturamento', a_vista: 'pagamento na entrega', boleto: 'a prazo — exige limite' };
 
-function opcoes(nome, itens, aoMudar) {
-  return h('div', { class: 'opcoes-resultado', role: 'radiogroup' }, itens.map(([valor, rotulo, detalhe]) => h('label', { class: 'opcao' },
+function opcoes(nome, itens, aoMudar, classe = '') {
+  return h('div', { class: `opcoes-resultado ${classe}`, role: 'radiogroup' }, itens.map(([valor, rotulo, detalhe]) => h('label', { class: 'opcao' },
     h('input', { type: 'radio', name: nome, value: valor, onchange: () => aoMudar(valor) }),
     h('span', {}, rotulo, detalhe ? h('small', { class: 'ajuda', style: 'display:block;margin:0' }, detalhe) : null))));
 }
@@ -64,7 +64,7 @@ export async function render(conteudo, { usuario, parametros, irPara }) {
       correcao ? mensagem(`Liberação atual: ${descreverCredito(p)} (em ${formatar.data(p.dt_liberacao_credito)}). Gravar cria uma nova liberação; a anterior fica no histórico.`, 'info') : null),
     h('form', { class: 'cartao', onsubmit: gravar, oninput: () => montar(erros), onchange: () => montar(erros) },
       h('label', {}, 'Forma de pagamento *'),
-      opcoes('forma', Object.entries(FORMAS_PAGAMENTO).map(([k, t]) => [k, t, AJUDA_FORMA[k]]), (v) => { forma = v; if (v !== 'boleto' && !Number(prazo.value)) prazo.value = '0'; }),
+      opcoes('forma', Object.entries(FORMAS_PAGAMENTO).map(([k, t]) => [k, t, AJUDA_FORMA[k]]), (v) => { forma = v; if (v !== 'boleto' && !Number(prazo.value)) prazo.value = '0'; }, 'em-linha'),
       h('div', { class: 'linha-campos' },
         h('div', { class: 'campo' }, h('label', { for: 'prazo' }, 'Prazo de pagamento (dias)'), prazo),
         h('div', { class: 'campo' }, h('label', { for: 'limite' }, 'Limite de crédito (R$) *'), limite),

@@ -80,7 +80,7 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 |---|---|---|
 | `contatos` | app (vendedor/supervisor/admin) e importação inicial (DT 1o / DT 2o) | aplica a regra de status, datas de tentativa, próxima ação, motivo final |
 | `liberacoes_credito` | relatório de crédito (importação) ou analista (console) | `origem` (`importacao`/`console`), `forma_pagamento` (`antecipado` · `a_vista` · `boleto`), `prazo_pagamento_dias`, `limite_cnpj`, `limite_grupo`, `limite_credito` efetivo e `limite_origem` (`cnpj` · `grupo` · `informado`), `com_restricao` (console) → `aguardando_pedido`. CHECKs garantem: CNPJ prevalece, grupo só com CNPJ vazio, boleto exige limite |
-| `eventos_erp` | importação de arquivos do ERP / baixados | cadastro → `analise_financeira`; pedido → `venda_realizada`; baixa → `invalido` + congelado |
+| `eventos_erp` | importação de arquivos do ERP / baixados | cadastro → `analise_financeira`; pedido → `venda_realizada`; baixa → `invalido` + congelado. `valor` (0004): valor do pedido, só em `pedido`, ≥ 0, opcional |
 | `transferencias` | supervisor da equipe ou administrador | troca `prospects.vendedor_id` |
 | `movimentacoes` | **somente triggers** | **histórico de movimentação do cliente**: uma linha por movimento (entrada na base, contato da planilha, atendido, sem interesse, pedido identificado, cadastro, liberação de crédito, pedido, baixa, transferência) com status antes → depois, data, origem, **quem fez**, **vendedor dono da carteira no dia** e detalhe |
 
