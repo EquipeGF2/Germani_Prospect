@@ -12,7 +12,7 @@ projetos com **frontend estático no GitHub Pages falando direto com o Turso**, 
 
 ## Decisão
 
-1. **Um único banco Turso de produção** (`germani-prospect`). Não há banco de desenvolvimento no Turso;
+1. **Um único banco Turso de produção** (`germaniprospec`). Não há banco de desenvolvimento no Turso;
    os testes rodam em SQLite em memória e o desenvolvimento local usa um arquivo `file:` (ver docs/06).
 2. **Nenhum servidor.** Componentes: GitHub (código, Actions, Pages, Secrets) + Turso.
 3. **Regras de negócio no banco** (CHECKs e triggers): quem grava um contato não consegue deixar o
