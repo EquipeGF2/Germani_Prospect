@@ -31,12 +31,12 @@ export async function criarEquipe(db) {
   ], 'write');
 }
 
-export async function criarProspect(db, { n, vendedorId = 2, cidade = 'Santa Cruz do Sul', bairro = null, rota = null, subrota = null, razao = `Empresa ${n}` }) {
+export async function criarProspect(db, { n, vendedorId = 2, cidade = 'Santa Cruz do Sul', bairro = null, rota = null, subrota = null, onda = null, razao = `Empresa ${n}` }) {
   const cnpj = cnpjTeste(n);
   const r = await db.execute({
-    sql: `INSERT INTO prospects (cnpj, cnpj_raiz, razao_social, cidade, cidade_busca, bairro, bairro_busca, rota, subrota, uf, busca, vendedor_id, dt_entrada_base)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'RS', ?, ?, '2026-01-01') RETURNING id`,
-    args: [cnpj, cnpj.slice(0, 8), razao, cidade, normalizarBusca(cidade), bairro, bairro ? normalizarBusca(bairro) : null, rota, subrota,
+    sql: `INSERT INTO prospects (cnpj, cnpj_raiz, razao_social, cidade, cidade_busca, bairro, bairro_busca, rota, subrota, onda, uf, busca, vendedor_id, dt_entrada_base)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RS', ?, ?, '2026-01-01') RETURNING id`,
+    args: [cnpj, cnpj.slice(0, 8), razao, cidade, normalizarBusca(cidade), bairro, bairro ? normalizarBusca(bairro) : null, rota, subrota, onda,
       normalizarBusca(`${razao} ${cnpj} ${cidade} ${bairro ?? ''}`), vendedorId],
   });
   return Number(r.rows[0].id);

@@ -8,7 +8,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { abrir } from '../lib/db.mjs';
 import { carimbo, executor, imprimirResumo, sha256Arquivo } from '../lib/cli.mjs';
-import { importarEventos } from '../lib/importar-eventos.mjs';
+import { importarEventos } from '../shared/importar-eventos.mjs';
 import { lerPlanilha } from '../lib/planilha.mjs';
 import { gravarRelatorioCsv } from '../lib/relatorio.mjs';
 import { analisarData, hojeSaoPaulo } from '../shared/datas.mjs';

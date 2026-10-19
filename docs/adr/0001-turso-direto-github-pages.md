@@ -52,6 +52,23 @@ própria carteira na interface), não como barreira de segurança contra quem te
 - Rotação: `turso db tokens invalidate` invalida **todos** os tokens do banco; gerar novos (admin e app),
   atualizar o Secret e republicar o site (docs/06-operacao.md).
 
+## Operação 100% pela tela (decisão de 2026-10-19)
+
+O dono decidiu que **nada será feito direto no banco**: carga da base, lista de representantes/vendedores,
+arquivos do ERP, baixados, usuários/senhas, parâmetros e liberação de crédito serão feitos **por telas**.
+Isso pede um terceiro nível de acesso sem embutir nada perigoso no site público:
+
+| Token | Onde fica | Para quê |
+|---|---|---|
+| App | embutido no site (permissões restritas acima) | vendedor, representante, supervisor, analista |
+| **Administração** | **digitado pelo administrador na tela de administração**, guardado só na memória da sessão daquele navegador — nunca no código, no repositório nem no site | importações, usuários, parâmetros |
+| Administrativo total | `.env` do administrador + Secret do GitHub | só migrações de estrutura (workflow) |
+
+O token de administração tem `data_add`/`data_update` nas tabelas de cadastro e importação, mas **não**
+`schema_*` nem `data_delete`. A lógica das importações já está em `shared/importar-*.mjs` (sem dependência
+de Node), então a tela usa exatamente o mesmo código testado. Os scripts de linha de comando ficam como
+contingência.
+
 ## Alternativas (registradas para revisão futura)
 
 - **JWKS do Turso + provedor de login** (Clerk/Auth0 gratuitos): cada pessoa recebe um token próprio

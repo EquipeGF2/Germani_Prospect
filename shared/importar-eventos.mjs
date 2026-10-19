@@ -4,11 +4,11 @@
 //   baixa    → CNPJ baixado/inapto               (status "Inválido", prospect congelado)
 // O layout desses arquivos ainda não foi enviado: as colunas são informadas na linha de comando.
 // Linhas cujo CNPJ não é prospect (ex.: cliente antigo do ERP) ficam "ignoradas" — contadas, nunca somem.
-import { analisarCnpj } from '../shared/cnpj.mjs';
-import { analisarData } from '../shared/datas.mjs';
-import { chaveCabecalho, limparTexto } from '../shared/texto.mjs';
-import { linhaVazia } from '../shared/importacao-base.mjs';
-import { gravarEmLotes } from '../shared/gravacao.mjs';
+import { analisarCnpj } from './cnpj.mjs';
+import { analisarData } from './datas.mjs';
+import { chaveCabecalho, limparTexto } from './texto.mjs';
+import { linhaVazia } from './importacao-base.mjs';
+import { gravarEmLotes } from './gravacao.mjs';
 
 export const TIPOS_EVENTO = Object.freeze({ cadastro: 'cadastro_erp', pedido: 'pedido_erp', baixa: 'cnpj_baixado' });
 

@@ -1,8 +1,8 @@
 // Lista informada pelo administrador dizendo quem é representante e quem é vendedor
 // (usada quando a planilha base não traz essa informação). Atualiza usuarios.tipo_atuacao pelo código.
 // Mesmas garantias das outras importações: simulação, nenhuma linha some, cada linha registrada.
-import { limparTexto, normalizarBusca, chaveCabecalho } from '../shared/texto.mjs';
-import { linhaVazia } from '../shared/importacao-base.mjs';
+import { limparTexto, normalizarBusca, chaveCabecalho } from './texto.mjs';
+import { linhaVazia } from './importacao-base.mjs';
 
 /** Valores aceitos na coluna de tipo (comparados sem acento). */
 const SINONIMOS = {

@@ -4,9 +4,9 @@
 //   * CNPJ novo → prospect "Não contactado" + tentativas de DT 1o/DT 2o como contatos de origem "importacao"
 //   * CNPJ existente → atualiza só dados cadastrais; status, contatos e vendedor NÃO mudam
 //   * prospect baixado (inválido) está congelado e não é tocado
-import { analisarLinhaBase, extrairCampos, linhaVazia, mapearCabecalho, verificarConsistencia } from '../shared/importacao-base.mjs';
-import { normalizarBusca } from '../shared/texto.mjs';
-import { gravarEmLotes } from '../shared/gravacao.mjs';
+import { analisarLinhaBase, extrairCampos, linhaVazia, mapearCabecalho, verificarConsistencia } from './importacao-base.mjs';
+import { normalizarBusca } from './texto.mjs';
+import { gravarEmLotes } from './gravacao.mjs';
 
 const CAMPOS_CADASTRAIS = ['razao_social', 'nome_fantasia', 'endereco', 'bairro', 'cidade', 'uf', 'cep', 'latitude', 'longitude',
   'telefone', 'tipologia_gtm', 'onda', 'tipo', 'rota', 'subrota', 'obs_planilha', 'busca', 'cidade_busca', 'bairro_busca', 'cnpj_secundario'];

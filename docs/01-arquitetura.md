@@ -37,11 +37,15 @@ Decisão e riscos: [ADR-0001](adr/0001-turso-direto-github-pages.md). Sem cálcu
 │   ├── status.mjs               status, canais, resultados, validação do formulário
 │   ├── senha.mjs                hash PBKDF2 (Web Crypto)
 │   ├── importacao-base.mjs      layout e validação da planilha base
+│   ├── importar-base.mjs        carga da base no banco (usada pela tela e pelo script)
+│   ├── importar-eventos.mjs     cadastro / pedidos / baixados
+│   ├── importar-tipos.mjs       lista de representantes e vendedores
+│   ├── gravacao.mjs             gravação em lotes com isolamento de erro
 │   ├── carteira.mjs             lista principal e acompanhamento: visões lista/cidade/bairro/status/rota
 │   ├── financeiro.mjs           console do analista: fila de análise e liberação de crédito
 │   ├── rotas.mjs                montagem de rotas do vendedor (ordem sugerida sem distância, link do mapa)
 │   └── indicadores.mjs          SQL dos indicadores (posição e atividade)
-├── lib/                         código Node usado pelos scripts (banco, planilhas, importações)
+├── lib/                         código só de Node usado pelos scripts (conexão, leitura de planilha, relatório CSV)
 ├── scripts/                     linha de comando: migrate, importar-base, importar-eventos, usuarios, planilha fictícia
 ├── test/                        node --test, SQLite em memória
 ├── exemplos/base-ficticia.xlsx  planilha 100% fictícia no layout real

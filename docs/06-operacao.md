@@ -41,6 +41,9 @@ Mudança de estrutura = novo arquivo `db/migrations/0002_....sql`.
 
 ## 4. Primeira carga — roteiro
 
+> **Definitivo: a carga será feita pela tela de administração (F1), não por comandos.** O roteiro abaixo é a
+> contingência por linha de comando e mostra a ordem das etapas, que é a mesma na tela.
+
 ```bash
 npm ci
 cp .env.example .env                                 # preencher

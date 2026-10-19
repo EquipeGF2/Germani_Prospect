@@ -18,3 +18,4 @@ Atualizado em 2026-10-19. Cada item diz o que já está implementado como padrã
 | 14 | Quem é representante e quem é vendedor | **resolvido:** lista do administrador (`npm run importar:tipos`, docs/05 §3); sem definição = representante | enviar a lista |
 | 15 | "Front mais amplo" do vendedor | **resolvido:** montagem de rotas (docs/03 §7) + visão por rota/subrota, na própria carteira | — |
 | 16 | Registros do app | **resolvido:** atendido · sem interesse (também em lote) · reabrir com pedido identificado; "não atendido" não gera registro | — |
+| 19 | Operação pelo app | **decidido:** nada direto no banco; carga e administração por telas. Token de administração digitado na tela (ADR-0001) | definir com a F1 |

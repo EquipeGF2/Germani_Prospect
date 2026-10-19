@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, cnpjTeste } from './auxiliar.mjs';
-import { importarBase } from '../lib/importar-base.mjs';
-import { importarEventos } from '../lib/importar-eventos.mjs';
+import { importarBase } from '../shared/importar-base.mjs';
+import { importarEventos } from '../shared/importar-eventos.mjs';
 import { COLUNAS_BASE, mapearCabecalho, normalizarMapaStatus } from '../shared/importacao-base.mjs';
 import { formatarCnpj } from '../shared/cnpj.mjs';
 

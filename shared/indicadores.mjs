@@ -12,7 +12,7 @@
 //   pct_cadastro     = (análise financeira + aguardando pedido + vendas) ÷ contactados
 //   pct_conversao    = vendas ÷ contactados
 // Agrupamento por vendedor/supervisor usa a carteira ATUAL (transferências não reescrevem o passado).
-// Agrupamentos: geral · vendedor · supervisor · cidade · bairro · rota (rota: só vendedores, nunca representantes).
+// Agrupamentos: geral · vendedor · supervisor · cidade · bairro · onda · rota (rota: só vendedores, nunca representantes).
 
 const AGRUPAMENTOS = {
   geral: { chave: "'geral'", rotulo: "'Total geral'" },
@@ -23,6 +23,7 @@ const AGRUPAMENTOS = {
     chave: "COALESCE(p.cidade_busca, '') || '/' || COALESCE(p.uf, '') || '|' || COALESCE(p.bairro_busca, '')",
     rotulo: "COALESCE(p.bairro, '(sem bairro)') || ' — ' || COALESCE(p.cidade, '(sem cidade)') || '/' || COALESCE(p.uf, '')",
   },
+  onda: { chave: "COALESCE(p.onda, '')", rotulo: "COALESCE('Onda ' || p.onda, '(sem onda)')" },
   // rota existe só para vendedores (tipo_atuacao = 'vendedor'); representantes ficam fora deste agrupamento
   rota: { chave: "COALESCE(p.rota, '') || '|' || COALESCE(p.subrota, '')", rotulo: "COALESCE(p.rota, '(sem rota)') || COALESCE(' / ' || p.subrota, '')", somenteVendedor: true },
 };
@@ -35,6 +36,7 @@ function filtrosSql(filtros = {}, g = {}) {
   if (filtros.cidadeBusca) { where.push('p.cidade_busca = ?'); args.push(filtros.cidadeBusca); }
   if (filtros.uf) { where.push('p.uf = ?'); args.push(filtros.uf); }
   if (filtros.bairroBusca) { where.push('p.bairro_busca = ?'); args.push(filtros.bairroBusca); }
+  if (filtros.onda) { where.push('p.onda = ?'); args.push(String(filtros.onda)); }
   return { where, args };
 }
 
@@ -126,7 +128,7 @@ export const TIPOS_MOVIMENTO = Object.freeze(['entrada_base', 'contato_planilha'
 /**
  * Lista do histórico de movimentação com filtros (relatório / consulta).
  * @param usuario  escopo: vendedor = só a própria carteira (na data do movimento); supervisor = equipe; admin = tudo
- * @param filtros  { tipos: [], statusNovo, vendedorId, supervisorId, cidadeBusca, bairroBusca, uf, prospectId }
+ * @param filtros  { tipos: [], statusNovo, vendedorId, supervisorId, cidadeBusca, bairroBusca, uf, onda, prospectId }
  */
 export function consultaMovimentacoes({ usuario, inicio, fim, filtros = {}, limite = 500, deslocamento = 0 } = {}) {
   const where = [];
@@ -140,7 +142,7 @@ export function consultaMovimentacoes({ usuario, inicio, fim, filtros = {}, limi
     where.push(`tipo IN (${filtros.tipos.map(() => '?').join(', ')})`); args.push(...filtros.tipos);
   }
   for (const [campo, coluna] of [['statusNovo', 'status_novo'], ['vendedorId', 'vendedor_id'], ['supervisorId', 'supervisor_id'],
-    ['cidadeBusca', 'cidade_busca'], ['bairroBusca', 'bairro_busca'], ['uf', 'uf'], ['prospectId', 'prospect_id']]) {
+    ['cidadeBusca', 'cidade_busca'], ['bairroBusca', 'bairro_busca'], ['uf', 'uf'], ['onda', 'onda'], ['prospectId', 'prospect_id']]) {
     if (filtros[campo] != null && filtros[campo] !== '') { where.push(`${coluna} = ?`); args.push(filtros[campo]); }
   }
   return {

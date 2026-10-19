@@ -1,6 +1,8 @@
 # 05 — Importações
 
-Todas as importações rodam na **máquina do administrador** (`.env` com o token administrativo).
+**Operação definitiva: pelas telas de administração do app (F1)** — upload do arquivo, simulação com o
+relatório na tela, confirmação. A lógica é a mesma dos comandos abaixo (`shared/importar-base.mjs`,
+`shared/importar-eventos.mjs`, `shared/importar-tipos.mjs`); os comandos de linha ficam como contingência.
 As planilhas **nunca** vão para o repositório (ele é público; o `.gitignore` bloqueia `*.xlsx`/`*.csv`).
 
 Todas seguem as mesmas garantias:
@@ -37,7 +39,7 @@ npm run importar:base -- base.xlsx                   # 3) gravar
 | 10 | Longitude | `longitude` | idem (dispensa geocodificação) |
 | 11 | TIPOLOGIA GTM | `tipologia_gtm` | |
 | 12 | Telefone | `telefone` | só dígitos |
-| 13 | ONDA | `onda` | |
+| 13 | ONDA | `onda` | segmentação: visão e filtro na lista, nos indicadores e no histórico |
 | 14 | CNPJ (2ª) | `cnpj_secundario` | comparada com a 1ª; se diferente → aviso e guardada |
 | 15 | TIPO | `tipo` | |
 | 16 | COD SUP | supervisor (`usuarios.codigo_erp`) | **obrigatória** |

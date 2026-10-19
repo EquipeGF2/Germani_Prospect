@@ -19,9 +19,9 @@ before(async () => {
   await db.execute("UPDATE usuarios SET tipo_atuacao = 'representante' WHERE id = 2");
   await db.execute("UPDATE usuarios SET tipo_atuacao = 'vendedor' WHERE id = 3");
   // representante: rota preenchida na planilha, mas não pode aparecer
-  await criarProspect(db, { n: 1, vendedorId: 2, cidade: 'Santa Cruz do Sul', bairro: 'Centro', rota: 'R1', razao: 'Padaria São João' });
-  await criarProspect(db, { n: 2, vendedorId: 2, cidade: 'Santa Cruz do Sul', bairro: 'Goiás', rota: 'R1' });
-  await criarProspect(db, { n: 3, vendedorId: 2, cidade: 'Venâncio Aires', bairro: 'Centro' });
+  await criarProspect(db, { n: 1, vendedorId: 2, cidade: 'Santa Cruz do Sul', bairro: 'Centro', rota: 'R1', onda: '1', razao: 'Padaria São João' });
+  await criarProspect(db, { n: 2, vendedorId: 2, cidade: 'Santa Cruz do Sul', bairro: 'Goiás', rota: 'R1', onda: '2' });
+  await criarProspect(db, { n: 3, vendedorId: 2, cidade: 'Venâncio Aires', bairro: 'Centro', onda: '1' });
   const p4 = await criarProspect(db, { n: 4, vendedorId: 2, cidade: 'Venâncio Aires', bairro: 'Centro' });
   await evento(db, { prospectId: p4, tipo: 'pedido', data: '2026-10-05', documento: 'P4' }); // sai da lista
   // vendedor
@@ -38,8 +38,8 @@ test('forma de trabalho e visões: representante sem rota; vendedor e gestão co
   assert.equal(formaDeTrabalho({ id: 9, perfil: 'vendedor', tipo_atuacao: null }), 'representante'); // não definido = mais restrito
   assert.equal(formaDeTrabalho(VEND), 'vendedor');
   assert.equal(formaDeTrabalho(SUP), 'gestao');
-  assert.deepEqual(visoesPermitidas(REP), ['lista', 'cidade', 'bairro', 'status']);
-  assert.deepEqual(visoesPermitidas(VEND), ['lista', 'cidade', 'bairro', 'status', 'rota']);
+  assert.deepEqual(visoesPermitidas(REP), ['lista', 'cidade', 'bairro', 'onda', 'status']);
+  assert.deepEqual(visoesPermitidas(VEND), ['lista', 'cidade', 'bairro', 'onda', 'status', 'rota']);
   assert.throws(() => consultaCarteira({ usuario: REP, visao: 'rota' }), /não disponível para representante/);
   assert.throws(() => consultaCarteira({ usuario: REP, filtros: { rota: 'R1' } }), /não trabalha com rota/);
 });
@@ -121,4 +121,17 @@ test('Aguardando cadastro fica só no acompanhamento: o filtro de retornos da li
   assert.ok(lista.every((x) => x.status_atual !== 'aguardando_cadastro'));
   const acomp = await linhas(consultaCarteira({ usuario: VEND, filtros: { status: 'aguardando_cadastro', somenteRetornos: true } }));
   assert.equal(acomp.length, 1);
+});
+
+test('onda: visão agrupada e filtro, na lista, nos indicadores e no histórico (representante também usa)', async () => {
+  const v = await linhas(consultaCarteira({ usuario: REP, visao: 'onda' }));
+  assert.deepEqual(v.map((x) => [x.rotulo, Number(x.prospects)]), [['Onda 1', 2], ['Onda 2', 1]]);
+  const f = await linhas(consultaCarteira({ usuario: REP, filtros: { onda: 1 } }));
+  assert.equal(f.length, 2);
+  assert.ok(f.every((x) => x.onda === '1'));
+  const ind = await linhas(consultaPosicao({ agrupar: 'onda', filtros: { vendedorId: 2 } }));
+  assert.deepEqual(ind.map((x) => [x.rotulo, Number(x.total)]), [['(sem onda)', 1], ['Onda 1', 2], ['Onda 2', 1]]);
+  const { consultaMovimentacoes } = await import('../shared/indicadores.mjs');
+  const mv = await linhas(consultaMovimentacoes({ filtros: { onda: '2' } }));
+  assert.ok(mv.length >= 1 && mv.every((x) => x.onda === '2'));
 });

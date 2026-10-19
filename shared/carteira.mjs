@@ -2,9 +2,9 @@
 // docs/03-regras-negocio.md §6
 //
 // Duas formas de trabalho:
-//   * REPRESENTANTE — visita a carteira. Visões: lista, cidade, bairro, status. NÃO tem rota:
+//   * REPRESENTANTE — visita a carteira. Visões: lista, cidade, bairro, onda, status. NÃO tem rota:
 //     não agrupa, não filtra e não recebe as colunas rota/subrota.
-//   * VENDEDOR      — atendimento mais amplo. Visões: lista, cidade, bairro, status, rota (rota + subrota).
+//   * VENDEDOR      — atendimento mais amplo. Visões: lista, cidade, bairro, onda, status, rota (rota + subrota).
 //   * supervisor / administrador — todas as visões, sobre a equipe / sobre tudo.
 // tipo_atuacao NULL é tratado como representante (a forma mais restrita).
 //
@@ -14,10 +14,10 @@
 // Indicadores não usam este módulo (contam tudo — shared/indicadores.mjs).
 import { normalizarBusca } from './texto.mjs';
 
-export const VISOES = Object.freeze(['lista', 'cidade', 'bairro', 'status', 'rota']);
+export const VISOES = Object.freeze(['lista', 'cidade', 'bairro', 'onda', 'status', 'rota']);
 
 const COLUNAS_LISTA = ['id', 'cnpj', 'razao_social', 'nome_fantasia', 'endereco', 'bairro', 'bairro_busca', 'cidade', 'cidade_busca', 'uf', 'cep',
-  'latitude', 'longitude', 'telefone', 'tipologia_gtm', 'status_atual', 'status_nome', 'status_descricao', 'status_cor',
+  'latitude', 'longitude', 'telefone', 'tipologia_gtm', 'onda', 'status_atual', 'status_nome', 'status_descricao', 'status_cor',
   'tentativas', 'dt_primeiro_contato', 'dt_segundo_contato', 'dt_ultimo_contato', 'dt_atendido', 'data_proxima_acao',
   'dias_corridos', 'pendente_hoje', 'retorno_pendente', 'na_lista', 'atendido', 'prazo_cadastro_vencido',
   'motivo_sem_interesse', 'dt_cadastro_erp', 'dt_pedido', 'numero_pedido', 'dt_baixa', 'vendedor_id', 'vendedor_nome'];
@@ -35,7 +35,7 @@ export function formaDeTrabalho(usuario) {
 
 /** Visões que o usuário pode abrir. */
 export function visoesPermitidas(usuario) {
-  return formaDeTrabalho(usuario) === 'representante' ? ['lista', 'cidade', 'bairro', 'status'] : [...VISOES];
+  return formaDeTrabalho(usuario) === 'representante' ? VISOES.filter((v) => v !== 'rota') : [...VISOES];
 }
 
 function escopo(usuario) {
@@ -47,8 +47,8 @@ function escopo(usuario) {
 /**
  * Monta a consulta da lista de prospects.
  * @param usuario  { id, perfil, tipo_atuacao }
- * @param visao    'lista' | 'cidade' | 'bairro' | 'status' | 'rota'
- * @param filtros  { cidadeBusca, uf, bairroBusca, rota, subrota, status, somentePendentes, somenteRetornos, vendedorId }
+ * @param visao    'lista' | 'cidade' | 'bairro' | 'onda' | 'status' | 'rota'
+ * @param filtros  { cidadeBusca, uf, bairroBusca, onda, rota, subrota, status, somentePendentes, somenteRetornos, vendedorId }
  *                 Informar `status` (ou abrir a visão 'status') mostra a carteira inteira, não só a lista.
  *                 `somenteRetornos` na lista = retornos da lista; com `status: 'aguardando_cadastro'` = retornos da negociação.
  * @param busca    texto livre (nome, CNPJ, cidade, bairro) — acentos ignorados
@@ -72,6 +72,7 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   if (filtros.cidadeBusca) { where.push('cidade_busca = ?'); args.push(filtros.cidadeBusca); }
   if (filtros.uf) { where.push('uf = ?'); args.push(filtros.uf); }
   if (filtros.bairroBusca) { where.push('bairro_busca = ?'); args.push(filtros.bairroBusca); }
+  if (filtros.onda) { where.push('onda = ?'); args.push(String(filtros.onda)); }
   if (visao === 'rota' || filtros.rota || filtros.subrota) where.push("vendedor_tipo_atuacao = 'vendedor'");
   if (filtros.rota) { where.push('rota = ?'); args.push(filtros.rota); }
   if (filtros.subrota) { where.push('subrota = ?'); args.push(filtros.subrota); }
@@ -112,6 +113,7 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   const grupo = {
     cidade: { chave: ['cidade_busca', 'uf'], rotulo: "COALESCE(MIN(cidade), '(sem cidade)') || '/' || COALESCE(uf, '')" },
     bairro: { chave: ['cidade_busca', 'uf', 'bairro_busca'], rotulo: "COALESCE(MIN(bairro), '(sem bairro)') || ' — ' || COALESCE(MIN(cidade), '(sem cidade)')" },
+    onda: { chave: ['onda'], rotulo: "COALESCE('Onda ' || onda, '(sem onda)')" },
     rota: { chave: ['rota', 'subrota'], rotulo: "COALESCE(rota, '(sem rota)') || COALESCE(' / ' || subrota, '')" },
   }[visao];
   return {

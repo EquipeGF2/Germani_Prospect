@@ -7,7 +7,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { abrir } from '../lib/db.mjs';
 import { carimbo, executor, imprimirResumo, sha256Arquivo } from '../lib/cli.mjs';
-import { importarTipos } from '../lib/importar-tipos.mjs';
+import { importarTipos } from '../shared/importar-tipos.mjs';
 import { lerPlanilha } from '../lib/planilha.mjs';
 import { gravarRelatorioCsv } from '../lib/relatorio.mjs';
 

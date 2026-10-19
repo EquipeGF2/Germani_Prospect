@@ -49,7 +49,7 @@ arquivos do ERP.
 | Fase | Conteúdo | Situação |
 |---|---|---|
 | **Backend** | estrutura do repositório, banco, vínculos, regras, importações, testes, documentação | **esta entrega** |
-| F1 — App | login, carteira, ficha, registrar contato, painel do supervisor, exportação XLSX | a fazer |
+| F1 — App | **tudo pela tela**: login; lista principal e acompanhamento (lista/cidade/bairro/onda/status/rota); ficha com histórico de movimentação; registrar atendido/sem interesse (também em lote); rotas do vendedor; console financeiro; painel e indicadores; **administração** (importações da base, tipos, cadastro, pedidos e baixados; usuários e senhas; parâmetros); exportação XLSX | a fazer — a carga real acontece só depois |
 | F2 — Campo | modo offline (rotas já estão no backend; sem cálculo de distância — ADR-0005) | a fazer |
 | F3 — Financeiro | pedidos cancelados por restrição financeira (processo a definir) | a definir |
 

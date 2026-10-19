@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe } from './auxiliar.mjs';
-import { importarTipos, interpretarTipo } from '../lib/importar-tipos.mjs';
+import { importarTipos, interpretarTipo } from '../shared/importar-tipos.mjs';
 
 const base = { arquivoNome: 't.xlsx', arquivoSha256: 'x', executadoPor: 'teste' };
 

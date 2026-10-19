@@ -122,8 +122,8 @@ entradas em cada etapa (aguardando cadastro, análise financeira, aguardando ped
 crédito · arquivos de cadastro/pedido · baixas · transferências.
 
 Mais a **execução de rotas** (planejadas × atendidas, §7). Todos contam **toda a base** (dentro e fora da lista) e podem ser agrupados por **total geral, vendedor,
-supervisor (= equipe), cidade, bairro e rota** e filtrados por
-vendedor, supervisor, cidade, bairro e UF. O agrupamento por **rota considera só prospects de vendedores**
+supervisor (= equipe), cidade, bairro, onda e rota** e filtrados por
+vendedor, supervisor, cidade, bairro, onda e UF. O agrupamento por **rota considera só prospects de vendedores**
 (representante não tem rota).
 
 > Mudança em relação à especificação original: "conversão declarada" (venda informada pelo vendedor)
@@ -146,7 +146,7 @@ movimentação conta sempre nos indicadores.
 | | Representante | Vendedor | Supervisor / admin |
 |---|---|---|---|
 | Papel no app | **filtro e consulta** + registro das datas de atendimento / sem interesse | o mesmo + **montagem de rotas** (§7) | gestão |
-| Visões | Lista · Cidade · Bairro · Status | Lista · Cidade · Bairro · Status · **Rota** (rota/subrota) | todas |
+| Visões | Lista · Cidade · Bairro · **Onda** · Status | Lista · Cidade · Bairro · **Onda** · Status · **Rota** (rota/subrota) | todas |
 | Rota / subrota | **nunca** (não agrupa, não filtra, não recebe as colunas, não monta rota) | sim | consulta as rotas da equipe |
 | Escopo | própria carteira | própria carteira | equipe / tudo |
 
@@ -154,10 +154,12 @@ movimentação conta sempre nos indicadores.
   administrador numa **lista** (`npm run importar:tipos`, ver 05 §3) ou individualmente
   (`npm run usuarios -- tipo <login> representante|vendedor`). Sem definição = representante.
 - **Lista principal:** ordenada por pendentes de hoje, retornos, próxima ação, cidade, bairro, nome.
-  Filtros: pendentes hoje, retornos pendentes, cidade, bairro, UF, rota/subrota (vendedor).
+  Filtros: pendentes hoje, retornos pendentes, cidade, bairro, **onda**, UF, rota/subrota (vendedor).
   Busca por nome, CNPJ (com ou sem pontuação), cidade ou bairro, **sem acento**.
 - **Acompanhamento (visão Status):** todos os status com quantidade, retornos pendentes, prazos de cadastro
   vencidos e média de dias corridos. Tocar num status abre a lista daquele status.
+- **Onda:** coluna ONDA da planilha base — visão agrupada e filtro para os dois perfis, também nos indicadores
+  (`agrupar: 'onda'`, `filtros.onda`) e no histórico de movimentação.
 - **Cidade / Bairro:** para os dois perfis. Total, pendentes hoje, não contactados, em prospecção, atendidos
   e o centro do grupo para **abrir no mapa**. **Nenhuma distância é calculada** (ADR-0005).
 - Cada linha traz `dias_corridos` (desde o 1º atendimento) e `status_descricao`.

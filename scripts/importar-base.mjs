@@ -9,7 +9,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { abrir } from '../lib/db.mjs';
 import { carimbo, executor, imprimirResumo, sha256Arquivo } from '../lib/cli.mjs';
-import { importarBase } from '../lib/importar-base.mjs';
+import { importarBase } from '../shared/importar-base.mjs';
 import { lerPlanilha } from '../lib/planilha.mjs';
 import { gravarRelatorioCsv } from '../lib/relatorio.mjs';
 import { extrairCampos, linhaVazia, mapearCabecalho, normalizarMapaStatus } from '../shared/importacao-base.mjs';

@@ -223,6 +223,7 @@ CREATE INDEX ix_prospects_vendedor_status ON prospects (vendedor_id, status_atua
 CREATE INDEX ix_prospects_proxima_acao    ON prospects (data_proxima_acao);
 CREATE INDEX ix_prospects_cidade          ON prospects (cidade_busca, uf, bairro_busca);
 CREATE INDEX ix_prospects_rota            ON prospects (rota, subrota);
+CREATE INDEX ix_prospects_onda            ON prospects (onda);
 CREATE INDEX ix_prospects_raiz            ON prospects (cnpj_raiz);
 
 -- O vendedor da carteira precisa ser vendedor ou supervisor ativo.
@@ -723,7 +724,7 @@ SELECT m.id, m.prospect_id, m.tipo, m.data_evento, m.origem, m.referencia, m.det
        m.usuario_id, u.nome AS usuario_nome,
        m.vendedor_id, v.nome AS vendedor_nome, v.tipo_atuacao AS vendedor_tipo_atuacao,
        COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END) AS supervisor_id,
-       p.cnpj, p.razao_social, p.nome_fantasia, p.cidade, p.cidade_busca, p.bairro, p.bairro_busca, p.uf
+       p.cnpj, p.razao_social, p.nome_fantasia, p.cidade, p.cidade_busca, p.bairro, p.bairro_busca, p.uf, p.onda
   FROM movimentacoes m
   JOIN prospects p ON p.id = m.prospect_id
   JOIN usuarios v ON v.id = m.vendedor_id
