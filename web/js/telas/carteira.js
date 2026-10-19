@@ -7,13 +7,14 @@ import { gravarLote, lerLote, seloStatus } from './_carteira.js';
 
 const POR_PAGINA = 50;
 const NOMES_VISAO = { lista: 'Lista', cidade: 'Cidade', bairro: 'Bairro', onda: 'Onda', status: 'Status', rota: 'Rota' };
-const FILTROS = ['cidadeBusca', 'uf', 'bairroBusca', 'onda', 'rota', 'subrota', 'status', 'vendedorId', 'somenteRetornos'];
+const FILTROS = ['cidadeBusca', 'uf', 'bairroBusca', 'onda', 'rota', 'subrota', 'status', 'supervisorId', 'vendedorId', 'somenteRetornos'];
 
 function lerEstado(parametros) {
   const e = { aba: parametros.get('aba') === 'acompanhamento' ? 'acompanhamento' : 'principal', visao: parametros.get('visao') ?? '',
     busca: parametros.get('busca') ?? '', pagina: Math.max(0, Number(parametros.get('pagina')) || 0), filtros: {} };
   for (const f of FILTROS) if (parametros.get(f)) e.filtros[f] = parametros.get(f);
   if (e.filtros.vendedorId) e.filtros.vendedorId = Number(e.filtros.vendedorId);
+  if (e.filtros.supervisorId) e.filtros.supervisorId = Number(e.filtros.supervisorId);
   if (e.filtros.somenteRetornos) e.filtros.somenteRetornos = true;
   e.visao ||= e.aba === 'acompanhamento' && !e.filtros.status ? 'status' : 'lista';
   return e;
@@ -31,15 +32,26 @@ function endereco(e, muda = {}) {
   return `#/carteira${s ? '?' + s : ''}`;
 }
 
-async function vendedoresDoEscopo(db, usuario) {
-  if (['administrador', 'gerente', 'financeiro'].includes(usuario.perfil)) {
-    return (await db.execute("SELECT id, nome, codigo_erp FROM usuarios WHERE perfil IN ('vendedor','supervisor') AND ativo = 1 ORDER BY nome")).rows;
-  }
-  if (usuario.perfil === 'supervisor') {
-    return (await db.execute({ sql: 'SELECT id, nome, codigo_erp FROM usuarios WHERE (supervisor_id = ? OR id = ?) AND ativo = 1 ORDER BY nome', args: [usuario.id, usuario.id] })).rows;
-  }
-  return [];
+const VE_TUDO = ['administrador', 'gerente', 'financeiro'];
+
+// Donos de carteira que o usuário pode filtrar (gestão vê todos; supervisor, a equipe). Com supervisorId, só a equipe dele.
+async function vendedoresDoEscopo(db, usuario, supervisorId) {
+  const sup = VE_TUDO.includes(usuario.perfil) ? supervisorId : usuario.perfil === 'supervisor' ? usuario.id : null;
+  if (!VE_TUDO.includes(usuario.perfil) && usuario.perfil !== 'supervisor') return [];
+  return (await db.execute({
+    sql: `SELECT id, nome, codigo_erp, perfil, tipo_atuacao FROM usuarios
+           WHERE perfil IN ('vendedor','supervisor') AND ativo = 1 ${sup ? 'AND COALESCE(supervisor_id, id) = ?' : ''}
+           ORDER BY nome`,
+    args: sup ? [sup] : [],
+  })).rows;
 }
+
+async function supervisoresDoEscopo(db, usuario) {
+  if (!VE_TUDO.includes(usuario.perfil)) return [];
+  return (await db.execute("SELECT id, nome, codigo_erp FROM usuarios WHERE perfil = 'supervisor' AND ativo = 1 ORDER BY nome")).rows;
+}
+
+const papelDoAgente = (v) => (v.perfil === 'supervisor' ? 'Supervisor' : v.tipo_atuacao === 'vendedor' ? 'Vendedor' : 'Representante');
 
 function descreverFiltros(e) {
   const f = e.filtros;
@@ -71,7 +83,7 @@ export async function render(conteudo, ctx) {
     return montar(conteudo, mensagem(erro.message, 'erro'));
   }
   const linhas = (await db.execute(consulta)).rows;
-  const vendedores = await vendedoresDoEscopo(db, usuario);
+  const [supervisores, vendedores] = await Promise.all([supervisoresDoEscopo(db, usuario), vendedoresDoEscopo(db, usuario, e.filtros.supervisorId)]);
 
   const campoBusca = h('input', { type: 'search', id: 'busca', value: e.busca, placeholder: 'Nome, CNPJ, cidade ou bairro', 'aria-label': 'Buscar prospect' });
   const formBusca = h('form', { class: 'barra-busca', onsubmit: (ev) => { ev.preventDefault(); location.hash = endereco(e, { busca: campoBusca.value.trim(), pagina: 0 }); } },
@@ -82,11 +94,18 @@ export async function render(conteudo, ctx) {
     .map((v) => h('a', { href: endereco(e, { visao: v, pagina: 0 }), class: v === e.visao ? 'ativa' : '' }, NOMES_VISAO[v])));
 
   const extras = [];
+  if (supervisores.length) {
+    // trocar o supervisor limpa o vendedor (a lista de vendedores passa a ser só a equipe escolhida)
+    const sel = h('select', { id: 'filtro-supervisor', onchange: () => { location.hash = endereco(e, { filtros: { supervisorId: sel.value ? Number(sel.value) : null, vendedorId: null }, pagina: 0 }); } },
+      h('option', { value: '' }, 'Todos os supervisores'),
+      supervisores.map((s) => h('option', { value: s.id, selected: Number(s.id) === e.filtros.supervisorId }, `${s.nome}${s.codigo_erp ? ' · ' + s.codigo_erp : ''}`)));
+    extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-supervisor' }, 'Supervisor'), sel));
+  }
   if (vendedores.length) {
-    const sel = h('select', { id: 'filtro-vendedor', 'aria-label': 'Vendedor', onchange: () => { location.hash = endereco(e, { filtros: { vendedorId: sel.value ? Number(sel.value) : null }, pagina: 0 }); } },
-      h('option', { value: '' }, 'Toda a equipe'),
-      vendedores.map((v) => h('option', { value: v.id, selected: Number(v.id) === e.filtros.vendedorId }, `${v.nome}${v.codigo_erp ? ' · ' + v.codigo_erp : ''}`)));
-    extras.push(sel);
+    const sel = h('select', { id: 'filtro-vendedor', onchange: () => { location.hash = endereco(e, { filtros: { vendedorId: sel.value ? Number(sel.value) : null }, pagina: 0 }); } },
+      h('option', { value: '' }, e.filtros.supervisorId || usuario.perfil === 'supervisor' ? 'Toda a equipe' : 'Todos'),
+      vendedores.map((v) => h('option', { value: v.id, selected: Number(v.id) === e.filtros.vendedorId }, `${v.nome} · ${papelDoAgente(v)}${v.codigo_erp ? ' · ' + v.codigo_erp : ''}`)));
+    extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-vendedor' }, 'Vendedor / representante'), sel));
   }
   extras.push(h('label', { class: 'marcador' },
     h('input', { type: 'checkbox', id: 'so-retornos', checked: Boolean(e.filtros.somenteRetornos), onchange: (ev) => { location.hash = endereco(e, { filtros: { somenteRetornos: ev.target.checked }, pagina: 0 }); } }),
@@ -101,7 +120,7 @@ export async function render(conteudo, ctx) {
 
   let corpo;
   if (e.visao === 'status') corpo = blocoStatus(e, linhas);
-  else if (e.visao === 'lista') corpo = blocoLista(e, linhas, { usuario, podeRegistrar, selecao, comRota: permitidas.includes('rota') });
+  else if (e.visao === 'lista') corpo = blocoLista(e, linhas, { podeRegistrar, selecao, comRota: permitidas.includes('rota'), mostrarCarteira: usuario.perfil !== 'vendedor' });
   else corpo = blocoGrupos(e, linhas);
 
   const titulo = e.aba === 'acompanhamento' ? 'Acompanhamento' : 'Lista principal';
@@ -152,7 +171,7 @@ function blocoGrupos(e, linhas) {
     })));
 }
 
-function blocoLista(e, linhas, { podeRegistrar, selecao, comRota }) {
+function blocoLista(e, linhas, { podeRegistrar, selecao, comRota, mostrarCarteira }) {
   const temMais = linhas.length > POR_PAGINA;
   const pagina = linhas.slice(0, POR_PAGINA);
   if (!pagina.length) return mensagem(e.busca ? `Nada encontrado para "${e.busca}".` : 'Nenhum prospect nesta lista.', 'info');
@@ -178,6 +197,7 @@ function blocoLista(e, linhas, { podeRegistrar, selecao, comRota }) {
       [p.bairro, p.cidade && `${p.cidade}/${p.uf ?? ''}`].filter(Boolean).join(' — '),
       p.onda ? `Onda ${p.onda}` : null,
       comRota && p.rota ? `Rota ${p.rota}${p.subrota ? ' / ' + p.subrota : ''}` : null,
+      mostrarCarteira ? `Carteira: ${p.vendedor_nome}` : null,
     ].filter(Boolean).join(' · ');
     const alertas = [
       Number(p.retorno_pendente) ? h('span', { class: 'selo alerta' }, `Retorno ${formatar.data(p.data_proxima_acao)}`) : null,

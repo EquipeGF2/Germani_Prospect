@@ -26,6 +26,8 @@ after(async () => { await navegador?.close(); srv?.close(); });
 
 async function foto(nome) { if (FOTOS) await pagina.screenshot({ path: path.join(FOTOS, `${nome}.png`), fullPage: true }); }
 const texto = () => pagina.locator('main').innerText();
+// espera a tela do endereço atual terminar de desenhar (o roteador marca main[data-pronto])
+const telaPronta = () => pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === location.hash);
 
 test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 180000 }, async () => {
   await pagina.goto(base);
@@ -173,6 +175,26 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('09c-inicio-celular');
   await pagina.setViewportSize({ width: 1280, height: 900 });
 
+  // 5d. lista principal do administrador: filtro por supervisor e por vendedor/representante
+  await pagina.click('#menu a[title="Lista principal"]');
+  await pagina.waitForSelector('#filtro-supervisor');
+  const totalTodos = await pagina.locator('.cartao-prospect').count();
+  await pagina.selectOption('#filtro-supervisor', { index: 2 });   // 2º supervisor (o 0 é "Todos")
+  await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
+  await telaPronta();
+  await pagina.waitForFunction(() => document.querySelector('#filtro-vendedor')?.options[0]?.text === 'Toda a equipe');
+  const agentesDoSup = (await pagina.locator('#filtro-vendedor option').allInnerTexts()).slice(1);
+  assert.ok(agentesDoSup.length >= 1 && agentesDoSup.every((t) => / · (Vendedor|Representante|Supervisor)/.test(t)));
+  const nomeAgente = agentesDoSup[0].split(' · ')[0];
+  await pagina.selectOption('#filtro-vendedor', { index: 1 });
+  await pagina.waitForFunction(() => location.hash.includes('vendedorId='));
+  await telaPronta();
+  await pagina.waitForSelector('.cartao-prospect, .mensagem');
+  const cartoes = await pagina.locator('.cartao-prospect-corpo').allInnerTexts();
+  assert.ok(cartoes.every((t) => t.includes(`Carteira: ${nomeAgente}`)), 'só a carteira escolhida');
+  assert.ok(cartoes.length <= totalTodos);
+  await foto('09d-lista-filtros-gestao');
+
   // 6. histórico de importações
   await pagina.click('#menu a[title="Importações"]');
   await pagina.waitForSelector('h1:text-is("Importações")');               // a tela de parâmetros também tem tabela
@@ -207,6 +229,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.fill('#busca', primeiro.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
   await pagina.click('button:text("Buscar")');
   await pagina.waitForFunction(() => location.hash.includes('busca='));
+  await telaPronta();
   await pagina.waitForSelector('.cartao-prospect');
   assert.ok((await pagina.locator('.cartao-prospect').count()) >= 1, 'busca sem acento encontra o prospect');
   await pagina.click('.cartao-prospect-corpo >> nth=0');

@@ -178,7 +178,10 @@ movimentação conta sempre nos indicadores.
 - `#/carteira` = **Lista principal**; `#/carteira?aba=acompanhamento` = **Acompanhamento** (`filtros.foraDaLista`:
   só quem saiu da lista principal; abre nos cartões por status).
 - Visões em botões; tocar num grupo (cidade, bairro, onda, rota, status) abre a lista já filtrada. Os filtros
-  ativos aparecem como etiquetas removíveis. Supervisor e administrador escolhem o vendedor da equipe.
+  ativos aparecem como etiquetas removíveis. Administrador, gerente comercial e financeiro filtram por **supervisor** e por
+  **vendedor/representante** (a lista de vendedores se restringe à equipe do supervisor escolhido; cada opção mostra
+  se é vendedor ou representante); o supervisor filtra por vendedor/representante da equipe. Para a gestão, cada
+  cartão mostra de quem é a carteira.
 - Cada cartão: razão social, selo do status, CNPJ, fantasia, bairro/cidade, onda, rota (só vendedor),
   "atendido em…", dias corridos, retorno vencido e prazo de cadastro vencido. 50 por página.
 - **Ficha** (`#/ficha`): situação (status, dias corridos, registros, datas, prazos, motivo, cadastro e pedido do

@@ -48,7 +48,8 @@ function escopo(usuario) {
  * Monta a consulta da lista de prospects.
  * @param usuario  { id, perfil, tipo_atuacao }
  * @param visao    'lista' | 'cidade' | 'bairro' | 'onda' | 'status' | 'rota'
- * @param filtros  { cidadeBusca, uf, bairroBusca, onda, rota, subrota, status, somentePendentes, somenteRetornos, vendedorId, foraDaLista }
+ * @param filtros  { cidadeBusca, uf, bairroBusca, onda, rota, subrota, status, somentePendentes, somenteRetornos, vendedorId, supervisorId, foraDaLista }
+ *                 `supervisorId` / `vendedorId` só valem para gestão (o vendedor vê sempre a própria carteira).
  *                 `foraDaLista` = só o acompanhamento (quem já saiu da lista principal).
  *                 Informar `status` (ou abrir a visão 'status') mostra a carteira inteira, não só a lista.
  *                 `somenteRetornos` na lista = retornos da lista; com `status: 'aguardando_cadastro'` = retornos da negociação.
@@ -71,6 +72,7 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   if (filtros.somenteRetornos) where.push('retorno_pendente = 1');
   if (filtros.status) { where.push('status_atual = ?'); args.push(filtros.status); }
   if (filtros.vendedorId && usuario.perfil !== 'vendedor') { where.push('vendedor_id = ?'); args.push(filtros.vendedorId); }
+  if (filtros.supervisorId && usuario.perfil !== 'vendedor') { where.push('supervisor_id = ?'); args.push(filtros.supervisorId); }
   if (filtros.cidadeBusca) { where.push('cidade_busca = ?'); args.push(filtros.cidadeBusca); }
   if (filtros.uf) { where.push('uf = ?'); args.push(filtros.uf); }
   if (filtros.bairroBusca) { where.push('bairro_busca = ?'); args.push(filtros.bairroBusca); }
