@@ -2,6 +2,7 @@
 import { modoDemonstracao, temTokenAdmin } from './db.js';
 import { sair, usuarioAtual } from './sessao.js';
 import { h, montar, mensagem } from './ui.js';
+import { atualizarCasca, iniciarCasca } from './menu.js';
 
 const ROTAS = [
   { caminho: '/entrar', tela: () => import('./telas/entrar.js'), publica: true },
@@ -27,20 +28,15 @@ export function irPara(caminho) {
   location.hash = `#${caminho}`;
 }
 
-function atualizarTopo(usuario) {
-  const alvo = document.getElementById('usuario-topo');
-  if (!usuario) { montar(alvo); return; }
-  const papel = usuario.perfil === 'vendedor' ? (usuario.tipo_atuacao === 'vendedor' ? 'Vendedor' : 'Representante') : NOMES_PERFIL[usuario.perfil];
-  montar(alvo,
-    h('span', {}, `${usuario.nome} · ${papel}`),
-    h('button', { class: 'secundario pequeno', onclick: () => { sair(); irPara('/entrar'); } }, 'Sair'));
+function papelDe(usuario) {
+  return usuario.perfil === 'vendedor' ? (usuario.tipo_atuacao === 'vendedor' ? 'Vendedor' : 'Representante') : NOMES_PERFIL[usuario.perfil];
 }
 
 async function navegar() {
   const conteudo = document.getElementById('conteudo');
   const [caminho, consulta = ''] = (location.hash.replace(/^#/, '') || '/inicio').split('?');
   const usuario = usuarioAtual();
-  atualizarTopo(usuario);
+  atualizarCasca({ usuario, caminho, consulta, papel: usuario ? papelDe(usuario) : '', aoSair: () => { sair(); irPara('/entrar'); } });
   const rota = ROTAS.find((r) => r.caminho === caminho) ?? (usuario ? ROTAS.find((r) => r.caminho === '/inicio') : null);
   if (!rota || (!rota.publica && !usuario)) return irPara('/entrar');
   if (rota.perfis && !rota.perfis.includes(usuario.perfil)) {
@@ -61,5 +57,6 @@ async function navegar() {
 }
 
 if (modoDemonstracao()) document.getElementById('faixa-demo').hidden = false;
+iniciarCasca();
 addEventListener('hashchange', navegar);
 navegar();

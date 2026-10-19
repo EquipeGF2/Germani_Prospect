@@ -7,7 +7,7 @@ import { CANAIS, ROTULOS_RESULTADO, validarContato } from '../../shared/status.m
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { mensagemErro } from '../../shared/gravacao.mjs';
 import { h, montar, mensagem, aviso, comEspera, formatar } from '../ui.js';
-import { abasCarteira, seloStatus } from './_carteira.js';
+import { seloStatus } from './_carteira.js';
 
 export const NOMES_CANAL = { visita: 'Visita', telefone: 'Telefone', whatsapp: 'WhatsApp' };
 
@@ -21,10 +21,10 @@ export async function render(conteudo, ctx) {
   const db = await bancoApp();
   const id = Number(parametros.get('id'));
   const linha = id ? (await db.execute(consultaFicha({ usuario, prospectId: id }))).rows[0] : null;
-  if (!linha || usuario.perfil === 'financeiro') return montar(conteudo, abasCarteira('', usuario), mensagem('Prospect não encontrado ou fora da sua carteira.', 'erro'));
+  if (!linha || usuario.perfil === 'financeiro') return montar(conteudo, mensagem('Prospect não encontrado ou fora da sua carteira.', 'erro'));
   const p = ajustarFicha(usuario, linha);
   if (!Number(p.aceita_contato)) {
-    return montar(conteudo, abasCarteira('', usuario), mensagem(`${p.status_nome}: este cliente não aceita novo registro.`, 'info'),
+    return montar(conteudo, mensagem(`${p.status_nome}: este cliente não aceita novo registro.`, 'info'),
       h('a', { href: `#/ficha?id=${id}` }, '‹ Voltar à ficha'));
   }
   const motivos = await listarMotivos(db);
@@ -77,7 +77,6 @@ export async function render(conteudo, ctx) {
   }
 
   montar(conteudo,
-    abasCarteira('', usuario),
     h('a', { href: `#/ficha?id=${id}`, class: 'voltar' }, '‹ Voltar à ficha'),
     h('h1', { style: 'margin-top:8px' }, 'Registrar atendimento'),
     h('div', { class: 'cartao' },

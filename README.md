@@ -29,6 +29,8 @@ npm run servir      # http://localhost:8080 — login admin / demo1234
 npm run test:telas  # testa as telas num Chromium real (fluxo do administrador e do vendedor)
 ```
 
+Navegação pelo **menu lateral** (grupos Prospecção e Administração; recolhe para só ícones e vira gaveta no celular). Conteúdo em 95% da largura.
+
 | Tela | Quem | O que faz |
 |---|---|---|
 | `#/inicio` | todos | números da carteira e atalhos |

@@ -15,12 +15,24 @@
 <script type="module" src="js/app.js"></script>
 </head>
 <body>
-<div id="faixa-demo" hidden>MODO DEMONSTRAÇÃO — banco temporário neste navegador (some ao recarregar). Login: <b>admin</b> · senha: <b>demo1234</b></div>
-<header class="topo">
-  <a class="marca" href="#/inicio">GERMANI <span>Prospect</span></a>
-  <div id="usuario-topo"></div>
-</header>
-<main id="conteudo"><p class="carregando">Carregando…</p></main>
+<div class="casca" id="casca">
+  <aside class="lateral" id="lateral" aria-label="Menu">
+    <a class="marca" href="#/inicio" title="GERMANI Prospect"><span class="marca-sigla">G</span><span class="marca-nome">GERMANI <b>Prospect</b></span></a>
+    <nav id="menu"></nav>
+    <div class="lateral-rodape" id="usuario-lateral"></div>
+  </aside>
+  <div class="fundo-gaveta" id="fundo-gaveta"></div>
+  <div class="area">
+    <div id="faixa-demo" hidden>MODO DEMONSTRAÇÃO — banco temporário neste navegador (some ao recarregar). Login: <b>admin</b> · senha: <b>demo1234</b></div>
+    <header class="topo">
+      <button class="botao-icone" id="botao-menu" type="button" aria-label="Recolher ou expandir o menu" title="Recolher / expandir menu">
+        <svg class="icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="caminho" id="caminho-topo"></div>
+    </header>
+    <main id="conteudo"><p class="carregando">Carregando…</p></main>
+  </div>
+</div>
 <div id="avisos" aria-live="polite"></div>
 </body>
 </html>

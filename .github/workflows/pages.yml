@@ -17,10 +17,10 @@ concurrency:
   cancel-in-progress: true
 jobs:
   montar:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -31,15 +31,16 @@ jobs:
         env:
           TURSO_DATABASE_URL: ${{ vars.TURSO_DATABASE_URL }}
           TURSO_APP_TOKEN: ${{ secrets.TURSO_APP_TOKEN }}
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
+          include-hidden-files: true   # mantém o .nojekyll
   publicar:
     needs: montar
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

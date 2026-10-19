@@ -41,7 +41,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('02-admin');
 
   // 1. base de prospects
-  await pagina.click('a:text("Base de prospects")');
+  await pagina.click('#menu a[title="Base de prospects"]');
   await pagina.setInputFiles('#arquivo-base', 'exemplos/base-ficticia.xlsx');
   await pagina.click('button:text("Ler arquivo")');
   await pagina.waitForSelector('text=Datas de contato da planilha');
@@ -61,7 +61,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   // 2. representantes / vendedores
   const tipos = path.join(tmp, 'tipos.csv');
   await writeFile(tipos, 'COD;NOME;TIPO\n1101;Bruno;Representante\n1102;Carla;REP\n1201;Érica;Vendedor\n1202;Fábio;vendedor interno\n9999;Ninguém;Vendedor\n');
-  await pagina.click('a:text("Representantes / vendedores")');
+  await pagina.click('#menu a[title="Representantes / vendedores"]');
   await pagina.setInputFiles('#arquivo-tipos', tipos);
   await pagina.click('button:text("Ler arquivo")');
   await pagina.click('button:text("Simular")');
@@ -72,7 +72,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('06-tipos');
 
   // 3. usuários: liberar acesso do vendedor 1201
-  await pagina.click('a:text("Usuários")');
+  await pagina.click('#menu a[title="Usuários"]');
   await pagina.fill('input[aria-label=Buscar]', '1201');
   await pagina.click('button:text("Liberar acesso")');
   await pagina.waitForSelector('.senha-gerada');
@@ -89,7 +89,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const cnpjs = linhas.slice(1, 3).map((l) => analisarCnpj(l[0]).cnpj);
   const cadastro = path.join(tmp, 'cadastro.csv');
   await writeFile(cadastro, `CNPJ;Data Cadastro;Codigo\n${cnpjs[0]};15/10/2026;C1\n${cnpjs[1]};16/10/2026;C2\n11222333000181;16/10/2026;C3\n`);
-  await pagina.click('a:text("Cadastro · Pedidos · Baixados")');
+  await pagina.click('#menu a[title="Cadastro · Pedidos · Baixados"]');
   await pagina.selectOption('#tipo-erp', 'cadastro');
   await pagina.setInputFiles('#arquivo-erp', cadastro);
   await pagina.click('button:text("Ler arquivo")');
@@ -105,7 +105,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const cnpj3 = analisarCnpj(linhas[3][0]).cnpj;
   const credito = path.join(tmp, 'credito.csv');
   await writeFile(credito, `CNPJ;Cód interno;Razão social;Forma de pagamento;Prazo de pagamento;Limite de crédito CNPJ;Limite de crédito grupo;Data de cadastro\n${cnpjs[0]};C1;X;BOLETO;28;15.000,00;50.000,00;15/10/2026\n${cnpj3};C9;Y;Pix;0;;;16/10/2026\n`);
-  await pagina.click('a:text("Relatório de crédito")');
+  await pagina.click('#menu a[title="Relatório de crédito"]');
   await pagina.setInputFiles('#arquivo-credito', credito);
   await pagina.click('button:text("Ler arquivo")');
   await pagina.waitForSelector('text=Como tratar cada forma de pagamento');
@@ -118,14 +118,14 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('08b-credito');
 
   // 5. parâmetros
-  await pagina.click('a:text("Parâmetros")');
+  await pagina.click('#menu a[title="Parâmetros"]');
   await pagina.fill('input[aria-label=prazo_cadastro_dias]', '20');
   await pagina.locator('tr', { has: pagina.locator('input[aria-label=prazo_cadastro_dias]') }).locator('button').click();
   await pagina.waitForSelector('text=Parâmetro salvo.');
   assert.equal(await pagina.inputValue('input[aria-label=prazo_cadastro_dias]'), '20');
 
   // 6. histórico de importações
-  await pagina.click('a:text("Importações")');
+  await pagina.click('#menu a[title="Importações"]');
   await pagina.waitForSelector('h1:text-is("Importações")');               // a tela de parâmetros também tem tabela
   await pagina.waitForSelector('td:has-text("Cadastro (ERP)")');
   await pagina.click('a:text("Ver linhas") >> nth=0');
@@ -133,13 +133,14 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('09-importacoes');
 
   // 7. vendedor entra com a senha gerada (mesmo banco: a sessão do demo continua na página)
-  await pagina.click('button:text("Sair")');
+  await pagina.click('.menu-sair');
   await pagina.waitForSelector('#login');
   await pagina.fill('#login', '1201');
   await pagina.fill('#senha', senhaVendedor);
   await pagina.click('button:text("Entrar")');
   await pagina.waitForSelector('text=Olá, Representante');
-  assert.match(await pagina.locator('#usuario-topo').innerText(), /Vendedor/);
+  assert.match(await pagina.locator('#usuario-lateral').innerText(), /Vendedor/);
+  assert.equal(await pagina.locator('#menu a[title="Base de prospects"]').count(), 0, 'vendedor não vê o menu de administração');
   await pagina.goto(`${base}#/admin/usuarios`);
   await pagina.waitForSelector('text=exclusiva do administrador');
 
@@ -147,7 +148,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.goto(`${base}#/inicio`);
   await pagina.waitForSelector('text=na lista principal');
   await foto('10b-inicio-vendedor');
-  await pagina.click('nav.abas a:text("Lista principal")');
+  await pagina.click('#menu a[title="Lista principal"]');
   await pagina.waitForSelector('.cartao-prospect');
   assert.ok(await pagina.locator('.visoes a:text("Rota")').count(), 'vendedor tem visão por rota');
   await foto('11-lista-principal');
@@ -195,7 +196,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   assert.match(await texto(), /2\s+gravados/);
 
   // 10. acompanhamento por status → lista dos sem interesse → ficha com o motivo individual
-  await pagina.click('nav.abas a:text("Acompanhamento")');
+  await pagina.click('#menu a[title="Acompanhamento"]');
   await pagina.waitForSelector('.status-cartao');
   await foto('15-acompanhamento');
   await pagina.click('.status-cartao:has-text("Sem interesse")');
@@ -207,6 +208,17 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   assert.ok(await pagina.locator('a:text("Registrar atendimento")').count(), 'sem interesse pode ser reaberto');
   await pagina.click('a:text("Registrar atendimento")');
   await pagina.waitForSelector('label.opcao:has-text("pedido identificado")');
+
+  // 11. menu lateral: recolher e expandir (a preferência fica no navegador)
+  await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
+  await pagina.waitForSelector('.status-cartao');
+  assert.equal(await pagina.locator('#menu a.ativo').innerText(), 'Acompanhamento');
+  await pagina.click('#botao-menu');
+  await pagina.waitForSelector('#casca.recolhido');
+  await pagina.waitForFunction(() => document.getElementById('lateral').getBoundingClientRect().width < 100); // só os ícones (após a animação)
+  await foto('17-menu-recolhido');
+  await pagina.click('#botao-menu');
+  await pagina.waitForSelector('#casca:not(.recolhido)');
 });
 
 test('telas cabem no celular (sem rolagem horizontal da página)', async () => {
@@ -228,5 +240,13 @@ test('telas cabem no celular (sem rolagem horizontal da página)', async () => {
     assert.ok(larg <= vis, `${tela} mais larga que a tela: ${larg} > ${vis}`);
   }
   if (FOTOS) await cel.screenshot({ path: path.join(FOTOS, '16-celular-carteira.png'), fullPage: true });
+  // no celular o menu é uma gaveta: abre pelo botão e fecha ao escolher a tela
+  assert.ok((await cel.locator('#lateral').boundingBox()).x < 0, 'menu fechado fora da tela');
+  await cel.click('#botao-menu');
+  await cel.waitForSelector('#casca.gaveta-aberta');
+  await cel.waitForFunction(() => document.getElementById('lateral').getBoundingClientRect().x >= 0); // fim da animação
+  if (FOTOS) await cel.screenshot({ path: path.join(FOTOS, '18-celular-gaveta.png') });
+  await cel.click('#menu a[title="Usuários"]');
+  await cel.waitForSelector('#casca:not(.gaveta-aberta)');
   await cel.close();
 });

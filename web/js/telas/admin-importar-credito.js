@@ -4,7 +4,6 @@ import { COLUNAS_CREDITO, contarFormas, importarCredito, mapearColunasCredito } 
 import { FORMAS_PAGAMENTO } from '../../shared/financeiro.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, passos, comEspera, aviso, tabela, formatar } from '../ui.js';
-import { abasAdmin } from './_admin.js';
 import { blocoResultado } from './_resultado.js';
 
 const ETAPAS = ['Arquivo', 'Colunas e formas de pagamento', 'Simulação', 'Gravação'];
@@ -73,7 +72,7 @@ export async function render(conteudo, ctx) {
     h('div', { class: 'campo' }, h('label', { for: 'arquivo-credito' }, 'Relatório de crédito (.xlsx ou .csv)'), arquivo),
     h('p', { class: 'ajuda' }, 'Colunas: CNPJ · Cód interno · Razão social · Forma de pagamento · Prazo de pagamento (dias) · Limite de crédito CNPJ · Limite de crédito grupo · Data de cadastro.'),
     bLer));
-  montar(conteudo, abasAdmin('/admin/importar/credito'), h('h1', {}, 'Relatório de crédito'),
+  montar(conteudo, h('h1', {}, 'Relatório de crédito'),
     h('p', { class: 'ajuda' }, 'Conclui a análise financeira: o cliente passa para Aguardando pedido. Limite: vale o do CNPJ; se estiver vazio, o do grupo. Cliente ainda sem cadastro tem o cadastro registrado pelo próprio relatório (data de cadastro e cód. interno). O console do analista continua disponível para casos pontuais.'),
     area);
 }

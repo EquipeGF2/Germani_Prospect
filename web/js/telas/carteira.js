@@ -3,7 +3,7 @@
 import { bancoApp } from '../db.js';
 import { consultaCarteira, visoesPermitidas } from '../../shared/carteira.mjs';
 import { h, montar, mensagem, formatar, numeros } from '../ui.js';
-import { abasCarteira, gravarLote, lerLote, seloStatus } from './_carteira.js';
+import { gravarLote, lerLote, seloStatus } from './_carteira.js';
 
 const POR_PAGINA = 50;
 const NOMES_VISAO = { lista: 'Lista', cidade: 'Cidade', bairro: 'Bairro', onda: 'Onda', status: 'Status', rota: 'Rota' };
@@ -68,7 +68,7 @@ export async function render(conteudo, ctx) {
   try {
     consulta = consultaCarteira({ usuario, visao: e.visao, filtros, busca: e.busca, limite: POR_PAGINA + 1, deslocamento: e.pagina * POR_PAGINA });
   } catch (erro) {
-    return montar(conteudo, abasCarteira('/carteira', usuario), mensagem(erro.message, 'erro'));
+    return montar(conteudo, mensagem(erro.message, 'erro'));
   }
   const linhas = (await db.execute(consulta)).rows;
   const vendedores = await vendedoresDoEscopo(db, usuario);
@@ -109,7 +109,6 @@ export async function render(conteudo, ctx) {
     ? 'Clientes que já saíram da lista principal: aguardando cadastro, análise financeira, aguardando pedido, venda realizada, sem interesse e inválidos. Todos continuam nos indicadores.'
     : 'Não contactados e em prospecção. Registrou atendido ou sem interesse, o cliente passa para o acompanhamento.';
   montar(conteudo,
-    abasCarteira(e.aba === 'acompanhamento' ? '/carteira?aba=acompanhamento' : '/carteira', usuario),
     h('h1', {}, titulo),
     h('p', { class: 'ajuda' }, ajuda),
     formBusca, visoes,

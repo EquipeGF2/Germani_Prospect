@@ -7,7 +7,7 @@ import { prepararLote, registrarLote } from '../../shared/lote.mjs';
 import { CANAIS } from '../../shared/status.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, comEspera, formatar, numeros } from '../ui.js';
-import { abasCarteira, gravarLote, lerLote } from './_carteira.js';
+import { gravarLote, lerLote } from './_carteira.js';
 import { campoMotivo, NOMES_CANAL } from './registrar.js';
 
 export async function render(conteudo, ctx) {
@@ -20,7 +20,7 @@ export async function render(conteudo, ctx) {
     if (p && Number(p.na_lista)) prospects.push(ajustarFicha(usuario, p));
   }
   if (!prospects.length) {
-    return montar(conteudo, abasCarteira('/carteira', usuario), h('h1', {}, 'Sem interesse em lote'),
+    return montar(conteudo, h('h1', {}, 'Sem interesse em lote'),
       mensagem('Nenhum prospect selecionado. Marque os clientes na lista principal.', 'info'), h('a', { class: 'botao', href: '#/carteira' }, 'Ir para a lista'));
   }
   const motivos = await listarMotivos(db);
@@ -60,7 +60,7 @@ export async function render(conteudo, ctx) {
     if (!r) return;
     const recusados = new Set(r.recusados.map((x) => x.prospectId));
     gravarLote([...recusados]);
-    montar(conteudo, abasCarteira('/carteira', usuario), h('h1', {}, 'Lote gravado'),
+    montar(conteudo, h('h1', {}, 'Lote gravado'),
       numeros([['gravados', r.gravados, 'ok'], ['recusados', r.recusados.length, r.recusados.length ? 'erro' : '']]),
       r.recusados.length ? mensagem(r.recusados.map((x) => `${prospects.find((p) => Number(p.id) === x.prospectId)?.razao_social}: ${x.erros.join('; ')}`).join(' · '), 'erro') : null,
       h('p', { class: 'ajuda' }, 'Os clientes gravados saíram da lista principal e aparecem no acompanhamento como "Sem interesse".'),
@@ -69,7 +69,6 @@ export async function render(conteudo, ctx) {
   }
 
   montar(conteudo,
-    abasCarteira('/carteira', usuario),
     h('a', { href: '#/carteira', class: 'voltar' }, '‹ Voltar à lista'),
     h('h1', { style: 'margin-top:8px' }, 'Sem interesse em lote'),
     h('form', { onsubmit: gravar },
