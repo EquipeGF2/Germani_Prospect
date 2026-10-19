@@ -9,8 +9,10 @@ Sem servidor (ADR-0001), o app fala SQL com o Turso. Para manter o banco íntegr
 |---|---|---|
 | Lista de prospects (lista · cidade · bairro · rota) | `consultaCarteira()` de `shared/carteira.mjs` sobre `vw_prospects` | escopo e visões pelo usuário: representante sem rota; vendedor com rota; supervisor = equipe |
 | Acompanhamento por status (carteira inteira) | `consultaCarteira({ visao: 'status' })` e `consultaCarteira({ filtros: { status } })` | idem |
-| Retornos hoje | lista: `consultaCarteira({ filtros: { somenteRetornos: true } })` · negociação (no acompanhamento): `consultaCarteira({ filtros: { status: 'em_negociacao', somenteRetornos: true } })` | idem carteira |
-| Ficha | `vw_prospects` + `vw_linha_tempo` | `prospect_id` |
+| Retornos hoje | lista: `consultaCarteira({ filtros: { somenteRetornos: true } })` · negociação (no acompanhamento): `consultaCarteira({ filtros: { status: 'aguardando_cadastro', somenteRetornos: true } })` | idem carteira |
+| Ficha (linha do tempo) | `vw_prospects` + `vw_movimentacoes` | `prospect_id` |
+| Histórico de movimentação (filtros/relatório) | `consultaMovimentacoes()` de `shared/indicadores.mjs` | vendedor: própria carteira na data; supervisor: equipe |
+| Console financeiro | `consultaFilaAnalise()` de `shared/financeiro.mjs` | perfil financeiro / administrador |
 | Formulário de contato | `motivos_sem_interesse WHERE ativo = 1 AND uso_app = 1 ORDER BY ordem`, `parametros` | — |
 | Painel | `shared/indicadores.mjs` (`consultaPosicao`, `consultaAtividade`, `consultaExecucaoRotas`), `vw_ultimo_lancamento`, `vw_ranking_motivos`, `vw_prospects` (alertas) | supervisor: o próprio `supervisor_id` |
 | Login | `usuarios` (login, senha_hash, perfil, ativo) + `conferirSenha()` | — |
@@ -34,6 +36,9 @@ VALUES (:uuid_do_aparelho, :prospect, :usuario, :registros_atuais + 1 /* prospec
 ### Registrar em lote
 `prepararLote()` + `registrarLote()` de `shared/lote.mjs` — justificativa do lote e/ou individual; devolve os
 itens recusados com o motivo.
+
+### OK financeiro (analista)
+`comandoLiberarCredito()` de `shared/financeiro.mjs` → `INSERT INTO liberacoes_credito`.
 
 ### Transferir carteira (supervisor/admin)
 ```sql

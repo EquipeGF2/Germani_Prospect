@@ -10,7 +10,7 @@
 //
 // Lista de prospects = só Não contactado / Em prospecção (vw_prospects.na_lista = 1).
 // Acompanhamento = visão 'status' (ou filtro de status): mostra a carteira inteira por status, inclusive
-// Em negociação, Sem interesse, Cadastrado, Venda e Inválido — para o vendedor seguir o andamento.
+// Aguardando cadastro, Sem interesse, Cadastrado, Venda e Inválido — para o vendedor seguir o andamento.
 // Indicadores não usam este módulo (contam tudo — shared/indicadores.mjs).
 import { normalizarBusca } from './texto.mjs';
 
@@ -50,7 +50,7 @@ function escopo(usuario) {
  * @param visao    'lista' | 'cidade' | 'bairro' | 'status' | 'rota'
  * @param filtros  { cidadeBusca, uf, bairroBusca, rota, subrota, status, somentePendentes, somenteRetornos, vendedorId }
  *                 Informar `status` (ou abrir a visão 'status') mostra a carteira inteira, não só a lista.
- *                 `somenteRetornos` na lista = retornos da lista; com `status: 'em_negociacao'` = retornos da negociação.
+ *                 `somenteRetornos` na lista = retornos da lista; com `status: 'aguardando_cadastro'` = retornos da negociação.
  * @param busca    texto livre (nome, CNPJ, cidade, bairro) — acentos ignorados
  * @returns {{ sql: string, args: any[], colunas?: string[] }}
  */
@@ -63,7 +63,7 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   if (!comRota && (filtros.rota || filtros.subrota)) throw new Error('representante não trabalha com rota');
 
   const { where, args } = escopo(usuario);
-  // Em negociação, Sem interesse etc. só aparecem no acompanhamento (visão 'status' ou filtro de status)
+  // Aguardando cadastro, Sem interesse etc. só aparecem no acompanhamento (visão 'status' ou filtro de status)
   if (!incluirForaDaLista && visao !== 'status' && !filtros.status) where.push('na_lista = 1');
   if (filtros.somentePendentes) where.push('pendente_hoje = 1');
   if (filtros.somenteRetornos) where.push('retorno_pendente = 1');

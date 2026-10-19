@@ -14,7 +14,7 @@ test('prospect nasce "Não contactado", pendente, com histórico inicial', async
   const p = await prospect(db, id);
   assert.equal(p.status_atual, 'nao_contactado');
   assert.equal(p.pendente_hoje, 1);
-  const h = await db.execute({ sql: 'SELECT * FROM historico_status WHERE prospect_id = ?', args: [id] });
+  const h = await db.execute({ sql: 'SELECT * FROM movimentacoes WHERE prospect_id = ?', args: [id] });
   assert.equal(h.rows.length, 1);
   assert.equal(h.rows[0].data_evento, '2026-01-01');
 });
@@ -69,7 +69,7 @@ test('"sem interesse" sai da lista principal; dias corridos contam do 1º regist
   assert.ok(p.dias_corridos > 0);
 });
 
-test('reabrir "sem interesse" informando a data de entrada do pedido → Em negociação (acompanhamento)', async () => {
+test('reabrir "sem interesse" informando a data de entrada do pedido → Aguardando cadastro (acompanhamento)', async () => {
   const id = await criarProspect(db, { n: 1 });
   await registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-01' });
   const sql = `INSERT INTO contatos (id, prospect_id, usuario_id, numero_tentativa, data_contato, canal, resultado, data_pedido_informado)
@@ -78,8 +78,8 @@ test('reabrir "sem interesse" informando a data de entrada do pedido → Em nego
   await assert.rejects(db.execute({ sql, args: ['r1', id, '2026-10-13'] }), /CHECK constraint/);  // não pode ser futura ao registro
   await db.execute({ sql, args: ['r2', id, '2026-10-10'] });
   let p = await prospect(db, id);
-  assert.equal(p.status_atual, 'em_negociacao');
-  assert.equal(p.status_descricao, 'Em negociação · pedido informado em 10/10/2026');
+  assert.equal(p.status_atual, 'aguardando_cadastro');
+  assert.equal(p.status_descricao, 'Aguardando cadastro · pedido informado em 10/10/2026');
   assert.equal(p.na_lista, 0);
   assert.equal(p.dt_primeiro_contato, '2026-10-01');
   assert.equal(p.convertido_sem_registro, 0);
@@ -107,12 +107,12 @@ test('parâmetro é editável e a alteração é auditada', async () => {
   assert.equal(JSON.parse(a.rows[0].detalhes).para, '20');
 });
 
-test('atendido → Em negociação (atendido em dd/mm), aguardando cadastro, fora da lista', async () => {
+test('atendido → Aguardando cadastro (atendido em dd/mm), aguardando cadastro, fora da lista', async () => {
   const id = await criarProspect(db, { n: 1 });
   await registrarContato(db, { prospectId: id, resultado: 'atendido', retorno: '2026-10-04', data: '2026-10-01' });
   const p = await prospect(db, id);
-  assert.equal(p.status_atual, 'em_negociacao');
-  assert.equal(p.status_descricao, 'Em negociação · atendido em 01/10/2026');
+  assert.equal(p.status_atual, 'aguardando_cadastro');
+  assert.equal(p.status_descricao, 'Aguardando cadastro · atendido em 01/10/2026');
   assert.equal(p.data_proxima_acao, '2026-10-04');
   assert.equal(p.retorno_pendente, 1);
   assert.equal(p.prazo_cadastro_ate, '2026-10-16');
@@ -125,10 +125,10 @@ test('em negociação: novos atendimentos mantêm (registros sem limite); sem in
   await registrarContato(db, { prospectId: id, resultado: 'atendido', data: '2026-10-01' });
   for (const d of ['2026-10-02', '2026-10-03', '2026-10-04']) await registrarContato(db, { prospectId: id, resultado: 'atendido', retorno: '2026-10-09', data: d });
   let p = await prospect(db, id);
-  assert.equal(p.status_atual, 'em_negociacao');
+  assert.equal(p.status_atual, 'aguardando_cadastro');
   assert.equal(p.tentativas, 4);
   assert.equal(p.data_proxima_acao, '2026-10-09');
-  assert.equal(p.status_descricao, 'Em negociação · atendido em 01/10/2026'); // 1º atendimento
+  assert.equal(p.status_descricao, 'Aguardando cadastro · atendido em 01/10/2026'); // 1º atendimento
   await registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'PEDIDO_MINIMO', data: '2026-10-07' });
   p = await prospect(db, id);
   assert.equal(p.status_atual, 'sem_interesse');
@@ -141,7 +141,7 @@ test('contato em cliente já cadastrado no ERP só registra (status não muda)',
   await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-03', documento: 'C1' });
   await registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-05' });
   const p = await prospect(db, id);
-  assert.equal(p.status_atual, 'cadastrado_erp');
+  assert.equal(p.status_atual, 'analise_financeira');
   assert.equal(p.data_proxima_acao, null);
 });
 
@@ -195,26 +195,50 @@ test('histórico é imutável: contatos, eventos e histórico não aceitam UPDAT
   const c = await registrarContato(db, { prospectId: id, resultado: 'atendido', data: '2026-10-01' });
   await assert.rejects(db.execute({ sql: "UPDATE contatos SET resultado = 'atendido' WHERE id = ?", args: [c] }), /somente inclusão/);
   await assert.rejects(db.execute({ sql: 'DELETE FROM contatos WHERE id = ?', args: [c] }), /somente inclusão/);
-  await assert.rejects(db.execute('DELETE FROM historico_status'), /somente inclusão/);
+  await assert.rejects(db.execute('DELETE FROM movimentacoes'), /somente inclusão/);
   await assert.rejects(db.execute({ sql: 'DELETE FROM prospects WHERE id = ?', args: [id] }), /não são apagados/);
 });
 
-test('cadastro no ERP tira da fila; pedido = venda realizada (final) com análise financeira de 10 dias', async () => {
+test('fluxo completo: atendido → aguardando cadastro → (cadastro) análise financeira → (pedido) venda realizada', async () => {
   const id = await criarProspect(db, { n: 1 });
   await registrarContato(db, { prospectId: id, resultado: 'atendido', data: '2026-10-01' });
-  await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-05', documento: 'C123' });
   let p = await prospect(db, id);
-  assert.equal(p.status_atual, 'cadastrado_erp');
+  assert.equal(p.status_atual, 'aguardando_cadastro');
+  assert.equal(p.prazo_cadastro_ate, '2026-10-16');
+  await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-05', documento: 'C123' });
+  p = await prospect(db, id);
+  assert.equal(p.status_atual, 'analise_financeira');
   assert.equal(p.codigo_cliente_erp, 'C123');
+  assert.equal(p.analise_financeira_ate, '2026-10-15'); // 10 dias a partir do cadastro
+  assert.equal(p.analise_financeira_vencida, 1);
   assert.equal(p.convertido_sem_registro, 0);
-  assert.equal(p.pendente_hoje, 0);
+  assert.equal(p.na_lista, 0);
   await evento(db, { prospectId: id, tipo: 'pedido', data: '2026-10-08', documento: 'P9' });
   p = await prospect(db, id);
   assert.equal(p.status_atual, 'venda_realizada');
   assert.equal(p.numero_pedido, 'P9');
-  assert.equal(p.analise_financeira_ate, '2026-10-18');
+  assert.equal(p.analise_financeira_vencida, 0);
   // cadastro posterior não rebaixa a venda
   await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-09', documento: 'C124' });
+  assert.equal((await prospect(db, id)).status_atual, 'venda_realizada');
+  // histórico de movimentação: todo movimento registrado, na ordem, com quem e de quem era a carteira
+  const m = (await db.execute({ sql: 'SELECT * FROM vw_movimentacoes WHERE prospect_id = ? ORDER BY id', args: [id] })).rows;
+  assert.deepEqual(m.map((x) => [x.tipo, x.status_anterior, x.status_novo, x.data_evento]), [
+    ['entrada_base', null, 'nao_contactado', '2026-01-01'],
+    ['atendido', 'nao_contactado', 'aguardando_cadastro', '2026-10-01'],
+    ['cadastro', 'aguardando_cadastro', 'analise_financeira', '2026-10-05'],
+    ['pedido', 'analise_financeira', 'venda_realizada', '2026-10-08'],
+    ['cadastro', 'venda_realizada', 'venda_realizada', '2026-10-09'],
+  ]);
+  assert.equal(m[1].usuario_nome, 'Vend Dez');
+  assert.ok(m.every((x) => x.vendedor_nome === 'Vend Dez'));
+  assert.equal(m[3].detalhe, 'P9');
+});
+
+test('pedido sem cadastro antes vai direto para venda realizada', async () => {
+  const id = await criarProspect(db, { n: 1 });
+  await registrarContato(db, { prospectId: id, resultado: 'atendido', data: '2026-10-01' });
+  await evento(db, { prospectId: id, tipo: 'pedido', data: '2026-10-03', documento: 'P1' });
   assert.equal((await prospect(db, id)).status_atual, 'venda_realizada');
 });
 
@@ -266,8 +290,21 @@ test('transferência de carteira: só supervisor da equipe ou admin; registrada 
   await assert.rejects(t(1, 3, 2), /não é o vendedor atual/);
   await t(1);
   assert.equal(Number((await prospect(db, id)).vendedor_id), 3);
-  const lt = await db.execute({ sql: "SELECT titulo FROM vw_linha_tempo WHERE prospect_id = ? AND tipo = 'transferencia'", args: [id] });
-  assert.match(lt.rows[0].titulo, /Vend Dez → Vend Onze/);
+  const mv = (await db.execute({ sql: "SELECT * FROM vw_movimentacoes WHERE prospect_id = ? AND tipo = 'transferencia'", args: [id] })).rows[0];
+  assert.equal(mv.detalhe, 'Vend Dez → Vend Onze: férias');
+  assert.equal(mv.usuario_nome, 'Sup Um');
+  assert.equal(mv.vendedor_nome, 'Vend Onze');
+  assert.equal(mv.status_anterior, mv.status_novo); // transferência não muda o status
+});
+
+test('registro do app no histórico: quem registrou, motivo e observação', async () => {
+  const id = await criarProspect(db, { n: 1 });
+  await registrarContato(db, { prospectId: id, usuarioId: 1, resultado: 'sem_interesse', motivo: 'PRECO', observacao: 'tabela alta', data: '2026-10-02' });
+  const mv = (await db.execute({ sql: "SELECT * FROM vw_movimentacoes WHERE prospect_id = ? AND tipo = 'sem_interesse'", args: [id] })).rows[0];
+  assert.equal(mv.usuario_nome, 'Sup Um');      // supervisor registrou
+  assert.equal(mv.vendedor_nome, 'Vend Dez');   // carteira do vendedor
+  assert.equal(mv.detalhe, 'Preço acima do praticado — tabela alta');
+  assert.equal(mv.status_novo_nome, 'Sem interesse');
 });
 
 test('hierarquia: vendedor precisa de supervisor válido', async () => {

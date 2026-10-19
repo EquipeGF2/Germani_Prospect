@@ -49,7 +49,7 @@ for (let i = 0; i < n; i++) {
   const r = aleatorio();
   let dt1 = null, dt2 = null, status = 'Não contactado';
   if (r > 0.45) { dt1 = new Date(Date.UTC(2026, 8, 1 + Math.floor(aleatorio() * 25))); status = 'Em prospecção'; }
-  if (r > 0.7) { dt2 = new Date(dt1.getTime() + (3 + Math.floor(aleatorio() * 10)) * 86400000); status = escolher(['Sem interesse', 'Em negociação', 'Em prospecção']); }
+  if (r > 0.7) { dt2 = new Date(dt1.getTime() + (3 + Math.floor(aleatorio() * 10)) * 86400000); status = escolher(['Sem interesse', 'Aguardando cadastro', 'Em prospecção']); }
   const formatado = formatarCnpj(cnpj);
   ws.addRow([
     i % 7 === 0 ? cnpj : formatado, `${fantasia.toUpperCase()} LTDA (FICTÍCIO)`, fantasia, `Rua Exemplo ${i + 1}, ${10 + i}`, escolher(['Centro', 'Universitário', 'Arroio Grande', 'Goiás']),

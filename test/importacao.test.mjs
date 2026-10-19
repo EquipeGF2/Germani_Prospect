@@ -6,7 +6,7 @@ import { importarEventos } from '../lib/importar-eventos.mjs';
 import { COLUNAS_BASE, mapearCabecalho, normalizarMapaStatus } from '../shared/importacao-base.mjs';
 import { formatarCnpj } from '../shared/cnpj.mjs';
 
-const MAPA = normalizarMapaStatus({ '': 'sem_contato', 'Não contactado': 'sem_contato', 'Em prospecção': 'contato_planilha', 'Em negociação': 'atendido', 'Sem interesse': 'sem_interesse' });
+const MAPA = normalizarMapaStatus({ '': 'sem_contato', 'Não contactado': 'sem_contato', 'Em prospecção': 'contato_planilha', 'Aguardando cadastro': 'atendido', 'Sem interesse': 'sem_interesse' });
 const CAB = COLUNAS_BASE.map((c) => c.cabecalho);
 const HOJE = '2026-10-19';
 
@@ -77,13 +77,13 @@ test('DT 1o / DT 2o viram tentativas com o histórico na data certa', async () =
   await importar(db, [
     linha({ cnpj: cnpjTeste(1), dt1: '01/09/2026', status: 'Em prospecção' }),
     linha({ cnpj: cnpjTeste(2), dt1: '01/09/2026', dt2: '10/09/2026', status: 'Em prospecção' }),
-    linha({ cnpj: cnpjTeste(3), dt1: '01/09/2026', status: 'Em negociação' }),
+    linha({ cnpj: cnpjTeste(3), dt1: '01/09/2026', status: 'Aguardando cadastro' }),
     linha({ cnpj: cnpjTeste(4), dt1: '01/09/2026', dt2: '05/09/2026', status: 'Sem interesse' }),
   ]);
   const st = Object.fromEntries((await db.execute('SELECT cnpj, status_atual, tentativas, dt_entrada_base FROM prospects')).rows.map((r) => [r.cnpj, r]));
   assert.equal(st[cnpjTeste(1)].status_atual, 'em_prospeccao');
   assert.equal(st[cnpjTeste(2)].status_atual, 'em_prospeccao'); // contatos na planilha sem resultado: continua na lista
-  assert.equal(st[cnpjTeste(3)].status_atual, 'em_negociacao');
+  assert.equal(st[cnpjTeste(3)].status_atual, 'aguardando_cadastro');
   assert.equal(st[cnpjTeste(4)].status_atual, 'sem_interesse');
   assert.equal(st[cnpjTeste(1)].dt_entrada_base, '2026-09-01');
   const c = (await db.execute("SELECT canal, origem FROM contatos")).rows;
@@ -100,7 +100,7 @@ test('reimportar a mesma planilha não altera status, histórico, contatos nem v
   const foto = async () => ({
     p: (await db.execute('SELECT cnpj, status_atual, tentativas, vendedor_id, data_proxima_acao FROM prospects ORDER BY cnpj')).rows.map((r) => ({ ...r })),
     c: Number((await db.execute('SELECT count(*) n FROM contatos')).rows[0].n),
-    h: Number((await db.execute('SELECT count(*) n FROM historico_status')).rows[0].n),
+    h: Number((await db.execute('SELECT count(*) n FROM movimentacoes')).rows[0].n),
   });
   const antes = await foto();
   // contato registrado no app entre as importações

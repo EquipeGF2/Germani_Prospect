@@ -1,5 +1,5 @@
 {
-  "_comentario": "Traduz a coluna 'Status Atual' da planilha base para o resultado da ÚLTIMA tentativa informada (DT 2o.contato ou, se vazia, DT 1o.contato). Chaves comparadas sem acento e em maiúsculas. Valor não listado aqui = linha rejeitada (nunca adivinhado). Rode 'npm run importar:base -- arquivo.xlsx --listar-status' para ver os valores reais e completar este mapa. Resultados válidos: sem_contato (exige ausência de datas), contato_planilha (houve contato, sem resultado → Em prospecção), atendido (→ Em negociação), sem_interesse.",
+  "_comentario": "Traduz a coluna 'Status Atual' da planilha base para o resultado da ÚLTIMA tentativa informada (DT 2o.contato ou, se vazia, DT 1o.contato). Chaves comparadas sem acento e em maiúsculas. Valor não listado aqui = linha rejeitada (nunca adivinhado). Rode 'npm run importar:base -- arquivo.xlsx --listar-status' para ver os valores reais e completar este mapa. Resultados válidos: sem_contato (exige ausência de datas), contato_planilha (houve contato, sem resultado → Em prospecção), atendido (→ Aguardando cadastro), sem_interesse.",
   "": "sem_contato",
   "NAO CONTACTADO": "sem_contato",
   "NAO CONTATADO": "sem_contato",

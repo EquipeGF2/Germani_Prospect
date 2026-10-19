@@ -13,9 +13,9 @@ erDiagram
     prospects ||--o{ contatos : "registros"
     prospects ||--o{ eventos_erp : "cadastro / pedido / baixa"
     prospects ||--o{ transferencias : ""
-    prospects ||--o{ historico_status : "foto de cada mudança"
+    prospects ||--o{ movimentacoes : "foto de cada mudança"
     status ||--o{ prospects : "status_atual"
-    status ||--o{ historico_status : ""
+    status ||--o{ movimentacoes : ""
     motivos_sem_interesse ||--o{ contatos : "motivo_id"
     motivos_sem_interesse ||--o{ prospects : "motivo final"
     importacoes ||--o{ importacao_linhas : "todas as linhas"
@@ -23,6 +23,8 @@ erDiagram
     importacoes ||--o{ contatos : "tentativas da planilha"
     importacoes ||--o{ eventos_erp : "arquivo do ERP"
     usuarios ||--o{ rotas : "vendedor (nunca representante)"
+    prospects ||--o{ liberacoes_credito : "OK do analista"
+    prospects ||--o{ movimentacoes : "todo movimento"
     rotas ||--o{ rota_paradas : "ordem"
     prospects ||--o{ rota_paradas : ""
 ```
@@ -34,7 +36,7 @@ erDiagram
 | Tabela | Para quê | Observações |
 |---|---|---|
 | `parametros` | prazos e limites editáveis | `prazo_cadastro_dias`=15, `prazo_analise_financeira_dias`=10, `dias_alerta_sem_lancamento`=7, `dias_alerta_sem_movimento`=30. Alteração gera linha em `auditoria`. |
-| `status` | os 7 status, cor e como contam nos indicadores | `aceita_contato`, `lista_trabalho` (aparece na lista de prospects), `conta_contactado`, `conta_carteira` (inválido = 0). |
+| `status` | os 8 status, cor e como contam nos indicadores | `aceita_contato`, `lista_trabalho` (aparece na lista de prospects), `conta_contactado`, `conta_carteira` (inválido = 0). |
 | `motivos_sem_interesse` | lista de motivos de recusa | `exige_observacao` (Outro), `uso_app` = 0 para motivos do sistema (`NAO_INFORMADO`, usado na importação inicial). |
 
 ### Pessoas
@@ -43,7 +45,7 @@ erDiagram
 
 | Coluna | Regra |
 |---|---|
-| `perfil` | `administrador` · `supervisor` · `vendedor` |
+| `perfil` | `administrador` · `supervisor` · `vendedor` · `financeiro` (analista do console de crédito) |
 | `codigo_erp` | COD (vendedor) ou COD SUP (supervisor) da planilha/Senior. Único por perfil. |
 | `login` | criado pela importação: vendedor = código; supervisor = `sup` + código. Único, sem diferenciar maiúsculas. |
 | `senha_hash` | PBKDF2; `NULL` = acesso ainda não liberado (`npm run usuarios -- senha <login>`). |
@@ -63,8 +65,8 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 | Cadastro (da planilha) | razão social, fantasia, endereço, bairro, cidade, UF, CEP, lat/long, telefone, tipologia GTM, onda, tipo, rota, subrota, obs |
 | Busca | `busca` (razão + fantasia + CNPJ + cidade + bairro, sem acento, maiúsculas), `cidade_busca`, `bairro_busca` |
 | Carteira | `vendedor_id` (o supervisor vem de `usuarios.supervisor_id`) |
-| Estado (só triggers mexem) | `status_atual` (Não contactado · Em prospecção · Em negociação · Sem interesse · Cadastrado no ERP · Venda realizada · Inválido), `tentativas`, `dt_primeiro_contato`, `dt_segundo_contato`, `dt_ultimo_contato`, `data_proxima_acao`, `motivo_sem_interesse_id`, `dt_atendido`, `dt_pedido_informado`, `prazo_cadastro_ate` |
-| ERP | `dt_cadastro_erp`, `codigo_cliente_erp`, `convertido_sem_registro`, `dt_pedido`, `numero_pedido`, `analise_financeira_ate` |
+| Estado (só triggers mexem) | `status_atual` (Não contactado · Em prospecção · Aguardando cadastro · Sem interesse · Análise financeira · Aguardando pedido · Venda realizada · Inválido), `tentativas`, `dt_primeiro_contato`, `dt_segundo_contato`, `dt_ultimo_contato`, `data_proxima_acao`, `motivo_sem_interesse_id`, `dt_atendido`, `dt_pedido_informado`, `prazo_cadastro_ate` |
+| ERP / crédito | `dt_cadastro_erp`, `codigo_cliente_erp`, `analise_financeira_ate`, `dt_liberacao_credito`, `limite_credito`, `condicao_pagamento`, `convertido_sem_registro`, `dt_pedido`, `numero_pedido` |
 | Baixa | `situacao_cadastral` (`ativa`/`baixada`), `dt_baixa` |
 | Origem | `importacao_id`, `dt_entrada_base` (data de referência do 1º registro no histórico) |
 
@@ -76,9 +78,10 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 | Tabela | Quem grava | Efeito (trigger) |
 |---|---|---|
 | `contatos` | app (vendedor/supervisor/admin) e importação inicial (DT 1o / DT 2o) | aplica a regra de status, datas de tentativa, próxima ação, motivo final |
-| `eventos_erp` | importação de arquivos do ERP / baixados | cadastro → `cadastrado_erp`; pedido → `venda_realizada`; baixa → `invalido` + congelado |
+| `liberacoes_credito` | analista financeiro (console) | limite de crédito + a prazo/à vista → `aguardando_pedido` |
+| `eventos_erp` | importação de arquivos do ERP / baixados | cadastro → `analise_financeira`; pedido → `venda_realizada`; baixa → `invalido` + congelado |
 | `transferencias` | supervisor da equipe ou administrador | troca `prospects.vendedor_id` |
-| `historico_status` | **somente triggers** | uma linha por evento: status anterior → novo, data de negócio, origem |
+| `movimentacoes` | **somente triggers** | **histórico de movimentação do cliente**: uma linha por movimento (entrada na base, contato da planilha, atendido, sem interesse, pedido identificado, cadastro, liberação de crédito, pedido, baixa, transferência) com status antes → depois, data, origem, **quem fez**, **vendedor dono da carteira no dia** e detalhe |
 
 `contatos.resultado`: `atendido` · `sem_interesse` · `pedido_informado` (exige `data_pedido_informado`) —
 os três do app; "não atendido" não gera registro. `contato_planilha` existe só para as datas DT 1o/2o da
@@ -110,8 +113,8 @@ cálculo de distância ([ADR-0005](adr/0005-sem-calculo-de-distancia.md)).
 
 | View | Uso |
 |---|---|
-| `vw_prospects` | carteira/ficha: prospect + status (nome, cor) + vendedor + supervisor + motivo + `vendedor_tipo_atuacao`, `status_descricao` ("Em negociação · atendido em dd/mm/aaaa"), `dias_corridos` (desde o 1º atendimento), `na_lista`, `pendente_hoje`, `retorno_pendente`, `atendido`, `prazo_cadastro_vencido`, `em_analise_financeira`, `dias_sem_movimento`, `parado` |
-| `vw_linha_tempo` | linha do tempo da ficha (contatos + eventos ERP + transferências) |
+| `vw_prospects` | carteira/ficha: prospect + status (nome, cor) + vendedor + supervisor + motivo + `vendedor_tipo_atuacao`, `status_descricao` ("Aguardando cadastro · atendido em dd/mm/aaaa"), `dias_corridos` (desde o 1º atendimento), `na_lista`, `pendente_hoje`, `retorno_pendente`, `atendido`, `prazo_cadastro_vencido`, `em_analise_financeira`, `dias_sem_movimento`, `parado` |
+| `vw_movimentacoes` | histórico de movimentação com nomes (status, quem fez, vendedor da época, cidade/bairro) — linha do tempo da ficha e base de filtros |
 | `vw_ultimo_lancamento` | dias sem lançar por vendedor (bloco de atenção) |
 | `vw_rota_paradas` | paradas de cada rota, na ordem, com dados do prospect e `atendida` |
 | `vw_rotas_execucao` | por rota: paradas planejadas × atendidas (vendedor, equipe) |
@@ -120,4 +123,4 @@ cálculo de distância ([ADR-0005](adr/0005-sem-calculo-de-distancia.md)).
 ## Índices
 `prospects(vendedor_id, status_atual)`, `prospects(data_proxima_acao)`, `prospects(cidade_busca, uf, bairro_busca)`, `prospects(rota, subrota)`,
 `prospects(cnpj_raiz)`, `contatos(usuario_id, data_contato)`, `contatos(data_contato)`,
-`historico_status(prospect_id, data_evento, id)`, `eventos_erp` único por `(prospect, tipo, documento)`.
+`movimentacoes(prospect_id, data_evento, id)`, `eventos_erp` único por `(prospect, tipo, documento)`.

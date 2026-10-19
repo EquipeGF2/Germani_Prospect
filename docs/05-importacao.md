@@ -59,7 +59,7 @@ npm run importar:base -- base.xlsx                   # 3) gravar
 3. DT 1o / DT 2o → registros com `origem = 'importacao'`, canal `nao_informado` — garantem que os
    **dias corridos** contem do 1º contato. Os anteriores ao último ficam como `contato_planilha`; o último
    recebe o resultado mapeado do Status Atual: `contato_planilha` (→ Em prospecção, continua na lista),
-   `atendido` (→ Em negociação) ou `sem_interesse` (motivo "Não informado"). Entram uma vez só.
+   `atendido` (→ Aguardando cadastro) ou `sem_interesse` (motivo "Não informado"). Entram uma vez só.
 
 ### Rejeições (linha inteira, com motivo no relatório)
 CNPJ vazio/inválido · razão social vazia · COD/NOME ou COD SUP/SUPERVISOR vazios · data inválida ou futura ·

@@ -1,15 +1,15 @@
 // Indicadores de prospecção (docs/03-regras-negocio.md §5).
 // Duas leituras, ambas disponíveis como filtro de relatório/consulta:
-//   * POSIÇÃO  — foto da carteira numa data (status de cada prospect naquele dia, via historico_status)
+//   * POSIÇÃO  — foto da carteira numa data (status de cada prospect naquele dia, via movimentacoes)
 //   * ATIVIDADE — o que aconteceu dentro de um período (contatos, encerramentos, cadastros, pedidos)
 //
 // Tudo o que acontece na base conta aqui — inclusive prospects fora da lista de trabalho
-// (Em negociação, Sem interesse, Cadastrado, Venda, Inválido). Painel por equipe = agrupar 'supervisor'.
+// (Aguardando cadastro, Sem interesse, Cadastrado, Venda, Inválido). Painel por equipe = agrupar 'supervisor'.
 // Fórmulas (posição):
 //   carteira_valida  = total − inválidos
 //   contactados      = status com conta_contactado = 1 (tudo exceto "Não contactado" e "Inválido")
 //   pct_contactado   = contactados ÷ carteira_valida
-//   pct_cadastro     = (cadastrados ERP + vendas) ÷ contactados
+//   pct_cadastro     = (análise financeira + aguardando pedido + vendas) ÷ contactados
 //   pct_conversao    = vendas ÷ contactados
 // Agrupamento por vendedor/supervisor usa a carteira ATUAL (transferências não reescrevem o passado).
 // Agrupamentos: geral · vendedor · supervisor · cidade · bairro · rota (rota: só vendedores, nunca representantes).
@@ -52,7 +52,7 @@ export function consultaPosicao({ agrupar = 'geral', data = null, filtros } = {}
   const g = agrupamento(agrupar);
   const f = filtrosSql(filtros, g);
   const statusExpr = data
-    ? `(SELECT h.status_novo FROM historico_status h WHERE h.prospect_id = p.id AND h.data_evento <= ? ORDER BY h.id DESC LIMIT 1)`
+    ? `(SELECT h.status_novo FROM movimentacoes h WHERE h.prospect_id = p.id AND h.data_evento <= ? ORDER BY h.id DESC LIMIT 1)`
     : 'p.status_atual';
   const args = data ? [data, ...f.args] : [...f.args];
   const sql = `
@@ -70,9 +70,10 @@ SELECT b.chave, MIN(b.rotulo) AS rotulo,
        SUM(s.conta_contactado)                                      AS contactados,
        SUM(b.status = 'nao_contactado')                             AS nao_contactados,
        SUM(b.status = 'em_prospeccao')                              AS em_prospeccao,
-       SUM(b.status = 'em_negociacao')                              AS em_negociacao,
+       SUM(b.status = 'aguardando_cadastro')                              AS aguardando_cadastro,
        SUM(b.status = 'sem_interesse')                              AS sem_interesse,
-       SUM(b.status = 'cadastrado_erp')                             AS cadastrados_erp,
+       SUM(b.status = 'analise_financeira')                             AS analise_financeira,
+       SUM(b.status = 'aguardando_pedido')                          AS aguardando_pedido,
        SUM(b.status = 'venda_realizada')                            AS vendas
   FROM base b JOIN status s ON s.codigo = b.status
  GROUP BY b.chave
@@ -80,38 +81,73 @@ SELECT b.chave, MIN(b.rotulo) AS rotulo,
   return { sql, args };
 }
 
-/** Indicadores de atividade entre `inicio` e `fim` (inclusive, AAAA-MM-DD). */
+/**
+ * Indicadores de ATIVIDADE entre `inicio` e `fim` (inclusive), lidos do histórico de movimentação.
+ * Cada movimento conta para o vendedor dono da carteira NO DIA do movimento (movimentacoes.vendedor_id).
+ */
 export function consultaAtividade({ agrupar = 'geral', inicio, fim, filtros } = {}) {
   if (!inicio || !fim) throw new Error('informe início e fim do período');
   const g = agrupamento(agrupar);
   const f = filtrosSql(filtros, g);
   const filtroWhere = f.where.length ? 'AND ' + f.where.join(' AND ') : '';
+  const entrou = (st) => `SUM(m.status_novo = '${st}' AND COALESCE(m.status_anterior, '') <> '${st}')`;
   const sql = `
-WITH ev AS (
-  SELECT c.prospect_id, 'contato' AS tipo, c.numero_tentativa AS n, c.resultado AS r FROM contatos c WHERE c.data_contato BETWEEN ?1 AND ?2
-  UNION ALL
-  SELECT h.prospect_id, 'encerrado_sem_interesse', NULL, NULL FROM historico_status h
-   WHERE h.data_evento BETWEEN ?1 AND ?2 AND h.status_novo = 'sem_interesse' AND COALESCE(h.status_anterior, '') <> 'sem_interesse'
-  UNION ALL
-  SELECT e.prospect_id, e.tipo, NULL, NULL FROM eventos_erp e WHERE e.data_evento BETWEEN ?1 AND ?2
-)
 SELECT ${g.chave} AS chave, MIN(${g.rotulo}) AS rotulo,
-       SUM(ev.tipo = 'contato')                                    AS contatos_registrados,
-       SUM(ev.tipo = 'contato' AND ev.r = 'atendido')         AS contatos_atendidos,
-       COUNT(DISTINCT CASE WHEN ev.tipo = 'contato' THEN ev.prospect_id END) AS prospects_contactados,
-       SUM(ev.tipo = 'contato' AND ev.n = 1)                        AS primeiros_contatos,
-       SUM(ev.tipo = 'encerrado_sem_interesse')                     AS encerrados_sem_interesse,
-       SUM(ev.tipo = 'cadastro')                                    AS cadastros_erp,
-       SUM(ev.tipo = 'pedido')                                      AS pedidos,
-       SUM(ev.tipo = 'baixa')                                       AS baixas
-  FROM ev
-  JOIN prospects p ON p.id = ev.prospect_id
-  JOIN usuarios v ON v.id = p.vendedor_id
+       SUM(m.tipo <> 'entrada_base')                                             AS movimentos,
+       SUM(m.origem = 'contato')                                                 AS registros,
+       SUM(m.tipo = 'atendido')                                                  AS atendidos,
+       SUM(m.tipo = 'sem_interesse')                                             AS registros_sem_interesse,
+       SUM(m.tipo = 'pedido_informado')                                          AS pedidos_informados,
+       COUNT(DISTINCT CASE WHEN m.origem = 'contato' THEN m.prospect_id END)     AS prospects_trabalhados,
+       SUM(m.origem = 'contato' AND EXISTS (SELECT 1 FROM contatos c WHERE c.id = m.referencia AND c.numero_tentativa = 1)) AS primeiros_registros,
+       ${entrou('aguardando_cadastro')}                                          AS entradas_aguardando_cadastro,
+       ${entrou('sem_interesse')}                                                AS encerrados_sem_interesse,
+       ${entrou('analise_financeira')}                                           AS entradas_analise_financeira,
+       ${entrou('aguardando_pedido')}                                            AS entradas_aguardando_pedido,
+       ${entrou('venda_realizada')}                                              AS vendas,
+       SUM(m.tipo = 'liberacao_credito')                                         AS liberacoes_credito,
+       SUM(m.tipo = 'cadastro')                                                  AS arquivos_cadastro,
+       SUM(m.tipo = 'pedido')                                                    AS arquivos_pedido,
+       SUM(m.tipo = 'baixa')                                                     AS baixas,
+       SUM(m.tipo = 'transferencia')                                             AS transferencias
+  FROM movimentacoes m
+  JOIN prospects p ON p.id = m.prospect_id
+  JOIN usuarios v ON v.id = m.vendedor_id
   LEFT JOIN usuarios sup ON sup.id = v.supervisor_id
- WHERE 1 = 1 ${filtroWhere}
+ WHERE m.data_evento BETWEEN ? AND ? ${filtroWhere}
  GROUP BY 1
  ORDER BY rotulo`;
   return { sql, args: [inicio, fim, ...f.args] };
+}
+
+export const TIPOS_MOVIMENTO = Object.freeze(['entrada_base', 'contato_planilha', 'atendido', 'sem_interesse', 'pedido_informado',
+  'cadastro', 'liberacao_credito', 'pedido', 'baixa', 'transferencia']);
+
+/**
+ * Lista do histórico de movimentação com filtros (relatório / consulta).
+ * @param usuario  escopo: vendedor = só a própria carteira (na data do movimento); supervisor = equipe; admin = tudo
+ * @param filtros  { tipos: [], statusNovo, vendedorId, supervisorId, cidadeBusca, bairroBusca, uf, prospectId }
+ */
+export function consultaMovimentacoes({ usuario, inicio, fim, filtros = {}, limite = 500, deslocamento = 0 } = {}) {
+  const where = [];
+  const args = [];
+  if (usuario?.perfil === 'vendedor') { where.push('vendedor_id = ?'); args.push(usuario.id); }
+  else if (usuario?.perfil === 'supervisor') { where.push('supervisor_id = ?'); args.push(usuario.id); }
+  if (inicio) { where.push('data_evento >= ?'); args.push(inicio); }
+  if (fim) { where.push('data_evento <= ?'); args.push(fim); }
+  if (filtros.tipos?.length) {
+    if (filtros.tipos.some((t) => !TIPOS_MOVIMENTO.includes(t))) throw new Error('tipo de movimento inválido');
+    where.push(`tipo IN (${filtros.tipos.map(() => '?').join(', ')})`); args.push(...filtros.tipos);
+  }
+  for (const [campo, coluna] of [['statusNovo', 'status_novo'], ['vendedorId', 'vendedor_id'], ['supervisorId', 'supervisor_id'],
+    ['cidadeBusca', 'cidade_busca'], ['bairroBusca', 'bairro_busca'], ['uf', 'uf'], ['prospectId', 'prospect_id']]) {
+    if (filtros[campo] != null && filtros[campo] !== '') { where.push(`${coluna} = ?`); args.push(filtros[campo]); }
+  }
+  return {
+    sql: `SELECT * FROM vw_movimentacoes ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+          ORDER BY data_evento DESC, id DESC LIMIT ? OFFSET ?`,
+    args: [...args, limite, deslocamento],
+  };
 }
 
 const razao = (a, b) => (Number(b) > 0 ? Number(a) / Number(b) : null);
@@ -120,7 +156,7 @@ const razao = (a, b) => (Number(b) > 0 ? Number(a) / Number(b) : null);
 export function calcularPercentuais(l) {
   return {
     pct_contactado: razao(l.contactados, l.carteira_valida),
-    pct_cadastro: razao(Number(l.cadastrados_erp) + Number(l.vendas), l.contactados),
+    pct_cadastro: razao(Number(l.analise_financeira) + Number(l.aguardando_pedido ?? 0) + Number(l.vendas), l.contactados),
     pct_conversao: razao(l.vendas, l.contactados),
   };
 }

@@ -3,9 +3,9 @@
 export const STATUS = Object.freeze({
   NAO_CONTACTADO: 'nao_contactado',
   EM_PROSPECCAO: 'em_prospeccao',
-  EM_NEGOCIACAO: 'em_negociacao',
+  EM_NEGOCIACAO: 'aguardando_cadastro',
   SEM_INTERESSE: 'sem_interesse',
-  CADASTRADO_ERP: 'cadastrado_erp',
+  CADASTRADO_ERP: 'analise_financeira',
   VENDA_REALIZADA: 'venda_realizada',
   INVALIDO: 'invalido',
 });

@@ -4,10 +4,11 @@ Atualizado em 2026-10-19. Cada item diz o que já está implementado como padrã
 
 | # | Assunto | Padrão implementado | Falta |
 |---|---|---|---|
-| 1 | Valores reais de "Status Atual" | mapa com Não contactado / Em prospecção / Em negociação e Atendido (→ Em negociação) / Não atendido (→ contato da planilha, continua na lista) / Sem interesse; o resto é rejeitado | rodar `--listar-status` na planilha real e completar `config/mapa-status-planilha.json` |
+| 1 | Valores reais de "Status Atual" | mapa com Não contactado / Em prospecção / Aguardando cadastro e Atendido (→ Aguardando cadastro) / Não atendido (→ contato da planilha, continua na lista) / Sem interesse; o resto é rejeitado | rodar `--listar-status` na planilha real e completar `config/mapa-status-planilha.json` |
 | 2 | 2ª coluna "CNPJ" da planilha | comparada com a 1ª; diferente → aviso + `cnpj_secundario` | confirmar o que ela representa |
 | 3 | Prazo de cadastro de 15 dias | contado do **primeiro "atendido"** (data do "atendido em") até aparecer no arquivo de cadastro; vencido = alerta | confirmar o ponto de partida |
-| 4 | Análise financeira de 10 dias | contados da data do pedido; só informativo (`em_analise_financeira`) | processo de pedido cancelado por restrição financeira (fase futura) |
+| 4 | Análise financeira | **resolvido:** começa no arquivo de cadastro; termina com o OK do analista (limite + a prazo/à vista) → Aguardando pedido; 10 dias = alerta | crédito **negado**: qual caminho? |
+| 18 | Pedido antes do OK financeiro | vai direto para Venda realizada (o ERP prevalece) | confirmar |
 | 7 | Destino dos "Sem interesse" | saem da fila e ficam disponíveis em relatório | definir a ação posterior |
 | 8 | Layout dos arquivos do ERP (cadastro, pedidos) e de baixados | colunas informadas na linha de comando | enviar amostras para fixar o layout |
 | 9 | Códigos de supervisor e representante | espaços separados (podem repetir número sem conflito) | confirmar se supervisor também tem carteira própria (COD = COD SUP) |

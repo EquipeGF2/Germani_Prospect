@@ -6,9 +6,10 @@
 |---|---|---|---|---|---|
 | Não contactado | carga inicial | **sim** | sim | não | sim |
 | Em prospecção | importação inicial: contato na planilha (DT 1o/2o) sem resultado | **sim** | sim | sim | sim |
-| Em negociação | app (**atendido** ou **pedido identificado**) — "Em negociação · atendido em dd/mm/aaaa" ou "· pedido informado em dd/mm/aaaa"; aguarda o CNPJ aparecer nos arquivos de cadastro/pedido | não (acompanhamento) | sim | sim | sim |
+| Aguardando cadastro | app (**atendido** ou **pedido identificado**) — "Aguardando cadastro · atendido em dd/mm/aaaa" ou "· pedido informado em dd/mm/aaaa"; aguarda o CNPJ aparecer nos arquivos de cadastro/pedido | não (acompanhamento) | sim | sim | sim |
 | Sem interesse | app ("sem interesse", com justificativa) | não | sim | sim | sim |
-| Cadastrado no ERP | arquivo de cadastro do Senior | não | sim (só registra; status não muda) | sim | sim |
+| Análise financeira | arquivo de **cadastro** do Senior | não | sim (só registra; status não muda) | sim | sim |
+| Aguardando pedido | **OK do analista financeiro** no console (limite + a prazo/à vista) | não | sim (só registra) | sim | sim |
 | Venda realizada | arquivo de pedidos do Senior (**final**) | não | não | sim | sim |
 | Inválido (baixado) | arquivo de CNPJs baixados | não — **congelado** | não | não | **não** |
 
@@ -29,9 +30,9 @@ representante e vendedor. **Só existem três registros**: Atendido, Sem interes
 
 | Resultado | Campo obrigatório | Efeito |
 |---|---|---|
-| **Atendido** | — (data de retorno opcional) | → **Em negociação** (sai da lista principal); "atendido em" = data do 1º atendimento; o CNPJ passa a ser procurado nos arquivos de **cadastro** e **pedido** do ERP; abre o **prazo de cadastro** = data + `prazo_cadastro_dias` (15) |
+| **Atendido** | — (data de retorno opcional) | → **Aguardando cadastro** (sai da lista principal); "atendido em" = data do 1º atendimento; o CNPJ passa a ser procurado nos arquivos de **cadastro** e **pedido** do ERP; abre o **prazo de cadastro** = data + `prazo_cadastro_dias` (15) |
 | **Sem interesse** | justificativa: motivo (lista) + observação ("Outro" exige observação) | → **Sem interesse** na hora (sai da lista principal) |
-| **Reabrir: pedido identificado** | **data de entrada do pedido** (≤ data do registro) | → **Em negociação · pedido informado em dd/mm** (acompanhamento) até o arquivo de pedidos do ERP confirmar a **Venda realizada** |
+| **Reabrir: pedido identificado** | **data de entrada do pedido** (≤ data do registro) | → **Aguardando cadastro · pedido informado em dd/mm** (acompanhamento) até o arquivo de pedidos do ERP confirmar a **Venda realizada** |
 
 Regras:
 - **Contatos sem limite.** Qualquer prospect que não seja Venda realizada nem Inválido aceita novos registros.
@@ -72,8 +73,8 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 
 | Arquivo | Evento | Efeito |
 |---|---|---|
-| Cadastro de clientes (Senior) | `cadastro` | → Cadastrado no ERP (encerra a Em negociação); guarda código do cliente |
-| Pedidos (Senior) | `pedido` | → **Venda realizada** (final); guarda nº do pedido; `analise_financeira_ate` = data + `prazo_analise_financeira_dias` (10) |
+| Cadastro de clientes (Senior) | `cadastro` | → **Análise financeira**; guarda código do cliente; `analise_financeira_ate` = data + `prazo_analise_financeira_dias` (10) |
+| Pedidos (Senior) | `pedido` | → **Venda realizada** (final); guarda nº do pedido. Vale em qualquer etapa (o ERP prevalece) |
 | CNPJs baixados | `baixa` | → Inválido; `situacao_cadastral = baixada`; prospect **congelado**: histórico preservado como estava, sem novos contatos, sem cadastro/pedido ("impossibilitado de faturamento") |
 
 - Cadastro/pedido de prospect **sem nenhum "atendido" nem "pedido identificado" registrado** → `convertido_sem_registro = 1`
@@ -85,9 +86,9 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 
 | Alerta | Regra |
 |---|---|
-| Prazo de cadastro vencido | Em negociação e `prazo_cadastro_ate` < hoje |
-| Retorno pendente | `retorno_pendente`: data de retorno hoje ou vencida (inclui Em negociação) |
-| Em análise financeira | Venda realizada e `analise_financeira_ate` ≥ hoje |
+| Prazo de cadastro vencido | Aguardando cadastro e `prazo_cadastro_ate` < hoje |
+| Retorno pendente | `retorno_pendente`: data de retorno hoje ou vencida (inclui Aguardando cadastro) |
+| Análise financeira vencida | `analise_financeira_vencida`: em análise e sem OK do analista após 10 dias |
 | Vendedor sem lançar | `vw_ultimo_lancamento.dias_sem_lancar` > `dias_alerta_sem_lancamento` |
 | Prospect parado | `vw_prospects.parado`: ativo e último contato (ou entrada na base) há mais de `dias_alerta_sem_movimento` |
 | Convertido sem registro | `convertido_sem_registro = 1` |
@@ -106,14 +107,16 @@ Implementação: [`shared/indicadores.mjs`](../shared/indicadores.mjs). Conferid
 | % contactado | contactados ÷ carteira válida |
 | % cadastro | (cadastrados no ERP + vendas) ÷ contactados |
 | % conversão | vendas ÷ contactados |
-| Em negociação (aguardando cadastro) | status Em negociação na data |
+| Funil | Aguardando cadastro → Análise financeira → Aguardando pedido → Venda realizada (quantos em cada etapa na data) |
 
-Numa data passada D, o status de cada prospect é o da última linha de `historico_status` com
+Numa data passada D, o status de cada prospect é o da última linha de `movimentacoes` com
 `data_evento ≤ D`. Por vendedor/supervisor, vale a carteira **atual**.
 
-### Atividade (o que aconteceu entre início e fim)
-Contatos registrados · atendidos · prospects contactados · primeiros contatos · encerrados sem interesse ·
-cadastros no ERP · pedidos · baixas.
+### Atividade (o que aconteceu entre início e fim) — lida do **histórico de movimentação**
+Cada movimento conta para o vendedor dono da carteira **no dia** do movimento.
+Registros · atendidos · sem interesse · pedidos identificados · prospects trabalhados · primeiros registros ·
+entradas em cada etapa (aguardando cadastro, análise financeira, aguardando pedido, venda) · liberações de
+crédito · arquivos de cadastro/pedido · baixas · transferências.
 
 Mais a **execução de rotas** (planejadas × atendidas, §7). Todos contam **toda a base** (dentro e fora da lista) e podem ser agrupados por **total geral, vendedor,
 supervisor (= equipe), cidade, bairro e rota** e filtrados por
@@ -132,7 +135,7 @@ Todos os registros da base são **prospects** — para representante e para vend
 | Lista | Conteúdo |
 |---|---|
 | **Principal (prospects)** | Não contactado · Em prospecção — é onde se vai atrás do cliente |
-| **Secundária (acompanhamento da efetivação do pedido)** | Em negociação (atendido em dd/mm, aguardando cadastro/pedido) e demais status para consulta |
+| **Secundária (acompanhamento da efetivação do pedido)** | Aguardando cadastro → Análise financeira → Aguardando pedido → Venda realizada, Sem interesse e Inválido status para consulta |
 
 Entrar em negociação **tira o cliente da lista principal e o leva para o acompanhamento**. Toda essa
 movimentação conta sempre nos indicadores.
@@ -169,3 +172,22 @@ Implementação: [`shared/rotas.mjs`](../shared/rotas.mjs) · testes: [`test/rot
 
 **Execução** (`vw_rotas_execucao`, `consultaExecucaoRotas`): paradas planejadas × atendidas (contato do vendedor
 no prospect na data da rota), por vendedor, equipe e geral — rotas canceladas ficam fora.
+
+## 8. Análise financeira — console do analista
+
+Implementação: [`shared/financeiro.mjs`](../shared/financeiro.mjs) · testes: [`test/financeiro.test.mjs`](../test/financeiro.test.mjs).
+
+1. A importação do arquivo de **cadastro** coloca o cliente em **Análise financeira** (prazo de 10 dias).
+2. O console (`consultaFilaAnalise`) lista todos os clientes com cadastro realizado, mais antigos primeiro,
+   com dias em análise e prazo vencido. Acesso: perfil **financeiro** ou administrador.
+3. O analista informa o **limite de crédito liberado** (> 0) e se foi **a prazo** ou **à vista**
+   (`comandoLiberarCredito`) → **Aguardando pedido**. Fica em `liberacoes_credito` e no histórico de movimentação.
+4. A importação do arquivo de **pedidos** leva a **Venda realizada**.
+
+Correção de uma liberação = nova liberação (o cliente em Aguardando pedido aceita nova liberação; nada é apagado).
+Crédito **negado**: ainda não tem caminho (ver 07).
+
+## 9. Histórico de movimentação
+
+Toda mudança — e todo registro, mesmo sem mudança de status — gera uma linha em `movimentacoes` (ver 02).
+É a fonte da linha do tempo da ficha, dos filtros (`consultaMovimentacoes`) e dos indicadores de atividade.

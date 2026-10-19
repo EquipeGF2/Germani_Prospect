@@ -10,14 +10,19 @@ atendimentos e as faltas de interesse, e o supervisor acompanha cobertura e conv
 ## Fluxo do prospect (resumo)
 
 ```
- planilha base ──► Não contactado / Em prospecção (lista principal — "não atendido" não gera registro)
-                        │
-                        ├──(sem interesse + justificativa)──────────────► Sem interesse
-                        │                                                     │ (pedido identificado:
-                        └──(atendido)────────► Em negociação ◄────────────────┘  informa a data do pedido)
-                                           (acompanhamento: CNPJ procurado nos arquivos do ERP)
- arquivo ERP de cadastro ──► Cadastrado no ERP          arquivo ERP de pedidos ──► Venda realizada (final)
- arquivo de CNPJs baixados ──► Inválido (congelado, impossibilitado de faturamento)
+ LISTA PRINCIPAL                         LISTA DE ACOMPANHAMENTO
+ Não contactado / Em prospecção ──(atendido)──► 1 Aguardando cadastro (15 dias)
+          │                                          │ arquivo de CADASTRO (ERP)
+          │                                          ▼
+          │                                    2 Análise financeira (10 dias)
+          │                                          │ OK do analista: limite + a prazo/à vista
+          │                                          ▼
+          │                                    3 Aguardando pedido
+          │                                          │ arquivo de PEDIDOS (ERP)
+          │                                          ▼
+          │                                    4 Venda realizada (final)
+          └──(sem interesse)──► Sem interesse ──(pedido identificado)──► 1
+ arquivo de CNPJs baixados ──► Inválido (congelado)       Fluxo de 1 página: docs/fluxo-processo.pdf
 ```
 
 A **lista de prospects** mostra só Não contactado e Em prospecção. Todo o resto continua visível no
@@ -32,6 +37,7 @@ Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 |---|---|---|
 | Representante | **filtro e consulta**: lista principal por lista, cidade e bairro (**sem rota**) + acompanhamento; registra **atendido / sem interesse** (também em lote) e reabre com pedido identificado | — |
 | Vendedor | o mesmo + **montagem de rotas** e visão por rota/subrota | — |
+| Analista financeiro | console de crédito: informa limite liberado e a prazo/à vista dos clientes cadastrados | — |
 | Supervisor | o mesmo, para a sua equipe; acompanha painel; redistribui carteira | — |
 | Administrador | tudo | base inicial de prospects; cadastro de clientes do ERP; pedidos do ERP; CNPJs baixados; usuários e senhas |
 

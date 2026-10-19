@@ -63,7 +63,7 @@ test('na rota só entram prospects da própria carteira, da lista principal ou e
   const rota = await criarRota();
   await assert.rejects(db.batch(comandosSalvarParadas({ usuario: VEND, rotaId: rota, prospectIds: [p.rep] }), 'write'), /não pertence à carteira/);
   await evento(db, { prospectId: p.b, tipo: 'pedido', data: '2026-10-10', documento: 'X' });
-  await assert.rejects(db.batch(comandosSalvarParadas({ usuario: VEND, rotaId: rota, prospectIds: [p.b] }), 'write'), /lista principal ou em negociação/);
+  await assert.rejects(db.batch(comandosSalvarParadas({ usuario: VEND, rotaId: rota, prospectIds: [p.b] }), 'write'), /lista principal, aguardando cadastro ou aguardando pedido/);
   await registrarContato(db, { prospectId: p.a, usuarioId: 3, resultado: 'atendido', data: '2026-10-10' }); // em negociação: pode
   await db.batch(comandosSalvarParadas({ usuario: VEND, rotaId: rota, prospectIds: [p.a] }), 'write');
   assert.throws(() => comandosSalvarParadas({ usuario: VEND, rotaId: rota, prospectIds: [p.a, p.a] }), /repetido/);

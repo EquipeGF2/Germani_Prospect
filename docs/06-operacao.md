@@ -26,7 +26,7 @@ Guarde o token administrativo num gerenciador de senhas. Ele **nunca** vai para 
 Token do app (gerar na F1, depois de concluir os itens "Verificar" do ADR-0001):
 ```bash
 turso db tokens create germani-prospect -p all:data_read -p contatos:data_add -p transferencias:data_add \
-  -p rotas:data_add,data_update -p rota_paradas:data_add,data_update,data_delete
+  -p rotas:data_add,data_update -p rota_paradas:data_add,data_update,data_delete -p liberacoes_credito:data_add
 ```
 
 ## 3. Aplicar a estrutura do banco
@@ -50,6 +50,7 @@ npm run importar:base -- base.xlsx --simular         # conferir relatorios/*.csv
 npm run importar:base -- base.xlsx
 npm run importar:tipos -- tipos.xlsx                 # quem é representante e quem é vendedor
 npm run usuarios -- criar-admin genaro "Genaro de Freitas Forratti"
+npm run usuarios -- criar-financeiro analista "Nome do analista"   # console de crédito
 npm run usuarios -- listar
 npm run usuarios -- senha 1101                       # para cada vendedor/supervisor que vai usar o app
 ```

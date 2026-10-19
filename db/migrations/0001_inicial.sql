@@ -3,7 +3,7 @@
 -- Banco: Turso / libSQL (SQLite). Documentação: docs/02-modelo-dados.md
 --
 -- Princípios aplicados aqui (não só no código):
---   * Histórico append-only: contatos, eventos_erp, historico_status,
+--   * Histórico append-only: contatos, eventos_erp, movimentacoes,
 --     transferencias e importacao_linhas não aceitam UPDATE nem DELETE.
 --   * Toda mudança de status nasce de um evento (contato, evento ERP,
 --     transferência) e é aplicada por trigger — quem grava o evento não
@@ -31,7 +31,7 @@ CREATE TABLE parametros (
 
 INSERT INTO parametros (chave, valor, tipo, descricao) VALUES
   ('prazo_cadastro_dias',           '15',  'inteiro', 'Prazo, a partir do interesse declarado, para o cliente aparecer cadastrado no ERP'),
-  ('prazo_analise_financeira_dias', '10',  'inteiro', 'Dias de análise financeira após a entrada do pedido'),
+  ('prazo_analise_financeira_dias', '10',  'inteiro', 'Dias para o analista dar o OK de crédito após o cadastro no ERP (vencido = alerta)'),
   ('dias_alerta_sem_lancamento',    '7',   'inteiro', 'Vendedor sem registrar contato há mais de N dias entra no bloco de atenção'),
   ('dias_alerta_sem_movimento',     '30',  'inteiro', 'Prospect ativo sem movimento há mais de N dias entra no bloco de atenção');
 
@@ -43,7 +43,7 @@ CREATE TABLE status (
   nome               TEXT NOT NULL,
   cor                TEXT NOT NULL,
   ordem              INTEGER NOT NULL UNIQUE,
-  origem             TEXT NOT NULL CHECK (origem IN ('inicial','app','erp')),
+  origem             TEXT NOT NULL CHECK (origem IN ('inicial','app','erp','financeiro')),
   aceita_contato     INTEGER NOT NULL CHECK (aceita_contato IN (0,1)),    -- permite registrar novo contato
   lista_trabalho     INTEGER NOT NULL CHECK (lista_trabalho IN (0,1)),    -- aparece na lista de prospects
   conta_contactado   INTEGER NOT NULL CHECK (conta_contactado IN (0,1)),  -- numerador de % contactado
@@ -53,11 +53,12 @@ CREATE TABLE status (
 INSERT INTO status (codigo, nome, cor, ordem, origem, aceita_contato, lista_trabalho, conta_contactado, conta_carteira) VALUES
   ('nao_contactado',  'Não contactado',     '#9CA3AF', 1, 'inicial', 1, 1, 0, 1),
   ('em_prospeccao',   'Em prospecção',      '#0E7490', 2, 'inicial', 1, 1, 1, 1),  -- contato na planilha base sem resultado (DT 1o/2o)
-  ('em_negociacao',   'Em negociação',      '#6D28D9', 3, 'app',     1, 0, 1, 1),  -- atendido (ou pedido informado), aguardando cadastro/pedido nos arquivos do ERP
+  ('aguardando_cadastro', 'Aguardando cadastro', '#6D28D9', 3, 'app',     1, 0, 1, 1),  -- atendido no app (ou pedido informado); aguarda o arquivo de cadastro
   ('sem_interesse',   'Sem interesse',      '#3F3F46', 4, 'app',     1, 0, 1, 1),
-  ('cadastrado_erp',  'Cadastrado no ERP',  '#0F766E', 5, 'erp',     1, 0, 1, 1),
-  ('venda_realizada', 'Venda realizada',    '#1D4ED8', 6, 'erp',     0, 0, 1, 1),
-  ('invalido',        'Inválido (baixado)', '#D1D5DB', 7, 'erp',     0, 0, 0, 0);
+  ('analise_financeira',  'Análise financeira',  '#C2410C', 5, 'erp',     1, 0, 1, 1),  -- cadastrado no ERP; aguarda o OK do analista
+  ('aguardando_pedido',   'Aguardando pedido',   '#0F766E', 6, 'financeiro', 1, 0, 1, 1),  -- crédito liberado; aguarda o arquivo de pedidos
+  ('venda_realizada', 'Venda realizada',    '#1D4ED8', 7, 'erp',     0, 0, 1, 1),
+  ('invalido',        'Inválido (baixado)', '#D1D5DB', 8, 'erp',     0, 0, 0, 0);
 
 -- ---------------------------------------------------------------------
 -- Motivos de "sem interesse" (lista editável)
@@ -90,7 +91,7 @@ INSERT INTO motivos_sem_interesse (codigo, descricao, exige_observacao, uso_app,
 -- ---------------------------------------------------------------------
 CREATE TABLE usuarios (
   id               INTEGER PRIMARY KEY,
-  perfil           TEXT NOT NULL CHECK (perfil IN ('administrador','supervisor','vendedor')),
+  perfil           TEXT NOT NULL CHECK (perfil IN ('administrador','supervisor','vendedor','financeiro')),
   codigo_erp       TEXT,                         -- COD (vendedor) ou COD SUP (supervisor) da planilha/Senior
   nome             TEXT NOT NULL,
   nome_busca       TEXT NOT NULL,
@@ -206,6 +207,9 @@ CREATE TABLE prospects (
   dt_pedido                TEXT,
   numero_pedido            TEXT,
   analise_financeira_ate   TEXT,
+  dt_liberacao_credito     TEXT,            -- OK do analista financeiro
+  limite_credito           REAL,
+  condicao_pagamento       TEXT CHECK (condicao_pagamento IS NULL OR condicao_pagamento IN ('a_prazo','a_vista')),
   situacao_cadastral       TEXT NOT NULL DEFAULT 'ativa' CHECK (situacao_cadastral IN ('ativa','baixada')),
   dt_baixa                 TEXT,
   importacao_id            INTEGER REFERENCES importacoes(id),
@@ -229,26 +233,38 @@ BEGIN
 END;
 
 -- ---------------------------------------------------------------------
--- Histórico de status (foto de cada mudança — base dos filtros por período)
+-- Histórico de MOVIMENTAÇÃO do cliente — uma linha por movimento, de qualquer origem.
+-- É a base da linha do tempo, dos filtros e dos indicadores. Gravado SOMENTE por triggers.
 -- ---------------------------------------------------------------------
-CREATE TABLE historico_status (
+CREATE TABLE movimentacoes (
   id               INTEGER PRIMARY KEY,
   prospect_id      INTEGER NOT NULL REFERENCES prospects(id),
+  tipo             TEXT NOT NULL CHECK (tipo IN (
+                     'entrada_base','contato_planilha',                  -- importação inicial
+                     'atendido','sem_interesse','pedido_informado',      -- app (mobile)
+                     'cadastro','pedido','baixa',                        -- arquivos do ERP / baixados
+                     'liberacao_credito',                                -- OK do analista financeiro
+                     'transferencia')),                                  -- troca de carteira
   status_anterior  TEXT REFERENCES status(codigo),
   status_novo      TEXT NOT NULL REFERENCES status(codigo),
   data_evento      TEXT NOT NULL,                 -- data de negócio (AAAA-MM-DD)
-  origem           TEXT NOT NULL CHECK (origem IN ('importacao','contato','erp')),
-  referencia       TEXT,                          -- id do contato / evento ERP
+  origem           TEXT NOT NULL CHECK (origem IN ('importacao','contato','erp','financeiro','transferencia')),
+  referencia       TEXT,                          -- id do contato / evento ERP / transferência / importação
+  usuario_id       INTEGER REFERENCES usuarios(id),          -- quem fez (NULL = importação)
+  vendedor_id      INTEGER NOT NULL REFERENCES usuarios(id), -- dono da carteira NO MOMENTO do movimento
+  detalhe          TEXT,                          -- observação, nº do documento, motivo da transferência
   registrado_em    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
+CREATE INDEX ix_movimentacoes_data_tipo ON movimentacoes (data_evento, tipo);
+CREATE INDEX ix_movimentacoes_vendedor  ON movimentacoes (vendedor_id, data_evento);
 -- Posição numa data D = última linha (maior id) com data_evento <= D. O id preserva a ordem causal.
-CREATE INDEX ix_historico_prospect_data ON historico_status (prospect_id, data_evento, id);
+CREATE INDEX ix_movimentacoes_prospect_data ON movimentacoes (prospect_id, data_evento, id);
 
 CREATE TRIGGER trg_prospects_historico_inicial
 AFTER INSERT ON prospects
 BEGIN
-  INSERT INTO historico_status (prospect_id, status_anterior, status_novo, data_evento, origem, referencia)
-  VALUES (NEW.id, NULL, NEW.status_atual, NEW.dt_entrada_base, 'importacao', CAST(NEW.importacao_id AS TEXT));
+  INSERT INTO movimentacoes (prospect_id, tipo, status_anterior, status_novo, data_evento, origem, referencia, vendedor_id)
+  VALUES (NEW.id, 'entrada_base', NULL, NEW.status_atual, NEW.dt_entrada_base, 'importacao', CAST(NEW.importacao_id AS TEXT), NEW.vendedor_id);
 END;
 
 -- ---------------------------------------------------------------------
@@ -326,27 +342,31 @@ END;
 
 -- Aplicação da regra de status (docs/03-regras-negocio.md §2). Não há limite de registros.
 -- O app registra só ATENDIDO, SEM INTERESSE ou PEDIDO IDENTIFICADO ("não atendido" não gera registro).
---   Cadastrado no ERP                    → continua cadastrado (registro só fica no histórico)
---   atendido / pedido_informado          → em_negociacao (sai da lista principal; aguarda cadastro/pedido do ERP)
+--   Análise financeira                    → continua cadastrado (registro só fica no histórico)
+--   atendido / pedido_informado          → aguardando_cadastro (sai da lista principal; aguarda cadastro/pedido do ERP)
 --   sem_interesse                        → sem_interesse (sai da lista principal)
 --   contato_planilha (importação)        → em_prospeccao se ainda não contactado; senão mantém
 CREATE TRIGGER trg_contatos_aplicar
 AFTER INSERT ON contatos
 BEGIN
-  INSERT INTO historico_status (prospect_id, status_anterior, status_novo, data_evento, origem, referencia)
-  SELECT p.id, p.status_atual,
+  INSERT INTO movimentacoes (prospect_id, tipo, status_anterior, status_novo, data_evento, origem, referencia, usuario_id, vendedor_id, detalhe)
+  SELECT p.id, NEW.resultado, p.status_atual,
          CASE
-           WHEN p.status_atual = 'cadastrado_erp' THEN 'cadastrado_erp'
-           WHEN NEW.resultado IN ('atendido','pedido_informado') THEN 'em_negociacao'
+           WHEN p.status_atual IN ('analise_financeira','aguardando_pedido') THEN p.status_atual
+           WHEN NEW.resultado IN ('atendido','pedido_informado') THEN 'aguardando_cadastro'
            WHEN NEW.resultado = 'sem_interesse' THEN 'sem_interesse'
            WHEN p.status_atual = 'nao_contactado' THEN 'em_prospeccao'
            ELSE p.status_atual
          END,
-         NEW.data_contato, 'contato', NEW.id
+         NEW.data_contato, 'contato', NEW.id,
+         CASE WHEN NEW.origem = 'app' THEN NEW.usuario_id END, p.vendedor_id,
+         TRIM(COALESCE((SELECT m.descricao FROM motivos_sem_interesse m WHERE m.id = NEW.motivo_id) || ' — ', '')
+              || COALESCE(NEW.observacao, '')
+              || COALESCE(' · pedido de ' || strftime('%d/%m/%Y', NEW.data_pedido_informado), ''), ' —')
     FROM prospects p WHERE p.id = NEW.prospect_id;
 
   UPDATE prospects SET
-    status_atual = (SELECT status_novo FROM historico_status WHERE origem = 'contato' AND referencia = NEW.id),
+    status_atual = (SELECT status_novo FROM movimentacoes WHERE origem = 'contato' AND referencia = NEW.id),
     tentativas = NEW.numero_tentativa,
     dt_primeiro_contato = COALESCE(dt_primeiro_contato, NEW.data_contato),
     dt_segundo_contato  = CASE WHEN NEW.numero_tentativa = 2 THEN NEW.data_contato ELSE dt_segundo_contato END,
@@ -362,7 +382,7 @@ BEGIN
 
   UPDATE prospects SET
     -- retorno agendado (opcional) só existe na negociação; a lista principal está sempre pendente
-    data_proxima_acao = CASE WHEN status_atual = 'em_negociacao' THEN NEW.data_retorno ELSE NULL END,
+    data_proxima_acao = CASE WHEN status_atual = 'aguardando_cadastro' THEN NEW.data_retorno ELSE NULL END,
     -- motivo final = o do último "sem interesse"
     motivo_sem_interesse_id = CASE WHEN NEW.resultado = 'sem_interesse' THEN NEW.motivo_id ELSE motivo_sem_interesse_id END
   WHERE id = NEW.prospect_id;
@@ -397,18 +417,19 @@ END;
 CREATE TRIGGER trg_eventos_erp_aplicar
 AFTER INSERT ON eventos_erp
 BEGIN
-  INSERT INTO historico_status (prospect_id, status_anterior, status_novo, data_evento, origem, referencia)
-  SELECT p.id, p.status_atual,
+  -- cadastro → Análise financeira · pedido → Venda realizada (final) · baixa → Inválido
+  INSERT INTO movimentacoes (prospect_id, tipo, status_anterior, status_novo, data_evento, origem, referencia, vendedor_id, detalhe)
+  SELECT p.id, NEW.tipo, p.status_atual,
          CASE NEW.tipo
            WHEN 'baixa'    THEN 'invalido'
            WHEN 'pedido'   THEN 'venda_realizada'
-           WHEN 'cadastro' THEN CASE WHEN p.status_atual = 'venda_realizada' THEN 'venda_realizada' ELSE 'cadastrado_erp' END
+           WHEN 'cadastro' THEN CASE WHEN p.status_atual IN ('venda_realizada','aguardando_pedido') THEN p.status_atual ELSE 'analise_financeira' END
          END,
-         NEW.data_evento, 'erp', CAST(NEW.id AS TEXT)
+         NEW.data_evento, 'erp', CAST(NEW.id AS TEXT), p.vendedor_id, NEW.documento
     FROM prospects p WHERE p.id = NEW.prospect_id;
 
   UPDATE prospects SET
-    status_atual = (SELECT status_novo FROM historico_status WHERE origem = 'erp' AND referencia = CAST(NEW.id AS TEXT)),
+    status_atual = (SELECT status_novo FROM movimentacoes WHERE origem = 'erp' AND referencia = CAST(NEW.id AS TEXT)),
     convertido_sem_registro = CASE
       WHEN NEW.tipo IN ('cadastro','pedido') AND status_atual <> 'venda_realizada' AND dt_atendido IS NULL THEN 1
       ELSE convertido_sem_registro END,
@@ -416,7 +437,7 @@ BEGIN
     codigo_cliente_erp = CASE WHEN NEW.tipo = 'cadastro' THEN COALESCE(NEW.documento, codigo_cliente_erp) ELSE codigo_cliente_erp END,
     dt_pedido          = CASE WHEN NEW.tipo = 'pedido' THEN COALESCE(dt_pedido, NEW.data_evento) ELSE dt_pedido END,
     numero_pedido      = CASE WHEN NEW.tipo = 'pedido' THEN COALESCE(numero_pedido, NEW.documento) ELSE numero_pedido END,
-    analise_financeira_ate = CASE WHEN NEW.tipo = 'pedido' AND dt_pedido IS NULL
+    analise_financeira_ate = CASE WHEN NEW.tipo = 'cadastro' AND dt_cadastro_erp IS NULL
       THEN date(NEW.data_evento, '+' || (SELECT valor FROM parametros WHERE chave = 'prazo_analise_financeira_dias') || ' days')
       ELSE analise_financeira_ate END,
     situacao_cadastral = CASE WHEN NEW.tipo = 'baixa' THEN 'baixada' ELSE situacao_cadastral END,
@@ -425,6 +446,55 @@ BEGIN
     atualizado_em      = strftime('%Y-%m-%dT%H:%M:%fZ','now')
   WHERE id = NEW.prospect_id;
 END;
+
+-- ---------------------------------------------------------------------
+-- Análise financeira — OK do analista no console (perfil financeiro ou administrador)
+-- Mostra os clientes em "Análise financeira" (cadastro importado); o analista informa o limite de crédito
+-- liberado e se foi a prazo ou à vista → "Aguardando pedido". Somente inclusão: correção = nova liberação.
+-- ---------------------------------------------------------------------
+CREATE TABLE liberacoes_credito (
+  id                 INTEGER PRIMARY KEY,
+  prospect_id        INTEGER NOT NULL REFERENCES prospects(id),
+  usuario_id         INTEGER NOT NULL REFERENCES usuarios(id),   -- analista
+  data_liberacao     TEXT NOT NULL CHECK (date(data_liberacao) = data_liberacao),
+  limite_credito     REAL NOT NULL CHECK (limite_credito > 0),
+  condicao_pagamento TEXT NOT NULL CHECK (condicao_pagamento IN ('a_prazo','a_vista')),
+  observacao         TEXT,
+  registrado_em      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+CREATE INDEX ix_liberacoes_prospect ON liberacoes_credito (prospect_id);
+
+CREATE TRIGGER trg_liberacoes_validar
+BEFORE INSERT ON liberacoes_credito
+BEGIN
+  SELECT RAISE(ABORT, 'somente o analista financeiro ou o administrador libera crédito')
+  WHERE NOT EXISTS (SELECT 1 FROM usuarios WHERE id = NEW.usuario_id AND ativo = 1 AND perfil IN ('financeiro','administrador'));
+  SELECT RAISE(ABORT, 'cliente não está em análise financeira (ou aguardando pedido, para correção)')
+  WHERE (SELECT status_atual FROM prospects WHERE id = NEW.prospect_id) NOT IN ('analise_financeira','aguardando_pedido');
+  SELECT RAISE(ABORT, 'data da liberação anterior ao cadastro no ERP')
+  WHERE NEW.data_liberacao < (SELECT dt_cadastro_erp FROM prospects WHERE id = NEW.prospect_id);
+END;
+
+CREATE TRIGGER trg_liberacoes_aplicar
+AFTER INSERT ON liberacoes_credito
+BEGIN
+  INSERT INTO movimentacoes (prospect_id, tipo, status_anterior, status_novo, data_evento, origem, referencia, usuario_id, vendedor_id, detalhe)
+  SELECT p.id, 'liberacao_credito', p.status_atual, 'aguardando_pedido', NEW.data_liberacao, 'financeiro', CAST(NEW.id AS TEXT),
+         NEW.usuario_id, p.vendedor_id,
+         'limite R$ ' || printf('%.2f', NEW.limite_credito) || ' · ' || CASE NEW.condicao_pagamento WHEN 'a_prazo' THEN 'a prazo' ELSE 'à vista' END
+           || COALESCE(' — ' || NEW.observacao, '')
+    FROM prospects p WHERE p.id = NEW.prospect_id;
+  UPDATE prospects SET
+    status_atual = 'aguardando_pedido',
+    dt_liberacao_credito = NEW.data_liberacao,
+    limite_credito = NEW.limite_credito,
+    condicao_pagamento = NEW.condicao_pagamento,
+    atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+  WHERE id = NEW.prospect_id;
+END;
+
+CREATE TRIGGER trg_liberacoes_imutavel_upd BEFORE UPDATE ON liberacoes_credito BEGIN SELECT RAISE(ABORT, 'liberacoes_credito é somente inclusão: corrija com nova liberação'); END;
+CREATE TRIGGER trg_liberacoes_imutavel_del BEFORE DELETE ON liberacoes_credito BEGIN SELECT RAISE(ABORT, 'liberacoes_credito é somente inclusão'); END;
 
 -- ---------------------------------------------------------------------
 -- Transferências de carteira (redistribuição pelo supervisor/administrador)
@@ -462,6 +532,12 @@ END;
 CREATE TRIGGER trg_transferencias_aplicar
 AFTER INSERT ON transferencias
 BEGIN
+  INSERT INTO movimentacoes (prospect_id, tipo, status_anterior, status_novo, data_evento, origem, referencia, usuario_id, vendedor_id, detalhe)
+  SELECT p.id, 'transferencia', p.status_atual, p.status_atual, NEW.data_transferencia, 'transferencia', CAST(NEW.id AS TEXT),
+         NEW.usuario_id, NEW.para_vendedor_id,
+         (SELECT nome FROM usuarios WHERE id = NEW.de_vendedor_id) || ' → ' || (SELECT nome FROM usuarios WHERE id = NEW.para_vendedor_id)
+           || ': ' || NEW.motivo
+    FROM prospects p WHERE p.id = NEW.prospect_id;
   UPDATE prospects SET vendedor_id = NEW.para_vendedor_id, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now')
    WHERE id = NEW.prospect_id;
 END;
@@ -523,9 +599,9 @@ BEGIN
   WHERE (SELECT situacao FROM rotas WHERE id = NEW.rota_id) <> 'planejada';
   SELECT RAISE(ABORT, 'prospect não pertence à carteira do vendedor da rota')
   WHERE (SELECT vendedor_id FROM prospects WHERE id = NEW.prospect_id) <> (SELECT vendedor_id FROM rotas WHERE id = NEW.rota_id);
-  SELECT RAISE(ABORT, 'na rota só entram prospects da lista principal ou em negociação')
+  SELECT RAISE(ABORT, 'na rota só entram prospects da lista principal, aguardando cadastro ou aguardando pedido')
   WHERE NOT EXISTS (SELECT 1 FROM prospects p JOIN status s ON s.codigo = p.status_atual
-                     WHERE p.id = NEW.prospect_id AND (s.lista_trabalho = 1 OR p.status_atual = 'em_negociacao'));
+                     WHERE p.id = NEW.prospect_id AND (s.lista_trabalho = 1 OR p.status_atual IN ('aguardando_cadastro','aguardando_pedido')));
 END;
 
 CREATE TRIGGER trg_rota_paradas_upd
@@ -572,8 +648,8 @@ CREATE TRIGGER trg_contatos_imutavel_upd          BEFORE UPDATE ON contatos     
 CREATE TRIGGER trg_contatos_imutavel_del          BEFORE DELETE ON contatos          BEGIN SELECT RAISE(ABORT, 'contatos é somente inclusão'); END;
 CREATE TRIGGER trg_eventos_erp_imutavel_upd       BEFORE UPDATE ON eventos_erp       BEGIN SELECT RAISE(ABORT, 'eventos_erp é somente inclusão'); END;
 CREATE TRIGGER trg_eventos_erp_imutavel_del       BEFORE DELETE ON eventos_erp       BEGIN SELECT RAISE(ABORT, 'eventos_erp é somente inclusão'); END;
-CREATE TRIGGER trg_historico_imutavel_upd         BEFORE UPDATE ON historico_status  BEGIN SELECT RAISE(ABORT, 'historico_status é somente inclusão'); END;
-CREATE TRIGGER trg_historico_imutavel_del         BEFORE DELETE ON historico_status  BEGIN SELECT RAISE(ABORT, 'historico_status é somente inclusão'); END;
+CREATE TRIGGER trg_movimentacoes_imutavel_upd         BEFORE UPDATE ON movimentacoes  BEGIN SELECT RAISE(ABORT, 'movimentacoes é somente inclusão'); END;
+CREATE TRIGGER trg_movimentacoes_imutavel_del         BEFORE DELETE ON movimentacoes  BEGIN SELECT RAISE(ABORT, 'movimentacoes é somente inclusão'); END;
 CREATE TRIGGER trg_transferencias_imutavel_upd    BEFORE UPDATE ON transferencias    BEGIN SELECT RAISE(ABORT, 'transferencias é somente inclusão'); END;
 CREATE TRIGGER trg_transferencias_imutavel_del    BEFORE DELETE ON transferencias    BEGIN SELECT RAISE(ABORT, 'transferencias é somente inclusão'); END;
 CREATE TRIGGER trg_importacao_linhas_imutavel_upd BEFORE UPDATE ON importacao_linhas BEGIN SELECT RAISE(ABORT, 'importacao_linhas é somente inclusão'); END;
@@ -598,10 +674,10 @@ SELECT p.*,
        s.nome                AS status_nome,
        s.cor                 AS status_cor,
        s.aceita_contato,
-       -- "Em negociação · atendido em dd/mm/aaaa" ou "Em negociação · pedido informado em dd/mm/aaaa"
-       CASE WHEN p.status_atual = 'em_negociacao' AND p.dt_pedido_informado IS NOT NULL
+       -- "Aguardando cadastro · atendido em dd/mm/aaaa" ou "Aguardando cadastro · pedido informado em dd/mm/aaaa"
+       CASE WHEN p.status_atual = 'aguardando_cadastro' AND p.dt_pedido_informado IS NOT NULL
             THEN s.nome || ' · pedido informado em ' || strftime('%d/%m/%Y', p.dt_pedido_informado)
-            WHEN p.status_atual = 'em_negociacao' AND p.dt_atendido IS NOT NULL
+            WHEN p.status_atual = 'aguardando_cadastro' AND p.dt_atendido IS NOT NULL
             THEN s.nome || ' · atendido em ' || strftime('%d/%m/%Y', p.dt_atendido) ELSE s.nome END AS status_descricao,
        v.nome                AS vendedor_nome,
        v.codigo_erp          AS vendedor_codigo,
@@ -616,14 +692,14 @@ SELECT p.*,
        s.lista_trabalho AS na_lista,
        CASE WHEN s.lista_trabalho = 1
              AND (p.data_proxima_acao IS NULL OR p.data_proxima_acao <= date('now','-3 hours')) THEN 1 ELSE 0 END AS pendente_hoje,
-       -- retorno agendado vencido/hoje em qualquer status que ainda aceita contato (inclui Em negociação)
+       -- retorno agendado vencido/hoje em qualquer status que ainda aceita contato (inclui Aguardando cadastro)
        CASE WHEN s.aceita_contato = 1 AND p.data_proxima_acao IS NOT NULL
              AND p.data_proxima_acao <= date('now','-3 hours') THEN 1 ELSE 0 END AS retorno_pendente,
        CASE WHEN p.dt_atendido IS NOT NULL THEN 1 ELSE 0 END AS atendido,
-       CASE WHEN p.status_atual = 'em_negociacao' AND p.prazo_cadastro_ate < date('now','-3 hours') THEN 1 ELSE 0 END AS prazo_cadastro_vencido,
-       CASE WHEN p.status_atual = 'venda_realizada' AND p.analise_financeira_ate >= date('now','-3 hours') THEN 1 ELSE 0 END AS em_analise_financeira,
+       CASE WHEN p.status_atual = 'aguardando_cadastro' AND p.prazo_cadastro_ate < date('now','-3 hours') THEN 1 ELSE 0 END AS prazo_cadastro_vencido,
+       CASE WHEN p.status_atual = 'analise_financeira' AND p.analise_financeira_ate < date('now','-3 hours') THEN 1 ELSE 0 END AS analise_financeira_vencida,
        CAST(julianday(date('now','-3 hours')) - julianday(COALESCE(p.dt_ultimo_contato, p.dt_entrada_base)) AS INTEGER) AS dias_sem_movimento,
-       CASE WHEN p.status_atual IN ('nao_contactado','em_prospeccao','em_negociacao')
+       CASE WHEN p.status_atual IN ('nao_contactado','em_prospeccao','aguardando_cadastro')
              AND julianday(date('now','-3 hours')) - julianday(COALESCE(p.dt_ultimo_contato, p.dt_entrada_base))
                  > (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'dias_alerta_sem_movimento') THEN 1 ELSE 0 END AS parado
   FROM prospects p
@@ -632,21 +708,20 @@ SELECT p.*,
   LEFT JOIN usuarios sup ON sup.id = COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END)
   LEFT JOIN motivos_sem_interesse m ON m.id = p.motivo_sem_interesse_id;
 
--- Linha do tempo única da ficha do prospect
-CREATE VIEW vw_linha_tempo AS
-SELECT c.prospect_id, c.data_contato AS data, 'contato' AS tipo, c.id AS referencia,
-       c.canal || ' · ' || c.resultado AS titulo, u.nome AS autor, c.observacao AS detalhe, c.recebido_em AS registrado_em
-  FROM contatos c JOIN usuarios u ON u.id = c.usuario_id
-UNION ALL
-SELECT e.prospect_id, e.data_evento, 'erp', CAST(e.id AS TEXT), e.tipo || COALESCE(' · ' || e.documento, ''), 'ERP Senior', NULL, e.registrado_em
-  FROM eventos_erp e
-UNION ALL
-SELECT t.prospect_id, t.data_transferencia, 'transferencia', CAST(t.id AS TEXT),
-       'transferência: ' || de.nome || ' → ' || para.nome, u.nome, t.motivo, t.registrado_em
-  FROM transferencias t
-  JOIN usuarios de ON de.id = t.de_vendedor_id
-  JOIN usuarios para ON para.id = t.para_vendedor_id
-  JOIN usuarios u ON u.id = t.usuario_id;
+-- Histórico de movimentação com nomes — linha do tempo da ficha, filtros e relatórios
+CREATE VIEW vw_movimentacoes AS
+SELECT m.id, m.prospect_id, m.tipo, m.data_evento, m.origem, m.referencia, m.detalhe, m.registrado_em,
+       m.status_anterior, sa.nome AS status_anterior_nome, m.status_novo, sn.nome AS status_novo_nome, sn.cor AS status_novo_cor,
+       m.usuario_id, u.nome AS usuario_nome,
+       m.vendedor_id, v.nome AS vendedor_nome, v.tipo_atuacao AS vendedor_tipo_atuacao,
+       COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END) AS supervisor_id,
+       p.cnpj, p.razao_social, p.nome_fantasia, p.cidade, p.cidade_busca, p.bairro, p.bairro_busca, p.uf
+  FROM movimentacoes m
+  JOIN prospects p ON p.id = m.prospect_id
+  JOIN usuarios v ON v.id = m.vendedor_id
+  JOIN status sn ON sn.codigo = m.status_novo
+  LEFT JOIN status sa ON sa.codigo = m.status_anterior
+  LEFT JOIN usuarios u ON u.id = m.usuario_id;
 
 -- Último lançamento por vendedor (bloco de atenção do painel)
 CREATE VIEW vw_ultimo_lancamento AS

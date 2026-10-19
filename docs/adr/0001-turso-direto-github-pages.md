@@ -22,7 +22,7 @@ projetos com **frontend estático no GitHub Pages falando direto com o Turso**, 
 | Token | Onde fica | Permissões |
 |---|---|---|
 | **Administrativo** | `.env` da máquina do administrador + Secret `TURSO_AUTH_TOKEN` do GitHub (migrações) | total |
-| **App** (fase do app) | embutido no site publicado | `all:data_read`, `contatos:data_add`, `transferencias:data_add`, `rotas:data_add,data_update`, `rota_paradas:data_add,data_update,data_delete` (+ o mínimo que os triggers exigirem — ver "Verificar") |
+| **App** (fase do app) | embutido no site publicado | `all:data_read`, `contatos:data_add`, `transferencias:data_add`, `rotas:data_add,data_update`, `rota_paradas:data_add,data_update,data_delete`, `liberacoes_credito:data_add` (+ o mínimo que os triggers exigirem — ver "Verificar") |
 
 O token do app **não tem** `schema_*` (não derruba trigger), `data_delete` fora de `rota_paradas` (o plano de
 rota é editável; o histórico não) nem `data_update` em `usuarios`/`parametros`/`contatos`.
@@ -65,7 +65,7 @@ O banco já foi desenhado para as três opções: o app só faz `SELECT` em view
 ## Verificar antes do app
 
 - [ ] Confirmar se o Turso aplica as permissões finas também às escritas feitas **pelos triggers**
-      (atualização de `prospects` e inclusão em `historico_status`). Se aplicar, acrescentar ao token do app
-      `prospects:data_update` e `historico_status:data_add` — e aceitar que o token também consegue
+      (atualização de `prospects` e inclusão em `movimentacoes`). Se aplicar, acrescentar ao token do app
+      `prospects:data_update` e `movimentacoes:data_add` — e aceitar que o token também consegue
       editar dados cadastrais de `prospects` diretamente.
 - [ ] Confirmar que `PRAGMA foreign_keys = ON` vale nas conexões HTTP do Turso.

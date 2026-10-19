@@ -96,7 +96,7 @@ test('indicadores continuam contando quem saiu da lista; agrupamento por bairro 
   const [g] = await linhas(consultaPosicao({ agrupar: 'geral' }));
   assert.equal(Number(g.total), 7);
   assert.equal(Number(g.vendas), 1);
-  assert.equal(Number(g.em_negociacao), 1);
+  assert.equal(Number(g.aguardando_cadastro), 1);
   const b = await linhas(consultaPosicao({ agrupar: 'bairro' }));
   assert.equal(Number(b.find((x) => x.rotulo === 'Centro — Lajeado/RS').total), 2);
   const r = await linhas(consultaPosicao({ agrupar: 'rota' }));
@@ -106,19 +106,19 @@ test('indicadores continuam contando quem saiu da lista; agrupamento por bairro 
 test('acompanhamento por status: carteira inteira, inclusive o que saiu da lista', async () => {
   const r = await linhas(consultaCarteira({ usuario: VEND, visao: 'status' }));
   const por = Object.fromEntries(r.map((x) => [x.status_atual, Number(x.prospects)]));
-  assert.deepEqual(por, { nao_contactado: 2, em_prospeccao: 0, em_negociacao: 1, sem_interesse: 0, cadastrado_erp: 0, venda_realizada: 0, invalido: 0 });
-  const neg = await linhas(consultaCarteira({ usuario: VEND, filtros: { status: 'em_negociacao' } }));
+  assert.deepEqual(por, { nao_contactado: 2, em_prospeccao: 0, aguardando_cadastro: 1, sem_interesse: 0, analise_financeira: 0, aguardando_pedido: 0, venda_realizada: 0, invalido: 0 });
+  const neg = await linhas(consultaCarteira({ usuario: VEND, filtros: { status: 'aguardando_cadastro' } }));
   assert.equal(neg.length, 1);
-  assert.equal(neg[0].status_descricao, 'Em negociação · atendido em 05/10/2026');
+  assert.equal(neg[0].status_descricao, 'Aguardando cadastro · atendido em 05/10/2026');
   assert.equal(neg[0].dt_primeiro_contato, '2026-10-05');
   const rep = Object.fromEntries((await linhas(consultaCarteira({ usuario: REP, visao: 'status' }))).map((x) => [x.status_atual, Number(x.prospects)]));
   assert.equal(rep.venda_realizada, 1); // representante também acompanha por status
 });
 
-test('Em negociação fica só no acompanhamento: o filtro de retornos da lista não o traz', async () => {
-  await db.execute("UPDATE prospects SET data_proxima_acao = '2026-01-01' WHERE status_atual = 'em_negociacao'");
+test('Aguardando cadastro fica só no acompanhamento: o filtro de retornos da lista não o traz', async () => {
+  await db.execute("UPDATE prospects SET data_proxima_acao = '2026-01-01' WHERE status_atual = 'aguardando_cadastro'");
   const lista = await linhas(consultaCarteira({ usuario: VEND, filtros: { somenteRetornos: true } }));
-  assert.ok(lista.every((x) => x.status_atual !== 'em_negociacao'));
-  const acomp = await linhas(consultaCarteira({ usuario: VEND, filtros: { status: 'em_negociacao', somenteRetornos: true } }));
+  assert.ok(lista.every((x) => x.status_atual !== 'aguardando_cadastro'));
+  const acomp = await linhas(consultaCarteira({ usuario: VEND, filtros: { status: 'aguardando_cadastro', somenteRetornos: true } }));
   assert.equal(acomp.length, 1);
 });

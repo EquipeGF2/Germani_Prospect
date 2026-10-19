@@ -1,91 +1,65 @@
-# 08 — Fluxo completo do processo (para validação)
+# 08 — Fluxo completo do processo
 
-**Situação:** proposta em validação (2026-10-19). As caixas marcadas com ⚠ mudam o que está implementado hoje.
-
-## 1. Visão geral
+**Situação:** implementado no banco (2026-10-19). Versão de uma página para conferência:
+[`fluxo-processo.pdf`](fluxo-processo.pdf).
 
 ```mermaid
 flowchart TD
-    BASE([Planilha base<br/>carga inicial]) --> NC[Não contactado]
-    BASE --> EP["Em prospecção<br/>(contato na planilha, DT 1o/2o)"]
-
-    subgraph LP [" LISTA PRINCIPAL — prospecção "]
+    BASE([Planilha base — carga inicial]) --> NC[Não contactado]
+    BASE --> EP["Em prospecção<br/>(DT 1o/2o na planilha)"]
+    subgraph LP [" LISTA PRINCIPAL — prospecção (representante e vendedor) "]
         NC
         EP
     end
-
-    NC -- "Sem interesse<br/>+ justificativa (individual ou lote)" --> SI[Sem interesse]
+    NC -- "Sem interesse + justificativa<br/>(individual ou lote)" --> SI[Sem interesse]
     EP -- "Sem interesse" --> SI
-    NC -- "Atendido" --> AT
-    EP -- "Atendido" --> AT
-
-    subgraph AC [" LISTA DE ACOMPANHAMENTO — efetivação do pedido "]
-        AT["1 · Atendido<br/>aguardando cadastro<br/>(prazo 15 dias)"]
-        CAD["2 · Cadastro<br/>cliente cadastrado no ERP"]
-        AF["3 · Análise financeira ⚠<br/>pedido entrou<br/>(10 dias)"]
-        PR(["4 · Pedido realizado<br/>(final)"])
-        RF["Restrição financeira ⚠<br/>pedido cancelado"]
+    NC -- "Atendido (mobile)" --> AC
+    EP -- "Atendido (mobile)" --> AC
+    subgraph ACOMP [" LISTA DE ACOMPANHAMENTO — efetivação do pedido "]
+        AC["1 · Aguardando cadastro<br/>prazo 15 dias"]
+        AF["2 · Análise financeira<br/>prazo 10 dias"]
+        AP["3 · Aguardando pedido"]
+        VR(["4 · Venda realizada — final"])
         SI
     end
-
-    AT -- "arquivo de CADASTRO do ERP<br/>(CNPJ encontrado)" --> CAD
-    CAD -- "arquivo de PEDIDOS do ERP" --> AF
-    AT -- "arquivo de PEDIDOS<br/>(sem cadastro antes)" --> AF
-    AF -- "aprovado ⚠ (como confirmar?)" --> PR
-    AF -- "cancelado por restrição ⚠<br/>(arquivo a definir)" --> RF
-    SI -- "Pedido identificado<br/>(informa a data do pedido)" --> AT
-
-    AT -. "prazo de 15 dias vencido" .-> AL1{{Alerta: cadastro atrasado}}
-    NC -. "cadastro/pedido sem atendimento" .-> AL2{{Alerta: convertido sem registro}}
-
-    BX([Arquivo de CNPJs baixados]) --> INV[Inválido<br/>congelado — impossibilitado de faturamento]
+    AC -- "importação: arquivo de CADASTRO (ERP)" --> AF
+    AF -- "console do analista: limite de crédito<br/>+ a prazo / à vista" --> AP
+    AP -- "importação: arquivo de PEDIDOS (ERP)" --> VR
+    AC -. "pedido no ERP antes" .-> VR
+    AF -. "pedido no ERP antes do OK" .-> VR
+    SI -- "Pedido identificado<br/>(data de entrada do pedido)" --> AC
+    BX([Arquivo de CNPJs baixados]) --> INV[Inválido — congelado]
 ```
 
-Em qualquer etapa, um CNPJ que aparecer no arquivo de baixados vai para **Inválido** e fica congelado com o
-histórico daquele momento.
+## Etapas
 
-## 2. Etapas
+| # | Etapa | Lista | Entra quando | Quem | Prazo / alerta |
+|---|---|---|---|---|---|
+| 0 | Não contactado / Em prospecção | principal | carga inicial | — | parado > 30 dias |
+| 1 | **Aguardando cadastro** | acompanhamento | "Atendido" no mobile (ou "Pedido identificado") | representante / vendedor | **15 dias** para o cadastro |
+| 2 | **Análise financeira** | acompanhamento | CNPJ no arquivo de **cadastro** do ERP | importação (administrador) | **10 dias** para o OK |
+| 3 | **Aguardando pedido** | acompanhamento | OK no console: **limite de crédito** + **a prazo / à vista** | analista financeiro | — |
+| 4 | **Venda realizada** | acompanhamento | CNPJ no arquivo de **pedidos** do ERP | importação | final |
+| — | Sem interesse | acompanhamento | registro com justificativa | representante / vendedor | reabre com "Pedido identificado" |
+| — | Inválido | — | CNPJ no arquivo de baixados (a qualquer momento) | importação | congelado |
 
-| # | Etapa | Lista | Como entra | Quem/qual arquivo | Prazo / alerta | Como sai |
-|---|---|---|---|---|---|---|
-| 0 | **Não contactado** | principal | carga inicial | planilha base | parado > 30 dias = alerta | Atendido ou Sem interesse |
-| 0 | **Em prospecção** | principal | carga inicial com DT 1o/2o sem resultado | planilha base | idem | idem |
-| — | **Sem interesse** | acompanhamento | registro com justificativa (motivo + observação), individual ou em lote | representante / vendedor | — | **Pedido identificado** (informa a data do pedido) → volta para Atendido |
-| 1 | **Atendido** — aguardando cadastro | acompanhamento | registro "Atendido" | representante / vendedor | **15 dias** para aparecer no cadastro do ERP; vencido = alerta | arquivo de cadastro ou de pedidos |
-| 2 | **Cadastro** | acompanhamento | CNPJ encontrado no arquivo de **cadastro de clientes** | importação do ERP | ⚠ prazo para o pedido? | arquivo de pedidos |
-| 3 | **Análise financeira** ⚠ | acompanhamento | CNPJ encontrado no arquivo de **pedidos** | importação do ERP | **10 dias** | aprovado → Pedido realizado · cancelado → Restrição financeira |
-| 4 | **Pedido realizado** | acompanhamento | análise financeira concluída | ⚠ a definir | — | final |
-| — | **Restrição financeira** ⚠ | acompanhamento | pedido cancelado pela análise | ⚠ arquivo a definir | — | ⚠ volta para Atendido? encerra? |
-| — | **Inválido** | — | CNPJ no arquivo de baixados | importação | — | congelado |
+## Histórico de movimentação
 
-## 3. Regras que valem em todo o fluxo
+**Todo movimento** gera uma linha em `movimentacoes`: entrada na base, contato da planilha, atendido,
+sem interesse, pedido identificado, cadastro, liberação de crédito, pedido, baixa e transferência de carteira.
+Cada linha guarda data, status antes → depois, **quem fez**, **de quem era a carteira naquele dia** e o detalhe
+(motivo, nº do documento, limite liberado). É a base de:
 
-- **Dias corridos** sempre a partir do **1º registro** do prospect (ou da DT 1o da planilha).
-- "Não atendido" **não gera registro**: o prospect continua na lista principal.
-- Cada mudança de etapa fica no histórico (data e origem) e **conta nos indicadores** de cada vendedor,
-  de cada equipe e no geral, mesmo depois de sair da lista principal.
-- Representante: só filtro, consulta e registros (atendido / sem interesse / pedido identificado).
-  Vendedor: o mesmo + montagem de rotas.
-- Nenhuma distância é calculada.
+- **linha do tempo** da ficha do cliente (`vw_movimentacoes`);
+- **filtros** de consulta e relatório (`consultaMovimentacoes`: período, tipo, status, vendedor, equipe, cidade, bairro);
+- **indicadores** de atividade e funil por vendedor, equipe e geral (`consultaAtividade`).
 
-## 4. O que muda em relação ao implementado hoje
+## Regras gerais
+- "Não atendido" não gera registro; dias corridos contam sempre do 1º registro.
+- Saiu da lista principal → continua no acompanhamento e **em todos os indicadores**.
+- Representante: filtro, consulta e registros. Vendedor: também monta rotas. Nenhuma distância é calculada.
 
-| Ponto | Hoje | Proposto |
-|---|---|---|
-| Nome da etapa 1 | status "Em negociação · atendido em dd/mm" | **"Atendido — aguardando cadastro"** (o nome "Em negociação" sai) |
-| Arquivo de pedidos | leva direto a **Venda realizada**; os 10 dias são só um aviso | leva a **Análise financeira** (etapa própria, 10 dias) |
-| Pedido realizado | = entrada do pedido | = **saída aprovada** da análise financeira |
-| Pedido cancelado | não existe | etapa **Restrição financeira** |
-
-## 5. Para validar
-
-1. A ordem **Atendido → Cadastro → Análise financeira → Pedido realizado** está correta?
-2. **Como a análise financeira termina?**
-   a) automaticamente, depois de 10 dias sem cancelamento;
-   b) por um arquivo do ERP (faturamento / notas emitidas);
-   c) por um arquivo de pedidos cancelados (o que não estiver nele vira Pedido realizado após os 10 dias).
-3. **Restrição financeira:** depois do cancelamento, o prospect volta para Atendido (nova tentativa), fica
-   parado nesse status ou encerra?
-4. **Depois do Cadastro**, existe prazo para o pedido entrar (como os 15 dias do cadastro)?
-5. Se o **pedido** chegar sem o cadastro antes, pode pular direto para Análise financeira (como no desenho)?
-6. O nome **"Atendido — aguardando cadastro"** substitui "Em negociação" em telas e relatórios?
+## Em aberto
+- Crédito **negado** pelo analista: hoje o console só registra liberação. Precisa de um caminho
+  (ex.: "Restrição financeira")?
+- Pedido do ERP que chega **antes** do OK financeiro vai direto para Venda realizada (o ERP prevalece). Confirmar.

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Fluxo do processo — GERMANI Prospect</title>
+<!-- Fonte do PDF docs/fluxo-processo.pdf. Regerar:
+     /opt/pw-browsers/chromium-1194/chrome-linux/chrome --headless --no-pdf-header-footer \
+       --print-to-pdf=docs/fluxo-processo.pdf docs/fluxo-processo.html -->
+<style>
+  @page { size: A4 portrait; margin: 0; }
+  html, body { margin: 0; background: #fff; }
+  body { font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; color: #1C1F23; }
+  svg { display: block; width: 210mm; height: 297mm; }
+  .t  { font-size: 13px; }
+  .tt { font-size: 22px; font-weight: 700; }
+  .st { font-size: 11px; fill: #55595F; }
+  .nb { font-size: 14px; font-weight: 700; fill: #fff; }
+  .ns { font-size: 10.5px; fill: #fff; }
+  .lb { font-size: 11px; font-weight: 700; fill: #1C1F23; }
+  .ls { font-size: 10px; fill: #3F3F46; }
+  .lane { font-size: 10px; font-weight: 700; letter-spacing: .08em; fill: #6B7280; }
+  .nt { font-size: 9.5px; fill: #3F3F46; }
+  .pz { font-size: 10px; font-weight: 700; fill: #9F1D24; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 794 1123" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1C1F23"/>
+    </marker>
+    <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6B7280"/>
+    </marker>
+  </defs>
+
+  <!-- Cabeçalho -->
+  <rect x="0" y="0" width="794" height="6" fill="#9F1D24"/>
+  <text x="40" y="48" class="tt">GERMANI Prospect — fluxo do processo</text>
+  <text x="40" y="68" class="st">Do prospect importado à venda realizada · todas as etapas ficam no histórico de movimentação · 2026-10-19</text>
+
+  <!-- Faixas -->
+  <rect x="30" y="160" width="734" height="104" rx="10" fill="#F5F5F2"/>
+  <text x="44" y="178" class="lane">LISTA PRINCIPAL — PROSPECÇÃO</text>
+  <rect x="30" y="318" width="734" height="542" rx="10" fill="#F5F5F2"/>
+  <text x="44" y="336" class="lane">ACOMPANHAMENTO DO PEDIDO</text>
+
+  <!-- Coluna principal: x 210..470 (centro 340) -->
+  <!-- 0 Planilha base -->
+  <rect x="210" y="88" width="260" height="50" rx="25" fill="#fff" stroke="#1C1F23" stroke-width="1.5"/>
+  <text x="340" y="110" text-anchor="middle" class="lb">Planilha base (carga inicial)</text>
+  <text x="340" y="126" text-anchor="middle" class="ls">administrador · uma vez</text>
+  <line x1="340" y1="138" x2="340" y2="188" stroke="#1C1F23" stroke-width="1.5" marker-end="url(#a)"/>
+
+  <!-- Lista principal -->
+  <rect x="210" y="190" width="260" height="60" rx="8" fill="#9CA3AF"/>
+  <text x="340" y="215" text-anchor="middle" class="nb">Não contactado / Em prospecção</text>
+  <text x="340" y="234" text-anchor="middle" class="ns">"não atendido" não gera registro</text>
+
+  <!-- seta Atendido -->
+  <line x1="340" y1="250" x2="340" y2="338" stroke="#1C1F23" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="352" y="268" width="190" height="40" rx="6" fill="#fff" stroke="#D1D5DB"/>
+  <text x="362" y="285" class="lb">ATENDIDO</text>
+  <text x="362" y="300" class="ls">mobile · representante ou vendedor</text>
+
+  <!-- 1 Aguardando cadastro -->
+  <rect x="210" y="340" width="260" height="62" rx="8" fill="#6D28D9"/>
+  <text x="340" y="366" text-anchor="middle" class="nb">1 · Aguardando cadastro</text>
+  <text x="340" y="385" text-anchor="middle" class="ns">"atendido em dd/mm"</text>
+  <text x="196" y="366" text-anchor="end" class="pz">prazo 15 dias</text>
+  <text x="196" y="380" text-anchor="end" class="nt">vencido = alerta</text>
+
+  <line x1="340" y1="402" x2="340" y2="478" stroke="#1C1F23" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="352" y="420" width="200" height="40" rx="6" fill="#fff" stroke="#D1D5DB"/>
+  <text x="362" y="437" class="lb">IMPORTAÇÃO · CADASTRO</text>
+  <text x="362" y="452" class="ls">CNPJ no arquivo de clientes do ERP</text>
+
+  <!-- 2 Análise financeira -->
+  <rect x="210" y="480" width="260" height="62" rx="8" fill="#C2410C"/>
+  <text x="340" y="506" text-anchor="middle" class="nb">2 · Análise financeira</text>
+  <text x="340" y="525" text-anchor="middle" class="ns">fila do console do analista</text>
+  <text x="196" y="506" text-anchor="end" class="pz">prazo 10 dias</text>
+  <text x="196" y="520" text-anchor="end" class="nt">vencido = alerta</text>
+
+  <line x1="340" y1="542" x2="340" y2="618" stroke="#1C1F23" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="352" y="556" width="240" height="48" rx="6" fill="#fff" stroke="#D1D5DB"/>
+  <text x="362" y="572" class="lb">OK DO ANALISTA FINANCEIRO</text>
+  <text x="362" y="586" class="ls">limite de crédito liberado (R$)</text>
+  <text x="362" y="598" class="ls">+ liberado a prazo ou à vista</text>
+
+  <!-- 3 Aguardando pedido -->
+  <rect x="210" y="620" width="260" height="62" rx="8" fill="#0F766E"/>
+  <text x="340" y="646" text-anchor="middle" class="nb">3 · Aguardando pedido</text>
+  <text x="340" y="665" text-anchor="middle" class="ns">crédito liberado</text>
+
+  <line x1="340" y1="682" x2="340" y2="758" stroke="#1C1F23" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="352" y="700" width="200" height="40" rx="6" fill="#fff" stroke="#D1D5DB"/>
+  <text x="362" y="717" class="lb">IMPORTAÇÃO · PEDIDOS</text>
+  <text x="362" y="732" class="ls">CNPJ no arquivo de pedidos do ERP</text>
+
+  <!-- 4 Venda realizada -->
+  <rect x="210" y="760" width="260" height="62" rx="31" fill="#1D4ED8"/>
+  <text x="340" y="786" text-anchor="middle" class="nb">4 · Venda realizada</text>
+  <text x="340" y="805" text-anchor="middle" class="ns">final</text>
+  <text x="340" y="845" text-anchor="middle" class="nt">O arquivo de pedidos vale em qualquer etapa — o ERP prevalece.</text>
+
+  <!-- Ramo: Sem interesse -->
+  <path d="M470,220 H606 V338" fill="none" stroke="#1C1F23" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="492" y="178" width="232" height="32" rx="6" fill="#fff" stroke="#D1D5DB"/>
+  <text x="502" y="194" class="lb">SEM INTERESSE + justificativa</text>
+  <text x="502" y="205" class="ls">motivo e observação · individual ou em lote</text>
+  <rect x="546" y="340" width="190" height="62" rx="8" fill="#3F3F46"/>
+  <text x="641" y="366" text-anchor="middle" class="nb">Sem interesse</text>
+  <text x="641" y="385" text-anchor="middle" class="ns">sai da lista principal</text>
+  <!-- reabertura -->
+  <path d="M600,402 V412 Q600,412 520,392 L472,384" fill="none" stroke="#6B7280" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#ag)"/>
+  <text x="736" y="420" text-anchor="end" class="nt">reabrir — pedido identificado:</text>
+  <text x="736" y="432" text-anchor="end" class="nt">informa a data do pedido → volta a 1</text>
+
+  <!-- Inválido -->
+  <rect x="566" y="640" width="170" height="40" rx="20" fill="#fff" stroke="#1C1F23" stroke-width="1.5"/>
+  <text x="651" y="657" text-anchor="middle" class="lb">Arquivo de CNPJs baixados</text>
+  <text x="651" y="671" text-anchor="middle" class="ls">em qualquer etapa</text>
+  <line x1="651" y1="680" x2="651" y2="758" stroke="#1C1F23" stroke-width="1.5" marker-end="url(#a)"/>
+  <rect x="566" y="760" width="170" height="62" rx="8" fill="#fff" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="651" y="786" text-anchor="middle" class="lb">Inválido</text>
+  <text x="651" y="803" text-anchor="middle" class="ls">congelado · impossibilitado</text>
+  <text x="651" y="815" text-anchor="middle" class="ls">de faturamento</text>
+
+  <!-- Quem faz -->
+  <text x="44" y="610" class="lane">QUEM FAZ</text>
+  <text x="44" y="628" class="nt"><tspan font-weight="700">Representante:</tspan></text>
+  <text x="44" y="641" class="nt">filtro, consulta e registros</text>
+  <text x="44" y="658" class="nt"><tspan font-weight="700">Vendedor:</tspan> o mesmo</text>
+  <text x="44" y="671" class="nt">+ montagem de rotas</text>
+  <text x="44" y="688" class="nt"><tspan font-weight="700">Analista financeiro:</tspan></text>
+  <text x="44" y="701" class="nt">console de crédito</text>
+  <text x="44" y="718" class="nt"><tspan font-weight="700">Administrador:</tspan></text>
+  <text x="44" y="731" class="nt">importações e usuários</text>
+  <text x="44" y="748" class="nt"><tspan font-weight="700">Supervisor:</tspan> equipe,</text>
+  <text x="44" y="761" class="nt">painel e redistribuição</text>
+
+  <!-- Histórico de movimentação -->
+  <rect x="30" y="880" width="734" height="156" rx="10" fill="#fff" stroke="#9F1D24" stroke-width="1.5"/>
+  <text x="48" y="904" class="lb" fill="#9F1D24">HISTÓRICO DE MOVIMENTAÇÃO DO CLIENTE — todo movimento é registrado</text>
+  <text x="48" y="926" class="nt">Entrada na base · contato da planilha · atendido · sem interesse · pedido identificado · cadastro · liberação de crédito ·</text>
+  <text x="48" y="939" class="nt">pedido · baixa · transferência de carteira.</text>
+  <text x="48" y="954" class="nt">Cada linha guarda: data · status antes → depois · quem fez · de quem era a carteira naquele dia · detalhe (motivo, documento, limite liberado).</text>
+  <text x="48" y="970" class="lb">Serve para:</text>
+  <text x="120" y="970" class="nt">linha do tempo da ficha · filtros (período, etapa, tipo, vendedor, equipe, cidade, bairro) ·</text>
+  <text x="120" y="984" class="nt">indicadores e funil por vendedor, por equipe e geral — mesmo depois de sair da lista principal.</text>
+  <text x="48" y="1006" class="nt">Regras: dias corridos contam sempre do 1º registro · "não atendido" não gera registro ·</text>
+  <text x="48" y="1019" class="nt">histórico nunca é editado (correção = novo registro) · sem cálculo de distância.</text>
+
+  <text x="40" y="1080" class="st">Sistema GERMANI · repositório equipegf2/germani_prospect · detalhes em docs/03-regras-negocio.md e docs/08-fluxo-processo.md</text>
+</svg>
+</body>
+</html>

@@ -2,6 +2,7 @@
 // Administração de usuários (executar localmente com o .env do administrador).
 //   npm run usuarios -- listar
 //   npm run usuarios -- criar-admin <login> "<Nome>"
+//   npm run usuarios -- criar-financeiro <login> "<Nome>"   analista do console de crédito
 //   npm run usuarios -- senha <login>          gera senha provisória (troca obrigatória no 1º acesso)
 //   npm run usuarios -- tipo <login> representante|vendedor   forma de trabalho (representante não tem rota)
 //   npm run usuarios -- desativar <login>
@@ -44,15 +45,17 @@ switch (comando) {
     console.table(r.rows.map((x) => ({ ...x })));
     break;
   }
-  case 'criar-admin': {
-    if (!login || !nome) throw new Error('uso: criar-admin <login> "<Nome>"');
+  case 'criar-admin':
+  case 'criar-financeiro': {
+    const perfil = comando === 'criar-admin' ? 'administrador' : 'financeiro';
+    if (!login || !nome) throw new Error(`uso: ${comando} <login> "<Nome>"`);
     const senha = senhaProvisoria();
     const r = await db.execute({
-      sql: `INSERT INTO usuarios (perfil, nome, nome_busca, login, senha_hash) VALUES ('administrador', ?, ?, ?, ?) RETURNING id`,
-      args: [nome, normalizarBusca(nome), login, await gerarHashSenha(senha)],
+      sql: `INSERT INTO usuarios (perfil, nome, nome_busca, login, senha_hash) VALUES (?, ?, ?, ?, ?) RETURNING id`,
+      args: [perfil, nome, normalizarBusca(nome), login, await gerarHashSenha(senha)],
     });
-    await auditar('criar_admin', r.rows[0].id, { login });
-    console.log(`Administrador criado. Login: ${login}  Senha provisória: ${senha}`);
+    await auditar(`criar_${perfil}`, r.rows[0].id, { login });
+    console.log(`Usuário ${perfil} criado. Login: ${login}  Senha provisória: ${senha}`);
     break;
   }
   case 'senha': {
@@ -83,7 +86,7 @@ switch (comando) {
     break;
   }
   default:
-    console.error('comandos: listar | criar-admin <login> "<Nome>" | senha <login> | tipo <login> representante|vendedor | desativar <login> | ativar <login>');
+    console.error('comandos: listar | criar-admin <login> "<Nome>" | criar-financeiro <login> "<Nome>" | senha <login> | tipo <login> representante|vendedor | desativar <login> | ativar <login>');
     process.exitCode = 1;
 }
 db.close();
