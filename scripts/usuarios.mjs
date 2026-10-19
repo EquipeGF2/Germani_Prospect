@@ -27,7 +27,16 @@ switch (comando) {
     break;
   case 'criar-admin':
   case 'criar-financeiro': {
-    const senhaInicial = process.env.GERMANI_SENHA_INICIAL || null;
+    // Secret colado com espaço ou quebra de linha no fim: considera só o texto
+    const senhaInicial = process.env.GERMANI_SENHA_INICIAL?.trim() || null;
+    // workflow rodado de novo para o mesmo login: redefine a senha em vez de falhar
+    const existe = senhaInicial && (await db.execute({ sql: 'SELECT id FROM usuarios WHERE login = ?', args: [String(login ?? '').trim()] })).rows[0];
+    if (existe) {
+      await redefinirSenha(db, { usuarioId: Number(existe.id), executadoPor: quem, senha: senhaInicial });
+      await definirAtivo(db, { usuarioId: Number(existe.id), ativo: true, executadoPor: quem });
+      console.log(`Usuário ${login} já existia: senha redefinida com a do Secret ADMIN_SENHA_INICIAL e acesso ativo.`);
+      break;
+    }
     const r = await criarUsuarioSistema(db, { perfil: comando === 'criar-admin' ? 'administrador' : 'financeiro', login, nome, executadoPor: quem, senha: senhaInicial });
     // senha vinda do ambiente nunca é impressa (o log do Actions de repositório público é público)
     console.log(senhaInicial ? `Usuário criado. Login: ${r.login}  Senha: a do Secret ADMIN_SENHA_INICIAL`

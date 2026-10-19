@@ -71,9 +71,9 @@ async function navegar() {
 if (modoDemonstracao()) document.getElementById('faixa-demo').hidden = false;
 iniciarCasca();
 addEventListener('hashchange', navegar);
-// Logotipo da empresa (web/img/logo-germani.jpg): se o arquivo existir, aparece no menu e na tela de entrada;
+// Logotipo da empresa (web/logo-germani.jpg): se o arquivo existir, aparece no menu e na tela de entrada;
 // sem ele, fica a marca em texto.
-const LOGO = 'img/logo-germani.jpg';
+const LOGO = 'logo-germani.jpg';
 const sondaLogo = new Image();
 sondaLogo.onload = () => document.documentElement.classList.add('com-logo');
 sondaLogo.src = LOGO;
