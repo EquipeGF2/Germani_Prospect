@@ -35,13 +35,14 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForSelector('.vis-executivo');
   assert.equal(await pagina.locator('#carregar-exemplo').count(), 0, 'o botão some depois da carga');
   assert.ok(Number(await pagina.locator('#painel-vendas').innerText()) > 0, 'há vendas');
+  assert.match(await pagina.locator('#valor-pedidos').innerText(), /^R\$\s?[1-9]/, 'valor real dos pedidos do arquivo do ERP');
   await foto('20-exemplo-executivo');
 
-  await pagina.click('.controles-painel .visoes a[data-visao="arrojado"]');
+  await pagina.selectOption('#painel-visao', 'arrojado');
   await pagina.waitForSelector('.vis-arrojado .ranking .rk');
   await foto('21-exemplo-arrojado');
 
-  await pagina.click('.controles-painel .visoes a[data-visao="equipe"]');
+  await pagina.selectOption('#painel-visao', 'equipe');
   await pagina.waitForSelector('.vis-equipe .sup');
   await pagina.click('.vis-equipe .sup >> nth=1');
   await pagina.waitForSelector('.vis-equipe .sup.sel >> nth=0');
@@ -55,7 +56,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForSelector('.vis-equipe');
 
   // período: hoje (talvez vazio) × desde o início da campanha × personalizado
-  await pagina.click('.controles-painel .visoes a[data-visao="executivo"]');
+  await pagina.selectOption('#painel-visao', 'executivo');
   await pagina.selectOption('#painel-periodo', 'campanha');
   await pagina.waitForFunction(() => location.hash.includes('periodo=campanha'));
   await telaPronta();
@@ -67,6 +68,10 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForFunction(() => location.hash.includes('de=2026-10-01'));
   await telaPronta();
   assert.match(await pagina.locator('main').innerText(), /Eventos de 01\/10\/2026 a 09\/10\/2026/);
+  await foto('23b-periodo-personalizado');
+  // com o período personalizado aberto, os filtros continuam na linha do título (1440 px, menu aberto)
+  const [topoTitulo, topoFiltros] = await Promise.all(['.cabecalho-pagina h1', '.controles-painel'].map((s) => pagina.locator(s).evaluate((el) => el.getBoundingClientRect().top)));
+  assert.ok(topoFiltros < topoTitulo + 40, `filtros quebraram de linha (${topoTitulo} × ${topoFiltros})`);
   const funil = (await pagina.locator('.funil-barras .v').allInnerTexts()).map((t) => Number(t.replace(/\./g, '')));
   assert.ok(funil.every((v, i) => i === 0 || v <= funil[i - 1]), `funil cresceu: ${funil}`);
   await foto('23-exemplo-periodo');
@@ -79,6 +84,8 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.equal(await pagina.locator('#so-retornos').count(), 0, 'sem "só retornos" no computador');
   await pagina.click('.exibicao a[data-exibicao="lista"]');
   await pagina.waitForSelector('.tabela-carteira tbody tr');
+  const umaLinha = () => pagina.locator('.barra-carteira > *').evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().bottom))).size);
+  assert.equal(await umaLinha(), 1, 'filtros da lista numa linha só (1440 px, admin)');
   await foto('25-lista-tabela');
   await pagina.goto(`${base}#/carteira?visao=onda`);
   await telaPronta();
@@ -97,6 +104,12 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.goto(`${base}#/carteira?aba=acompanhamento&visao=lista&dataDe=2026-10-01&dataAte=2026-10-09`);
   await telaPronta();
   assert.match(await pagina.locator('.chips').innerText(), /Último registro de 01\/10\/2026 até 09\/10\/2026/);
+  assert.equal(await umaLinha(), 1, 'filtros do acompanhamento numa linha só');
+  await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
+  await telaPronta();
+  const ordem = await pagina.locator('.status-cartao b').allInnerTexts();
+  assert.deepEqual(ordem, ['Aguardando cadastro', 'Análise financeira', 'Aguardando pedido', 'Venda realizada', 'Sem interesse', 'Inválido (baixado)']);
+  await foto('27-acompanhamento');
 
   // outros perfis com a senha de exemplo
   await pagina.click('.menu-sair');
@@ -107,6 +120,12 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForSelector('h1:text("Console de crédito")');
   assert.ok(await pagina.locator('table tbody tr').count() >= 0);
   await foto('24-exemplo-console');
+  await pagina.click('a:text("Liberar crédito") >> nth=0');
+  await pagina.waitForSelector('h1:text("Liberar crédito")');
+  const topos = await pagina.locator('.opcoes-resultado.em-linha .opcao').evaluateAll((els) => els.map((el) => [Math.round(el.getBoundingClientRect().top), el.getBoundingClientRect().height]));
+  assert.equal(new Set(topos.map((t) => t[0])).size, 1, 'formas de pagamento lado a lado');
+  assert.ok(topos.every((t) => t[1] < 70), `sem quebra de linha nos cards: ${topos}`);
+  await foto('28-exemplo-liberar');
   await pagina.click('.menu-sair');
   const supervisor = await pagina.evaluate(async () => {
     const v = new URL(document.querySelector('script[type=module]').src).search;   // mesma versão do app (?v=…) = mesmo banco

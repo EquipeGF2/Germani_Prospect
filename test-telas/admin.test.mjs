@@ -159,7 +159,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('#menu a[title="Início"]');
   await pagina.waitForSelector('.vis-executivo');
   assert.match(await texto(), /de 120 contactados/);
-  await pagina.click('.controles-painel .visoes a[data-visao="arrojado"]');
+  await pagina.selectOption('#painel-visao', 'arrojado');
   await pagina.waitForSelector('.vis-arrojado');
   assert.equal(await pagina.locator('.kpis-linha > div').nth(3).locator('.v').innerText(), '2');
   const opcoesSup = await pagina.locator('#painel-supervisor option').allInnerTexts();
@@ -167,7 +167,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.selectOption('#painel-supervisor', { index: 2 });
   await pagina.waitForFunction(() => document.querySelector('.kpis-linha .v')?.textContent !== '120');   // só a equipe escolhida
   await foto('09b-inicio-arrojado');
-  await pagina.click('.controles-painel .visoes a[data-visao="executivo"]');
+  await pagina.selectOption('#painel-visao', 'executivo');
   await pagina.waitForSelector('.vis-executivo');
   await pagina.setViewportSize({ width: 390, height: 844 });                 // celular: layout de sempre (cartões)
   await pagina.waitForSelector('.agentes-cartoes .agente');
@@ -227,7 +227,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('10b-inicio-vendedor');
   await pagina.click('#menu a[title="Lista principal"]');
   await pagina.waitForSelector('.cartao-prospect');
-  assert.ok(await pagina.locator('.visoes a:text("Rota")').count(), 'vendedor tem visão por rota');
+  assert.ok(await pagina.locator('#filtro-visao option[value=rota]').count(), 'vendedor tem visão por rota');
   await foto('11-lista-principal');
   const primeiro = (await pagina.locator('.cartao-prospect-corpo b').first().innerText()).trim();
   await pagina.fill('#busca', primeiro.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
@@ -243,7 +243,12 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('label.opcao:has-text("Sem interesse")');
   await pagina.click('button:text("Gravar registro")');
   await pagina.waitForSelector('text=motivo obrigatório');                // validação antes de enviar
+  assert.equal(await pagina.locator('label[for="observacao"]').innerText(), 'Observação');   // opcional por padrão
+  await pagina.selectOption('#motivo', { label: 'Outro (descrever na observação)' });
+  assert.equal(await pagina.locator('label[for="observacao"]').innerText(), 'Observação *');  // obrigatória: sem interesse + "Outro"
+  assert.equal(await pagina.getAttribute('#observacao', 'placeholder'), 'Obrigatória: descreva o motivo');
   await pagina.click('label.opcao:has-text("Atendido")');
+  assert.equal(await pagina.getAttribute('#observacao', 'placeholder'), 'Opcional');
   await foto('12-registrar');
   await pagina.click('button:text("Gravar registro")');
   await pagina.waitForSelector('text=Atendido registrado.');

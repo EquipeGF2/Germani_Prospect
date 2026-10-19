@@ -9,7 +9,7 @@ import { seletorColuna } from './admin-importar-tipos.js';
 const TIPOS = {
   cadastro: { titulo: 'Cadastro de clientes', descricao: 'CNPJs cadastrados no ERP (data e código do cliente).', efeito: 'Análise financeira', documento: 'Código do cliente', data: 'Data do cadastro',
     icone: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 15l2 2 4-4' },
-  pedido: { titulo: 'Pedidos', descricao: 'Pedidos emitidos (data e número do pedido).', efeito: 'Venda realizada', documento: 'Número do pedido', data: 'Data do pedido',
+  pedido: { titulo: 'Pedidos', descricao: 'Pedidos emitidos (data, número e valor do pedido).', efeito: 'Venda realizada', documento: 'Número do pedido', data: 'Data do pedido',
     icone: 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0' },
   baixa: { titulo: 'CNPJs baixados', descricao: 'Empresas com CNPJ baixado na Receita.', efeito: 'Inválido (congelado)', documento: null, data: 'Data da baixa',
     icone: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM4.9 4.9l14.2 14.2' },
@@ -46,8 +46,9 @@ export async function render(conteudo, ctx) {
     const cCnpj = seletorColuna('col-cnpj', 'Coluna do CNPJ', cab, 'CNPJ');
     const cData = seletorColuna('col-data', `Coluna da ${t.data.toLowerCase()}`, cab, 'DATA', { opcional: true });
     const cDoc = t.documento ? seletorColuna('col-doc', `Coluna do ${t.documento.toLowerCase()}`, cab, t.documento, { opcional: tipo.value !== 'pedido' }) : null;
+    const cValor = tipo.value === 'pedido' ? seletorColuna('col-valor', 'Coluna do valor do pedido', cab, 'VALOR', { opcional: true }) : null;
     const dataPadrao = h('input', { id: 'data-padrao', type: 'date', value: hojeSaoPaulo() });
-    const parametros = () => ({ tipo: tipo.value, linhas: planilha.linhas, colunas: { cnpj: cCnpj.valor(), data: cData.valor(), documento: cDoc?.valor() ?? null },
+    const parametros = () => ({ tipo: tipo.value, linhas: planilha.linhas, colunas: { cnpj: cCnpj.valor(), data: cData.valor(), documento: cDoc?.valor() ?? null, valor: cValor?.valor() ?? null },
       dataPadrao: cData.valor() ? null : dataPadrao.value, hoje: hojeSaoPaulo(), arquivoNome: planilha.nome, arquivoSha256: planilha.sha256, executadoPor: ctx.usuario.login });
     const paraTela = (rs) => rs.map((r) => ({ numeroLinha: r.numeroLinha, resultado: r.resultado, cnpj: r.cnpj, mensagens: r.resultado === 'aceita' ? r.avisos : r.erros }));
     const bSim = h('button', { onclick: async () => {
@@ -67,7 +68,7 @@ export async function render(conteudo, ctx) {
     } }, 'Simular');
     montar(area, passos(ETAPAS, 1), h('div', { class: 'cartao' },
       h('p', {}, `${t.titulo} · ${planilha.nome} · ${planilha.observacao}`),
-      h('div', { class: 'linha-campos' }, cCnpj.el, cData.el, cDoc?.el,
+      h('div', { class: 'linha-campos' }, cCnpj.el, cData.el, cDoc?.el, cValor?.el,
         h('div', {}, h('label', { for: 'data-padrao' }, 'Data para todas as linhas (se não houver coluna de data)'), dataPadrao)),
       h('div', { class: 'acoes' }, bSim, h('button', { class: 'secundario', onclick: () => render(conteudo, ctx) }, 'Trocar arquivo'))));
   }

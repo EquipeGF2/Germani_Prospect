@@ -75,7 +75,7 @@ Implementação: [`shared/lote.mjs`](../shared/lote.mjs) · testes: [`test/lote.
 
 Preço acima do praticado · Já tem fornecedor/contrato · Mix não atende · Pedido mínimo alto ·
 Prazo/condição de pagamento · Frequência ou dia de entrega · Não vende a categoria/baixo giro ·
-Sem espaço na gôndola · Compra centralizada (rede/matriz) · Outro (observação obrigatória).
+Sem espaço na gôndola · Compra centralizada (rede/matriz) · Outro (observação obrigatória). Na tela, o campo Observação só aparece como obrigatório ("Observação *") quando o resultado é Sem interesse e o motivo é "Outro"; nos demais casos é opcional.
 
 Do sistema (não aparece no app): Não informado (importação inicial).
 
@@ -84,7 +84,7 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 | Arquivo | Evento | Efeito |
 |---|---|---|
 | Cadastro de clientes (Senior) | `cadastro` | → **Análise financeira**; guarda código do cliente; `analise_financeira_ate` = data + `prazo_analise_financeira_dias` (10) |
-| Pedidos (Senior) | `pedido` | → **Venda realizada** (final); guarda nº do pedido. Vale em qualquer etapa (o ERP prevalece) |
+| Pedidos (Senior) | `pedido` | → **Venda realizada** (final); guarda nº do pedido e, se o arquivo tiver a coluna, o **valor do pedido** ("1.234,56" ou 1234.56; vazio = sem valor, com aviso; inválido/negativo = linha rejeitada). Vale em qualquer etapa (o ERP prevalece) |
 | CNPJs baixados | `baixa` | → Inválido; `situacao_cadastral = baixada`; prospect **congelado**: histórico preservado como estava, sem novos contatos, sem cadastro/pedido ("impossibilitado de faturamento") |
 
 - **Os arquivos do ERP prevalecem sobre o status do app:** cadastro leva a **Análise financeira** e pedido leva a
@@ -93,7 +93,8 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 - Cadastro/pedido de prospect **sem nenhum "atendido" nem "pedido identificado" registrado** → `convertido_sem_registro = 1`
   (alerta para o supervisor: alguém vendeu sem lançar).
 - Cadastro posterior a um pedido não rebaixa a venda.
-- Reimportar o mesmo arquivo não duplica eventos (índice único por prospect + tipo + documento).
+- Reimportar o mesmo arquivo não duplica eventos (índice único por prospect + tipo + documento). O valor entra junto
+  com o pedido e não é alterado depois (eventos são só de inclusão).
 
 ## 4. Alertas (para o painel)
 
@@ -167,7 +168,8 @@ movimentação conta sempre nos indicadores.
   Filtros: pendentes hoje, retornos pendentes, cidade, bairro, **onda**, UF, rota/subrota (vendedor).
   Busca por nome, CNPJ (com ou sem pontuação), cidade ou bairro, **sem acento**.
 - **Acompanhamento (visão Status):** todos os status com quantidade, retornos pendentes, prazos de cadastro
-  vencidos e média de dias corridos. Tocar num status abre a lista daquele status.
+  vencidos e média de dias corridos, **na ordem do processo** (aguardando cadastro → análise financeira → aguardando
+  pedido → venda realizada; sem interesse e inválido por último). Tocar num status abre a lista daquele status.
 - **Onda:** coluna ONDA da planilha base — visão agrupada e filtro para os dois perfis, também nos indicadores
   (`agrupar: 'onda'`, `filtros.onda`) e no histórico de movimentação.
 - **Cidade / Bairro:** para os dois perfis. Total, pendentes hoje, não contactados, em prospecção, atendidos
@@ -184,7 +186,7 @@ movimentação conta sempre nos indicadores.
   cartão mostra de quem é a carteira.
 - Cada cartão: razão social, selo do status, CNPJ, fantasia, bairro/cidade, onda, rota (só vendedor),
   "atendido em…", dias corridos, retorno vencido e prazo de cadastro vencido. 50 por página.
-- **Computador** (Lista principal e Acompanhamento; o celular não muda): busca, visões, supervisor, vendedor/representante,
+- **Computador** (Lista principal e Acompanhamento; o celular não muda): **numa linha só** — busca, visão (lista de seleção), supervisor, vendedor/representante,
   **filtro por data** (de/até sobre a data do último registro — `filtros.dataDe`/`dataAte` em `dt_ultimo_contato`) e
   **Exibir: Cards | Lista** (tabela; escolha guardada no navegador) numa só barra. Sem o atalho "só retornos vencidos hoje".
   Ondas sempre em ordem natural (Onda 1, 2, 3…, `ordemNatural`). **Rota em dois níveis** (`rotaEmNiveis`): nível 1 = rota;
@@ -234,11 +236,11 @@ Fila com os clientes em Análise financeira (mais antigos primeiro, dias em aná
 sim/não** e **limite**. Boleto exige limite maior que zero.
 
 **Na tela** (menu *Financeiro → Console de crédito*, `#/financeiro`; o analista entra direto nela):
-- indicadores: em análise, fora do prazo (10 dias), liberados aguardando pedido;
+- indicadores **compactos** (uma faixa baixa, a lista tem o destaque): em análise, fora do prazo (10 dias), liberados aguardando pedido;
 - abas **Em análise** (mais antigos primeiro, dias em análise, prazo; vencido em vermelho) e **Liberados · aguardando
   pedido** (mais recentes primeiro, com a condição: forma · prazo · limite · restrição); busca por cliente, CNPJ,
-  cód. ERP, cidade ou vendedor;
-- **Liberar crédito** (`#/financeiro/liberar`): forma (antecipado / à vista / boleto), prazo em dias, limite (R$,
+  cód. ERP, cidade ou vendedor — abas e busca na mesma linha;
+- **Liberar crédito** (`#/financeiro/liberar`): forma (antecipado / à vista / boleto — três cards lado a lado, sem quebra), prazo em dias, limite (R$,
   aceita "12.500,00"), data (entre o cadastro no ERP e hoje), restrição sim/não, observação. Grava e o cliente
   vai para Aguardando pedido;
 - **Corrigir** (aba Liberados): mesma tela; grava uma **nova** liberação, a anterior fica no histórico.
@@ -284,6 +286,11 @@ testes: [`test/painel.test.mjs`](../test/painel.test.mjs).
     (carteira × contactados × atendidos) e o funil da equipe.
 - **Funil** (cumulativo, nunca cresce): base → contactados → atendidos → cadastrados no ERP → crédito liberado → venda;
   o **% de cada etapa é sempre sobre a base de prospects** (`pctBase`);
+- **Valor de conversão** (estimado: vendas × `valor_medio_cliente`) e, ao lado, **Valor dos pedidos** = soma real do valor
+  dos pedidos importados do ERP (`eventos_erp.valor`; com período, pedidos com data no período). No celular aparece no
+  detalhe do cartão Valor de conversão.
+- Filtros do Início (período, supervisor, **visualização em lista de seleção**) ficam na linha do título, inclusive com o
+  período personalizado aberto;
   "sem interesse" fica fora do funil. Uma só cor (vermelho GERMANI, do claro ao escuro).
 - **Período** (só no computador): *Posição atual* (padrão — foto da carteira hoje) · desde o início da campanha · hoje ·
   esta semana · este mês · últimos 30 dias · personalizado (de/até). Com período, contam os **eventos no período**:

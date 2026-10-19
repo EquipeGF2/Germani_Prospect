@@ -58,13 +58,13 @@ export async function prospect(db, id) {
   return (await db.execute({ sql: 'SELECT * FROM vw_prospects WHERE id = ?', args: [id] })).rows[0];
 }
 
-export async function evento(db, { prospectId, tipo, data, documento = null }) {
+export async function evento(db, { prospectId, tipo, data, documento = null, valor = null }) {
   const imp = await db.execute({
     sql: `INSERT INTO importacoes (tipo, arquivo_nome, arquivo_sha256, executado_por) VALUES (?, 'teste', 'x', 'teste') RETURNING id`,
     args: [{ cadastro: 'cadastro_erp', pedido: 'pedido_erp', baixa: 'cnpj_baixado' }[tipo]],
   });
   await db.execute({
-    sql: 'INSERT INTO eventos_erp (prospect_id, tipo, data_evento, documento, importacao_id) VALUES (?, ?, ?, ?, ?)',
-    args: [prospectId, tipo, data, documento, imp.rows[0].id],
+    sql: 'INSERT INTO eventos_erp (prospect_id, tipo, data_evento, documento, valor, importacao_id) VALUES (?, ?, ?, ?, ?, ?)',
+    args: [prospectId, tipo, data, documento, valor, imp.rows[0].id],
   });
 }

@@ -39,7 +39,8 @@ export async function render(conteudo, ctx) {
   const canal = h('select', { id: 'canal', 'aria-label': 'Canal' }, CANAIS.map((c) => h('option', { value: c }, NOMES_CANAL[c])));
   const data = h('input', { type: 'date', id: 'data-contato', value: hoje, max: hoje, min: p.dt_ultimo_contato ?? null });
   const motivo = campoMotivo(motivos);
-  const observacao = h('textarea', { id: 'observacao', rows: 3, maxlength: 500, placeholder: 'Opcional (obrigatória para "Outro")' });
+  const observacao = h('textarea', { id: 'observacao', rows: 3, maxlength: 500, placeholder: 'Opcional' });
+  const rotuloObs = h('label', { for: 'observacao' }, 'Observação');
   const retorno = h('input', { type: 'date', id: 'data-retorno', min: hoje });
   const dataPedido = h('input', { type: 'date', id: 'data-pedido', max: hoje });
   const blocoMotivo = h('div', { class: 'campo oculto' }, h('label', { for: 'motivo' }, 'Motivo *'), motivo);
@@ -53,7 +54,13 @@ export async function render(conteudo, ctx) {
     blocoPedido.classList.toggle('oculto', resultado !== 'pedido_informado');
     blocoRetorno.classList.toggle('oculto', resultado === 'sem_interesse' || !resultado); // retorno só na negociação
     botao.disabled = !resultado;
+    // observação obrigatória só quando não há interesse e o motivo exige descrição ("Outros")
+    const m = motivos.find((x) => String(x.id) === motivo.value);
+    const exige = resultado === 'sem_interesse' && Boolean(m && Number(m.exige_observacao));
+    rotuloObs.textContent = exige ? 'Observação *' : 'Observação';
+    observacao.placeholder = exige ? 'Obrigatória: descreva o motivo' : 'Opcional';
   }
+  motivo.addEventListener('change', atualizar);
 
   async function gravar(ev) {
     ev.preventDefault();
@@ -90,7 +97,7 @@ export async function render(conteudo, ctx) {
         h('div', { class: 'campo' }, h('label', { for: 'data-contato' }, 'Data do registro'), data),
         blocoRetorno),
       blocoMotivo, blocoPedido,
-      h('div', { class: 'campo' }, h('label', { for: 'observacao' }, 'Observação'), observacao),
+      h('div', { class: 'campo' }, rotuloObs, observacao),
       erros,
       h('div', { class: 'acoes' }, botao, h('a', { class: 'botao secundario', href: `#/ficha?id=${id}` }, 'Cancelar'))));
 }

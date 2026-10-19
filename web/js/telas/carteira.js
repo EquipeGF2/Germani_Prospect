@@ -100,8 +100,8 @@ export async function render(conteudo, ctx) {
   const formBusca = h('form', { class: 'barra-busca', onsubmit: (ev) => { ev.preventDefault(); location.hash = endereco(e, { busca: campoBusca.value.trim(), pagina: 0 }); } },
     campoBusca, h('button', { type: 'submit' }, 'Buscar'));
 
-  const visoes = h('div', { class: 'visoes', role: 'tablist' }, permitidas
-    .filter((v) => (e.aba === 'acompanhamento' ? ['status', 'lista', 'cidade', 'bairro', 'onda', 'rota'].includes(v) : v !== 'status'))
+  const visoesDaAba = permitidas.filter((v) => (e.aba === 'acompanhamento' ? ['status', 'lista', 'cidade', 'bairro', 'onda', 'rota'].includes(v) : v !== 'status'));
+  const visoes = h('div', { class: 'visoes', role: 'tablist' }, visoesDaAba
     .map((v) => h('a', { href: endereco(e, { visao: v, pagina: 0 }), class: v === e.visao ? 'ativa' : '' }, NOMES_VISAO[v])));
 
   const extras = [];
@@ -155,9 +155,11 @@ export async function render(conteudo, ctx) {
       corpo);
   }
 
-  // computador: tudo numa barra só
-  const data = (id, rotulo, chave) => h('div', { class: 'filtro' }, h('label', { for: id }, rotulo),
-    h('input', { type: 'date', id, value: e.filtros[chave] ?? '', onchange: (ev) => { location.hash = endereco(e, { filtros: { [chave]: ev.target.value || null }, pagina: 0 }); } }));
+  // computador: todos os filtros numa linha só (visão em lista, datas lado a lado)
+  const data = (id, rotulo, chave) => h('input', { type: 'date', id, 'aria-label': rotulo, value: e.filtros[chave] ?? '',
+    onchange: (ev) => { location.hash = endereco(e, { filtros: { [chave]: ev.target.value || null }, pagina: 0 }); } });
+  const selVisao = h('select', { id: 'filtro-visao', 'aria-label': 'Visão', onchange: (ev) => { location.hash = endereco(e, { visao: ev.target.value, pagina: 0 }); } },
+    visoesDaAba.map((v) => h('option', { value: v, selected: v === e.visao }, NOMES_VISAO[v])));
   const botoesExibicao = e.visao === 'lista' ? h('div', { class: 'filtro' }, h('label', {}, 'Exibir'),
     h('div', { class: 'visoes exibicao', role: 'tablist' }, [['cards', 'Cards'], ['lista', 'Lista']].map(([k, t]) => h('a', {
       href: '#', class: k === exibicao ? 'ativa' : '', dados: { exibicao: k },
@@ -167,10 +169,10 @@ export async function render(conteudo, ctx) {
     h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo), h('p', {}, ajuda))),
     h('div', { class: 'barra-carteira' },
       h('div', { class: 'filtro busca' }, h('label', { for: 'busca' }, 'Buscar'), formBusca),
-      h('div', { class: 'filtro' }, h('label', {}, 'Visão'), visoes),
+      h('div', { class: 'filtro' }, h('label', { for: 'filtro-visao' }, 'Visão'), selVisao),
       extras,
-      data('filtro-data-de', 'Último registro de', 'dataDe'),
-      data('filtro-data-ate', 'até', 'dataAte'),
+      h('div', { class: 'filtro' }, h('label', { for: 'filtro-data-de' }, 'Último registro (de · até)'),
+        h('div', { class: 'datas' }, data('filtro-data-de', 'Último registro de', 'dataDe'), data('filtro-data-ate', 'Último registro até', 'dataAte'))),
       botoesExibicao),
     chips.length ? h('div', { class: 'chips' }, chips) : null,
     corpo);

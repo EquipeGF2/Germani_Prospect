@@ -147,3 +147,20 @@ test('feriados automáticos: nacionais calculados para qualquer ano (Páscoa) e 
   await assert.rejects(incluirFeriado(db, { data: '2031-12-25', descricao: 'Natal', abrangencia: 'nacional' }), /automaticamente/);
   assert.equal(await diasUteisCampanha(db, { inicio: '2031-12-01', hoje: '2031-12-31' }), 21);   // 23 dias úteis − 08/12 − 25/12
 });
+
+test('painel: valor dos pedidos = soma real dos pedidos importados (posição atual e no período)', async () => {
+  const db = await bancoTeste();
+  await criarEquipe(db);
+  const ids = [];
+  for (let n = 1; n <= 3; n++) ids.push(await criarProspect(db, { n, vendedorId: 2 }));
+  await evento(db, { prospectId: ids[0], tipo: 'pedido', data: '2026-10-05', documento: 'P1', valor: 1500.5 });
+  await evento(db, { prospectId: ids[0], tipo: 'pedido', data: '2026-10-12', documento: 'P2', valor: 499.5 });
+  await evento(db, { prospectId: ids[1], tipo: 'pedido', data: '2026-10-12', documento: 'P3' });          // sem valor no arquivo
+  const G = { id: 4, perfil: 'administrador' };
+  const atual = somarPainel((await db.execute(consultaPainel({ usuario: G }))).rows);
+  assert.deepEqual([atual.qtd_pedidos, atual.valor_pedidos, atual.venda_realizada], [3, 2000, 2]);
+  const semana = somarPainel((await db.execute(consultaPainel({ usuario: G, periodo: { inicio: '2026-10-10', fim: '2026-10-19' } }))).rows);
+  assert.deepEqual([semana.qtd_pedidos, semana.valor_pedidos], [2, 499.5]);
+  const vend = somarPainel((await db.execute(consultaPainel({ usuario: { id: 3, perfil: 'vendedor' } }))).rows);
+  assert.equal(vend.valor_pedidos, 0);
+});

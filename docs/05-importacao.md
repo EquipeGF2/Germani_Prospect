@@ -87,7 +87,7 @@ O layout desses arquivos ainda não foi enviado — as colunas são informadas n
 ```bash
 npm run importar:eventos -- --listar-colunas arquivo.xlsx
 npm run importar:eventos -- --tipo cadastro arquivo.xlsx --col-cnpj "CNPJ" --col-data "Data Cadastro" --col-documento "Código" --simular
-npm run importar:eventos -- --tipo pedido   arquivo.xlsx --col-cnpj "CNPJ" --col-data "Data"          --col-documento "Pedido"
+npm run importar:eventos -- --tipo pedido   arquivo.xlsx --col-cnpj "CNPJ" --col-data "Data"          --col-documento "Pedido" --col-valor "Valor Total"
 npm run importar:eventos -- --tipo baixa    baixados.csv --col-cnpj "CNPJ" --data-padrao 2026-10-19
 ```
 

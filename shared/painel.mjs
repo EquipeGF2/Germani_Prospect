@@ -6,6 +6,7 @@
 // Contagens sobre a carteira válida (status.conta_carteira = 1: inválidos/baixados ficam fora).
 //   funil cumulativo: contactados ⊇ atendidos ⊇ cadastrados ⊇ crédito liberado ⊇ venda (quem chegou à etapa ou além)
 //   % contactado = contactados ÷ total · % conversão = venda realizada ÷ contactados
+//   valor dos pedidos = soma real do valor dos pedidos importados do ERP (eventos_erp.valor, migração 0004)
 // Filtro de período (resolverPeriodo): sem período = posição atual; com período = eventos com data no período.
 import { datasDeFeriado } from './feriados.mjs';
 
@@ -52,11 +53,15 @@ export function consultaPainel({ usuario, periodo = null }) {
     const contactado = `SUM(EXISTS (SELECT 1 FROM contatos c WHERE c.prospect_id = p.id AND ${entre('c.data_contato')}) OR ${etapa('atendido')})`;
     colunas = [contactado, `SUM(${etapa('atendido')})`, `SUM(${etapa('cadastro')})`, `SUM(${etapa('credito')})`, `SUM(${etapa('venda')})`,
       `SUM(p.status_atual = 'sem_interesse' AND ${entre('p.dt_ultimo_contato')})`];
+    const pedidos = (agregado) => `SUM((SELECT ${agregado} FROM eventos_erp e WHERE e.prospect_id = p.id AND e.tipo = 'pedido' AND ${entre('e.data_evento')}))`;
+    colunas.push(pedidos('COUNT(*)'), pedidos('SUM(e.valor)'));
   } else {
     colunas = ["SUM(p.status_atual <> 'nao_contactado')", `SUM(${ETAPA.atendido})`, `SUM(${ETAPA.cadastro})`, `SUM(${ETAPA.credito})`,
       `SUM(${ETAPA.venda})`, "SUM(p.status_atual = 'sem_interesse')"];
+    const pedidos = (agregado) => `SUM((SELECT ${agregado} FROM eventos_erp e WHERE e.prospect_id = p.id AND e.tipo = 'pedido'))`;
+    colunas.push(pedidos('COUNT(*)'), pedidos('SUM(e.valor)'));
   }
-  const [contactados, atendidos, cadastrados, credito, venda, sem] = colunas;
+  const [contactados, atendidos, cadastrados, credito, venda, sem, qtdPedidos, valorPedidos] = colunas;
   return {
     sql: `SELECT v.id AS agente_id, v.nome AS agente_nome, v.perfil AS agente_perfil, v.tipo_atuacao,
                  COALESCE(v.supervisor_id, v.id) AS supervisor_id, COALESCE(sup.nome, v.nome) AS supervisor_nome,
@@ -67,7 +72,9 @@ export function consultaPainel({ usuario, periodo = null }) {
                  ${cadastrados} AS cadastrados,
                  ${credito} AS credito_liberado,
                  ${venda} AS venda_realizada,
-                 ${sem} AS sem_interesse
+                 ${sem} AS sem_interesse,
+                 COALESCE(${qtdPedidos}, 0) AS qtd_pedidos,
+                 COALESCE(${valorPedidos}, 0) AS valor_pedidos
             FROM prospects p
             JOIN status s   ON s.codigo = p.status_atual
             JOIN usuarios v ON v.id = p.vendedor_id
@@ -90,7 +97,7 @@ export function funilPainel(t) {
 
 export const PERIODOS = Object.freeze({
   atual: 'Posição atual',
-  campanha: 'Desde o início da campanha',
+  campanha: 'Desde o início',
   hoje: 'Hoje',
   semana: 'Esta semana',
   mes: 'Este mês',
@@ -116,7 +123,8 @@ export function resolverPeriodo(chave, { hoje, inicioCampanha, de, ate }) {
   }
 }
 
-const CAMPOS = ['total', 'nao_contactado', 'contactados', 'atendidos', 'cadastrados', 'sem_interesse', 'credito_liberado', 'venda_realizada'];
+const CAMPOS = ['total', 'nao_contactado', 'contactados', 'atendidos', 'cadastrados', 'sem_interesse', 'credito_liberado', 'venda_realizada',
+  'qtd_pedidos', 'valor_pedidos'];
 
 /** Soma linhas de agentes e calcula os percentuais. */
 export function somarPainel(linhas) {
