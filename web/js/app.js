@@ -35,7 +35,9 @@ function papelDe(usuario) {
 }
 
 async function navegar() {
+  const alvo = location.hash;
   const conteudo = document.getElementById('conteudo');
+  conteudo.dataset.pronto = '';
   const [caminho, consulta = ''] = (location.hash.replace(/^#/, '') || '/inicio').split('?');
   const usuario = usuarioAtual();
   atualizarCasca({ usuario, caminho, consulta, papel: usuario ? papelDe(usuario) : '', aoSair: () => { sair(); irPara('/entrar'); } });
@@ -55,6 +57,7 @@ async function navegar() {
     console.error(e);
     montar(conteudo, mensagem(`Erro ao abrir a tela: ${e.message}`, 'erro'));
   }
+  conteudo.dataset.pronto = alvo;   // tela desenhada para este endereço (os testes de tela esperam por isso)
   window.scrollTo(0, 0);
 }
 
