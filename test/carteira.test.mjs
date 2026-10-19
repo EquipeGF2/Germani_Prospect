@@ -135,3 +135,16 @@ test('onda: visão agrupada e filtro, na lista, nos indicadores e no histórico 
   const mv = await linhas(consultaMovimentacoes({ filtros: { onda: '2' } }));
   assert.ok(mv.length >= 1 && mv.every((x) => x.onda === '2'));
 });
+
+test('gestão filtra a lista por supervisor e por vendedor/representante; vendedor ignora esses filtros', async () => {
+  const ADM = { id: 4, perfil: 'administrador' };
+  const GER = { id: 4, perfil: 'gerente' };
+  assert.equal((await linhas(consultaCarteira({ usuario: ADM }))).length, 5);
+  assert.equal((await linhas(consultaCarteira({ usuario: ADM, filtros: { supervisorId: 1 } }))).length, 5);
+  assert.equal((await linhas(consultaCarteira({ usuario: ADM, filtros: { supervisorId: 5 } }))).length, 0);
+  const doRep = await linhas(consultaCarteira({ usuario: GER, filtros: { supervisorId: 1, vendedorId: 2 } }));
+  assert.equal(doRep.length, 3);
+  assert.ok(doRep.every((p) => Number(p.vendedor_id) === 2));
+  assert.equal((await linhas(consultaCarteira({ usuario: ADM, visao: 'cidade', filtros: { vendedorId: 3 } }))).length, 1);   // vale nas visões agrupadas
+  assert.equal((await linhas(consultaCarteira({ usuario: REP, filtros: { supervisorId: 5, vendedorId: 3 } }))).length, 3);  // vendedor: sempre a própria carteira
+});

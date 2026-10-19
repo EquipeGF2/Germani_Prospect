@@ -173,6 +173,24 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('09c-inicio-celular');
   await pagina.setViewportSize({ width: 1280, height: 900 });
 
+  // 5d. lista principal do administrador: filtro por supervisor e por vendedor/representante
+  await pagina.click('#menu a[title="Lista principal"]');
+  await pagina.waitForSelector('#filtro-supervisor');
+  const totalTodos = await pagina.locator('.cartao-prospect').count();
+  await pagina.selectOption('#filtro-supervisor', { index: 2 });   // 2º supervisor (o 0 é "Todos")
+  await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
+  await pagina.waitForFunction(() => document.querySelector('#filtro-vendedor')?.options[0]?.text === 'Toda a equipe');
+  const agentesDoSup = (await pagina.locator('#filtro-vendedor option').allInnerTexts()).slice(1);
+  assert.ok(agentesDoSup.length >= 1 && agentesDoSup.every((t) => / · (Vendedor|Representante|Supervisor)/.test(t)));
+  const nomeAgente = agentesDoSup[0].split(' · ')[0];
+  await pagina.selectOption('#filtro-vendedor', { index: 1 });
+  await pagina.waitForFunction(() => location.hash.includes('vendedorId='));
+  await pagina.waitForSelector('.cartao-prospect, .mensagem');
+  const cartoes = await pagina.locator('.cartao-prospect-corpo').allInnerTexts();
+  assert.ok(cartoes.every((t) => t.includes(`Carteira: ${nomeAgente}`)), 'só a carteira escolhida');
+  assert.ok(cartoes.length <= totalTodos);
+  await foto('09d-lista-filtros-gestao');
+
   // 6. histórico de importações
   await pagina.click('#menu a[title="Importações"]');
   await pagina.waitForSelector('h1:text-is("Importações")');               // a tela de parâmetros também tem tabela

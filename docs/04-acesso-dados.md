@@ -7,7 +7,7 @@ Sem servidor (ADR-0001), o app fala SQL com o Turso. Para manter o banco íntegr
 
 | Tela | Fonte | Filtro obrigatório na consulta |
 |---|---|---|
-| Lista de prospects (lista · cidade · bairro · rota) | `consultaCarteira()` de `shared/carteira.mjs` sobre `vw_prospects` | escopo e visões pelo usuário: representante sem rota; vendedor com rota; supervisor = equipe |
+| Lista de prospects (lista · cidade · bairro · rota) | `consultaCarteira()` de `shared/carteira.mjs` sobre `vw_prospects` (filtros de gestão: `supervisorId`, `vendedorId`) | escopo e visões pelo usuário: representante sem rota; vendedor com rota; supervisor = equipe |
 | Acompanhamento por status (carteira inteira) | `consultaCarteira({ visao: 'status', filtros: { foraDaLista: true } })` e `consultaCarteira({ filtros: { status } })` | idem |
 | Retornos hoje | lista: `consultaCarteira({ filtros: { somenteRetornos: true } })` · negociação (no acompanhamento): `consultaCarteira({ filtros: { status: 'aguardando_cadastro', somenteRetornos: true } })` | idem carteira |
 | Ficha (linha do tempo) | `consultaFicha()` (escopo do usuário; sem linha = sem acesso) + `ajustarFicha()` (tira rota do representante) + `consultaLinhaTempo()` sobre `vw_movimentacoes` | `prospect_id`, só depois da ficha abrir |
