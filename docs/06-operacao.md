@@ -5,9 +5,9 @@
 Com a CLI do Turso (`turso auth login` antes):
 
 ```bash
-turso db create germani-prospect            # escolha a região mais próxima do RS disponível na conta
-turso db show germani-prospect --url        # → TURSO_DATABASE_URL (libsql://...)
-turso db tokens create germani-prospect     # → TURSO_AUTH_TOKEN administrativo (acesso total)
+turso db create germaniprospec              # (já criado em 2026-10-19)
+turso db show germaniprospec --url        # → TURSO_DATABASE_URL (libsql://...)
+turso db tokens create germaniprospec     # → TURSO_AUTH_TOKEN administrativo (acesso total)
 ```
 
 Guarde o token administrativo num gerenciador de senhas. Ele **nunca** vai para arquivo versionado.
@@ -29,7 +29,7 @@ Os comandos dos tokens do app e de administração estão na seção 3.
 
 **Token do app** (vai embutido no site — permissões restritas):
 ```bash
-turso db tokens create germani-prospect -p all:data_read -p contatos:data_add -p transferencias:data_add \
+turso db tokens create germaniprospec -p all:data_read -p contatos:data_add -p transferencias:data_add \
   -p rotas:data_add,data_update -p rota_paradas:data_add,data_update,data_delete -p liberacoes_credito:data_add
 ```
 Cadastre em GitHub → Settings → Secrets and variables → Actions: **variável** `TURSO_DATABASE_URL` e **secret** `TURSO_APP_TOKEN`.
@@ -37,7 +37,7 @@ Cadastre em GitHub → Settings → Secrets and variables → Actions: **variáv
 **Token de administração** (NÃO vai para o GitHub: o administrador cola na tela "Acesso de administração",
 e ele fica só naquela aba do navegador):
 ```bash
-turso db tokens create germani-prospect -p all:data_read \
+turso db tokens create germaniprospec -p all:data_read \
   -p prospects:data_add,data_update -p usuarios:data_add,data_update -p parametros:data_update \
   -p importacoes:data_add,data_update -p importacao_linhas:data_add -p contatos:data_add \
   -p eventos_erp:data_add -p auditoria:data_add -p liberacoes_credito:data_add -p transferencias:data_add
@@ -95,11 +95,11 @@ TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-fi
 
 ## 8. Backup
 - Verificar no painel do Turso o restore pontual disponível no plano contratado.
-- Cópia manual: `turso db shell germani-prospect .dump > backup-AAAA-MM-DD.sql` — guardar fora do
+- Cópia manual: `turso db shell germaniprospec .dump > backup-AAAA-MM-DD.sql` — guardar fora do
   repositório (contém dados pessoais).
 
 ## 9. Rotação de credenciais (saída de alguém, suspeita de vazamento)
-1. `turso db tokens invalidate germani-prospect` — invalida **todos** os tokens do banco.
+1. `turso db tokens invalidate germaniprospec` — invalida **todos** os tokens do banco.
 2. Gerar novo token administrativo e novo token do app.
 3. Atualizar o `.env` e o Secret `TURSO_AUTH_TOKEN`; republicar o site com o novo token do app.
 4. Desativar o usuário que saiu: `npm run usuarios -- desativar <login>`.

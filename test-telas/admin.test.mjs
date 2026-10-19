@@ -126,8 +126,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
 
   // 6. histórico de importações
   await pagina.click('a:text("Importações")');
-  await pagina.waitForSelector('table');
-  assert.match(await texto(), /Cadastro \(ERP\)/);
+  await pagina.waitForSelector('h1:text-is("Importações")');               // a tela de parâmetros também tem tabela
+  await pagina.waitForSelector('td:has-text("Cadastro (ERP)")');
   await pagina.click('a:text("Ver linhas") >> nth=0');
   await pagina.waitForSelector('text=Importação nº 4'); // a mais recente: relatório de crédito
   await foto('09-importacoes');
@@ -154,7 +154,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const primeiro = (await pagina.locator('.cartao-prospect-corpo b').first().innerText()).trim();
   await pagina.fill('#busca', primeiro.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
   await pagina.click('button:text("Buscar")');
-  await pagina.waitForSelector('.chip, .cartao-prospect');
+  await pagina.waitForFunction(() => location.hash.includes('busca='));
+  await pagina.waitForSelector('.cartao-prospect');
   assert.ok((await pagina.locator('.cartao-prospect').count()) >= 1, 'busca sem acento encontra o prospect');
   await pagina.click('.cartao-prospect-corpo >> nth=0');
   await pagina.waitForSelector('text=Histórico de movimentação');
