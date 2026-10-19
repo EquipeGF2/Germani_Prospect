@@ -12,6 +12,7 @@
     "migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
     "importar:base": "node --env-file-if-exists=.env scripts/importar-base.mjs",
     "importar:eventos": "node --env-file-if-exists=.env scripts/importar-eventos.mjs",
+    "importar:tipos": "node --env-file-if-exists=.env scripts/importar-tipos.mjs",
     "usuarios": "node --env-file-if-exists=.env scripts/usuarios.mjs",
     "exemplo:planilha": "node scripts/gerar-planilha-ficticia.mjs"
   },

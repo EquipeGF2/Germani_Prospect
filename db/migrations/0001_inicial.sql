@@ -136,7 +136,7 @@ END;
 -- ---------------------------------------------------------------------
 CREATE TABLE importacoes (
   id                INTEGER PRIMARY KEY,
-  tipo              TEXT NOT NULL CHECK (tipo IN ('base_prospects','cadastro_erp','pedido_erp','cnpj_baixado')),
+  tipo              TEXT NOT NULL CHECK (tipo IN ('base_prospects','cadastro_erp','pedido_erp','cnpj_baixado','tipo_atuacao')),
   arquivo_nome      TEXT NOT NULL,
   arquivo_sha256    TEXT NOT NULL,
   executado_por     TEXT NOT NULL,

@@ -50,6 +50,7 @@ function escopo(usuario) {
  * @param visao    'lista' | 'cidade' | 'bairro' | 'status' | 'rota'
  * @param filtros  { cidadeBusca, uf, bairroBusca, rota, subrota, status, somentePendentes, somenteRetornos, vendedorId }
  *                 Informar `status` (ou abrir a visão 'status') mostra a carteira inteira, não só a lista.
+ *                 `somenteRetornos` na lista = retornos da lista; com `status: 'em_negociacao'` = retornos da negociação.
  * @param busca    texto livre (nome, CNPJ, cidade, bairro) — acentos ignorados
  * @returns {{ sql: string, args: any[], colunas?: string[] }}
  */
@@ -62,7 +63,8 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   if (!comRota && (filtros.rota || filtros.subrota)) throw new Error('representante não trabalha com rota');
 
   const { where, args } = escopo(usuario);
-  if (!incluirForaDaLista && visao !== 'status' && !filtros.status && !filtros.somenteRetornos) where.push('na_lista = 1');
+  // Em negociação, Sem interesse etc. só aparecem no acompanhamento (visão 'status' ou filtro de status)
+  if (!incluirForaDaLista && visao !== 'status' && !filtros.status) where.push('na_lista = 1');
   if (filtros.somentePendentes) where.push('pendente_hoje = 1');
   if (filtros.somenteRetornos) where.push('retorno_pendente = 1');
   if (filtros.status) { where.push('status_atual = ?'); args.push(filtros.status); }

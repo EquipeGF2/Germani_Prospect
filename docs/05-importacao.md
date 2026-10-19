@@ -86,6 +86,30 @@ npm run importar:eventos -- --tipo baixa    baixados.csv --col-cnpj "CNPJ" --dat
 
 Quando o layout real chegar, os nomes de coluna viram padrão no script (ver 07-pendencias).
 
-## 3. Planilha fictícia para testes
+## 3. Lista de representantes e vendedores (forma de trabalho)
+
+Quando a planilha base não informa quem é **representante** (sem rota) e quem é **vendedor** (com rota),
+o administrador envia uma lista simples — rode depois da carga da base:
+
+```bash
+npm run importar:tipos -- tipos.xlsx --simular
+npm run importar:tipos -- tipos.xlsx                                   # colunas padrão: COD e TIPO
+npm run importar:tipos -- tipos.xlsx --col-codigo "Código" --col-tipo "Função"
+```
+
+| COD | NOME (opcional, ignorada) | TIPO |
+|---|---|---|
+| 1101 | Fulano | REPRESENTANTE |
+| 1201 | Beltrana | VENDEDOR |
+
+- **COD** = o mesmo código de representante/vendedor da planilha base.
+- **TIPO** aceita (sem diferenciar acento/maiúsculas): REPRESENTANTE, REP, RCA, REPRESENTANTE COMERCIAL ·
+  VENDEDOR, VENDEDOR INTERNO, INTERNO, VI.
+- Rejeitadas: código vazio, código não cadastrado, tipo não reconhecido, mesmo código com tipos diferentes.
+  Ignoradas: já estava com aquele tipo. Toda alteração vai para `auditoria`.
+- Ao final, o resumo avisa quantos ainda estão **sem tipo** (tratados como representante).
+- Para um ajuste pontual: `npm run usuarios -- tipo <login> representante|vendedor`.
+
+## 4. Planilha fictícia para testes
 `npm run exemplo:planilha` gera `exemplos/base-ficticia.xlsx` no layout real, com CNPJs inventados
 (10% alfanuméricos) e 2 linhas com erro proposital.

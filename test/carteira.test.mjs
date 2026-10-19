@@ -115,3 +115,11 @@ test('acompanhamento por status: carteira inteira, inclusive o que saiu da lista
   const rep = Object.fromEntries((await linhas(consultaCarteira({ usuario: REP, visao: 'status' }))).map((x) => [x.status_atual, Number(x.prospects)]));
   assert.equal(rep.venda_realizada, 1); // representante também acompanha por status
 });
+
+test('Em negociação fica só no acompanhamento: o filtro de retornos da lista não o traz', async () => {
+  await db.execute("UPDATE prospects SET data_proxima_acao = '2026-01-01' WHERE status_atual = 'em_negociacao'");
+  const lista = await linhas(consultaCarteira({ usuario: VEND, filtros: { somenteRetornos: true } }));
+  assert.ok(lista.every((x) => x.status_atual !== 'em_negociacao'));
+  const acomp = await linhas(consultaCarteira({ usuario: VEND, filtros: { status: 'em_negociacao', somenteRetornos: true } }));
+  assert.equal(acomp.length, 1);
+});

@@ -9,7 +9,7 @@ Sem servidor (ADR-0001), o app fala SQL com o Turso. Para manter o banco íntegr
 |---|---|---|
 | Lista de prospects (lista · cidade · bairro · rota) | `consultaCarteira()` de `shared/carteira.mjs` sobre `vw_prospects` | escopo e visões pelo usuário: representante sem rota; vendedor com rota; supervisor = equipe |
 | Acompanhamento por status (carteira inteira) | `consultaCarteira({ visao: 'status' })` e `consultaCarteira({ filtros: { status } })` | idem |
-| Retornos hoje | `consultaCarteira({ filtros: { somenteRetornos: true } })` (inclui Em negociação) | idem carteira |
+| Retornos hoje | lista: `consultaCarteira({ filtros: { somenteRetornos: true } })` · negociação (no acompanhamento): `consultaCarteira({ filtros: { status: 'em_negociacao', somenteRetornos: true } })` | idem carteira |
 | Ficha | `vw_prospects` + `vw_linha_tempo` | `prospect_id` |
 | Formulário de contato | `motivos_sem_interesse WHERE ativo = 1 AND uso_app = 1 ORDER BY ordem`, `parametros` | — |
 | Painel | `shared/indicadores.mjs` (`consultaPosicao`, `consultaAtividade`), `vw_ultimo_lancamento`, `vw_ranking_motivos`, `vw_prospects` (alertas) | supervisor: o próprio `supervisor_id` |

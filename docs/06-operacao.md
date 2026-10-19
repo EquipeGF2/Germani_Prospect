@@ -47,6 +47,7 @@ npm run migrate
 npm run importar:base -- base.xlsx --listar-status   # completar config/mapa-status-planilha.json
 npm run importar:base -- base.xlsx --simular         # conferir relatorios/*.csv
 npm run importar:base -- base.xlsx
+npm run importar:tipos -- tipos.xlsx                 # quem é representante e quem é vendedor
 npm run usuarios -- criar-admin genaro "Genaro de Freitas Forratti"
 npm run usuarios -- listar
 npm run usuarios -- senha 1101                       # para cada vendedor/supervisor que vai usar o app

@@ -15,7 +15,7 @@ Requisitos: Node.js 22.9+.
 
 ```bash
 npm ci
-npm test                                   # 61 testes, banco SQLite em memória
+npm test                                   # 65 testes, banco SQLite em memória
 TURSO_DATABASE_URL=file:dados/local.db npm run migrate
 npm run exemplo:planilha                   # gera exemplos/base-ficticia.xlsx (dados fictícios)
 TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-ficticia.xlsx
@@ -39,6 +39,7 @@ variables → Actions → `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN`. Detalhes em
 | `npm run migrate` | aplica `db/migrations/*.sql` (também pelo workflow *Migrar banco (produção)*) |
 | `npm run importar:base -- arq.xlsx [--listar-status] [--simular]` | carga inicial da planilha base |
 | `npm run importar:eventos -- --tipo cadastro\|pedido\|baixa arq [--col-...] [--simular]` | arquivos do ERP e CNPJs baixados |
+| `npm run importar:tipos -- arq.xlsx [--col-codigo COD] [--col-tipo TIPO] [--simular]` | lista de quem é representante e quem é vendedor |
 | `npm run usuarios -- listar \| criar-admin \| senha \| desativar \| ativar` | usuários e senhas provisórias |
 | `npm run exemplo:planilha` | planilha fictícia no layout real |
 

@@ -16,6 +16,5 @@ Atualizado em 2026-10-19. Cada item diz o que já está implementado como padrã
 | 10 | Canal das tentativas da planilha | `nao_informado` | — |
 | 11 | Permissões do token do app × triggers | — | itens "Verificar" do [ADR-0001](adr/0001-turso-direto-github-pages.md) |
 | 12 | Login | usuário + senha gerada pelo administrador | — |
-| 13 | Novos contatos após "Sem interesse" | permitidos sem limite; um novo "com interesse" reabre como Em negociação | confirmar |
-| 14 | Quem é representante e quem é vendedor | `usuarios.tipo_atuacao` definido pelo administrador (`npm run usuarios -- tipo`); sem definição = representante | a planilha base indica isso em alguma coluna (ex.: TIPO)? Se sim, a importação passa a preencher |
+| 14 | Quem é representante e quem é vendedor | **resolvido:** lista do administrador (`npm run importar:tipos`, docs/05 §3); sem definição = representante | enviar a lista |
 | 15 | "Front mais amplo" do vendedor | vendedor tem a visão de rota/subrota além de lista/cidade/bairro, sempre na própria carteira | o vendedor deve ver prospects além da própria carteira (ex.: toda a rota)? |

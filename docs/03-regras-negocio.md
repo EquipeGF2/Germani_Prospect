@@ -34,13 +34,14 @@ Campos: **canal** (visita · telefone · WhatsApp) → **resultado** → campos 
 Regras:
 - **Contatos sem limite.** Qualquer prospect que não seja Venda realizada nem Inválido aceita novos contatos.
 - **Saída da lista:** `tentativas_maximas` = 2 atendimentos sem interesse → **Sem interesse** (sai da lista).
-  Um novo "com interesse" depois disso reabre como **Em negociação**.
+  Um novo "com interesse" depois disso reabre como **Em negociação** — que também fica fora da lista
+  preferencial, só no acompanhamento.
 - **Dias corridos** são **sempre** contados a partir do **1º atendimento** (`dt_primeiro_contato`), em qualquer
   status, inclusive depois de sair da lista (`vw_prospects.dias_corridos`).
 - **Motivo final** de "Sem interesse" = o último motivo informado em qualquer atendimento; sem nenhum,
   "Sem retorno após as tentativas".
 - **Próxima ação:** a data de retorno informada ou, sem ela, data do contato + `dias_entre_tentativas` (7).
-  Vale também para Em negociação (`retorno_pendente`).
+  Vale também para Em negociação (`retorno_pendente`), mas esses retornos aparecem **só no acompanhamento**.
 - **Data do aparelho manda.** Única trava: não pode ser anterior ao último contato registrado do prospect.
 - **Observação** é livre; a versão sem acento (`observacao_busca`) alimenta o ranking de palavras-chave.
 - **Correção** = novo contato. Nada é editado.
@@ -120,9 +121,10 @@ Implementação: [`shared/carteira.mjs`](../shared/carteira.mjs) · testes: [`te
 | Rota / subrota | **nunca** (não agrupa, não filtra, não recebe as colunas) | sim | só nos prospects de vendedores |
 | Escopo | própria carteira | própria carteira | equipe / tudo |
 
-- A forma de trabalho vem de `usuarios.tipo_atuacao` (`representante` | `vendedor`), definida pelo
-  administrador: `npm run usuarios -- tipo <login> representante|vendedor`. Sem definição = representante.
-- **Lista:** só Não contactado / Em prospecção, ordenados por pendentes de hoje, retornos, próxima ação,
+- A forma de trabalho vem de `usuarios.tipo_atuacao` (`representante` | `vendedor`), informada pelo
+  administrador numa **lista** (`npm run importar:tipos`, ver 05 §3) ou individualmente
+  (`npm run usuarios -- tipo <login> representante|vendedor`). Sem definição = representante.
+- **Lista (preferencial):** só Não contactado / Em prospecção — nunca Em negociação —, ordenados por pendentes de hoje, retornos, próxima ação,
   cidade, bairro, nome. Filtros: pendentes hoje, retornos pendentes, cidade, bairro, UF, rota/subrota (vendedor).
   Busca por nome, CNPJ (com ou sem pontuação), cidade ou bairro, **sem acento**.
 - **Status (acompanhamento):** todos os status com quantidade, retornos pendentes, prazos de cadastro vencidos e

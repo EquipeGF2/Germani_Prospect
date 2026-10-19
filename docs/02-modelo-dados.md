@@ -45,7 +45,7 @@ erDiagram
 | `login` | criado pela importação: vendedor = código; supervisor = `sup` + código. Único, sem diferenciar maiúsculas. |
 | `senha_hash` | PBKDF2; `NULL` = acesso ainda não liberado (`npm run usuarios -- senha <login>`). |
 | `supervisor_id` | obrigatório para vendedor; precisa apontar para um supervisor (trigger). |
-| `tipo_atuacao` | `representante` (sem rota) · `vendedor` (com rota). `NULL` até o admin definir = tratado como representante. |
+| `tipo_atuacao` | `representante` (sem rota) · `vendedor` (com rota). Preenchido pela lista do administrador (`npm run importar:tipos`). `NULL` = tratado como representante. |
 | `ativo` | inativo não registra contato nem recebe transferência. |
 
 Por que não há tabela `supervisores` separada: o supervisor também faz login e também pode ter carteira.
@@ -84,7 +84,7 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 
 | Tabela | Conteúdo |
 |---|---|
-| `importacoes` | tipo, arquivo, SHA-256, quem executou, contagens. CHECK: concluída ⇒ `lidas = aceitas + rejeitadas + ignoradas`. |
+| `importacoes` | tipo (`base_prospects`, `cadastro_erp`, `pedido_erp`, `cnpj_baixado`, `tipo_atuacao`), arquivo, SHA-256, quem executou, contagens. CHECK: concluída ⇒ `lidas = aceitas + rejeitadas + ignoradas`. |
 | `importacao_linhas` | **cada linha** do arquivo: resultado, mensagens (erros/avisos) e os dados brutos em JSON. |
 | `auditoria` | ações administrativas (parâmetros, senhas, ativação). |
 | `_migracoes` | controle das migrações aplicadas (SHA-256 de cada arquivo). |
