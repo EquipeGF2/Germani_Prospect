@@ -5,24 +5,24 @@
 ## O que é
 App de **controle de prospecção de novos clientes** da GERMANI Alimentos (Santa Cruz do Sul/RS, ERP Senior).
 Cada CNPJ que ainda não é cliente vira um ponto de controle: o representante/vendedor registra as
-tentativas de contato e o supervisor acompanha cobertura e conversão.
+atendimentos e as faltas de interesse, e o supervisor acompanha cobertura e conversão.
 
 ## Fluxo do prospect (resumo)
 
 ```
- planilha base ──► Não contactado ──(não atendido)──► Em prospecção ──(2º não atendido)──┐
-                        │                                  │                            ▼
-                        ├──────────(sem interesse)─────────┴──────────────────────► Sem interesse
-                        │                                                               │ (pedido identificado:
-                        └──────────(atendido)────────► Em negociação ◄──────────────────┘  informa a data do pedido)
-                                                   (acompanhamento: CNPJ procurado nos arquivos do ERP)
+ planilha base ──► Não contactado / Em prospecção (lista principal — "não atendido" não gera registro)
+                        │
+                        ├──(sem interesse + justificativa)──────────────► Sem interesse
+                        │                                                     │ (pedido identificado:
+                        └──(atendido)────────► Em negociação ◄────────────────┘  informa a data do pedido)
+                                           (acompanhamento: CNPJ procurado nos arquivos do ERP)
  arquivo ERP de cadastro ──► Cadastrado no ERP          arquivo ERP de pedidos ──► Venda realizada (final)
  arquivo de CNPJs baixados ──► Inválido (congelado, impossibilitado de faturamento)
 ```
 
 A **lista de prospects** mostra só Não contactado e Em prospecção. Todo o resto continua visível no
 **acompanhamento por status** do vendedor e **sempre conta nos indicadores** de cada equipe e no geral.
-Contatos não têm limite; os dias corridos contam sempre do 1º registro (atendido ou não).
+Contatos não têm limite; os dias corridos contam sempre do 1º registro.
 
 Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 
@@ -30,7 +30,7 @@ Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 
 | Perfil | No app | Por importação (administrador) |
 |---|---|---|
-| Representante | **filtro e consulta**: lista principal por lista, cidade e bairro (**sem rota**) + acompanhamento; registra **atendido / não atendido / sem interesse** (também em lote) e reabre com pedido identificado | — |
+| Representante | **filtro e consulta**: lista principal por lista, cidade e bairro (**sem rota**) + acompanhamento; registra **atendido / sem interesse** (também em lote) e reabre com pedido identificado | — |
 | Vendedor | o mesmo + **montagem de rotas** e visão por rota/subrota | — |
 | Supervisor | o mesmo, para a sua equipe; acompanha painel; redistribui carteira | — |
 | Administrador | tudo | base inicial de prospects; cadastro de clientes do ERP; pedidos do ERP; CNPJs baixados; usuários e senhas |

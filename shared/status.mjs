@@ -21,12 +21,12 @@ export const STATUS_ACEITAM_CONTATO = Object.freeze([STATUS.NAO_CONTACTADO, STAT
 export const TIPOS_ATUACAO = Object.freeze(['representante', 'vendedor']);
 
 export const CANAIS = Object.freeze(['visita', 'telefone', 'whatsapp']);
-export const RESULTADOS = Object.freeze(['atendido', 'nao_atendido', 'sem_interesse', 'pedido_informado']);
+/** Resultados que o app registra. "Não atendido" não gera registro. */
+export const RESULTADOS = Object.freeze(['atendido', 'sem_interesse', 'pedido_informado']);
 
 /** Rótulos do formulário. "Pedido informado" é a reabertura de um prospect (ex.: Sem interesse) com pedido. */
 export const ROTULOS_RESULTADO = Object.freeze({
   atendido: 'Atendido',
-  nao_atendido: 'Não atendido',
   sem_interesse: 'Sem interesse',
   pedido_informado: 'Reabrir: pedido identificado',
 });

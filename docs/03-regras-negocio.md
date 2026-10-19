@@ -5,9 +5,9 @@
 | Status | Origem | Na lista de prospects? | Aceita novo contato? | Conta como contactado | Carteira válida |
 |---|---|---|---|---|---|
 | Não contactado | carga inicial | **sim** | sim | não | sim |
-| Em prospecção | app ("não atendido", antes do limite) | **sim**, a partir de `data_proxima_acao` | sim | sim | sim |
+| Em prospecção | importação inicial: contato na planilha (DT 1o/2o) sem resultado | **sim** | sim | sim | sim |
 | Em negociação | app (**atendido** ou **pedido identificado**) — "Em negociação · atendido em dd/mm/aaaa" ou "· pedido informado em dd/mm/aaaa"; aguarda o CNPJ aparecer nos arquivos de cadastro/pedido | não (acompanhamento) | sim | sim | sim |
-| Sem interesse | app ("sem interesse" — na hora; ou 2 "não atendido") | não | sim | sim | sim |
+| Sem interesse | app ("sem interesse", com justificativa) | não | sim | sim | sim |
 | Cadastrado no ERP | arquivo de cadastro do Senior | não | sim (só registra; status não muda) | sim | sim |
 | Venda realizada | arquivo de pedidos do Senior (**final**) | não | não | sim | sim |
 | Inválido (baixado) | arquivo de CNPJs baixados | não — **congelado** | não | não | **não** |
@@ -24,24 +24,25 @@ O vendedor nunca escolhe "inválido", "cadastrado" ou "venda": não existem como
 ## 2. Registro de contato (app)
 
 Campos: **canal** (visita · telefone · WhatsApp) → **resultado** → campos condicionais. Mesmo formulário para
-representante e vendedor.
+representante e vendedor. **Só existem três registros**: Atendido, Sem interesse e Reabrir com pedido.
+**"Não atendido" não gera registro** — o prospect simplesmente continua na lista principal.
 
 | Resultado | Campo obrigatório | Efeito |
 |---|---|---|
 | **Atendido** | — (data de retorno opcional) | → **Em negociação** (sai da lista principal); "atendido em" = data do 1º atendimento; o CNPJ passa a ser procurado nos arquivos de **cadastro** e **pedido** do ERP; abre o **prazo de cadastro** = data + `prazo_cadastro_dias` (15) |
-| **Não atendido** | — | → Em prospecção (volta em `dias_entre_tentativas`); no `tentativas_maximas`º (2º) → **Sem interesse** (motivo "Sem retorno após as tentativas"). Em negociação / sem interesse: mantém |
 | **Sem interesse** | justificativa: motivo (lista) + observação ("Outro" exige observação) | → **Sem interesse** na hora (sai da lista principal) |
 | **Reabrir: pedido identificado** | **data de entrada do pedido** (≤ data do registro) | → **Em negociação · pedido informado em dd/mm** (acompanhamento) até o arquivo de pedidos do ERP confirmar a **Venda realizada** |
 
 Regras:
 - **Contatos sem limite.** Qualquer prospect que não seja Venda realizada nem Inválido aceita novos registros.
-- **Dias corridos** contam **sempre do 1º registro**, seja ele atendido, não atendido ou sem interesse
+- **Dias corridos** contam **sempre do 1º registro**, seja ele atendido, sem interesse ou a data de contato
+  da planilha base
   (`dt_primeiro_contato`), em qualquer status, inclusive fora da lista (`vw_prospects.dias_corridos`).
 - **Reabertura:** quando aparece um pedido de um cliente que estava *Sem interesse*, o vendedor/representante
   registra "pedido identificado" com a data de entrada do pedido. Não marca como "convertido sem registro".
-- **Motivo final** de "Sem interesse" = o último motivo informado; sem nenhum, "Sem retorno após as tentativas".
-- **Próxima ação:** a data de retorno informada ou, sem ela, data do registro + `dias_entre_tentativas` (7).
-  Retornos de Em negociação aparecem **só no acompanhamento**.
+- **Motivo final** de "Sem interesse" = o do último "sem interesse" registrado.
+- **Lista principal** (Não contactado / Em prospecção) está sempre pendente — não há agenda de retorno nela.
+- **Data de retorno** (opcional) só existe na negociação e aparece **só no acompanhamento**.
 - **Data do aparelho manda.** Única trava: não pode ser anterior ao último registro do prospect.
 - **Observação** é livre; a versão sem acento (`observacao_busca`) alimenta o ranking de palavras-chave.
 - **Correção** = novo registro. Nada é editado.
@@ -52,7 +53,7 @@ Regras:
 Implementação: [`shared/lote.mjs`](../shared/lote.mjs) · testes: [`test/lote.test.mjs`](../test/lote.test.mjs).
 
 - O usuário seleciona vários prospects (da lista ou de uma visão cidade/bairro) e registra de uma vez —
-  uso principal: **sem interesse**; também vale para não atendido / atendido.
+  uso principal: **sem interesse**; também vale para atendido.
 - **Justificativa do lote** (motivo + observação) vale para todos; **justificativa individual** substitui a do
   lote naquele prospect. Pode misturar: lote com "Preço" e um item com "Outro: loja vai fechar".
 - Cada item vira um registro normal (mesmas regras do banco) com o mesmo `lote_id`.
@@ -65,7 +66,7 @@ Preço acima do praticado · Já tem fornecedor/contrato · Mix não atende · P
 Prazo/condição de pagamento · Frequência ou dia de entrega · Não vende a categoria/baixo giro ·
 Sem espaço na gôndola · Compra centralizada (rede/matriz) · Outro (observação obrigatória).
 
-Do sistema (não aparecem no app): Sem retorno após as tentativas · Não informado (importação inicial).
+Do sistema (não aparece no app): Não informado (importação inicial).
 
 ## 3. Eventos do ERP e baixados (importação)
 

@@ -28,7 +28,6 @@ before(async () => {
   await criarProspect(db, { n: 5, vendedorId: 3, cidade: 'Lajeado', bairro: 'Centro', rota: 'R7', subrota: 'S1' });
   await criarProspect(db, { n: 6, vendedorId: 3, cidade: 'Lajeado', bairro: 'Centro', rota: 'R7', subrota: 'S2' });
   const p7 = await criarProspect(db, { n: 7, vendedorId: 3, cidade: 'Lajeado', bairro: 'Florestal', rota: 'R8' });
-  await registrarContato(db, { prospectId: p7, usuarioId: 3, resultado: 'nao_atendido', data: '2026-10-01' });
   await registrarContato(db, { prospectId: p7, usuarioId: 3, resultado: 'atendido', data: '2026-10-05' }); // em negociação: sai da lista
 });
 
@@ -111,7 +110,7 @@ test('acompanhamento por status: carteira inteira, inclusive o que saiu da lista
   const neg = await linhas(consultaCarteira({ usuario: VEND, filtros: { status: 'em_negociacao' } }));
   assert.equal(neg.length, 1);
   assert.equal(neg[0].status_descricao, 'Em negociação · atendido em 05/10/2026');
-  assert.equal(neg[0].dt_primeiro_contato, '2026-10-01');
+  assert.equal(neg[0].dt_primeiro_contato, '2026-10-05');
   const rep = Object.fromEntries((await linhas(consultaCarteira({ usuario: REP, visao: 'status' }))).map((x) => [x.status_atual, Number(x.prospects)]));
   assert.equal(rep.venda_realizada, 1); // representante também acompanha por status
 });

@@ -12,7 +12,7 @@ versão futura. O histórico de prospecção não pode ser editado nem apagado.
 - Triggers `AFTER INSERT` aplicam a regra e atualizam `prospects` + gravam `historico_status`.
 - Triggers `BEFORE UPDATE/DELETE` bloqueiam alteração dessas tabelas. **Correção = novo registro.**
 - `prospects` nunca é apagado; CNPJ baixado vira `invalido` e fica **congelado** (nenhum UPDATE).
-- Parâmetros (prazos, nº de tentativas) são lidos da tabela `parametros` dentro dos triggers;
+- Parâmetros (prazos de cadastro e de análise financeira, alertas) são lidos da tabela `parametros` dentro dos triggers;
   mudanças são auditadas por trigger em `auditoria`.
 
 ## Consequências

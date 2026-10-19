@@ -10,7 +10,7 @@ erDiagram
     usuarios ||--o{ prospects : "vendedor_id (carteira)"
     usuarios ||--o{ contatos : "usuario_id (quem registrou)"
     usuarios ||--o{ transferencias : "de / para / quem fez"
-    prospects ||--o{ contatos : "tentativas"
+    prospects ||--o{ contatos : "registros"
     prospects ||--o{ eventos_erp : "cadastro / pedido / baixa"
     prospects ||--o{ transferencias : ""
     prospects ||--o{ historico_status : "foto de cada mudança"
@@ -33,9 +33,9 @@ erDiagram
 
 | Tabela | Para quê | Observações |
 |---|---|---|
-| `parametros` | prazos e limites editáveis | `tentativas_maximas`=2, `dias_entre_tentativas`=7, `prazo_cadastro_dias`=15, `prazo_analise_financeira_dias`=10, `dias_alerta_sem_lancamento`=7, `dias_alerta_sem_movimento`=30. Alteração gera linha em `auditoria`. |
+| `parametros` | prazos e limites editáveis | `prazo_cadastro_dias`=15, `prazo_analise_financeira_dias`=10, `dias_alerta_sem_lancamento`=7, `dias_alerta_sem_movimento`=30. Alteração gera linha em `auditoria`. |
 | `status` | os 7 status, cor e como contam nos indicadores | `aceita_contato`, `lista_trabalho` (aparece na lista de prospects), `conta_contactado`, `conta_carteira` (inválido = 0). |
-| `motivos_sem_interesse` | lista de motivos de recusa | `exige_observacao` (Outro), `uso_app` = 0 para motivos do sistema (`SEM_RETORNO`, `NAO_INFORMADO`). |
+| `motivos_sem_interesse` | lista de motivos de recusa | `exige_observacao` (Outro), `uso_app` = 0 para motivos do sistema (`NAO_INFORMADO`, usado na importação inicial). |
 
 ### Pessoas
 
@@ -80,8 +80,9 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 | `transferencias` | supervisor da equipe ou administrador | troca `prospects.vendedor_id` |
 | `historico_status` | **somente triggers** | uma linha por evento: status anterior → novo, data de negócio, origem |
 
-`contatos.resultado`: `atendido` · `nao_atendido` · `sem_interesse` · `pedido_informado` (exige
-`data_pedido_informado`). `contatos.lote_id` agrupa registros feitos em lote.
+`contatos.resultado`: `atendido` · `sem_interesse` · `pedido_informado` (exige `data_pedido_informado`) —
+os três do app; "não atendido" não gera registro. `contato_planilha` existe só para as datas DT 1o/2o da
+importação inicial (origem `importacao`). `contatos.lote_id` agrupa registros feitos em lote.
 `contatos.id` é texto (UUID gerado no aparelho): reenviar o mesmo contato após ficar offline não duplica.
 `(prospect_id, numero_tentativa)` é único e precisa ser sequencial.
 

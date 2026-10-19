@@ -7,11 +7,11 @@ import { calcularPercentuais, consultaAtividade, consultaPosicao } from '../shar
 let db;
 // Vendedor 2 (Vend Dez): 6 prospects | Vendedor 3 (Vend Onze): 4 prospects — ambos do supervisor 1
 //  P1 v2 não contactado
-//  P2 v2 nao_atendido 01/10                      → em_prospeccao
+//  P2 v2 contato da planilha 01/10                → em_prospeccao
 //  P3 v2 atendido 02/10, cadastro 10/10       → cadastrado_erp
 //  P4 v2 atendido 03/10, pedido 12/10         → venda_realizada
 //  P5 v2 baixa 05/10                               → invalido (sai do denominador)
-//  P6 v2 sem_interesse 01/10 + nao_atendido 08/10 → sem_interesse
+//  P6 v2 sem_interesse 08/10                      → sem_interesse
 //  P7 v3 não contactado (Lajeado)
 //  P8 v3 atendido 15/10                       → em_negociacao (Lajeado)
 //  P9 v3 pedido 16/10 sem contato                  → venda_realizada (convertido sem registro)
@@ -21,14 +21,15 @@ before(async () => {
   await criarEquipe(db);
   const p = {};
   for (let i = 1; i <= 10; i++) p[i] = await criarProspect(db, { n: i, vendedorId: i <= 6 ? 2 : 3, cidade: [7, 8].includes(i) ? 'Lajeado' : 'Santa Cruz do Sul' });
-  await registrarContato(db, { prospectId: p[2], resultado: 'nao_atendido', data: '2026-10-01' });
+  const imp = await db.execute("INSERT INTO importacoes (tipo, arquivo_nome, arquivo_sha256, executado_por) VALUES ('base_prospects','t','x','t') RETURNING id");
+  await db.execute({ sql: `INSERT INTO contatos (id, prospect_id, usuario_id, numero_tentativa, data_contato, canal, resultado, origem, importacao_id)
+                           VALUES ('imp-2', ?, 2, 1, '2026-10-01', 'nao_informado', 'contato_planilha', 'importacao', ?)`, args: [p[2], imp.rows[0].id] });
   await registrarContato(db, { prospectId: p[3], resultado: 'atendido', retorno: '2026-10-05', data: '2026-10-02' });
   await evento(db, { prospectId: p[3], tipo: 'cadastro', data: '2026-10-10', documento: 'C3' });
   await registrarContato(db, { prospectId: p[4], resultado: 'atendido', retorno: '2026-10-05', data: '2026-10-03' });
   await evento(db, { prospectId: p[4], tipo: 'pedido', data: '2026-10-12', documento: 'P4' });
   await evento(db, { prospectId: p[5], tipo: 'baixa', data: '2026-10-05' });
-  await registrarContato(db, { prospectId: p[6], resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-01' });
-  await registrarContato(db, { prospectId: p[6], resultado: 'nao_atendido', data: '2026-10-08' });
+  await registrarContato(db, { prospectId: p[6], resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-08' });
   await registrarContato(db, { prospectId: p[8], usuarioId: 3, resultado: 'atendido', retorno: '2026-10-20', data: '2026-10-15' });
   await evento(db, { prospectId: p[9], tipo: 'pedido', data: '2026-10-16', documento: 'P9' });
 });
@@ -81,7 +82,7 @@ test('filtros por vendedor e supervisor', async () => {
 
 test('atividade no período 01/10–10/10', async () => {
   const [a] = (await db.execute(consultaAtividade({ agrupar: 'geral', inicio: '2026-10-01', fim: '2026-10-10' }))).rows;
-  assert.equal(Number(a.contatos_registrados), 5);     // P2, P3, P4, P6×2
+  assert.equal(Number(a.contatos_registrados), 4);     // P2 (planilha), P3, P4, P6
   assert.equal(Number(a.contatos_atendidos), 2);   // P3, P4
   assert.equal(Number(a.prospects_contactados), 4);
   assert.equal(Number(a.primeiros_contatos), 4);

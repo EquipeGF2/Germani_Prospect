@@ -22,7 +22,7 @@ Sem servidor (ADR-0001), o app fala SQL com o Turso. Para manter o banco íntegr
 INSERT INTO contatos (id, prospect_id, usuario_id, numero_tentativa, data_contato, data_hora_dispositivo,
                       canal, resultado, motivo_id, observacao, observacao_busca, data_retorno,
                       data_pedido_informado, latitude, longitude)
-VALUES (:uuid_do_aparelho, :prospect, :usuario, :tentativas_atuais + 1, :data_do_aparelho, :iso_com_fuso,
+VALUES (:uuid_do_aparelho, :prospect, :usuario, :registros_atuais + 1 /* prospects.tentativas + 1 */, :data_do_aparelho, :iso_com_fuso,
         :canal, :resultado, :motivo, :obs, normalizarBusca(:obs), :retorno,
         :data_pedido /* só em "pedido identificado" */, :lat_aparelho, :lng_aparelho);
 ```

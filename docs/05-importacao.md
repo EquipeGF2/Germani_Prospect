@@ -56,10 +56,10 @@ npm run importar:base -- base.xlsx                   # 3) gravar
 1. Supervisor (COD SUP) e vendedor (COD) são criados se não existirem — **sem senha**.
 2. CNPJ novo → prospect criado. CNPJ existente → **só dados cadastrais** são atualizados; status,
    contatos, histórico e vendedor não mudam (mudança de vendedor = transferência). Baixado não é tocado.
-3. DT 1o / DT 2o → contatos com `origem = 'importacao'`, canal `nao_informado`. As tentativas
-   anteriores à última ficam como "não atendido"; a última recebe o resultado mapeado do Status Atual
-   (`atendido`, `nao_atendido` ou `sem_interesse`).
-   As regras do app valem: 2 tentativas sem interesse ⇒ Sem interesse. Tentativas só entram uma vez.
+3. DT 1o / DT 2o → registros com `origem = 'importacao'`, canal `nao_informado` — garantem que os
+   **dias corridos** contem do 1º contato. Os anteriores ao último ficam como `contato_planilha`; o último
+   recebe o resultado mapeado do Status Atual: `contato_planilha` (→ Em prospecção, continua na lista),
+   `atendido` (→ Em negociação) ou `sem_interesse` (motivo "Não informado"). Entram uma vez só.
 
 ### Rejeições (linha inteira, com motivo no relatório)
 CNPJ vazio/inválido · razão social vazia · COD/NOME ou COD SUP/SUPERVISOR vazios · data inválida ou futura ·

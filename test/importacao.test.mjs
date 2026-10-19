@@ -6,7 +6,7 @@ import { importarEventos } from '../lib/importar-eventos.mjs';
 import { COLUNAS_BASE, mapearCabecalho, normalizarMapaStatus } from '../shared/importacao-base.mjs';
 import { formatarCnpj } from '../shared/cnpj.mjs';
 
-const MAPA = normalizarMapaStatus({ '': 'sem_contato', 'Não contactado': 'sem_contato', 'Em prospecção': 'nao_atendido', 'Em negociação': 'atendido', 'Sem interesse': 'sem_interesse' });
+const MAPA = normalizarMapaStatus({ '': 'sem_contato', 'Não contactado': 'sem_contato', 'Em prospecção': 'contato_planilha', 'Em negociação': 'atendido', 'Sem interesse': 'sem_interesse' });
 const CAB = COLUNAS_BASE.map((c) => c.cabecalho);
 const HOJE = '2026-10-19';
 
@@ -82,7 +82,7 @@ test('DT 1o / DT 2o viram tentativas com o histórico na data certa', async () =
   ]);
   const st = Object.fromEntries((await db.execute('SELECT cnpj, status_atual, tentativas, dt_entrada_base FROM prospects')).rows.map((r) => [r.cnpj, r]));
   assert.equal(st[cnpjTeste(1)].status_atual, 'em_prospeccao');
-  assert.equal(st[cnpjTeste(2)].status_atual, 'sem_interesse'); // 2 tentativas sem conclusão
+  assert.equal(st[cnpjTeste(2)].status_atual, 'em_prospeccao'); // contatos na planilha sem resultado: continua na lista
   assert.equal(st[cnpjTeste(3)].status_atual, 'em_negociacao');
   assert.equal(st[cnpjTeste(4)].status_atual, 'sem_interesse');
   assert.equal(st[cnpjTeste(1)].dt_entrada_base, '2026-09-01');

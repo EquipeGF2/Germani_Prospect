@@ -30,8 +30,6 @@ CREATE TABLE parametros (
 );
 
 INSERT INTO parametros (chave, valor, tipo, descricao) VALUES
-  ('tentativas_maximas',            '2',   'inteiro', 'Registros de "não atendido" até o prospect sair da lista como "Sem interesse" (novos contatos continuam permitidos)'),
-  ('dias_entre_tentativas',         '7',   'inteiro', 'Dias até o prospect voltar à fila após uma tentativa sem conclusão'),
   ('prazo_cadastro_dias',           '15',  'inteiro', 'Prazo, a partir do interesse declarado, para o cliente aparecer cadastrado no ERP'),
   ('prazo_analise_financeira_dias', '10',  'inteiro', 'Dias de análise financeira após a entrada do pedido'),
   ('dias_alerta_sem_lancamento',    '7',   'inteiro', 'Vendedor sem registrar contato há mais de N dias entra no bloco de atenção'),
@@ -54,7 +52,7 @@ CREATE TABLE status (
 
 INSERT INTO status (codigo, nome, cor, ordem, origem, aceita_contato, lista_trabalho, conta_contactado, conta_carteira) VALUES
   ('nao_contactado',  'Não contactado',     '#9CA3AF', 1, 'inicial', 1, 1, 0, 1),
-  ('em_prospeccao',   'Em prospecção',      '#0E7490', 2, 'app',     1, 1, 1, 1),
+  ('em_prospeccao',   'Em prospecção',      '#0E7490', 2, 'inicial', 1, 1, 1, 1),  -- contato na planilha base sem resultado (DT 1o/2o)
   ('em_negociacao',   'Em negociação',      '#6D28D9', 3, 'app',     1, 0, 1, 1),  -- atendido (ou pedido informado), aguardando cadastro/pedido nos arquivos do ERP
   ('sem_interesse',   'Sem interesse',      '#3F3F46', 4, 'app',     1, 0, 1, 1),
   ('cadastrado_erp',  'Cadastrado no ERP',  '#0F766E', 5, 'erp',     1, 0, 1, 1),
@@ -85,7 +83,6 @@ INSERT INTO motivos_sem_interesse (codigo, descricao, exige_observacao, uso_app,
   ('SEM_ESPACO',       'Sem espaço na gôndola',                     0, 1, 8),
   ('COMPRA_CENTRAL',   'Compra centralizada (rede / matriz)',       0, 1, 9),
   ('OUTRO',            'Outro (descrever na observação)',           1, 1, 10),
-  ('SEM_RETORNO',      'Sem retorno após as tentativas',            0, 0, 90),
   ('NAO_INFORMADO',    'Não informado (importação inicial)',        0, 0, 91);
 
 -- ---------------------------------------------------------------------
@@ -266,7 +263,9 @@ CREATE TABLE contatos (
   data_hora_dispositivo  TEXT,                           -- ISO com fuso, informada pelo aparelho
   recebido_em            TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   canal                  TEXT NOT NULL CHECK (canal IN ('visita','telefone','whatsapp','nao_informado')),
-  resultado              TEXT NOT NULL CHECK (resultado IN ('atendido','nao_atendido','sem_interesse','pedido_informado')),
+  -- app: atendido · sem_interesse · pedido_informado. "Não atendido" não é registrado.
+  -- contato_planilha: só da importação inicial (DT 1o/2o sem resultado informado)
+  resultado              TEXT NOT NULL CHECK (resultado IN ('atendido','sem_interesse','pedido_informado','contato_planilha')),
   motivo_id              INTEGER REFERENCES motivos_sem_interesse(id),
   observacao             TEXT,
   observacao_busca       TEXT,                           -- sem acento, para palavras-chave
@@ -285,6 +284,7 @@ CREATE TABLE contatos (
   CHECK (resultado = 'sem_interesse' OR motivo_id IS NULL),
   CHECK (origem <> 'importacao' OR importacao_id IS NOT NULL),
   CHECK (canal <> 'nao_informado' OR origem = 'importacao'),  -- a planilha base não informa o canal
+  CHECK (resultado <> 'contato_planilha' OR origem = 'importacao'),
   UNIQUE (prospect_id, numero_tentativa)
 );
 CREATE INDEX ix_contatos_usuario_data ON contatos (usuario_id, data_contato);
@@ -324,13 +324,12 @@ BEGIN
     AND EXISTS (SELECT 1 FROM motivos_sem_interesse m WHERE m.id = NEW.motivo_id AND m.exige_observacao = 1);
 END;
 
--- Aplicação da regra de status (docs/03-regras-negocio.md §2). Não há limite de contatos.
---   Cadastrado no ERP                         → continua cadastrado (contato só registra)
---   atendido / pedido_informado               → em_negociacao (sai da lista principal; aguarda cadastro/pedido do ERP)
---   sem_interesse                             → sem_interesse (sai da lista principal na hora)
---   nao_atendido em negociação / sem interesse → mantém o status
---   nao_atendido nº >= tentativas_maximas      → sem_interesse (motivo "Sem retorno")
---   nao_atendido antes do limite               → em_prospeccao
+-- Aplicação da regra de status (docs/03-regras-negocio.md §2). Não há limite de registros.
+-- O app registra só ATENDIDO, SEM INTERESSE ou PEDIDO IDENTIFICADO ("não atendido" não gera registro).
+--   Cadastrado no ERP                    → continua cadastrado (registro só fica no histórico)
+--   atendido / pedido_informado          → em_negociacao (sai da lista principal; aguarda cadastro/pedido do ERP)
+--   sem_interesse                        → sem_interesse (sai da lista principal)
+--   contato_planilha (importação)        → em_prospeccao se ainda não contactado; senão mantém
 CREATE TRIGGER trg_contatos_aplicar
 AFTER INSERT ON contatos
 BEGIN
@@ -340,9 +339,8 @@ BEGIN
            WHEN p.status_atual = 'cadastrado_erp' THEN 'cadastrado_erp'
            WHEN NEW.resultado IN ('atendido','pedido_informado') THEN 'em_negociacao'
            WHEN NEW.resultado = 'sem_interesse' THEN 'sem_interesse'
-           WHEN p.status_atual IN ('em_negociacao','sem_interesse') THEN p.status_atual
-           WHEN NEW.numero_tentativa >= (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'tentativas_maximas') THEN 'sem_interesse'
-           ELSE 'em_prospeccao'
+           WHEN p.status_atual = 'nao_contactado' THEN 'em_prospeccao'
+           ELSE p.status_atual
          END,
          NEW.data_contato, 'contato', NEW.id
     FROM prospects p WHERE p.id = NEW.prospect_id;
@@ -363,19 +361,10 @@ BEGIN
   WHERE id = NEW.prospect_id;
 
   UPDATE prospects SET
-    data_proxima_acao = CASE
-      WHEN status_atual IN ('sem_interesse','cadastrado_erp') THEN NULL
-      ELSE COALESCE(NEW.data_retorno,
-           date(NEW.data_contato, '+' || (SELECT valor FROM parametros WHERE chave = 'dias_entre_tentativas') || ' days'))
-    END,
-    motivo_sem_interesse_id = CASE status_atual
-      -- motivo final = último motivo informado em qualquer atendimento; sem nenhum, "Sem retorno após as tentativas"
-      WHEN 'sem_interesse' THEN COALESCE(
-        (SELECT c.motivo_id FROM contatos c WHERE c.prospect_id = NEW.prospect_id AND c.motivo_id IS NOT NULL
-          ORDER BY c.numero_tentativa DESC LIMIT 1),
-        (SELECT id FROM motivos_sem_interesse WHERE codigo = 'SEM_RETORNO'))
-      ELSE motivo_sem_interesse_id
-    END
+    -- retorno agendado (opcional) só existe na negociação; a lista principal está sempre pendente
+    data_proxima_acao = CASE WHEN status_atual = 'em_negociacao' THEN NEW.data_retorno ELSE NULL END,
+    -- motivo final = o do último "sem interesse"
+    motivo_sem_interesse_id = CASE WHEN NEW.resultado = 'sem_interesse' THEN NEW.motivo_id ELSE motivo_sem_interesse_id END
   WHERE id = NEW.prospect_id;
 END;
 
@@ -620,7 +609,7 @@ SELECT p.*,
        COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END) AS supervisor_id,
        sup.nome              AS supervisor_nome,
        m.descricao           AS motivo_sem_interesse,
-       -- dias corridos SEMPRE a partir do 1º registro (atendido, não atendido, sem interesse…), em qualquer status
+       -- dias corridos SEMPRE a partir do 1º registro (atendido, sem interesse ou contato da planilha), em qualquer status
        CASE WHEN p.dt_primeiro_contato IS NOT NULL
             THEN CAST(julianday(date('now','-3 hours')) - julianday(p.dt_primeiro_contato) AS INTEGER) END AS dias_corridos,
        -- na_lista: aparece na lista de prospects (Não contactado / Em prospecção). Fora da lista continua em todos os indicadores.
