@@ -53,7 +53,7 @@ Como importar as planilhas: [docs/05-importacao.md](docs/05-importacao.md).
 [Visão geral](docs/00-visao-geral.md) · [Arquitetura](docs/01-arquitetura.md) ·
 [Modelo de dados](docs/02-modelo-dados.md) · [Regras e indicadores](docs/03-regras-negocio.md) ·
 [Acesso a dados do app](docs/04-acesso-dados.md) · [Importações](docs/05-importacao.md) ·
-[Operação](docs/06-operacao.md) · [Pendências](docs/07-pendencias.md) · [ADRs](docs/adr/)
+[Operação](docs/06-operacao.md) · [Pendências](docs/07-pendencias.md) · [Fluxo do processo](docs/08-fluxo-processo.md) · [ADRs](docs/adr/)
 
 ## Regras que nunca podem ser quebradas
 - Repositório **público**: nenhuma planilha real, relatório, `.env` ou token no Git.

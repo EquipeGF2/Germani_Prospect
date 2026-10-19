@@ -55,4 +55,5 @@ arquivos do ERP.
 - [05 — Importações](05-importacao.md)
 - [06 — Operação (Turso, GitHub, segredos)](06-operacao.md)
 - [07 — Pendências e dúvidas](07-pendencias.md)
+- [08 — Fluxo completo do processo (validação)](08-fluxo-processo.md)
 - [ADRs](adr/)
