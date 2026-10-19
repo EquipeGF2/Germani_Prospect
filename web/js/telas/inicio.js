@@ -15,6 +15,10 @@ export async function render(conteudo, { usuario }) {
     ['#/carteira', 'Lista principal', `${lista} prospect(s) não contactado(s) ou em prospecção`],
     ['#/carteira?aba=acompanhamento', 'Acompanhamento', `${acompanhamento} cliente(s) em cadastro, análise, pedido, venda ou sem interesse`],
   ];
+  if (['financeiro', 'administrador'].includes(usuario.perfil)) {
+    const n = soma((s) => s.status_atual === 'analise_financeira');
+    atalhos.push(['#/financeiro', 'Console de crédito', `${n} cliente(s) aguardando a análise financeira`]);
+  }
   if (retornos) atalhos.push(['#/carteira?somenteRetornos=1', 'Retornos', `${retornos} retorno(s) vencido(s) ou para hoje`]);
   if (usuario.perfil === 'administrador') atalhos.push(['#/admin', 'Administração', 'Importações, usuários e parâmetros']);
   montar(conteudo,
@@ -23,6 +27,5 @@ export async function render(conteudo, { usuario }) {
       ['prazos de cadastro vencidos', vencidos, vencidos ? 'erro' : '']]),
     status.length && !lista && !acompanhamento ? mensagem('Sua carteira ainda está vazia. A base de prospects é importada pelo administrador.', 'info') : null,
     h('div', { class: 'grade' }, atalhos.map(([href, t, d]) => h('a', { class: 'atalho', href }, h('b', {}, t), h('small', {}, d)))),
-    usuario.perfil === 'financeiro' ? mensagem('Em construção: console de análise financeira (parte 4 do app).', 'info') : null,
     mensagem('Em construção: painel de indicadores e rotas (parte 5 do app).', 'info'));
 }

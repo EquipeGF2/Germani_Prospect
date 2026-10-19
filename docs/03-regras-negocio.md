@@ -225,6 +225,16 @@ Fila com os clientes em Análise financeira (mais antigos primeiro, dias em aná
 (perfil **financeiro** ou administrador) informa **forma de pagamento**, **prazo (dias)**, **restrição de crédito
 sim/não** e **limite**. Boleto exige limite maior que zero.
 
+**Na tela** (menu *Financeiro → Console de crédito*, `#/financeiro`; o analista entra direto nela):
+- indicadores: em análise, fora do prazo (10 dias), liberados aguardando pedido;
+- abas **Em análise** (mais antigos primeiro, dias em análise, prazo; vencido em vermelho) e **Liberados · aguardando
+  pedido** (mais recentes primeiro, com a condição: forma · prazo · limite · restrição); busca por cliente, CNPJ,
+  cód. ERP, cidade ou vendedor;
+- **Liberar crédito** (`#/financeiro/liberar`): forma (antecipado / à vista / boleto), prazo em dias, limite (R$,
+  aceita "12.500,00"), data (entre o cadastro no ERP e hoje), restrição sim/não, observação. Grava e o cliente
+  vai para Aguardando pedido;
+- **Corrigir** (aba Liberados): mesma tela; grava uma **nova** liberação, a anterior fica no histórico.
+
 Em ambos: correção = nova liberação; nada é apagado.
 
 ## 9. Histórico de movimentação

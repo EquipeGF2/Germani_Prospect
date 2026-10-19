@@ -12,7 +12,7 @@ Sem servidor (ADR-0001), o app fala SQL com o Turso. Para manter o banco íntegr
 | Retornos hoje | lista: `consultaCarteira({ filtros: { somenteRetornos: true } })` · negociação (no acompanhamento): `consultaCarteira({ filtros: { status: 'aguardando_cadastro', somenteRetornos: true } })` | idem carteira |
 | Ficha (linha do tempo) | `consultaFicha()` (escopo do usuário; sem linha = sem acesso) + `ajustarFicha()` (tira rota do representante) + `consultaLinhaTempo()` sobre `vw_movimentacoes` | `prospect_id`, só depois da ficha abrir |
 | Histórico de movimentação (filtros/relatório) | `consultaMovimentacoes()` de `shared/indicadores.mjs` | vendedor: própria carteira na data; supervisor: equipe |
-| Console financeiro | `consultaFilaAnalise()` de `shared/financeiro.mjs` | perfil financeiro / administrador |
+| Console financeiro (`#/financeiro`) | `consultaFilaAnalise({ incluirLiberados: true })` de `shared/financeiro.mjs`; tela de liberação usa `consultaFicha()` | perfil financeiro / administrador |
 | Formulário de contato | `motivos_sem_interesse WHERE ativo = 1 AND uso_app = 1 ORDER BY ordem`, `parametros` | — |
 | Painel | `shared/indicadores.mjs` (`consultaPosicao`, `consultaAtividade`, `consultaExecucaoRotas`), `vw_ultimo_lancamento`, `vw_ranking_motivos`, `vw_prospects` (alertas) | supervisor: o próprio `supervisor_id` |
 | Login | `usuarios` (login, senha_hash, perfil, ativo) + `conferirSenha()` | — |

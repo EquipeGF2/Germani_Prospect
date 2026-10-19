@@ -96,7 +96,7 @@ button, .botao { font: inherit; min-height: 42px; padding: 0 16px; border-radius
 button:hover, .botao:hover { background: var(--destaque-escuro); }
 button.secundario, .botao.secundario { background: #fff; color: var(--texto); border-color: var(--borda-forte); }
 button.secundario:hover, .botao.secundario:hover { background: var(--fundo); color: var(--destaque); }
-button.pequeno { min-height: 32px; padding: 0 10px; font-size: 13px; }
+button.pequeno, .botao.pequeno { min-height: 32px; padding: 0 10px; font-size: 13px; }
 button:disabled { opacity: .5; cursor: not-allowed; }
 label { display: block; font-weight: 600; font-size: 13px; margin: 0 0 6px; color: #374151; }
 input, select, textarea { font: inherit; width: 100%; min-height: 42px; padding: 8px 12px; border: 1px solid var(--borda-forte); border-radius: var(--raio-p); background: #fff; color: var(--texto); }

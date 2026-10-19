@@ -4,7 +4,7 @@ Controle de prospecção de novos clientes da **GERMANI Alimentos**: cada CNPJ q
 um ponto de controle. O representante/vendedor registra os atendimentos; cadastro, pedido e CNPJs
 baixados entram por arquivos do ERP Senior; o supervisor acompanha cobertura e conversão.
 
-**Sistema:** GERMANI · **Estado:** ativo · **Fase atual:** F1 partes 1 a 3 prontas (administração; lista principal, acompanhamento e ficha; registro individual e em lote).
+**Sistema:** GERMANI · **Estado:** ativo · **Fase atual:** F1 partes 1 a 4 prontas (administração; lista principal, acompanhamento e ficha; registro individual e em lote; console de crédito), com menu lateral.
 
 Stack: **Turso (libSQL)** + **GitHub** (Actions, Secrets, Pages). Sem servidor — ver
 [ADR-0001](docs/adr/0001-turso-direto-github-pages.md).
@@ -39,6 +39,7 @@ Navegação pelo **menu lateral** (grupos Prospecção e Administração; recolh
 | `#/ficha?id=` | todos | situação, dias corridos, prazos, crédito, **histórico de movimentação**, cadastro, ligar / WhatsApp / mapa |
 | `#/registrar?id=` | vendedor, supervisor, admin | Atendido · Sem interesse (motivo) · Reabrir com pedido identificado |
 | `#/lote` | vendedor, supervisor, admin | sem interesse em lote (motivo do lote e/ou por cliente) |
+| `#/financeiro` | analista financeiro, admin | **console de crédito**: em análise × liberados, liberar ou corrigir (forma, prazo, limite, restrição) |
 | `#/admin/...` | administrador | importações, usuários, parâmetros (token de administração) |
 
 Publicação: workflow **Publicar app (GitHub Pages)** — ver [docs/06-operacao.md](docs/06-operacao.md) §3–4.

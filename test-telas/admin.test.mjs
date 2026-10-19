@@ -83,6 +83,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.fill('#novo-nome', 'Analista Financeiro Teste');
   await pagina.click('button:text("Criar usuário")');
   await pagina.waitForSelector('text=Senha provisória de analista');
+  const senhaAnalista = (await pagina.locator('.senha-gerada').last().innerText()).trim();
 
   // 4. arquivo de cadastro do ERP (2 CNPJs da base + 1 de fora)
   const { linhas } = await lerPlanilha('exemplos/base-ficticia.xlsx');
@@ -219,6 +220,45 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('17-menu-recolhido');
   await pagina.click('#botao-menu');
   await pagina.waitForSelector('#casca:not(.recolhido)');
+
+  // 12. analista financeiro: console de crédito → libera o cliente em análise → corrige a liberação
+  await pagina.click('.menu-sair');
+  await pagina.waitForSelector('#login');
+  await pagina.fill('#login', 'analista');
+  await pagina.fill('#senha', senhaAnalista);
+  await pagina.click('button:text("Entrar")');
+  await pagina.waitForSelector('h1:text("Console de crédito")');       // o analista cai direto no console
+  assert.equal(await pagina.locator('#menu a[title="Lista principal"]').count(), 1);
+  assert.equal(await pagina.locator('#menu a[title="Usuários"]').count(), 0, 'analista não vê administração');
+  assert.match(await texto(), /1\s+em análise/);                       // o 2º CNPJ do arquivo de cadastro
+  await foto('19-console-credito');
+  await pagina.click('a:text("Liberar crédito")');
+  await pagina.waitForSelector('text=Forma de pagamento');
+  await pagina.click('label.opcao:has-text("Boleto")');
+  await pagina.fill('#prazo', '28');
+  await pagina.click('label.opcao:has-text("Sem restrição")');
+  await pagina.click('button:text("Liberar crédito")');
+  await pagina.waitForSelector('text=informe o limite de crédito');      // boleto sem limite é recusado na tela
+  await pagina.fill('#limite', '12.500,00');
+  await foto('20-liberar-credito');
+  await pagina.click('button:text("Liberar crédito")');
+  await pagina.waitForSelector('text=passou para Aguardando pedido');
+  await pagina.waitForSelector('text=Nenhum cliente aguardando análise.');
+  await pagina.click('.visoes a:has-text("Liberados")');
+  await pagina.waitForSelector('td:has-text("Boleto · 28 dias · R$ 12.500,00")');
+  await foto('21-liberados');
+  await pagina.click('a:text("Corrigir") >> nth=0');
+  await pagina.waitForSelector('text=Corrigir liberação de crédito');
+  await pagina.click('label.opcao:has-text("À vista")');
+  await pagina.fill('#limite', '5000');
+  await pagina.click('label.opcao:has-text("Com restrição")');
+  await pagina.click('button:text("Gravar nova liberação")');
+  await pagina.waitForSelector('text=passou para Aguardando pedido');
+  await pagina.click('.visoes a:has-text("Liberados")');
+  await pagina.waitForSelector('td:has-text("com restrição")');
+  await pagina.click('td a >> nth=0');
+  await pagina.waitForSelector('text=Histórico de movimentação');
+  assert.match(await texto(), /Restrição de crédito\s+com restrição/);
 });
 
 test('telas cabem no celular (sem rolagem horizontal da página)', async () => {

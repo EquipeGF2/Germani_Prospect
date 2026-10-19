@@ -67,6 +67,8 @@ web/
     ├── ficha.js                  ficha + linha do tempo (vw_movimentacoes)
     ├── registrar.js              registro individual (shared/registro.mjs)
     ├── lote.js                   sem interesse em lote (shared/lote.mjs)
+    ├── financeiro.js             console de crédito (shared/financeiro.mjs)
+    ├── financeiro-liberar.js     liberar / corrigir crédito
     ├── _carteira.js              selo de status, seleção do lote (sessionStorage)
     └── admin-*.js                administração (token de administração)
 ```
