@@ -178,6 +178,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .aviso.erro { background: #fff; color: #7A271A; border-left-color: var(--erro); }
 .login { max-width: 400px; margin: 10vh auto; }
 .login .cartao { padding: 28px; }
+.login h1, .login > .ajuda { text-align: center; }
+.login > button[type=submit] { display: block; width: 100%; margin-top: 6px; }
 .oculto { display: none !important; }
 @media (max-width: 600px) { h1 { font-size: 1.35rem; } #avisos { right: 50%; transform: translateX(50%); bottom: 16px; } }
 
