@@ -162,7 +162,7 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje }) {
   } else {
     datas.forEach((data, i) => {
       const ultima = i === datas.length - 1;
-      const resultado = ultima ? resultadoFinal : 'sem_conclusao';
+      const resultado = ultima ? resultadoFinal : 'nao_atendido';
       tentativas.push({
         numero: i + 1,
         data,
@@ -217,7 +217,7 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje }) {
 
 /** Normaliza as chaves do mapa de status (ignora chaves iniciadas por "_"). */
 export function normalizarMapaStatus(mapa) {
-  const validos = new Set(['sem_contato', 'sem_conclusao', 'com_interesse', 'sem_interesse']);
+  const validos = new Set(['sem_contato', 'nao_atendido', 'atendido', 'sem_interesse']);
   const saida = {};
   for (const [k, v] of Object.entries(mapa)) {
     if (k.startsWith('_')) continue;

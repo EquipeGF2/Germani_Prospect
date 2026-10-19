@@ -30,7 +30,7 @@ CREATE TABLE parametros (
 );
 
 INSERT INTO parametros (chave, valor, tipo, descricao) VALUES
-  ('tentativas_maximas',            '2',   'inteiro', 'Atendimentos sem interesse até o prospect sair da lista como "Sem interesse" (novos contatos continuam permitidos)'),
+  ('tentativas_maximas',            '2',   'inteiro', 'Registros de "não atendido" até o prospect sair da lista como "Sem interesse" (novos contatos continuam permitidos)'),
   ('dias_entre_tentativas',         '7',   'inteiro', 'Dias até o prospect voltar à fila após uma tentativa sem conclusão'),
   ('prazo_cadastro_dias',           '15',  'inteiro', 'Prazo, a partir do interesse declarado, para o cliente aparecer cadastrado no ERP'),
   ('prazo_analise_financeira_dias', '10',  'inteiro', 'Dias de análise financeira após a entrada do pedido'),
@@ -55,7 +55,7 @@ CREATE TABLE status (
 INSERT INTO status (codigo, nome, cor, ordem, origem, aceita_contato, lista_trabalho, conta_contactado, conta_carteira) VALUES
   ('nao_contactado',  'Não contactado',     '#9CA3AF', 1, 'inicial', 1, 1, 0, 1),
   ('em_prospeccao',   'Em prospecção',      '#0E7490', 2, 'app',     1, 1, 1, 1),
-  ('em_negociacao',   'Em negociação',      '#6D28D9', 3, 'app',     1, 0, 1, 1),  -- atendido com interesse, aguardando cadastro no ERP
+  ('em_negociacao',   'Em negociação',      '#6D28D9', 3, 'app',     1, 0, 1, 1),  -- atendido (ou pedido informado), aguardando cadastro/pedido nos arquivos do ERP
   ('sem_interesse',   'Sem interesse',      '#3F3F46', 4, 'app',     1, 0, 1, 1),
   ('cadastrado_erp',  'Cadastrado no ERP',  '#0F766E', 5, 'erp',     1, 0, 1, 1),
   ('venda_realizada', 'Venda realizada',    '#1D4ED8', 6, 'erp',     0, 0, 1, 1),
@@ -200,7 +200,8 @@ CREATE TABLE prospects (
   dt_ultimo_contato        TEXT,
   data_proxima_acao        TEXT,            -- quando volta a aparecer como pendente
   motivo_sem_interesse_id  INTEGER REFERENCES motivos_sem_interesse(id),
-  dt_interesse             TEXT,
+  dt_atendido              TEXT,            -- 1º registro "atendido" (ou pedido informado)
+  dt_pedido_informado      TEXT,            -- data de entrada do pedido informada pelo vendedor (reabertura)
   prazo_cadastro_ate       TEXT,
   dt_cadastro_erp          TEXT,
   codigo_cliente_erp       TEXT,
@@ -265,11 +266,13 @@ CREATE TABLE contatos (
   data_hora_dispositivo  TEXT,                           -- ISO com fuso, informada pelo aparelho
   recebido_em            TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   canal                  TEXT NOT NULL CHECK (canal IN ('visita','telefone','whatsapp','nao_informado')),
-  resultado              TEXT NOT NULL CHECK (resultado IN ('com_interesse','sem_interesse','sem_conclusao')),
+  resultado              TEXT NOT NULL CHECK (resultado IN ('atendido','nao_atendido','sem_interesse','pedido_informado')),
   motivo_id              INTEGER REFERENCES motivos_sem_interesse(id),
   observacao             TEXT,
   observacao_busca       TEXT,                           -- sem acento, para palavras-chave
   data_retorno           TEXT CHECK (data_retorno IS NULL OR date(data_retorno) = data_retorno),
+  data_pedido_informado  TEXT CHECK (data_pedido_informado IS NULL OR date(data_pedido_informado) = data_pedido_informado),
+  lote_id                TEXT,                           -- registros feitos em lote compartilham o mesmo id
   -- posição do aparelho, opcional e só como registro: o sistema NÃO calcula distância (ADR-0005)
   latitude               REAL,
   longitude              REAL,
@@ -277,6 +280,8 @@ CREATE TABLE contatos (
   importacao_id          INTEGER REFERENCES importacoes(id),
   CHECK (resultado <> 'sem_interesse' OR motivo_id IS NOT NULL),
   CHECK (data_retorno IS NULL OR data_retorno >= data_contato),  -- retorno é opcional (agenda)
+  CHECK ((resultado = 'pedido_informado') = (data_pedido_informado IS NOT NULL)),
+  CHECK (data_pedido_informado IS NULL OR data_pedido_informado <= data_contato),
   CHECK (resultado = 'sem_interesse' OR motivo_id IS NULL),
   CHECK (origem <> 'importacao' OR importacao_id IS NOT NULL),
   CHECK (canal <> 'nao_informado' OR origem = 'importacao'),  -- a planilha base não informa o canal
@@ -284,6 +289,7 @@ CREATE TABLE contatos (
 );
 CREATE INDEX ix_contatos_usuario_data ON contatos (usuario_id, data_contato);
 CREATE INDEX ix_contatos_data         ON contatos (data_contato);
+CREATE INDEX ix_contatos_lote         ON contatos (lote_id) WHERE lote_id IS NOT NULL;
 
 -- Validações antes de gravar o contato
 CREATE TRIGGER trg_contatos_validar
@@ -319,13 +325,12 @@ BEGIN
 END;
 
 -- Aplicação da regra de status (docs/03-regras-negocio.md §2). Não há limite de contatos.
---   Cadastrado no ERP                                  → continua cadastrado (contato só registra)
---   com_interesse                                      → em_negociacao (atendido; aguarda cadastro no ERP)
---   em_negociacao + sem_conclusao                      → continua em_negociacao
---   em_negociacao + sem_interesse                      → sem_interesse
---   sem_interesse + sem_interesse/sem_conclusao        → continua sem_interesse
---   não contactado/em prospecção, nº >= tentativas_maximas → sem_interesse (sai da lista)
---   não contactado/em prospecção, antes do limite      → em_prospeccao
+--   Cadastrado no ERP                         → continua cadastrado (contato só registra)
+--   atendido / pedido_informado               → em_negociacao (sai da lista principal; aguarda cadastro/pedido do ERP)
+--   sem_interesse                             → sem_interesse (sai da lista principal na hora)
+--   nao_atendido em negociação / sem interesse → mantém o status
+--   nao_atendido nº >= tentativas_maximas      → sem_interesse (motivo "Sem retorno")
+--   nao_atendido antes do limite               → em_prospeccao
 CREATE TRIGGER trg_contatos_aplicar
 AFTER INSERT ON contatos
 BEGIN
@@ -333,9 +338,9 @@ BEGIN
   SELECT p.id, p.status_atual,
          CASE
            WHEN p.status_atual = 'cadastrado_erp' THEN 'cadastrado_erp'
-           WHEN NEW.resultado = 'com_interesse' THEN 'em_negociacao'
-           WHEN p.status_atual = 'em_negociacao' AND NEW.resultado = 'sem_conclusao' THEN 'em_negociacao'
-           WHEN p.status_atual IN ('em_negociacao','sem_interesse') THEN 'sem_interesse'
+           WHEN NEW.resultado IN ('atendido','pedido_informado') THEN 'em_negociacao'
+           WHEN NEW.resultado = 'sem_interesse' THEN 'sem_interesse'
+           WHEN p.status_atual IN ('em_negociacao','sem_interesse') THEN p.status_atual
            WHEN NEW.numero_tentativa >= (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'tentativas_maximas') THEN 'sem_interesse'
            ELSE 'em_prospeccao'
          END,
@@ -348,9 +353,10 @@ BEGIN
     dt_primeiro_contato = COALESCE(dt_primeiro_contato, NEW.data_contato),
     dt_segundo_contato  = CASE WHEN NEW.numero_tentativa = 2 THEN NEW.data_contato ELSE dt_segundo_contato END,
     dt_ultimo_contato   = NEW.data_contato,
-    dt_interesse = CASE WHEN NEW.resultado = 'com_interesse' AND dt_interesse IS NULL THEN NEW.data_contato ELSE dt_interesse END,
+    dt_atendido = CASE WHEN NEW.resultado IN ('atendido','pedido_informado') AND dt_atendido IS NULL THEN NEW.data_contato ELSE dt_atendido END,
+    dt_pedido_informado = CASE WHEN NEW.resultado = 'pedido_informado' THEN NEW.data_pedido_informado ELSE dt_pedido_informado END,
     prazo_cadastro_ate = CASE
-      WHEN NEW.resultado = 'com_interesse' AND dt_interesse IS NULL
+      WHEN NEW.resultado IN ('atendido','pedido_informado') AND dt_atendido IS NULL
         THEN date(NEW.data_contato, '+' || (SELECT valor FROM parametros WHERE chave = 'prazo_cadastro_dias') || ' days')
       ELSE prazo_cadastro_ate END,
     atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now')
@@ -415,7 +421,7 @@ BEGIN
   UPDATE prospects SET
     status_atual = (SELECT status_novo FROM historico_status WHERE origem = 'erp' AND referencia = CAST(NEW.id AS TEXT)),
     convertido_sem_registro = CASE
-      WHEN NEW.tipo IN ('cadastro','pedido') AND status_atual <> 'venda_realizada' AND dt_interesse IS NULL THEN 1
+      WHEN NEW.tipo IN ('cadastro','pedido') AND status_atual <> 'venda_realizada' AND dt_atendido IS NULL THEN 1
       ELSE convertido_sem_registro END,
     dt_cadastro_erp    = CASE WHEN NEW.tipo = 'cadastro' THEN COALESCE(dt_cadastro_erp, NEW.data_evento) ELSE dt_cadastro_erp END,
     codigo_cliente_erp = CASE WHEN NEW.tipo = 'cadastro' THEN COALESCE(NEW.documento, codigo_cliente_erp) ELSE codigo_cliente_erp END,
@@ -603,16 +609,18 @@ SELECT p.*,
        s.nome                AS status_nome,
        s.cor                 AS status_cor,
        s.aceita_contato,
-       -- "Em negociação · atendido em dd/mm/aaaa"
-       CASE WHEN p.status_atual = 'em_negociacao' AND p.dt_interesse IS NOT NULL
-            THEN s.nome || ' · atendido em ' || strftime('%d/%m/%Y', p.dt_interesse) ELSE s.nome END AS status_descricao,
+       -- "Em negociação · atendido em dd/mm/aaaa" ou "Em negociação · pedido informado em dd/mm/aaaa"
+       CASE WHEN p.status_atual = 'em_negociacao' AND p.dt_pedido_informado IS NOT NULL
+            THEN s.nome || ' · pedido informado em ' || strftime('%d/%m/%Y', p.dt_pedido_informado)
+            WHEN p.status_atual = 'em_negociacao' AND p.dt_atendido IS NOT NULL
+            THEN s.nome || ' · atendido em ' || strftime('%d/%m/%Y', p.dt_atendido) ELSE s.nome END AS status_descricao,
        v.nome                AS vendedor_nome,
        v.codigo_erp          AS vendedor_codigo,
        v.tipo_atuacao        AS vendedor_tipo_atuacao,
        COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END) AS supervisor_id,
        sup.nome              AS supervisor_nome,
        m.descricao           AS motivo_sem_interesse,
-       -- dias corridos SEMPRE contados a partir do 1º atendimento (em qualquer status)
+       -- dias corridos SEMPRE a partir do 1º registro (atendido, não atendido, sem interesse…), em qualquer status
        CASE WHEN p.dt_primeiro_contato IS NOT NULL
             THEN CAST(julianday(date('now','-3 hours')) - julianday(p.dt_primeiro_contato) AS INTEGER) END AS dias_corridos,
        -- na_lista: aparece na lista de prospects (Não contactado / Em prospecção). Fora da lista continua em todos os indicadores.
@@ -622,7 +630,7 @@ SELECT p.*,
        -- retorno agendado vencido/hoje em qualquer status que ainda aceita contato (inclui Em negociação)
        CASE WHEN s.aceita_contato = 1 AND p.data_proxima_acao IS NOT NULL
              AND p.data_proxima_acao <= date('now','-3 hours') THEN 1 ELSE 0 END AS retorno_pendente,
-       CASE WHEN p.dt_interesse IS NOT NULL THEN 1 ELSE 0 END AS com_interesse,
+       CASE WHEN p.dt_atendido IS NOT NULL THEN 1 ELSE 0 END AS atendido,
        CASE WHEN p.status_atual = 'em_negociacao' AND p.prazo_cadastro_ate < date('now','-3 hours') THEN 1 ELSE 0 END AS prazo_cadastro_vencido,
        CASE WHEN p.status_atual = 'venda_realizada' AND p.analise_financeira_ate >= date('now','-3 hours') THEN 1 ELSE 0 END AS em_analise_financeira,
        CAST(julianday(date('now','-3 hours')) - julianday(COALESCE(p.dt_ultimo_contato, p.dt_entrada_base)) AS INTEGER) AS dias_sem_movimento,

@@ -5,9 +5,9 @@
 | Status | Origem | Na lista de prospects? | Aceita novo contato? | Conta como contactado | Carteira válida |
 |---|---|---|---|---|---|
 | Não contactado | carga inicial | **sim** | sim | não | sim |
-| Em prospecção | app (atendido sem interesse/sem conclusão, antes do limite) | **sim**, a partir de `data_proxima_acao` | sim | sim | sim |
-| Em negociação | app (**com interesse**) — exibido como "Em negociação · atendido em dd/mm/aaaa"; aguarda o cadastro no ERP | não | sim | sim | sim |
-| Sem interesse | app (2 atendimentos sem interesse, ou recusa depois de negociar) | não | sim | sim | sim |
+| Em prospecção | app ("não atendido", antes do limite) | **sim**, a partir de `data_proxima_acao` | sim | sim | sim |
+| Em negociação | app (**atendido** ou **pedido identificado**) — "Em negociação · atendido em dd/mm/aaaa" ou "· pedido informado em dd/mm/aaaa"; aguarda o CNPJ aparecer nos arquivos de cadastro/pedido | não (acompanhamento) | sim | sim | sim |
+| Sem interesse | app ("sem interesse" — na hora; ou 2 "não atendido") | não | sim | sim | sim |
 | Cadastrado no ERP | arquivo de cadastro do Senior | não | sim (só registra; status não muda) | sim | sim |
 | Venda realizada | arquivo de pedidos do Senior (**final**) | não | não | sim | sim |
 | Inválido (baixado) | arquivo de CNPJs baixados | não — **congelado** | não | não | **não** |
@@ -23,29 +23,41 @@ O vendedor nunca escolhe "inválido", "cadastrado" ou "venda": não existem como
 
 ## 2. Registro de contato (app)
 
-Campos: **canal** (visita · telefone · WhatsApp) → **resultado** → campos condicionais.
+Campos: **canal** (visita · telefone · WhatsApp) → **resultado** → campos condicionais. Mesmo formulário para
+representante e vendedor.
 
 | Resultado | Campo obrigatório | Efeito |
 |---|---|---|
-| Com interesse | — (data de retorno opcional) | → **Em negociação**, "atendido em" = data do 1º interesse; abre o **prazo de cadastro** = data + `prazo_cadastro_dias` (15) |
-| Sem interesse | motivo (lista); "Outro" exige observação | Não contactado/Em prospecção: antes do limite → Em prospecção; no limite → **Sem interesse**. Em negociação → **Sem interesse** |
-| Sem conclusão | — (não atendeu, retornar) | conta como atendimento sem interesse; em negociação mantém Em negociação |
+| **Atendido** | — (data de retorno opcional) | → **Em negociação** (sai da lista principal); "atendido em" = data do 1º atendimento; o CNPJ passa a ser procurado nos arquivos de **cadastro** e **pedido** do ERP; abre o **prazo de cadastro** = data + `prazo_cadastro_dias` (15) |
+| **Não atendido** | — | → Em prospecção (volta em `dias_entre_tentativas`); no `tentativas_maximas`º (2º) → **Sem interesse** (motivo "Sem retorno após as tentativas"). Em negociação / sem interesse: mantém |
+| **Sem interesse** | justificativa: motivo (lista) + observação ("Outro" exige observação) | → **Sem interesse** na hora (sai da lista principal) |
+| **Reabrir: pedido identificado** | **data de entrada do pedido** (≤ data do registro) | → **Em negociação · pedido informado em dd/mm** (acompanhamento) até o arquivo de pedidos do ERP confirmar a **Venda realizada** |
 
 Regras:
-- **Contatos sem limite.** Qualquer prospect que não seja Venda realizada nem Inválido aceita novos contatos.
-- **Saída da lista:** `tentativas_maximas` = 2 atendimentos sem interesse → **Sem interesse** (sai da lista).
-  Um novo "com interesse" depois disso reabre como **Em negociação** — que também fica fora da lista
-  preferencial, só no acompanhamento.
-- **Dias corridos** são **sempre** contados a partir do **1º atendimento** (`dt_primeiro_contato`), em qualquer
-  status, inclusive depois de sair da lista (`vw_prospects.dias_corridos`).
-- **Motivo final** de "Sem interesse" = o último motivo informado em qualquer atendimento; sem nenhum,
-  "Sem retorno após as tentativas".
-- **Próxima ação:** a data de retorno informada ou, sem ela, data do contato + `dias_entre_tentativas` (7).
-  Vale também para Em negociação (`retorno_pendente`), mas esses retornos aparecem **só no acompanhamento**.
-- **Data do aparelho manda.** Única trava: não pode ser anterior ao último contato registrado do prospect.
+- **Contatos sem limite.** Qualquer prospect que não seja Venda realizada nem Inválido aceita novos registros.
+- **Dias corridos** contam **sempre do 1º registro**, seja ele atendido, não atendido ou sem interesse
+  (`dt_primeiro_contato`), em qualquer status, inclusive fora da lista (`vw_prospects.dias_corridos`).
+- **Reabertura:** quando aparece um pedido de um cliente que estava *Sem interesse*, o vendedor/representante
+  registra "pedido identificado" com a data de entrada do pedido. Não marca como "convertido sem registro".
+- **Motivo final** de "Sem interesse" = o último motivo informado; sem nenhum, "Sem retorno após as tentativas".
+- **Próxima ação:** a data de retorno informada ou, sem ela, data do registro + `dias_entre_tentativas` (7).
+  Retornos de Em negociação aparecem **só no acompanhamento**.
+- **Data do aparelho manda.** Única trava: não pode ser anterior ao último registro do prospect.
 - **Observação** é livre; a versão sem acento (`observacao_busca`) alimenta o ranking de palavras-chave.
-- **Correção** = novo contato. Nada é editado.
+- **Correção** = novo registro. Nada é editado.
 - O que fazer depois com os "Sem interesse" será decidido (ver 07).
+
+### 2.1 Registro em lote
+
+Implementação: [`shared/lote.mjs`](../shared/lote.mjs) · testes: [`test/lote.test.mjs`](../test/lote.test.mjs).
+
+- O usuário seleciona vários prospects (da lista ou de uma visão cidade/bairro) e registra de uma vez —
+  uso principal: **sem interesse**; também vale para não atendido / atendido.
+- **Justificativa do lote** (motivo + observação) vale para todos; **justificativa individual** substitui a do
+  lote naquele prospect. Pode misturar: lote com "Preço" e um item com "Outro: loja vai fechar".
+- Cada item vira um registro normal (mesmas regras do banco) com o mesmo `lote_id`.
+- Item inválido (sem motivo, outra carteira, baixado…) é devolvido com o motivo; **os demais gravam**.
+- "Pedido identificado" não entra em lote: cada pedido tem a sua data.
 
 ### Motivos de recusa (lista inicial, editável)
 
@@ -63,7 +75,7 @@ Do sistema (não aparecem no app): Sem retorno após as tentativas · Não infor
 | Pedidos (Senior) | `pedido` | → **Venda realizada** (final); guarda nº do pedido; `analise_financeira_ate` = data + `prazo_analise_financeira_dias` (10) |
 | CNPJs baixados | `baixa` | → Inválido; `situacao_cadastral = baixada`; prospect **congelado**: histórico preservado como estava, sem novos contatos, sem cadastro/pedido ("impossibilitado de faturamento") |
 
-- Cadastro/pedido de prospect **sem nenhum "com interesse" registrado** → `convertido_sem_registro = 1`
+- Cadastro/pedido de prospect **sem nenhum "atendido" nem "pedido identificado" registrado** → `convertido_sem_registro = 1`
   (alerta para o supervisor: alguém vendeu sem lançar).
 - Cadastro posterior a um pedido não rebaixa a venda.
 - Reimportar o mesmo arquivo não duplica eventos (índice único por prospect + tipo + documento).
@@ -99,7 +111,7 @@ Numa data passada D, o status de cada prospect é o da última linha de `histori
 `data_evento ≤ D`. Por vendedor/supervisor, vale a carteira **atual**.
 
 ### Atividade (o que aconteceu entre início e fim)
-Contatos registrados · contatos com interesse · prospects contactados · primeiros contatos · encerrados sem interesse ·
+Contatos registrados · atendidos · prospects contactados · primeiros contatos · encerrados sem interesse ·
 cadastros no ERP · pedidos · baixas.
 
 Mais a **execução de rotas** (planejadas × atendidas, §7). Todos contam **toda a base** (dentro e fora da lista) e podem ser agrupados por **total geral, vendedor,
@@ -139,7 +151,7 @@ movimentação conta sempre nos indicadores.
   Busca por nome, CNPJ (com ou sem pontuação), cidade ou bairro, **sem acento**.
 - **Acompanhamento (visão Status):** todos os status com quantidade, retornos pendentes, prazos de cadastro
   vencidos e média de dias corridos. Tocar num status abre a lista daquele status.
-- **Cidade / Bairro:** para os dois perfis. Total, pendentes hoje, não contactados, em prospecção, com interesse
+- **Cidade / Bairro:** para os dois perfis. Total, pendentes hoje, não contactados, em prospecção, atendidos
   e o centro do grupo para **abrir no mapa**. **Nenhuma distância é calculada** (ADR-0005).
 - Cada linha traz `dias_corridos` (desde o 1º atendimento) e `status_descricao`.
 

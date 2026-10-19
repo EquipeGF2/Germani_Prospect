@@ -18,8 +18,8 @@ export const VISOES = Object.freeze(['lista', 'cidade', 'bairro', 'status', 'rot
 
 const COLUNAS_LISTA = ['id', 'cnpj', 'razao_social', 'nome_fantasia', 'endereco', 'bairro', 'bairro_busca', 'cidade', 'cidade_busca', 'uf', 'cep',
   'latitude', 'longitude', 'telefone', 'tipologia_gtm', 'status_atual', 'status_nome', 'status_descricao', 'status_cor',
-  'tentativas', 'dt_primeiro_contato', 'dt_segundo_contato', 'dt_ultimo_contato', 'dt_interesse', 'data_proxima_acao',
-  'dias_corridos', 'pendente_hoje', 'retorno_pendente', 'na_lista', 'com_interesse', 'prazo_cadastro_vencido',
+  'tentativas', 'dt_primeiro_contato', 'dt_segundo_contato', 'dt_ultimo_contato', 'dt_atendido', 'data_proxima_acao',
+  'dias_corridos', 'pendente_hoje', 'retorno_pendente', 'na_lista', 'atendido', 'prazo_cadastro_vencido',
   'motivo_sem_interesse', 'dt_cadastro_erp', 'dt_pedido', 'numero_pedido', 'dt_baixa', 'vendedor_id', 'vendedor_nome'];
 // rota/subrota só existem para prospects de vendedor (nunca de representante), mesmo na visão de gestão
 const COLUNAS_ROTA = [
@@ -120,7 +120,7 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
                  SUM(pendente_hoje)                    AS pendentes_hoje,
                  SUM(status_atual = 'nao_contactado')  AS nao_contactados,
                  SUM(status_atual = 'em_prospeccao')   AS em_prospeccao,
-                 SUM(com_interesse)                    AS com_interesse,
+                 SUM(atendido)                    AS atendido,
                  AVG(latitude)                         AS latitude_media,
                  AVG(longitude)                        AS longitude_media
             FROM vw_prospects ${filtro}

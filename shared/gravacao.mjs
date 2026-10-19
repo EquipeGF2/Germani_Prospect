@@ -1,4 +1,4 @@
-// Grava itens em lotes transacionais. Se um lote falhar (ex.: trigger recusou uma linha),
+// Grava itens em lotes transacionais (Node e navegador — só usa db.batch). Se um lote falhar (ex.: trigger recusou uma linha),
 // o lote é refeito item a item para isolar a linha com problema — as demais seguem gravadas.
 export async function gravarEmLotes(db, itens, montar, { tamanho = 50 } = {}) {
   const resultados = new Array(itens.length);

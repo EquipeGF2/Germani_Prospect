@@ -10,17 +10,19 @@ tentativas de contato e o supervisor acompanha cobertura e conversão.
 ## Fluxo do prospect (resumo)
 
 ```
- planilha base ──► Não contactado ──(atendimento sem interesse)──► Em prospecção ──(2º sem interesse)──► Sem interesse
-                         │                                              │
-                         └──────────────(com interesse)─────────────────┴──► Em negociação · atendido em dd/mm
-                                                                              (aguarda cadastro no ERP)
+ planilha base ──► Não contactado ──(não atendido)──► Em prospecção ──(2º não atendido)──┐
+                        │                                  │                            ▼
+                        ├──────────(sem interesse)─────────┴──────────────────────► Sem interesse
+                        │                                                               │ (pedido identificado:
+                        └──────────(atendido)────────► Em negociação ◄──────────────────┘  informa a data do pedido)
+                                                   (acompanhamento: CNPJ procurado nos arquivos do ERP)
  arquivo ERP de cadastro ──► Cadastrado no ERP          arquivo ERP de pedidos ──► Venda realizada (final)
  arquivo de CNPJs baixados ──► Inválido (congelado, impossibilitado de faturamento)
 ```
 
 A **lista de prospects** mostra só Não contactado e Em prospecção. Todo o resto continua visível no
 **acompanhamento por status** do vendedor e **sempre conta nos indicadores** de cada equipe e no geral.
-Contatos não têm limite; os dias corridos contam sempre do 1º atendimento.
+Contatos não têm limite; os dias corridos contam sempre do 1º registro (atendido ou não).
 
 Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 
@@ -28,7 +30,7 @@ Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 
 | Perfil | No app | Por importação (administrador) |
 |---|---|---|
-| Representante | **filtro e consulta**: lista principal por lista, cidade e bairro (**sem rota**) + acompanhamento; registra as datas de atendimento e de **sem interesse** | — |
+| Representante | **filtro e consulta**: lista principal por lista, cidade e bairro (**sem rota**) + acompanhamento; registra **atendido / não atendido / sem interesse** (também em lote) e reabre com pedido identificado | — |
 | Vendedor | o mesmo + **montagem de rotas** e visão por rota/subrota | — |
 | Supervisor | o mesmo, para a sua equipe; acompanha painel; redistribui carteira | — |
 | Administrador | tudo | base inicial de prospects; cadastro de clientes do ERP; pedidos do ERP; CNPJs baixados; usuários e senhas |

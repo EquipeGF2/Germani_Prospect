@@ -6,7 +6,7 @@ import { importarEventos } from '../lib/importar-eventos.mjs';
 import { COLUNAS_BASE, mapearCabecalho, normalizarMapaStatus } from '../shared/importacao-base.mjs';
 import { formatarCnpj } from '../shared/cnpj.mjs';
 
-const MAPA = normalizarMapaStatus({ '': 'sem_contato', 'Não contactado': 'sem_contato', 'Em prospecção': 'sem_conclusao', 'Em negociação': 'com_interesse', 'Sem interesse': 'sem_interesse' });
+const MAPA = normalizarMapaStatus({ '': 'sem_contato', 'Não contactado': 'sem_contato', 'Em prospecção': 'nao_atendido', 'Em negociação': 'atendido', 'Sem interesse': 'sem_interesse' });
 const CAB = COLUNAS_BASE.map((c) => c.cabecalho);
 const HOJE = '2026-10-19';
 
@@ -105,7 +105,7 @@ test('reimportar a mesma planilha não altera status, histórico, contatos nem v
   const antes = await foto();
   // contato registrado no app entre as importações
   await db.execute({ sql: `INSERT INTO contatos (id, prospect_id, usuario_id, numero_tentativa, data_contato, canal, resultado, data_retorno)
-                           SELECT 'app-1', id, vendedor_id, 1, '2026-10-02', 'visita', 'com_interesse', NULL FROM prospects WHERE cnpj = ?`, args: [cnpjTeste(2)] });
+                           SELECT 'app-1', id, vendedor_id, 1, '2026-10-02', 'visita', 'atendido', NULL FROM prospects WHERE cnpj = ?`, args: [cnpjTeste(2)] });
   const depoisApp = await foto();
   const linhasAlteradas = [linha({ cnpj: cnpjTeste(1), razao: 'Empresa Renomeada', dt1: '01/09/2026', status: 'Em prospecção', cod: '11', nome: 'Vend Onze' }), linhas[1]];
   const { resultados } = await importar(db, linhasAlteradas);

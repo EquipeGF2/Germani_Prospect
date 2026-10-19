@@ -54,9 +54,17 @@ test('senha: PBKDF2 confere e rejeita', async () => {
 });
 
 test('validação do formulário de contato espelha o banco', () => {
-  assert.deepEqual(validarContato({ canal: 'visita', resultado: 'sem_conclusao', dataContato: '2026-10-01' }), []);
+  assert.deepEqual(validarContato({ canal: 'visita', resultado: 'nao_atendido', dataContato: '2026-10-01' }), []);
   assert.match(validarContato({ canal: 'visita', resultado: 'sem_interesse', dataContato: '2026-10-01' }).join(), /motivo obrigatório/);
-  assert.deepEqual(validarContato({ canal: 'visita', resultado: 'com_interesse', dataContato: '2026-10-01' }), []);
-  assert.match(validarContato({ canal: 'visita', resultado: 'com_interesse', dataContato: '2026-10-01', dataRetorno: '2026-09-01' }).join(), /anterior/);
+  assert.deepEqual(validarContato({ canal: 'visita', resultado: 'atendido', dataContato: '2026-10-01' }), []);
+  assert.match(validarContato({ canal: 'visita', resultado: 'atendido', dataContato: '2026-10-01', dataRetorno: '2026-09-01' }).join(), /anterior/);
   assert.match(validarContato({ canal: 'fax', resultado: 'x', dataContato: '' }).join(), /canal.*resultado.*data/);
+});
+
+test('reabertura com pedido exige data de entrada do pedido não posterior ao registro', () => {
+  const base = { canal: 'telefone', resultado: 'pedido_informado', dataContato: '2026-10-12' };
+  assert.match(validarContato(base).join(), /data de entrada do pedido obrigatória/);
+  assert.match(validarContato({ ...base, dataPedido: '2026-10-13' }).join(), /posterior/);
+  assert.deepEqual(validarContato({ ...base, dataPedido: '2026-10-10' }), []);
+  assert.match(validarContato({ canal: 'visita', resultado: 'atendido', dataContato: '2026-10-12', dataPedido: '2026-10-10' }).join(), /só vale/);
 });

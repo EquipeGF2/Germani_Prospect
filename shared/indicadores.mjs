@@ -97,7 +97,7 @@ WITH ev AS (
 )
 SELECT ${g.chave} AS chave, MIN(${g.rotulo}) AS rotulo,
        SUM(ev.tipo = 'contato')                                    AS contatos_registrados,
-       SUM(ev.tipo = 'contato' AND ev.r = 'com_interesse')         AS contatos_com_interesse,
+       SUM(ev.tipo = 'contato' AND ev.r = 'atendido')         AS contatos_atendidos,
        COUNT(DISTINCT CASE WHEN ev.tipo = 'contato' THEN ev.prospect_id END) AS prospects_contactados,
        SUM(ev.tipo = 'contato' AND ev.n = 1)                        AS primeiros_contatos,
        SUM(ev.tipo = 'encerrado_sem_interesse')                     AS encerrados_sem_interesse,

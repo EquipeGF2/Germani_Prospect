@@ -28,8 +28,8 @@ before(async () => {
   await criarProspect(db, { n: 5, vendedorId: 3, cidade: 'Lajeado', bairro: 'Centro', rota: 'R7', subrota: 'S1' });
   await criarProspect(db, { n: 6, vendedorId: 3, cidade: 'Lajeado', bairro: 'Centro', rota: 'R7', subrota: 'S2' });
   const p7 = await criarProspect(db, { n: 7, vendedorId: 3, cidade: 'Lajeado', bairro: 'Florestal', rota: 'R8' });
-  await registrarContato(db, { prospectId: p7, usuarioId: 3, resultado: 'sem_conclusao', data: '2026-10-01' });
-  await registrarContato(db, { prospectId: p7, usuarioId: 3, resultado: 'com_interesse', data: '2026-10-05' }); // em negociação: sai da lista
+  await registrarContato(db, { prospectId: p7, usuarioId: 3, resultado: 'nao_atendido', data: '2026-10-01' });
+  await registrarContato(db, { prospectId: p7, usuarioId: 3, resultado: 'atendido', data: '2026-10-05' }); // em negociação: sai da lista
 });
 
 const linhas = async (q) => (await db.execute(q)).rows;

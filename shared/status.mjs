@@ -21,10 +21,18 @@ export const STATUS_ACEITAM_CONTATO = Object.freeze([STATUS.NAO_CONTACTADO, STAT
 export const TIPOS_ATUACAO = Object.freeze(['representante', 'vendedor']);
 
 export const CANAIS = Object.freeze(['visita', 'telefone', 'whatsapp']);
-export const RESULTADOS = Object.freeze(['com_interesse', 'sem_interesse', 'sem_conclusao']);
+export const RESULTADOS = Object.freeze(['atendido', 'nao_atendido', 'sem_interesse', 'pedido_informado']);
+
+/** Rótulos do formulário. "Pedido informado" é a reabertura de um prospect (ex.: Sem interesse) com pedido. */
+export const ROTULOS_RESULTADO = Object.freeze({
+  atendido: 'Atendido',
+  nao_atendido: 'Não atendido',
+  sem_interesse: 'Sem interesse',
+  pedido_informado: 'Reabrir: pedido identificado',
+});
 
 /** Validação do formulário "Registrar contato" — mesmas regras dos CHECKs/triggers do banco. */
-export function validarContato({ canal, resultado, motivoId, motivoExigeObservacao, observacao, dataContato, dataRetorno }) {
+export function validarContato({ canal, resultado, motivoId, motivoExigeObservacao, observacao, dataContato, dataRetorno, dataPedido }) {
   const erros = [];
   if (!CANAIS.includes(canal)) erros.push('canal inválido');
   if (!RESULTADOS.includes(resultado)) erros.push('resultado inválido');
@@ -32,5 +40,9 @@ export function validarContato({ canal, resultado, motivoId, motivoExigeObservac
   if (resultado === 'sem_interesse' && !motivoId) erros.push('motivo obrigatório para "sem interesse"');
   if (resultado === 'sem_interesse' && motivoExigeObservacao && !String(observacao ?? '').trim()) erros.push('este motivo exige observação');
   if (dataRetorno && dataRetorno < dataContato) erros.push('data de retorno anterior ao contato');
+  if (resultado === 'pedido_informado') {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dataPedido ?? '')) erros.push('data de entrada do pedido obrigatória para reabrir');
+    else if (dataPedido > dataContato) erros.push('data do pedido posterior à data do registro');
+  } else if (dataPedido) erros.push('data do pedido só vale para "pedido identificado"');
   return erros;
 }

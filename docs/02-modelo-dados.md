@@ -63,7 +63,7 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 | Cadastro (da planilha) | razão social, fantasia, endereço, bairro, cidade, UF, CEP, lat/long, telefone, tipologia GTM, onda, tipo, rota, subrota, obs |
 | Busca | `busca` (razão + fantasia + CNPJ + cidade + bairro, sem acento, maiúsculas), `cidade_busca`, `bairro_busca` |
 | Carteira | `vendedor_id` (o supervisor vem de `usuarios.supervisor_id`) |
-| Estado (só triggers mexem) | `status_atual` (Não contactado · Em prospecção · Em negociação · Sem interesse · Cadastrado no ERP · Venda realizada · Inválido), `tentativas`, `dt_primeiro_contato`, `dt_segundo_contato`, `dt_ultimo_contato`, `data_proxima_acao`, `motivo_sem_interesse_id`, `dt_interesse`, `prazo_cadastro_ate` |
+| Estado (só triggers mexem) | `status_atual` (Não contactado · Em prospecção · Em negociação · Sem interesse · Cadastrado no ERP · Venda realizada · Inválido), `tentativas`, `dt_primeiro_contato`, `dt_segundo_contato`, `dt_ultimo_contato`, `data_proxima_acao`, `motivo_sem_interesse_id`, `dt_atendido`, `dt_pedido_informado`, `prazo_cadastro_ate` |
 | ERP | `dt_cadastro_erp`, `codigo_cliente_erp`, `convertido_sem_registro`, `dt_pedido`, `numero_pedido`, `analise_financeira_ate` |
 | Baixa | `situacao_cadastral` (`ativa`/`baixada`), `dt_baixa` |
 | Origem | `importacao_id`, `dt_entrada_base` (data de referência do 1º registro no histórico) |
@@ -80,6 +80,8 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 | `transferencias` | supervisor da equipe ou administrador | troca `prospects.vendedor_id` |
 | `historico_status` | **somente triggers** | uma linha por evento: status anterior → novo, data de negócio, origem |
 
+`contatos.resultado`: `atendido` · `nao_atendido` · `sem_interesse` · `pedido_informado` (exige
+`data_pedido_informado`). `contatos.lote_id` agrupa registros feitos em lote.
 `contatos.id` é texto (UUID gerado no aparelho): reenviar o mesmo contato após ficar offline não duplica.
 `(prospect_id, numero_tentativa)` é único e precisa ser sequencial.
 
@@ -107,7 +109,7 @@ cálculo de distância ([ADR-0005](adr/0005-sem-calculo-de-distancia.md)).
 
 | View | Uso |
 |---|---|
-| `vw_prospects` | carteira/ficha: prospect + status (nome, cor) + vendedor + supervisor + motivo + `vendedor_tipo_atuacao`, `status_descricao` ("Em negociação · atendido em dd/mm/aaaa"), `dias_corridos` (desde o 1º atendimento), `na_lista`, `pendente_hoje`, `retorno_pendente`, `com_interesse`, `prazo_cadastro_vencido`, `em_analise_financeira`, `dias_sem_movimento`, `parado` |
+| `vw_prospects` | carteira/ficha: prospect + status (nome, cor) + vendedor + supervisor + motivo + `vendedor_tipo_atuacao`, `status_descricao` ("Em negociação · atendido em dd/mm/aaaa"), `dias_corridos` (desde o 1º atendimento), `na_lista`, `pendente_hoje`, `retorno_pendente`, `atendido`, `prazo_cadastro_vencido`, `em_analise_financeira`, `dias_sem_movimento`, `parado` |
 | `vw_linha_tempo` | linha do tempo da ficha (contatos + eventos ERP + transferências) |
 | `vw_ultimo_lancamento` | dias sem lançar por vendedor (bloco de atenção) |
 | `vw_rota_paradas` | paradas de cada rota, na ordem, com dados do prospect e `atendida` |

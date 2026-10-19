@@ -21,14 +21,19 @@ Sem servidor (ADR-0001), o app fala SQL com o Turso. Para manter o banco íntegr
 ```sql
 INSERT INTO contatos (id, prospect_id, usuario_id, numero_tentativa, data_contato, data_hora_dispositivo,
                       canal, resultado, motivo_id, observacao, observacao_busca, data_retorno,
-                      latitude, longitude)
+                      data_pedido_informado, latitude, longitude)
 VALUES (:uuid_do_aparelho, :prospect, :usuario, :tentativas_atuais + 1, :data_do_aparelho, :iso_com_fuso,
-        :canal, :resultado, :motivo, :obs, normalizarBusca(:obs), :retorno, :lat_aparelho, :lng_aparelho);
+        :canal, :resultado, :motivo, :obs, normalizarBusca(:obs), :retorno,
+        :data_pedido /* só em "pedido identificado" */, :lat_aparelho, :lng_aparelho);
 ```
 - Validar antes com `validarContato()` (`shared/status.mjs`) — mesma regra do banco, mensagem amigável.
 - O banco recusa com mensagem clara: prospect que não aceita contato (venda/baixado), sem permissão, tentativa fora de sequência,
   data anterior ao último contato, motivo inválido, motivo que exige observação.
 - `numero_tentativa` fora de sequência indica que outro aparelho registrou antes: recarregar a ficha.
+
+### Registrar em lote
+`prepararLote()` + `registrarLote()` de `shared/lote.mjs` — justificativa do lote e/ou individual; devolve os
+itens recusados com o motivo.
 
 ### Transferir carteira (supervisor/admin)
 ```sql

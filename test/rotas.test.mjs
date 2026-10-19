@@ -47,7 +47,7 @@ test('monta, reordena e mede a execução da rota; tudo entra nos indicadores', 
   await db.batch(comandosSalvarParadas({ usuario: VEND, rotaId: rota, prospectIds: [p.c, p.a] }), 'write'); // reordena e tira p.b
   let paradas = (await db.execute(consultaParadas({ usuario: VEND, rotaId: rota }))).rows;
   assert.deepEqual(paradas.map((x) => [x.prospect_id, x.ordem]), [[p.c, 1], [p.a, 2]]);
-  await registrarContato(db, { prospectId: p.c, usuarioId: 3, resultado: 'com_interesse', data: '2026-10-20' });
+  await registrarContato(db, { prospectId: p.c, usuarioId: 3, resultado: 'atendido', data: '2026-10-20' });
   paradas = (await db.execute(consultaParadas({ usuario: VEND, rotaId: rota }))).rows;
   assert.deepEqual(paradas.map((x) => x.atendida), [1, 0]);
   const [g] = (await db.execute(consultaExecucaoRotas({ inicio: '2026-10-01', fim: '2026-10-31' }))).rows;
@@ -64,7 +64,7 @@ test('na rota só entram prospects da própria carteira, da lista principal ou e
   await assert.rejects(db.batch(comandosSalvarParadas({ usuario: VEND, rotaId: rota, prospectIds: [p.rep] }), 'write'), /não pertence à carteira/);
   await evento(db, { prospectId: p.b, tipo: 'pedido', data: '2026-10-10', documento: 'X' });
   await assert.rejects(db.batch(comandosSalvarParadas({ usuario: VEND, rotaId: rota, prospectIds: [p.b] }), 'write'), /lista principal ou em negociação/);
-  await registrarContato(db, { prospectId: p.a, usuarioId: 3, resultado: 'com_interesse', data: '2026-10-10' }); // em negociação: pode
+  await registrarContato(db, { prospectId: p.a, usuarioId: 3, resultado: 'atendido', data: '2026-10-10' }); // em negociação: pode
   await db.batch(comandosSalvarParadas({ usuario: VEND, rotaId: rota, prospectIds: [p.a] }), 'write');
   assert.throws(() => comandosSalvarParadas({ usuario: VEND, rotaId: rota, prospectIds: [p.a, p.a] }), /repetido/);
 });

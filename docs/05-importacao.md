@@ -57,7 +57,8 @@ npm run importar:base -- base.xlsx                   # 3) gravar
 2. CNPJ novo → prospect criado. CNPJ existente → **só dados cadastrais** são atualizados; status,
    contatos, histórico e vendedor não mudam (mudança de vendedor = transferência). Baixado não é tocado.
 3. DT 1o / DT 2o → contatos com `origem = 'importacao'`, canal `nao_informado`. As tentativas
-   anteriores à última ficam como "sem conclusão"; a última recebe o resultado mapeado do Status Atual.
+   anteriores à última ficam como "não atendido"; a última recebe o resultado mapeado do Status Atual
+   (`atendido`, `nao_atendido` ou `sem_interesse`).
    As regras do app valem: 2 tentativas sem interesse ⇒ Sem interesse. Tentativas só entram uma vez.
 
 ### Rejeições (linha inteira, com motivo no relatório)
