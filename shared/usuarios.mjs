@@ -35,14 +35,18 @@ export async function listarUsuarios(db) {
   return r.rows;
 }
 
-/** Cria administrador, gerente comercial ou analista financeiro. Devolve a senha provisória (mostrar uma vez). */
-export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPor }) {
+/**
+ * Cria administrador, gerente comercial ou analista financeiro. Devolve a senha provisória (mostrar uma vez).
+ * `senha` (opcional): senha inicial informada (ex.: Secret do GitHub no workflow "Criar administrador"); continua
+ * provisória — o usuário troca no primeiro acesso.
+ */
+export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPor, senha: senhaInicial = null }) {
   if (!PERFIS_SISTEMA.includes(perfil)) throw new Error('perfil deve ser administrador, gerente ou financeiro');
   const l = String(login ?? '').trim();
   const n = String(nome ?? '').trim();
   if (!/^[A-Za-z0-9._-]{3,40}$/.test(l)) throw new Error('login: 3 a 40 caracteres (letras, números, ponto, hífen)');
   if (n.length < 3) throw new Error('informe o nome');
-  const senha = gerarSenhaProvisoria();
+  const senha = senhaInicial ?? gerarSenhaProvisoria();
   const r = await db.execute({
     sql: 'INSERT INTO usuarios (perfil, nome, nome_busca, login, senha_hash) VALUES (?, ?, ?, ?, ?) RETURNING id',
     args: [perfil, n, normalizarBusca(n), l, await gerarHashSenha(senha)],

@@ -2,6 +2,7 @@
 // Contingência por linha de comando — a operação normal é pela tela de administração.
 //   npm run usuarios -- listar
 //   npm run usuarios -- criar-admin <login> "<Nome>"
+//       com GERMANI_SENHA_INICIAL no ambiente (workflow "Criar administrador"), usa essa senha e não a mostra
 //   npm run usuarios -- criar-financeiro <login> "<Nome>"   analista do console de crédito
 //   npm run usuarios -- senha <login>                       gera senha provisória
 //   npm run usuarios -- tipo <login> representante|vendedor
@@ -26,8 +27,11 @@ switch (comando) {
     break;
   case 'criar-admin':
   case 'criar-financeiro': {
-    const r = await criarUsuarioSistema(db, { perfil: comando === 'criar-admin' ? 'administrador' : 'financeiro', login, nome, executadoPor: quem });
-    console.log(`Usuário criado. Login: ${r.login}  Senha provisória: ${r.senha}`);
+    const senhaInicial = process.env.GERMANI_SENHA_INICIAL || null;
+    const r = await criarUsuarioSistema(db, { perfil: comando === 'criar-admin' ? 'administrador' : 'financeiro', login, nome, executadoPor: quem, senha: senhaInicial });
+    // senha vinda do ambiente nunca é impressa (o log do Actions de repositório público é público)
+    console.log(senhaInicial ? `Usuário criado. Login: ${r.login}  Senha: a do Secret (trocar no primeiro acesso)`
+      : `Usuário criado. Login: ${r.login}  Senha provisória: ${r.senha}`);
     break;
   }
   case 'senha': {

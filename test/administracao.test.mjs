@@ -57,3 +57,14 @@ test('contagem de "Status Atual" para o mapeamento na tela', () => {
   assert.deepEqual(r.map((x) => [x.valor, x.quantidade]), [['Sem interesse', 2], ['Ligar', 1]]); // acento/maiúsculas agrupados
   assert.equal(r[0].chave, 'SEM INTERESSE');
 });
+
+test('administrador com senha inicial informada (workflow "Criar administrador"): continua provisória; curta é recusada', async () => {
+  const db = await bancoTeste();
+  const a = await criarUsuarioSistema(db, { perfil: 'administrador', login: 'chefe', nome: 'Chefe Teste', executadoPor: 'actions', senha: 'inicial-123' });
+  const u = (await db.execute({ sql: 'SELECT * FROM usuarios WHERE id = ?', args: [a.id] })).rows[0];
+  assert.equal(u.perfil, 'administrador');
+  assert.equal(Number(u.senha_provisoria), 1, 'troca obrigatória no primeiro acesso');
+  assert.ok(await conferirSenha('inicial-123', u.senha_hash));
+  await assert.rejects(criarUsuarioSistema(db, { perfil: 'administrador', login: 'outro', nome: 'Outro Teste', executadoPor: 'actions', senha: '1234' }), /ao menos 8 caracteres/);
+  assert.equal((await db.execute("SELECT COUNT(*) n FROM usuarios WHERE login = 'outro'")).rows[0].n, 0);
+});

@@ -1,0 +1,55 @@
+# Cria o primeiro administrador no Turso de produção (aplica antes as migrações pendentes).
+# Execução manual: Actions → "Criar administrador" → Run workflow → login, nome e CRIAR.
+# Secrets necessários (Settings → Secrets and variables → Actions):
+#   TURSO_DATABASE_URL, TURSO_AUTH_TOKEN (token administrativo)
+#   ADMIN_SENHA_INICIAL — senha inicial (mín. 8 caracteres). Nunca vai para o log; é provisória:
+#   o sistema pede a troca no primeiro acesso. Pode apagar o Secret depois.
+name: Criar administrador
+on:
+  workflow_dispatch:
+    inputs:
+      login:
+        description: 'Login do administrador'
+        required: true
+      nome:
+        description: 'Nome completo'
+        required: true
+      confirmacao:
+        description: 'Digite CRIAR para confirmar'
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: migracao-producao
+  cancel-in-progress: false
+jobs:
+  criar:
+    if: ${{ github.event.inputs.confirmacao == 'CRIAR' }}
+    runs-on: ubuntu-24.04
+    environment: producao
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Conferir o Secret da senha
+        run: |
+          if [ "${#GERMANI_SENHA_INICIAL}" -lt 8 ]; then echo "::error::Cadastre o Secret ADMIN_SENHA_INICIAL com ao menos 8 caracteres."; exit 1; fi
+        env:
+          GERMANI_SENHA_INICIAL: ${{ secrets.ADMIN_SENHA_INICIAL }}
+      - name: Aplicar migrações pendentes
+        run: npm run migrate
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      - name: Criar administrador
+        run: npm run usuarios -- criar-admin "$LOGIN" "$NOME"
+        env:
+          LOGIN: ${{ github.event.inputs.login }}
+          NOME: ${{ github.event.inputs.nome }}
+          GERMANI_EXECUTADO_POR: ${{ github.actor }}
+          GERMANI_SENHA_INICIAL: ${{ secrets.ADMIN_SENHA_INICIAL }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
