@@ -11,7 +11,9 @@ export async function render(conteudo, ctx) {
     tabela([
       { titulo: 'Parâmetro', valor: (p) => h('div', {}, h('b', {}, p.descricao), h('div', { class: 'ajuda' }, p.chave)) },
       { titulo: 'Valor', valor: (p) => {
-        const campo = h('input', { type: 'number', min: '0', step: '1', value: p.valor, style: 'max-width:110px', 'aria-label': p.chave });
+        const campo = p.chave.startsWith('data_')
+          ? h('input', { type: 'date', value: p.valor, style: 'max-width:180px', 'aria-label': p.chave })
+          : h('input', { type: 'number', min: '0', step: '1', value: p.valor, style: 'max-width:130px', 'aria-label': p.chave });
         const botao = h('button', { class: 'pequeno', onclick: async () => {
           const ok = await comEspera(botao, async () => { await alterarParametro(db, { chave: p.chave, valor: campo.value, executadoPor: ctx.usuario.login }); return true; });
           if (ok) { aviso('Parâmetro salvo.'); render(conteudo, ctx); }

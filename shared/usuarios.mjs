@@ -3,7 +3,7 @@
 import { gerarHashSenha } from './senha.mjs';
 import { normalizarBusca } from './texto.mjs';
 
-export const PERFIS_SISTEMA = Object.freeze(['administrador', 'financeiro']); // criados manualmente
+export const PERFIS_SISTEMA = Object.freeze(['administrador', 'gerente', 'financeiro']); // criados manualmente
 export const TIPOS_ATUACAO = Object.freeze(['representante', 'vendedor']);
 const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
 
@@ -31,13 +31,13 @@ export async function listarUsuarios(db) {
            CASE WHEN u.senha_hash IS NULL THEN 'sem_acesso' WHEN u.senha_provisoria = 1 THEN 'provisoria' ELSE 'ok' END AS situacao_senha,
            (SELECT count(*) FROM prospects p WHERE p.vendedor_id = u.id) AS prospects
       FROM usuarios u LEFT JOIN usuarios s ON s.id = u.supervisor_id
-     ORDER BY CASE u.perfil WHEN 'administrador' THEN 1 WHEN 'financeiro' THEN 2 WHEN 'supervisor' THEN 3 ELSE 4 END, u.nome`);
+     ORDER BY CASE u.perfil WHEN 'administrador' THEN 1 WHEN 'gerente' THEN 2 WHEN 'financeiro' THEN 3 WHEN 'supervisor' THEN 4 ELSE 5 END, u.nome`);
   return r.rows;
 }
 
-/** Cria administrador ou analista financeiro. Devolve a senha provisória (mostrar uma vez). */
+/** Cria administrador, gerente comercial ou analista financeiro. Devolve a senha provisória (mostrar uma vez). */
 export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPor }) {
-  if (!PERFIS_SISTEMA.includes(perfil)) throw new Error('perfil deve ser administrador ou financeiro');
+  if (!PERFIS_SISTEMA.includes(perfil)) throw new Error('perfil deve ser administrador, gerente ou financeiro');
   const l = String(login ?? '').trim();
   const n = String(nome ?? '').trim();
   if (!/^[A-Za-z0-9._-]{3,40}$/.test(l)) throw new Error('login: 3 a 40 caracteres (letras, números, ponto, hífen)');

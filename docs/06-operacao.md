@@ -40,8 +40,11 @@ e ele fica só naquela aba do navegador):
 turso db tokens create germaniprospec -p all:data_read \
   -p prospects:data_add,data_update -p usuarios:data_add,data_update -p parametros:data_update \
   -p importacoes:data_add,data_update -p importacao_linhas:data_add -p contatos:data_add \
-  -p eventos_erp:data_add -p auditoria:data_add -p liberacoes_credito:data_add -p transferencias:data_add
+  -p eventos_erp:data_add -p auditoria:data_add -p liberacoes_credito:data_add -p transferencias:data_add \
+  -p feriados:data_add,data_delete
 ```
+A permissão `feriados` entrou com a migração 0002 (tela Feriados): quem gerou o token de administração antes
+precisa gerar um novo com o comando acima.
 Antes da carga real, conferir os itens "Verificar" do ADR-0001 (escritas feitas pelos triggers, como
 `movimentacoes`, podem exigir permissão também).
 
@@ -62,7 +65,13 @@ Local: `npm run site && npm run servir` → http://localhost:8080 (modo demonstr
 - **Pela máquina do administrador:** `npm run migrate`.
 
 Migração aplicada nunca é editada: o `migrate` compara o SHA-256 e para se o arquivo mudou.
-Mudança de estrutura = novo arquivo `db/migrations/0002_....sql`.
+Mudança de estrutura = novo arquivo `db/migrations/NNNN_....sql`. **Depois de cada merge que traz migração nova,
+rodar o workflow de novo** (ele só aplica as que faltam).
+
+| Migração | O que traz |
+|---|---|
+| `0001_inicial` | estrutura completa |
+| `0002_gerente_feriados_painel` | perfil gerente comercial, tabela `feriados`, parâmetros do painel (início da campanha, % do pipeline, valor por cliente) |
 
 ## 6. Primeira carga — roteiro
 

@@ -23,3 +23,6 @@ Atualizado em 2026-10-19. Cada item diz o que já está implementado como padrã
 | 21 | Ações em lote | tela faz só **sem interesse** em lote (atendido em lote existe no backend) | confirmar se precisa de atendido em lote na tela |
 | 22 | Telefone da base | Ligar / WhatsApp só aparecem com DDD (10+ dígitos); assume Brasil (+55) | conferir o formato do telefone na planilha real |
 | 23 | DT 1o / DT 2o da planilha base | **implementado:** opção na tela (e `--com-datas`/`--sem-datas`) de considerar ou ignorar; padrão = ignorar quando vazias (planilha atual) | — |
+| 24 | Painel do Início | **implementado** conforme a planilha "Dashboard de acompanhamento"; "Restrição financeira" virou **Crédito liberado** | — |
+| 25 | Gerente comercial | **implementado:** vê tudo e age em qualquer carteira, menos aprovar crédito; não administra | confirmar se precisa acessar importações |
+| 26 | Feriados municipais | todos os cadastrados saem dos dias úteis (um único calendário da campanha) | se precisar de dias úteis por cidade, avisar |

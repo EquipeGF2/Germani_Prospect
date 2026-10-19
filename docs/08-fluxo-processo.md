@@ -53,7 +53,7 @@ flowchart TD
 | Aguardando cadastro · Análise financeira · Aguardando pedido · Venda realizada · Sem interesse · Inválido | **Acompanhamento** (`#/carteira?aba=acompanhamento`) → cartão do status | consulta; novo registro enquanto o status aceitar |
 | Sem interesse → Aguardando cadastro | ficha → Registrar → **Reabrir: pedido identificado** | data de entrada do pedido |
 | Cadastro · Pedido · Baixa · Relatório de crédito | Administração → importações | arquivos do ERP |
-| Console do analista | (parte 4 do app) | — |
+| Análise financeira → Aguardando pedido | **Console de crédito** (`#/financeiro`) → Liberar crédito | forma · prazo · limite · restrição; correção = nova liberação |
 | Todos | **Ficha** (`#/ficha`) → Histórico de movimentação | linha do tempo de cada movimento |
 
 ## Histórico de movimentação

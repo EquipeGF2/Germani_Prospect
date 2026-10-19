@@ -2,7 +2,7 @@ import { definirTokenAdmin, modoDemonstracao } from '../db.js';
 import { h, montar, comEspera, mensagem } from '../ui.js';
 
 export async function render(conteudo, { parametros, irPara }) {
-  const volta = parametros.get('volta') || '/admin';
+  const volta = parametros.get('volta') || '/inicio';
   if (modoDemonstracao()) return irPara(volta);
   const token = h('input', { id: 'token', type: 'password', autocomplete: 'off', required: true });
   const botao = h('button', { type: 'submit' }, 'Liberar administração');

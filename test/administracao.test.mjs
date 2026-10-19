@@ -19,7 +19,7 @@ test('usuários: criar admin/financeiro, senha, tipo, ativar — tudo auditado',
   const u = (await db.execute({ sql: 'SELECT * FROM usuarios WHERE id = ?', args: [fin.id] })).rows[0];
   assert.equal(u.perfil, 'financeiro');
   assert.ok(await conferirSenha(fin.senha, u.senha_hash));
-  await assert.rejects(criarUsuarioSistema(db, { perfil: 'vendedor', login: 'x1', nome: 'Xxx' }), /administrador ou financeiro/);
+  await assert.rejects(criarUsuarioSistema(db, { perfil: 'vendedor', login: 'x1', nome: 'Xxx' }), /administrador, gerente ou financeiro/);
   await assert.rejects(criarUsuarioSistema(db, { perfil: 'financeiro', login: 'analista', nome: 'Outro', executadoPor: 'adm' }), /UNIQUE/);
   const r = await redefinirSenha(db, { usuarioId: 2, executadoPor: 'adm' });
   assert.equal(r.login, 'vendedor10');

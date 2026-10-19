@@ -9,9 +9,10 @@ const ROTAS = [
   { caminho: '/inicio', tela: () => import('./telas/inicio.js') },
   { caminho: '/carteira', tela: () => import('./telas/carteira.js') },
   { caminho: '/ficha', tela: () => import('./telas/ficha.js') },
-  { caminho: '/registrar', tela: () => import('./telas/registrar.js'), perfis: ['administrador', 'supervisor', 'vendedor'] },
-  { caminho: '/lote', tela: () => import('./telas/lote.js'), perfis: ['administrador', 'supervisor', 'vendedor'] },
-  { caminho: '/admin', tela: () => import('./telas/admin-inicio.js'), perfis: ['administrador'] },
+  { caminho: '/registrar', tela: () => import('./telas/registrar.js'), perfis: ['administrador', 'gerente', 'supervisor', 'vendedor'] },
+  { caminho: '/lote', tela: () => import('./telas/lote.js'), perfis: ['administrador', 'gerente', 'supervisor', 'vendedor'] },
+  { caminho: '/financeiro', tela: () => import('./telas/financeiro.js'), perfis: ['financeiro', 'administrador'] },
+  { caminho: '/financeiro/liberar', tela: () => import('./telas/financeiro-liberar.js'), perfis: ['financeiro', 'administrador'] },
   { caminho: '/admin/acesso', tela: () => import('./telas/admin-acesso.js'), perfis: ['administrador'], semToken: true },
   { caminho: '/admin/importar/base', tela: () => import('./telas/admin-importar-base.js'), perfis: ['administrador'] },
   { caminho: '/admin/importar/tipos', tela: () => import('./telas/admin-importar-tipos.js'), perfis: ['administrador'] },
@@ -20,9 +21,10 @@ const ROTAS = [
   { caminho: '/admin/importacoes', tela: () => import('./telas/admin-importacoes.js'), perfis: ['administrador'] },
   { caminho: '/admin/usuarios', tela: () => import('./telas/admin-usuarios.js'), perfis: ['administrador'] },
   { caminho: '/admin/parametros', tela: () => import('./telas/admin-parametros.js'), perfis: ['administrador'] },
+  { caminho: '/admin/feriados', tela: () => import('./telas/admin-feriados.js'), perfis: ['administrador'] },
 ];
 
-export const NOMES_PERFIL = { administrador: 'Administrador', supervisor: 'Supervisor', vendedor: 'Vendedor', financeiro: 'Analista financeiro' };
+export const NOMES_PERFIL = { administrador: 'Administrador', gerente: 'Gerente comercial', supervisor: 'Supervisor', vendedor: 'Vendedor', financeiro: 'Analista financeiro' };
 
 export function irPara(caminho) {
   location.hash = `#${caminho}`;

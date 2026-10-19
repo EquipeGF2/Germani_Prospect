@@ -7,16 +7,35 @@ import { blocoResultado } from './_resultado.js';
 import { seletorColuna } from './admin-importar-tipos.js';
 
 const TIPOS = {
-  cadastro: { titulo: 'Cadastro de clientes (ERP)', efeito: 'CNPJ encontrado → Análise financeira', documento: 'Código do cliente', data: 'Data do cadastro' },
-  pedido: { titulo: 'Pedidos (ERP)', efeito: 'CNPJ encontrado → Venda realizada', documento: 'Número do pedido', data: 'Data do pedido' },
-  baixa: { titulo: 'CNPJs baixados', efeito: 'CNPJ encontrado → Inválido (congelado)', documento: null, data: 'Data da baixa' },
+  cadastro: { titulo: 'Cadastro de clientes', descricao: 'CNPJs cadastrados no ERP (data e código do cliente).', efeito: 'Análise financeira', documento: 'Código do cliente', data: 'Data do cadastro',
+    icone: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 15l2 2 4-4' },
+  pedido: { titulo: 'Pedidos', descricao: 'Pedidos emitidos (data e número do pedido).', efeito: 'Venda realizada', documento: 'Número do pedido', data: 'Data do pedido',
+    icone: 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0' },
+  baixa: { titulo: 'CNPJs baixados', descricao: 'Empresas com CNPJ baixado na Receita.', efeito: 'Inválido (congelado)', documento: null, data: 'Data da baixa',
+    icone: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM4.9 4.9l14.2 14.2' },
 };
+
+function iconeSvg(d) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('class', 'icone');
+  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  p.setAttribute('d', d);
+  svg.append(p);
+  return svg;
+}
 const ETAPAS = ['Tipo e arquivo', 'Colunas', 'Simulação', 'Gravação'];
 
 export async function render(conteudo, ctx) {
   const db = await bancoAdmin();
   const area = h('div');
-  const tipo = h('select', { id: 'tipo-erp' }, Object.entries(TIPOS).map(([v, t]) => h('option', { value: v }, `${t.titulo} — ${t.efeito}`)));
+  // tipo do arquivo escolhido por cards (rádio); `tipo.value` lê o marcado
+  const tipo = { get value() { return cards.querySelector('input[name="tipo-erp"]:checked')?.value ?? 'cadastro'; } };   // cards continua em memória nas etapas seguintes
+  const cards = h('div', { class: 'cards-tipo', role: 'radiogroup', 'aria-label': 'Tipo de arquivo' }, Object.entries(TIPOS).map(([v, t], i) =>
+    h('label', { class: 'card-tipo', dados: { tipo: v } },
+      h('input', { type: 'radio', name: 'tipo-erp', value: v, checked: i === 0 }),
+      h('span', { class: 'ic' }, iconeSvg(t.icone)),
+      h('span', {}, h('b', {}, t.titulo), h('small', {}, t.descricao), h('span', { class: 'efeito' }, `→ ${t.efeito}`)))));
   const arquivo = h('input', { type: 'file', accept: '.xlsx,.csv', id: 'arquivo-erp' });
   let planilha = null;
   const bLer = h('button', { onclick: async () => { planilha = await comEspera(bLer, () => lerArquivo(arquivo.files[0])); if (planilha) colunas(); } }, 'Ler arquivo');
@@ -54,7 +73,7 @@ export async function render(conteudo, ctx) {
   }
 
   montar(area, passos(ETAPAS, 0), h('div', { class: 'cartao' },
-    h('div', { class: 'campo' }, h('label', { for: 'tipo-erp' }, 'Tipo de arquivo'), tipo),
+    h('label', {}, 'Tipo de arquivo'), cards,
     h('div', { class: 'campo' }, h('label', { for: 'arquivo-erp' }, 'Arquivo (.xlsx ou .csv — o .xlsx malformado do Senior é corrigido automaticamente)'), arquivo),
     bLer));
   montar(conteudo, h('h1', {}, 'Cadastro · Pedidos · Baixados'),
