@@ -55,11 +55,10 @@ CREATE TABLE status (
 INSERT INTO status (codigo, nome, cor, ordem, origem, ativo_na_carteira, conta_contactado, conta_carteira) VALUES
   ('nao_contactado',  'Não contactado',     '#9CA3AF', 1, 'inicial', 1, 0, 1),
   ('em_prospeccao',   'Em prospecção',      '#0E7490', 2, 'app',     1, 1, 1),
-  ('em_negociacao',   'Em negociação',      '#6D28D9', 3, 'app',     1, 1, 1),
-  ('sem_interesse',   'Sem interesse',      '#3F3F46', 4, 'app',     0, 1, 1),
-  ('cadastrado_erp',  'Cadastrado no ERP',  '#0F766E', 5, 'erp',     0, 1, 1),
-  ('venda_realizada', 'Venda realizada',    '#1D4ED8', 6, 'erp',     0, 1, 1),
-  ('invalido',        'Inválido (baixado)', '#D1D5DB', 7, 'erp',     0, 0, 0);
+  ('sem_interesse',   'Sem interesse',      '#3F3F46', 3, 'app',     0, 1, 1),
+  ('cadastrado_erp',  'Cadastrado no ERP',  '#0F766E', 4, 'erp',     0, 1, 1),
+  ('venda_realizada', 'Venda realizada',    '#1D4ED8', 5, 'erp',     0, 1, 1),
+  ('invalido',        'Inválido (baixado)', '#D1D5DB', 6, 'erp',     0, 0, 0);
 
 -- ---------------------------------------------------------------------
 -- Motivos de "sem interesse" (lista editável)
@@ -101,12 +100,17 @@ CREATE TABLE usuarios (
   senha_hash       TEXT,                         -- PBKDF2-SHA256 (shared/senha.mjs); NULL = sem acesso liberado
   senha_provisoria INTEGER NOT NULL DEFAULT 1 CHECK (senha_provisoria IN (0,1)),
   supervisor_id    INTEGER REFERENCES usuarios(id),
+  -- representante: visita a carteira, SEM rota · vendedor: atendimento amplo, COM rota/subrota.
+  -- NULL até o administrador definir (npm run usuarios -- tipo <login> representante|vendedor);
+  -- enquanto NULL, o app aplica a visão de representante (a mais restrita).
+  tipo_atuacao     TEXT CHECK (tipo_atuacao IS NULL OR tipo_atuacao IN ('representante','vendedor')),
   ativo            INTEGER NOT NULL DEFAULT 1 CHECK (ativo IN (0,1)),
   criado_em        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   atualizado_em    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   UNIQUE (perfil, codigo_erp),
   CHECK (perfil <> 'vendedor' OR supervisor_id IS NOT NULL),
-  CHECK (supervisor_id IS NULL OR supervisor_id <> id)
+  CHECK (supervisor_id IS NULL OR supervisor_id <> id),
+  CHECK (tipo_atuacao IS NULL OR perfil IN ('vendedor','supervisor'))
 );
 
 CREATE TRIGGER trg_usuarios_supervisor_valido
@@ -184,6 +188,7 @@ CREATE TABLE prospects (
   -- busca sem acento (preenchida pela importação via shared/texto.mjs)
   busca                    TEXT NOT NULL,   -- razão + fantasia + CNPJ + cidade + bairro
   cidade_busca             TEXT,
+  bairro_busca             TEXT,
   -- carteira
   vendedor_id              INTEGER NOT NULL REFERENCES usuarios(id),
   -- estado derivado (mantido SOMENTE pelos triggers de eventos)
@@ -212,7 +217,8 @@ CREATE TABLE prospects (
 
 CREATE INDEX ix_prospects_vendedor_status ON prospects (vendedor_id, status_atual);
 CREATE INDEX ix_prospects_proxima_acao    ON prospects (data_proxima_acao);
-CREATE INDEX ix_prospects_cidade          ON prospects (cidade_busca, uf);
+CREATE INDEX ix_prospects_cidade          ON prospects (cidade_busca, uf, bairro_busca);
+CREATE INDEX ix_prospects_rota            ON prospects (rota, subrota);
 CREATE INDEX ix_prospects_raiz            ON prospects (cnpj_raiz);
 
 -- O vendedor da carteira precisa ser vendedor ou supervisor ativo.
@@ -270,7 +276,7 @@ CREATE TABLE contatos (
   origem                 TEXT NOT NULL DEFAULT 'app' CHECK (origem IN ('app','importacao')),
   importacao_id          INTEGER REFERENCES importacoes(id),
   CHECK (resultado <> 'sem_interesse' OR motivo_id IS NOT NULL),
-  CHECK (resultado <> 'com_interesse' OR (data_retorno IS NOT NULL AND data_retorno >= data_contato)),
+  CHECK (data_retorno IS NULL OR data_retorno >= data_contato),  -- retorno é opcional (agenda)
   CHECK (resultado = 'sem_interesse' OR motivo_id IS NULL),
   CHECK (origem <> 'importacao' OR importacao_id IS NOT NULL),
   CHECK (canal <> 'nao_informado' OR origem = 'importacao'),  -- a planilha base não informa o canal
@@ -317,23 +323,19 @@ BEGIN
 END;
 
 -- Aplicação da regra de status (docs/03-regras-negocio.md §2)
---   com_interesse                                         → em_negociacao (prazo de cadastro conta do 1º interesse)
---   tentativa >= tentativas_maximas, sem interesse/conclusão → sem_interesse
---   em_negociacao + sem_conclusao (antes do limite)        → continua em_negociacao
---   em_negociacao + sem_interesse                          → sem_interesse (recusa explícita encerra)
---   demais, antes do limite                                → em_prospeccao (volta em N dias)
+--   tentativa >= tentativas_maximas e resultado <> com_interesse → sem_interesse
+--   demais casos                                               → em_prospeccao
+-- "Com interesse" não muda o status: marca dt_interesse e abre o prazo de cadastro no ERP.
 -- Ao atingir o limite de atendimentos o prospect SAI DA LISTA em qualquer resultado
--- (data_proxima_acao = NULL; em negociação aguarda o cadastro no ERP). Indicadores continuam contando.
+-- (data_proxima_acao = NULL; com interesse aguarda o cadastro no ERP). Indicadores continuam contando.
 CREATE TRIGGER trg_contatos_aplicar
 AFTER INSERT ON contatos
 BEGIN
   INSERT INTO historico_status (prospect_id, status_anterior, status_novo, data_evento, origem, referencia)
   SELECT p.id, p.status_atual,
          CASE
-           WHEN NEW.resultado = 'com_interesse' THEN 'em_negociacao'
-           WHEN NEW.numero_tentativa >= (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'tentativas_maximas') THEN 'sem_interesse'
-           WHEN p.status_atual = 'em_negociacao' AND NEW.resultado = 'sem_conclusao' THEN 'em_negociacao'
-           WHEN p.status_atual = 'em_negociacao' THEN 'sem_interesse'
+           WHEN NEW.resultado <> 'com_interesse'
+            AND NEW.numero_tentativa >= (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'tentativas_maximas') THEN 'sem_interesse'
            ELSE 'em_prospeccao'
          END,
          NEW.data_contato, 'contato', NEW.id
@@ -356,12 +358,9 @@ BEGIN
   UPDATE prospects SET
     data_proxima_acao = CASE
       WHEN NEW.numero_tentativa >= (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'tentativas_maximas') THEN NULL
-      ELSE CASE status_atual
-      WHEN 'sem_interesse' THEN NULL
-      WHEN 'em_negociacao' THEN COALESCE(NEW.data_retorno,
+      ELSE COALESCE(NEW.data_retorno,
            date(NEW.data_contato, '+' || (SELECT valor FROM parametros WHERE chave = 'dias_entre_tentativas') || ' days'))
-      ELSE date(NEW.data_contato, '+' || (SELECT valor FROM parametros WHERE chave = 'dias_entre_tentativas') || ' days')
-    END END,
+    END,
     motivo_sem_interesse_id = CASE status_atual
       WHEN 'sem_interesse' THEN COALESCE(NEW.motivo_id, (SELECT id FROM motivos_sem_interesse WHERE codigo = 'SEM_RETORNO'))
       ELSE motivo_sem_interesse_id
@@ -411,7 +410,7 @@ BEGIN
   UPDATE prospects SET
     status_atual = (SELECT status_novo FROM historico_status WHERE origem = 'erp' AND referencia = CAST(NEW.id AS TEXT)),
     convertido_sem_registro = CASE
-      WHEN NEW.tipo IN ('cadastro','pedido') AND status_atual IN ('nao_contactado','em_prospeccao','sem_interesse') THEN 1
+      WHEN NEW.tipo IN ('cadastro','pedido') AND status_atual <> 'venda_realizada' AND dt_interesse IS NULL THEN 1
       ELSE convertido_sem_registro END,
     dt_cadastro_erp    = CASE WHEN NEW.tipo = 'cadastro' THEN COALESCE(dt_cadastro_erp, NEW.data_evento) ELSE dt_cadastro_erp END,
     codigo_cliente_erp = CASE WHEN NEW.tipo = 'cadastro' THEN COALESCE(NEW.documento, codigo_cliente_erp) ELSE codigo_cliente_erp END,
@@ -523,6 +522,7 @@ SELECT p.*,
        s.ativo_na_carteira,
        v.nome                AS vendedor_nome,
        v.codigo_erp          AS vendedor_codigo,
+       v.tipo_atuacao        AS vendedor_tipo_atuacao,
        COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END) AS supervisor_id,
        sup.nome              AS supervisor_nome,
        m.descricao           AS motivo_sem_interesse,
@@ -534,7 +534,8 @@ SELECT p.*,
        CASE WHEN s.ativo_na_carteira = 1
              AND p.tentativas < (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'tentativas_maximas')
              AND (p.data_proxima_acao IS NULL OR p.data_proxima_acao <= date('now','-3 hours')) THEN 1 ELSE 0 END AS pendente_hoje,
-       CASE WHEN p.status_atual = 'em_negociacao' AND p.prazo_cadastro_ate < date('now','-3 hours') THEN 1 ELSE 0 END AS prazo_cadastro_vencido,
+       CASE WHEN p.dt_interesse IS NOT NULL THEN 1 ELSE 0 END AS com_interesse,
+       CASE WHEN p.status_atual = 'em_prospeccao' AND p.prazo_cadastro_ate < date('now','-3 hours') THEN 1 ELSE 0 END AS prazo_cadastro_vencido,
        CASE WHEN p.status_atual = 'venda_realizada' AND p.analise_financeira_ate >= date('now','-3 hours') THEN 1 ELSE 0 END AS em_analise_financeira,
        CAST(julianday(date('now','-3 hours')) - julianday(COALESCE(p.dt_ultimo_contato, p.dt_entrada_base)) AS INTEGER) AS dias_sem_movimento,
        CASE WHEN s.ativo_na_carteira = 1

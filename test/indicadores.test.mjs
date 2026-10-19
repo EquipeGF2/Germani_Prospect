@@ -13,7 +13,7 @@ let db;
 //  P5 v2 baixa 05/10                               → invalido (sai do denominador)
 //  P6 v2 sem_interesse 01/10 + sem_conclusao 08/10 → sem_interesse
 //  P7 v3 não contactado (Lajeado)
-//  P8 v3 com_interesse 15/10                       → em_negociacao (Lajeado)
+//  P8 v3 com_interesse 15/10                       → em_prospeccao com interesse (Lajeado)
 //  P9 v3 pedido 16/10 sem contato                  → venda_realizada (convertido sem registro)
 //  P10 v3 não contactado
 before(async () => {
@@ -66,8 +66,8 @@ test('posição atual — por vendedor e por cidade', async () => {
 test('posição numa data passada usa o histórico (09/10)', async () => {
   const [g] = await rodar(consultaPosicao({ agrupar: 'geral', data: '2026-10-09' }));
   assert.equal(Number(g.invalidos), 1);       // P5 baixado em 05/10
-  assert.equal(Number(g.contactados), 4);     // P2 P3 P4 P6 (P3 ainda em negociação)
-  assert.equal(Number(g.em_negociacao), 2);   // P3 P4
+  assert.equal(Number(g.contactados), 4);     // P2 P3 P4 P6
+  assert.equal(Number(g.com_interesse_aguardando_cadastro), 2); // P3 P4
   assert.equal(Number(g.sem_interesse), 1);   // P6 encerrado em 08/10
   assert.equal(Number(g.vendas), 0);
 });
@@ -82,6 +82,7 @@ test('filtros por vendedor e supervisor', async () => {
 test('atividade no período 01/10–10/10', async () => {
   const [a] = (await db.execute(consultaAtividade({ agrupar: 'geral', inicio: '2026-10-01', fim: '2026-10-10' }))).rows;
   assert.equal(Number(a.contatos_registrados), 5);     // P2, P3, P4, P6×2
+  assert.equal(Number(a.contatos_com_interesse), 2);   // P3, P4
   assert.equal(Number(a.prospects_contactados), 4);
   assert.equal(Number(a.primeiros_contatos), 4);
   assert.equal(Number(a.encerrados_sem_interesse), 1); // P6

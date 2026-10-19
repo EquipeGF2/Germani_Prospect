@@ -31,7 +31,7 @@ erDiagram
 | Tabela | Para quê | Observações |
 |---|---|---|
 | `parametros` | prazos e limites editáveis | `tentativas_maximas`=2, `dias_entre_tentativas`=7, `prazo_cadastro_dias`=15, `prazo_analise_financeira_dias`=10, `dias_alerta_sem_lancamento`=7, `dias_alerta_sem_movimento`=30, `raio_gps_metros`=200. Alteração gera linha em `auditoria`. |
-| `status` | os 7 status, cor e como contam nos indicadores | `ativo_na_carteira` (aceita contato), `conta_contactado`, `conta_carteira` (inválido = 0). |
+| `status` | os 6 status, cor e como contam nos indicadores | `ativo_na_carteira` (aceita contato), `conta_contactado`, `conta_carteira` (inválido = 0). |
 | `motivos_sem_interesse` | lista de motivos de recusa | `exige_observacao` (Outro), `uso_app` = 0 para motivos do sistema (`SEM_RETORNO`, `NAO_INFORMADO`). |
 
 ### Pessoas
@@ -45,6 +45,7 @@ erDiagram
 | `login` | criado pela importação: vendedor = código; supervisor = `sup` + código. Único, sem diferenciar maiúsculas. |
 | `senha_hash` | PBKDF2; `NULL` = acesso ainda não liberado (`npm run usuarios -- senha <login>`). |
 | `supervisor_id` | obrigatório para vendedor; precisa apontar para um supervisor (trigger). |
+| `tipo_atuacao` | `representante` (sem rota) · `vendedor` (com rota). `NULL` até o admin definir = tratado como representante. |
 | `ativo` | inativo não registra contato nem recebe transferência. |
 
 Por que não há tabela `supervisores` separada: o supervisor também faz login e também pode ter carteira.
@@ -57,9 +58,9 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 |---|---|
 | Identificação | `cnpj` (14, único, alfanumérico), `cnpj_raiz`, `cnpj_secundario` (2ª coluna CNPJ da planilha, se diferente) |
 | Cadastro (da planilha) | razão social, fantasia, endereço, bairro, cidade, UF, CEP, lat/long, telefone, tipologia GTM, onda, tipo, rota, subrota, obs |
-| Busca | `busca` (razão + fantasia + CNPJ + cidade + bairro, sem acento, maiúsculas), `cidade_busca` |
+| Busca | `busca` (razão + fantasia + CNPJ + cidade + bairro, sem acento, maiúsculas), `cidade_busca`, `bairro_busca` |
 | Carteira | `vendedor_id` (o supervisor vem de `usuarios.supervisor_id`) |
-| Estado (só triggers mexem) | `status_atual`, `tentativas`, `dt_primeiro_contato`, `dt_segundo_contato`, `dt_ultimo_contato`, `data_proxima_acao`, `motivo_sem_interesse_id`, `dt_interesse`, `prazo_cadastro_ate` |
+| Estado (só triggers mexem) | `status_atual` (Não contactado · Em prospecção · Sem interesse · Cadastrado no ERP · Venda realizada · Inválido), `tentativas`, `dt_primeiro_contato`, `dt_segundo_contato`, `dt_ultimo_contato`, `data_proxima_acao`, `motivo_sem_interesse_id`, `dt_interesse`, `prazo_cadastro_ate` |
 | ERP | `dt_cadastro_erp`, `codigo_cliente_erp`, `convertido_sem_registro`, `dt_pedido`, `numero_pedido`, `analise_financeira_ate` |
 | Baixa | `situacao_cadastral` (`ativa`/`baixada`), `dt_baixa` |
 | Origem | `importacao_id`, `dt_entrada_base` (data de referência do 1º registro no histórico) |
@@ -92,12 +93,12 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 
 | View | Uso |
 |---|---|
-| `vw_prospects` | carteira/ficha: prospect + status (nome, cor) + vendedor + supervisor + motivo + `dias_corridos`, `na_lista` (aparece na lista de trabalho), `pendente_hoje`, `prazo_cadastro_vencido`, `em_analise_financeira`, `dias_sem_movimento`, `parado` |
+| `vw_prospects` | carteira/ficha: prospect + status (nome, cor) + vendedor + supervisor + motivo + `vendedor_tipo_atuacao`, `dias_corridos`, `na_lista` (aparece na lista de trabalho), `pendente_hoje`, `com_interesse`, `prazo_cadastro_vencido`, `em_analise_financeira`, `dias_sem_movimento`, `parado` |
 | `vw_linha_tempo` | linha do tempo da ficha (contatos + eventos ERP + transferências) |
 | `vw_ultimo_lancamento` | dias sem lançar por vendedor (bloco de atenção) |
 | `vw_ranking_motivos` | motivos finais de "sem interesse" por vendedor/supervisor |
 
 ## Índices
-`prospects(vendedor_id, status_atual)`, `prospects(data_proxima_acao)`, `prospects(cidade_busca, uf)`,
+`prospects(vendedor_id, status_atual)`, `prospects(data_proxima_acao)`, `prospects(cidade_busca, uf, bairro_busca)`, `prospects(rota, subrota)`,
 `prospects(cnpj_raiz)`, `contatos(usuario_id, data_contato)`, `contatos(data_contato)`,
 `historico_status(prospect_id, data_evento, id)`, `eventos_erp` único por `(prospect, tipo, documento)`.

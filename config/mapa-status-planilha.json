@@ -5,5 +5,6 @@
   "NAO CONTATADO": "sem_contato",
   "EM PROSPECCAO": "sem_conclusao",
   "EM NEGOCIACAO": "com_interesse",
+  "COM INTERESSE": "com_interesse",
   "SEM INTERESSE": "sem_interesse"
 }

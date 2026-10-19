@@ -4,7 +4,7 @@ Atualizado em 2026-10-19. Cada item diz o que já está implementado como padrã
 
 | # | Assunto | Padrão implementado | Falta |
 |---|---|---|---|
-| 1 | Valores reais de "Status Atual" | mapa com Não contactado / Em prospecção / Em negociação / Sem interesse; o resto é rejeitado | rodar `--listar-status` na planilha real e completar `config/mapa-status-planilha.json` |
+| 1 | Valores reais de "Status Atual" | mapa com Não contactado / Em prospecção / Em negociação e Com interesse (→ com interesse, status Em prospecção) / Sem interesse; o resto é rejeitado | rodar `--listar-status` na planilha real e completar `config/mapa-status-planilha.json` |
 | 2 | 2ª coluna "CNPJ" da planilha | comparada com a 1ª; diferente → aviso + `cnpj_secundario` | confirmar o que ela representa |
 | 3 | Prazo de cadastro de 15 dias | contado do **primeiro "com interesse"** até aparecer no arquivo de cadastro; vencido = alerta | confirmar o ponto de partida |
 | 4 | Análise financeira de 10 dias | contados da data do pedido; só informativo (`em_analise_financeira`) | processo de pedido cancelado por restrição financeira (fase futura) |
@@ -16,4 +16,6 @@ Atualizado em 2026-10-19. Cada item diz o que já está implementado como padrã
 | 10 | Canal das tentativas da planilha | `nao_informado` | — |
 | 11 | Permissões do token do app × triggers | — | itens "Verificar" do [ADR-0001](adr/0001-turso-direto-github-pages.md) |
 | 12 | Login | usuário + senha gerada pelo administrador | — |
-| 13 | "Com interesse" no 2º atendimento | sai da lista e fica "Em negociação" aguardando o cadastro no ERP; prazo de cadastro gera alerta | confirmar |
+| 13 | "Com interesse" no 2º atendimento | sai da lista, fica "Em prospecção" com interesse aguardando o cadastro no ERP; prazo de cadastro gera alerta | confirmar |
+| 14 | Quem é representante e quem é vendedor | `usuarios.tipo_atuacao` definido pelo administrador (`npm run usuarios -- tipo`); sem definição = representante | a planilha base indica isso em alguma coluna (ex.: TIPO)? Se sim, a importação passa a preencher |
+| 15 | "Front mais amplo" do vendedor | vendedor tem a visão de rota/subrota além de lista/cidade/bairro, sempre na própria carteira | o vendedor deve ver prospects além da própria carteira (ex.: toda a rota)? |

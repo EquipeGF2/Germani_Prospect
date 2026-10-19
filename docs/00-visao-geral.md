@@ -10,10 +10,9 @@ tentativas de contato e o supervisor acompanha cobertura e conversão.
 ## Fluxo do prospect (resumo)
 
 ```
- planilha base ──► Não contactado ──(1ª tentativa)──► Em prospecção ──(2ª tentativa sem interesse)──► Sem interesse (sai da fila)
-                        │                                  │
-                        └──────────(com interesse)─────────┴──► Em negociação ──(arquivo ERP: cadastro)──► Cadastrado no ERP
-                                                                                 └─(arquivo ERP: pedido)──► Venda realizada (final)
+ planilha base ──► Não contactado ──(1º atendimento)──► Em prospecção ──(2º atendimento)──┬─ sem interesse ──► Sem interesse
+                                                         (com ou sem interesse)          └─ com interesse ──► aguarda cadastro no ERP
+ arquivo ERP de cadastro ──► Cadastrado no ERP          arquivo ERP de pedidos ──► Venda realizada (final)
  arquivo de CNPJs baixados ──► Inválido (congelado, impossibilitado de faturamento)
 ```
 
@@ -26,7 +25,8 @@ Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 
 | Perfil | No app | Por importação (administrador) |
 |---|---|---|
-| Representante / vendedor | consulta a própria carteira; registra visita/contato e **falta de interesse** (com motivo) | — |
+| Representante | consulta a própria carteira por lista, cidade e bairro (**sem rota**); registra visita/contato e **falta de interesse** | — |
+| Vendedor | o mesmo, com visão mais ampla: **rota e subrota** além de lista, cidade e bairro | — |
 | Supervisor | o mesmo, para a sua equipe; acompanha painel; redistribui carteira | — |
 | Administrador | tudo | base inicial de prospects; cadastro de clientes do ERP; pedidos do ERP; CNPJs baixados; usuários e senhas |
 

@@ -7,9 +7,8 @@ Sem servidor (ADR-0001), o app fala SQL com o Turso. Para manter o banco íntegr
 
 | Tela | Fonte | Filtro obrigatório na consulta |
 |---|---|---|
-| Minha carteira (lista de trabalho) | `vw_prospects WHERE na_lista = 1` | `vendedor_id = :usuario` (vendedor) · `supervisor_id = :usuario` (supervisor) |
-| Consulta de prospects fora da lista (encerrados, vendidos, baixados) | `vw_prospects WHERE na_lista = 0` | idem |
-| Busca (nome, CNPJ, cidade) | `vw_prospects.busca LIKE '%' \|\| :termo \|\| '%'` | `:termo` passado por `normalizarBusca()` → **sem acento** |
+| Lista de prospects (lista · cidade · bairro · rota) | `consultaCarteira()` de `shared/carteira.mjs` sobre `vw_prospects` | escopo e visões pelo usuário: representante sem rota; vendedor com rota; supervisor = equipe |
+| Consulta de prospects fora da lista (encerrados, vendidos, baixados) | `consultaCarteira({ incluirForaDaLista: true })` | idem |
 | Retornos hoje | `vw_prospects WHERE pendente_hoje = 1` | idem carteira |
 | Ficha | `vw_prospects` + `vw_linha_tempo` | `prospect_id` |
 | Formulário de contato | `motivos_sem_interesse WHERE ativo = 1 AND uso_app = 1 ORDER BY ordem`, `parametros` | — |

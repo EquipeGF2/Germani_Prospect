@@ -168,10 +168,8 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje }) {
         data,
         resultado,
         motivoCodigo: resultado === 'sem_interesse' ? 'NAO_INFORMADO' : null,
-        dataRetorno: resultado === 'com_interesse' ? data : null,
       });
     });
-    if (resultadoFinal === 'com_interesse') avisos.push('em negociação sem data de retorno na planilha — retorno = data do último contato (aparece como pendente)');
     if (resultadoFinal === 'sem_interesse') avisos.push('sem interesse sem motivo na planilha — motivo "Não informado (importação inicial)"');
   }
 
@@ -208,6 +206,7 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje }) {
         dt_entrada_base: dtEntrada,
         busca: normalizarBusca([razao, nomeFantasia, cnpj, cidade, bairro].filter(Boolean).join(' ')),
         cidade_busca: cidade ? normalizarBusca(cidade) : null,
+        bairro_busca: bairro ? normalizarBusca(bairro) : null,
       },
       vendedor,
       supervisor,

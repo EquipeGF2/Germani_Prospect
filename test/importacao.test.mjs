@@ -83,7 +83,7 @@ test('DT 1o / DT 2o viram tentativas com o histórico na data certa', async () =
   const st = Object.fromEntries((await db.execute('SELECT cnpj, status_atual, tentativas, dt_entrada_base FROM prospects')).rows.map((r) => [r.cnpj, r]));
   assert.equal(st[cnpjTeste(1)].status_atual, 'em_prospeccao');
   assert.equal(st[cnpjTeste(2)].status_atual, 'sem_interesse'); // 2 tentativas sem conclusão
-  assert.equal(st[cnpjTeste(3)].status_atual, 'em_negociacao');
+  assert.equal(st[cnpjTeste(3)].status_atual, 'em_prospeccao'); // "Em negociação" da planilha = com interesse
   assert.equal(st[cnpjTeste(4)].status_atual, 'sem_interesse');
   assert.equal(st[cnpjTeste(1)].dt_entrada_base, '2026-09-01');
   const c = (await db.execute("SELECT canal, origem FROM contatos")).rows;
@@ -105,7 +105,7 @@ test('reimportar a mesma planilha não altera status, histórico, contatos nem v
   const antes = await foto();
   // contato registrado no app entre as importações
   await db.execute({ sql: `INSERT INTO contatos (id, prospect_id, usuario_id, numero_tentativa, data_contato, canal, resultado, data_retorno)
-                           SELECT 'app-1', id, vendedor_id, 1, '2026-10-02', 'visita', 'com_interesse', '2026-10-09' FROM prospects WHERE cnpj = ?`, args: [cnpjTeste(2)] });
+                           SELECT 'app-1', id, vendedor_id, 1, '2026-10-02', 'visita', 'com_interesse', NULL FROM prospects WHERE cnpj = ?`, args: [cnpjTeste(2)] });
   const depoisApp = await foto();
   const linhasAlteradas = [linha({ cnpj: cnpjTeste(1), razao: 'Empresa Renomeada', dt1: '01/09/2026', status: 'Em prospecção', cod: '11', nome: 'Vend Onze' }), linhas[1]];
   const { resultados } = await importar(db, linhasAlteradas);

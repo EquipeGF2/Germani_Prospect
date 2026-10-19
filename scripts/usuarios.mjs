@@ -3,6 +3,7 @@
 //   npm run usuarios -- listar
 //   npm run usuarios -- criar-admin <login> "<Nome>"
 //   npm run usuarios -- senha <login>          gera senha provisória (troca obrigatória no 1º acesso)
+//   npm run usuarios -- tipo <login> representante|vendedor   forma de trabalho (representante não tem rota)
 //   npm run usuarios -- desativar <login>
 //   npm run usuarios -- ativar <login>
 import { randomInt } from 'node:crypto';
@@ -12,6 +13,7 @@ import { gerarHashSenha } from '../shared/senha.mjs';
 import { normalizarBusca } from '../shared/texto.mjs';
 
 const [comando, login, nome] = process.argv.slice(2);
+const TIPOS = ['representante', 'vendedor'];
 const db = await abrir();
 const quem = executor();
 
@@ -35,7 +37,7 @@ async function exigirUsuario(l) {
 
 switch (comando) {
   case 'listar': {
-    const r = await db.execute(`SELECT u.login, u.perfil, u.codigo_erp, u.nome, s.nome AS supervisor, u.ativo,
+    const r = await db.execute(`SELECT u.login, u.perfil, u.tipo_atuacao, u.codigo_erp, u.nome, s.nome AS supervisor, u.ativo,
                                        CASE WHEN u.senha_hash IS NULL THEN 'sem acesso' WHEN u.senha_provisoria = 1 THEN 'provisória' ELSE 'ok' END AS senha
                                   FROM usuarios u LEFT JOIN usuarios s ON s.id = u.supervisor_id
                                  ORDER BY u.perfil, u.nome`);
@@ -64,6 +66,14 @@ switch (comando) {
     console.log(`${u.nome} (${u.perfil}) — login: ${login}  senha provisória: ${senha}`);
     break;
   }
+  case 'tipo': {
+    if (!TIPOS.includes(nome)) throw new Error('uso: tipo <login> representante|vendedor');
+    const u = await exigirUsuario(login);
+    await db.execute({ sql: `UPDATE usuarios SET tipo_atuacao = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`, args: [nome, u.id] });
+    await auditar('tipo_atuacao', u.id, { tipo: nome });
+    console.log(`${u.nome}: ${nome}`);
+    break;
+  }
   case 'desativar':
   case 'ativar': {
     const u = await exigirUsuario(login);
@@ -73,7 +83,7 @@ switch (comando) {
     break;
   }
   default:
-    console.error('comandos: listar | criar-admin <login> "<Nome>" | senha <login> | desativar <login> | ativar <login>');
+    console.error('comandos: listar | criar-admin <login> "<Nome>" | senha <login> | tipo <login> representante|vendedor | desativar <login> | ativar <login>');
     process.exitCode = 1;
 }
 db.close();

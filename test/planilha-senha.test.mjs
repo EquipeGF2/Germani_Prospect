@@ -56,6 +56,7 @@ test('senha: PBKDF2 confere e rejeita', async () => {
 test('validação do formulário de contato espelha o banco', () => {
   assert.deepEqual(validarContato({ canal: 'visita', resultado: 'sem_conclusao', dataContato: '2026-10-01' }), []);
   assert.match(validarContato({ canal: 'visita', resultado: 'sem_interesse', dataContato: '2026-10-01' }).join(), /motivo obrigatório/);
-  assert.match(validarContato({ canal: 'visita', resultado: 'com_interesse', dataContato: '2026-10-01' }).join(), /retorno obrigatória/);
+  assert.deepEqual(validarContato({ canal: 'visita', resultado: 'com_interesse', dataContato: '2026-10-01' }), []);
+  assert.match(validarContato({ canal: 'visita', resultado: 'com_interesse', dataContato: '2026-10-01', dataRetorno: '2026-09-01' }).join(), /anterior/);
   assert.match(validarContato({ canal: 'fax', resultado: 'x', dataContato: '' }).join(), /canal.*resultado.*data/);
 });

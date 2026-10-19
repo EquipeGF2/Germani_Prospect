@@ -3,7 +3,6 @@
 export const STATUS = Object.freeze({
   NAO_CONTACTADO: 'nao_contactado',
   EM_PROSPECCAO: 'em_prospeccao',
-  EM_NEGOCIACAO: 'em_negociacao',
   SEM_INTERESSE: 'sem_interesse',
   CADASTRADO_ERP: 'cadastrado_erp',
   VENDA_REALIZADA: 'venda_realizada',
@@ -11,7 +10,10 @@ export const STATUS = Object.freeze({
 });
 
 /** Status em que o vendedor ainda trabalha o prospect (aceitam novo contato). */
-export const STATUS_ATIVOS = Object.freeze([STATUS.NAO_CONTACTADO, STATUS.EM_PROSPECCAO, STATUS.EM_NEGOCIACAO]);
+export const STATUS_ATIVOS = Object.freeze([STATUS.NAO_CONTACTADO, STATUS.EM_PROSPECCAO]);
+
+/** Tipo de atuação: representante (sem rota) · vendedor (com rota/subrota). NULL é tratado como representante. */
+export const TIPOS_ATUACAO = Object.freeze(['representante', 'vendedor']);
 
 export const CANAIS = Object.freeze(['visita', 'telefone', 'whatsapp']);
 export const RESULTADOS = Object.freeze(['com_interesse', 'sem_interesse', 'sem_conclusao']);
@@ -24,9 +26,6 @@ export function validarContato({ canal, resultado, motivoId, motivoExigeObservac
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataContato ?? '')) erros.push('data do contato obrigatória');
   if (resultado === 'sem_interesse' && !motivoId) erros.push('motivo obrigatório para "sem interesse"');
   if (resultado === 'sem_interesse' && motivoExigeObservacao && !String(observacao ?? '').trim()) erros.push('este motivo exige observação');
-  if (resultado === 'com_interesse') {
-    if (!dataRetorno) erros.push('data de retorno obrigatória para "com interesse"');
-    else if (dataRetorno < dataContato) erros.push('data de retorno anterior ao contato');
-  }
+  if (dataRetorno && dataRetorno < dataContato) erros.push('data de retorno anterior ao contato');
   return erros;
 }

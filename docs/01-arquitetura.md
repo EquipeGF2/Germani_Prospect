@@ -37,6 +37,7 @@ Decisão e riscos: [ADR-0001](adr/0001-turso-direto-github-pages.md).
 │   ├── status.mjs               status, canais, resultados, validação do formulário
 │   ├── senha.mjs                hash PBKDF2 (Web Crypto)
 │   ├── importacao-base.mjs      layout e validação da planilha base
+│   ├── carteira.mjs             lista de prospects: visões lista/cidade/bairro/rota e escopo por usuário
 │   └── indicadores.mjs          SQL dos indicadores (posição e atividade)
 ├── lib/                         código Node usado pelos scripts (banco, planilhas, importações)
 ├── scripts/                     linha de comando: migrate, importar-base, importar-eventos, usuarios, planilha fictícia
@@ -52,7 +53,9 @@ A pasta `web/` (app) entra na F1. Ela vai importar `shared/` diretamente, sem du
 | Regra | Banco (garantia) | `shared/` (antecipa no formulário/importação) |
 |---|---|---|
 | Motivo obrigatório em "sem interesse" | CHECK em `contatos` | `validarContato` |
-| Data de retorno obrigatória em "com interesse" | CHECK em `contatos` | `validarContato` |
+| Data de retorno (opcional) não anterior ao contato | CHECK em `contatos` | `validarContato` |
+| Representante não usa rota; vendedor usa | coluna `usuarios.tipo_atuacao` | `shared/carteira.mjs` (visões e colunas) |
+| Limite de 2 atendimentos / saída da lista | trigger `trg_contatos_validar` + `vw_prospects.na_lista` | `shared/carteira.mjs` |
 | 2 tentativas → sai da fila | trigger `trg_contatos_aplicar` + `parametros` | — |
 | Vendedor só registra na própria carteira | trigger `trg_contatos_validar` | filtro das telas |
 | CNPJ válido (inclusive alfanumérico) | `length = 14` | `analisarCnpj` |
