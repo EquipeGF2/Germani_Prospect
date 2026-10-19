@@ -35,7 +35,8 @@ erDiagram
 
 | Tabela | Para quê | Observações |
 |---|---|---|
-| `parametros` | prazos e limites editáveis | `prazo_cadastro_dias`=15, `prazo_analise_financeira_dias`=10, `dias_alerta_sem_lancamento`=7, `dias_alerta_sem_movimento`=30. Alteração gera linha em `auditoria`. |
+| `parametros` | prazos e limites editáveis | `prazo_cadastro_dias`=15, `prazo_analise_financeira_dias`=10, `dias_alerta_sem_lancamento`=7, `dias_alerta_sem_movimento`=30; painel (0002): `data_inicio_campanha`=2026-10-01 (data validada por trigger), `percentual_pipeline`=30, `valor_medio_cliente`=1200. Alteração gera linha em `auditoria`. |
+| `feriados` | dias que não contam como úteis na campanha (0002) | data, descrição, abrangência `nacional` · `estadual` (UF) · `municipal` (UF + cidade). Vem com os nacionais e o 20/09 (RS) de 2026–2027. Editável na tela (inclui/exclui). |
 | `status` | os 8 status, cor e como contam nos indicadores | `aceita_contato`, `lista_trabalho` (aparece na lista de prospects), `conta_contactado`, `conta_carteira` (inválido = 0). |
 | `motivos_sem_interesse` | lista de motivos de recusa | `exige_observacao` (Outro), `uso_app` = 0 para motivos do sistema (`NAO_INFORMADO`, usado na importação inicial). |
 
@@ -45,7 +46,7 @@ erDiagram
 
 | Coluna | Regra |
 |---|---|
-| `perfil` | `administrador` · `supervisor` · `vendedor` · `financeiro` (analista do console de crédito) |
+| `perfil` | `administrador` · `gerente` (gerente comercial — migração 0002) · `supervisor` · `vendedor` · `financeiro` (analista do console de crédito) |
 | `codigo_erp` | COD (vendedor) ou COD SUP (supervisor) da planilha/Senior. Único por perfil. |
 | `login` | criado pela importação: vendedor = código; supervisor = `sup` + código. Único, sem diferenciar maiúsculas. |
 | `senha_hash` | PBKDF2; `NULL` = acesso ainda não liberado (`npm run usuarios -- senha <login>`). |

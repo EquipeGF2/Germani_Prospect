@@ -70,7 +70,8 @@ web/
     ├── financeiro.js             console de crédito (shared/financeiro.mjs)
     ├── financeiro-liberar.js     liberar / corrigir crédito
     ├── _carteira.js              selo de status, seleção do lote (sessionStorage)
-    └── admin-*.js                administração (token de administração)
+    ├── inicio.js                 dashboard de acompanhamento (shared/painel.mjs)
+    └── admin-*.js                administração (token de administração), inclusive admin-feriados.js
 ```
 `npm run site` monta `_site/` (web + shared + migrations + bibliotecas do navegador empacotadas com esbuild,
 versões travadas no package-lock). `test-telas/` testa as telas num Chromium real, em modo demonstração.

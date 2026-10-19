@@ -32,7 +32,7 @@ function endereco(e, muda = {}) {
 }
 
 async function vendedoresDoEscopo(db, usuario) {
-  if (usuario.perfil === 'administrador' || usuario.perfil === 'financeiro') {
+  if (['administrador', 'gerente', 'financeiro'].includes(usuario.perfil)) {
     return (await db.execute("SELECT id, nome, codigo_erp FROM usuarios WHERE perfil IN ('vendedor','supervisor') AND ativo = 1 ORDER BY nome")).rows;
   }
   if (usuario.perfil === 'supervisor') {

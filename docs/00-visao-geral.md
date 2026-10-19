@@ -38,7 +38,8 @@ Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 | Representante | **filtro e consulta**: lista principal por lista, cidade e bairro (**sem rota**) + acompanhamento; registra **atendido / sem interesse** (também em lote) e reabre com pedido identificado | — |
 | Vendedor | o mesmo + **montagem de rotas** e visão por rota/subrota | — |
 | Analista financeiro | console de crédito: libera sempre, informando à vista/antecipado ou a prazo, restrição de crédito e limite | — |
-| Supervisor | o mesmo, para a sua equipe; acompanha painel; redistribui carteira | — |
+| Supervisor | o mesmo, para a sua equipe; painel do Início **só da equipe**; redistribui carteira | — |
+| Gerente comercial | painel do Início completo (escolhe o supervisor); vê e **age em qualquer carteira** (registro, lote, transferência); **não libera crédito** e não administra | — |
 | Administrador | tudo | base inicial de prospects; cadastro de clientes do ERP; pedidos do ERP; CNPJs baixados; usuários e senhas |
 
 O vendedor **não** marca inválido nem venda: inválido vem do arquivo de baixados; cadastro e venda vêm dos
@@ -52,7 +53,8 @@ arquivos do ERP.
 | F1 — App · parte 1 | login; **administração pela tela**: base de prospects (com mapeamento do Status Atual), representantes/vendedores, cadastro/pedidos/baixados, histórico de importações, usuários e senhas, parâmetros; modo demonstração; publicação no GitHub Pages | **pronta** |
 | F1 — App · partes 2 e 3 | lista principal e acompanhamento (lista/cidade/bairro/onda/status/rota); busca e filtros; ficha com histórico de movimentação; registrar atendido / sem interesse / reabrir com pedido; sem interesse em lote | **pronta** (2026-10-19) |
 | F1 — App · parte 4 | console de crédito do analista financeiro (liberar e corrigir); menu lateral recolhível | **pronta** (2026-10-19) |
-| F1 — App · parte 5 | painel e indicadores; rotas do vendedor; exportação XLSX | a fazer |
+| F1 — App · parte 5a | **Início = dashboard de acompanhamento** (geral, por supervisor, por agente); perfil gerente comercial; feriados; escolha por cards no ERP | **pronta** (2026-10-19) |
+| F1 — App · parte 5b | rotas do vendedor; exportação XLSX | a fazer |
 | F2 — Campo | modo offline (rotas já estão no backend; sem cálculo de distância — ADR-0005) | a fazer |
 | F3 — Financeiro | pedidos cancelados por restrição financeira (processo a definir) | a definir |
 

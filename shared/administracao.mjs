@@ -7,7 +7,10 @@ export async function listarParametros(db) {
 /** Altera um parâmetro (a auditoria é gravada pelo trigger do banco). Vale para os próximos eventos. */
 export async function alterarParametro(db, { chave, valor, executadoPor }) {
   const v = String(valor ?? '').trim();
-  if (!/^\d+$/.test(v)) throw new Error('informe um número inteiro maior ou igual a zero');
+  const p = (await db.execute({ sql: 'SELECT tipo FROM parametros WHERE chave = ?', args: [chave] })).rows[0];
+  if (!p) throw new Error(`parâmetro inexistente: ${chave}`);
+  if (p.tipo === 'inteiro' && !/^\d+$/.test(v)) throw new Error('informe um número inteiro maior ou igual a zero');
+  if (chave.startsWith('data_') && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error('informe a data');
   const r = await db.execute({
     sql: "UPDATE parametros SET valor = ?, alterado_por = ?, alterado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE chave = ? RETURNING chave",
     args: [v, executadoPor, chave],

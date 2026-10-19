@@ -4,7 +4,7 @@ Controle de prospecção de novos clientes da **GERMANI Alimentos**: cada CNPJ q
 um ponto de controle. O representante/vendedor registra os atendimentos; cadastro, pedido e CNPJs
 baixados entram por arquivos do ERP Senior; o supervisor acompanha cobertura e conversão.
 
-**Sistema:** GERMANI · **Estado:** ativo · **Fase atual:** F1 partes 1 a 4 prontas (administração; lista principal, acompanhamento e ficha; registro individual e em lote; console de crédito), com menu lateral.
+**Sistema:** GERMANI · **Estado:** ativo · **Fase atual:** F1 partes 1 a 5a prontas (administração; lista principal, acompanhamento e ficha; registro individual e em lote; console de crédito; Início com o dashboard de acompanhamento; gerente comercial; feriados), com menu lateral.
 
 Stack: **Turso (libSQL)** + **GitHub** (Actions, Secrets, Pages). Sem servidor — ver
 [ADR-0001](docs/adr/0001-turso-direto-github-pages.md).
@@ -15,7 +15,7 @@ Requisitos: Node.js 22.9+.
 
 ```bash
 npm ci
-npm test                                   # 96 testes, banco SQLite em memória
+npm test                                   # 100 testes, banco SQLite em memória
 TURSO_DATABASE_URL=file:dados/local.db npm run migrate
 npm run exemplo:planilha                   # gera exemplos/base-ficticia.xlsx (dados fictícios)
 TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-ficticia.xlsx
@@ -33,13 +33,14 @@ Navegação pelo **menu lateral** (grupos Prospecção e Administração; recolh
 
 | Tela | Quem | O que faz |
 |---|---|---|
-| `#/inicio` | todos | números da carteira e atalhos |
+| `#/inicio` | todos (escopo do perfil) | **dashboard de acompanhamento**: geral, por supervisor (seletor para admin/gerente) e por agente; dias úteis, pipeline, conversão |
 | `#/carteira` | todos (escopo do perfil) | **lista principal** (não contactado / em prospecção): visões lista · cidade · bairro · onda · rota (só vendedor), busca sem acento, filtros, seleção para lote |
 | `#/carteira?aba=acompanhamento` | todos | **acompanhamento**: cartões por status → lista do status |
 | `#/ficha?id=` | todos | situação, dias corridos, prazos, crédito, **histórico de movimentação**, cadastro, ligar / WhatsApp / mapa |
 | `#/registrar?id=` | vendedor, supervisor, admin | Atendido · Sem interesse (motivo) · Reabrir com pedido identificado |
 | `#/lote` | vendedor, supervisor, admin | sem interesse em lote (motivo do lote e/ou por cliente) |
 | `#/financeiro` | analista financeiro, admin | **console de crédito**: em análise × liberados, liberar ou corrigir (forma, prazo, limite, restrição) |
+| `#/admin/feriados` | administrador | feriados que saem dos dias úteis da campanha |
 | `#/admin/...` | administrador | importações, usuários, parâmetros (token de administração) |
 
 Publicação: workflow **Publicar app (GitHub Pages)** — ver [docs/06-operacao.md](docs/06-operacao.md) §3–4.

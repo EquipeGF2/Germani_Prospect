@@ -241,3 +241,24 @@ Em ambos: correção = nova liberação; nada é apagado.
 
 Toda mudança — e todo registro, mesmo sem mudança de status — gera uma linha em `movimentacoes` (ver 02).
 É a fonte da linha do tempo da ficha, dos filtros (`consultaMovimentacoes`) e dos indicadores de atividade.
+
+## 10. Início — dashboard de acompanhamento
+
+Implementação: [`shared/painel.mjs`](../shared/painel.mjs) · tela [`web/js/telas/inicio.js`](../web/js/telas/inicio.js) ·
+testes: [`test/painel.test.mjs`](../test/painel.test.mjs).
+
+| Bloco | Conteúdo |
+|---|---|
+| Geral | **Total de prospects** (carteira válida: sem inválidos) · **Não contactado** · **Sem interesse** · **Crédito liberado** · **Venda realizada**, cada um com % da base |
+| Valores | **Dias úteis da campanha** (seg–sex desde `data_inicio_campanha` até hoje, menos os `feriados` cadastrados) · **Potencial do pipeline de abertura** = total × `percentual_pipeline`% × `valor_medio_cliente` · **Valor de conversão** = vendas × `valor_medio_cliente` |
+| Visão por supervisor | seletor de supervisor (lembrado na aba) → os mesmos cards + agentes de vendas (vendedores × representantes) |
+| Consolidado por agente | agente, tipo, total, não contactado, sem interesse, crédito liberado, venda realizada, **% contactado** = (total − não contactado) ÷ total, **% conversão** = vendas ÷ contactados; total do supervisor; tocar no agente abre a carteira dele. No celular, um cartão por agente. |
+
+- **Crédito liberado** = clientes que já tiveram crédito liberado (console ou relatório), mesmo que depois virem venda.
+  Não separa com ou sem restrição.
+- **Escopo:** administrador, **gerente comercial** e analista financeiro veem tudo e escolhem o supervisor;
+  **supervisor** vê só a própria equipe (sem seletor); vendedor/representante vê só a própria carteira.
+- **Feriados** (Administração → Feriados): todo feriado cadastrado sai da contagem — cadastre os estaduais e
+  municipais que valem para a operação.
+- **Gerente comercial** (perfil `gerente`): vê tudo e age em qualquer carteira (registro, lote, transferência);
+  **não libera crédito** (trigger de `liberacoes_credito`) e não acessa a administração.

@@ -8,7 +8,7 @@ export async function render(conteudo, { irPara }) {
   const form = h('form', { class: 'cartao login', onsubmit: async (ev) => {
     ev.preventDefault();
     const u = await comEspera(botao, () => entrar(login.value, senha.value));
-    if (u) irPara({ administrador: '/admin', financeiro: '/financeiro' }[u.perfil] ?? '/inicio');
+    if (u) irPara(u.perfil === 'financeiro' ? '/financeiro' : '/inicio');
   } },
   h('h1', {}, 'Entrar'),
   h('p', { class: 'ajuda' }, 'Use o login e a senha recebidos do administrador.'),

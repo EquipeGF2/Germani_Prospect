@@ -9,7 +9,7 @@ const ICONES = {
   inicio: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z',
   lista: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
   acompanhamento: 'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9',
-  painel: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z',
+  feriados: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M8 15h.01M12 15h.01M16 15h.01',
   base: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
   tipos: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   erp: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8',
@@ -46,7 +46,6 @@ const GRUPOS = [
     { caminho: '/financeiro', rotulo: 'Console de crédito', icone: 'financeiro' },
   ] },
   { titulo: 'Administração', perfis: ['administrador'], itens: [
-    { caminho: '/admin', rotulo: 'Visão geral', icone: 'painel' },
     { caminho: '/admin/importar/base', rotulo: 'Base de prospects', icone: 'base' },
     { caminho: '/admin/importar/tipos', rotulo: 'Representantes / vendedores', icone: 'tipos' },
     { caminho: '/admin/importar/erp', rotulo: 'Cadastro · Pedidos · Baixados', icone: 'erp' },
@@ -54,6 +53,7 @@ const GRUPOS = [
     { caminho: '/admin/importacoes', rotulo: 'Importações', icone: 'importacoes' },
     { caminho: '/admin/usuarios', rotulo: 'Usuários', icone: 'usuarios' },
     { caminho: '/admin/parametros', rotulo: 'Parâmetros', icone: 'parametros' },
+    { caminho: '/admin/feriados', rotulo: 'Feriados', icone: 'feriados' },
   ] },
 ];
 
@@ -63,7 +63,7 @@ const TELAS_INTERNAS = {
   '/registrar': ['/carteira', 'Registrar atendimento'],
   '/lote': ['/carteira', 'Sem interesse em lote'],
   '/financeiro/liberar': ['/financeiro', 'Liberar crédito'],
-  '/admin/acesso': ['/admin', 'Acesso de administração'],
+  '/admin/acesso': ['', 'Acesso de administração'],
 };
 
 function itemAtivo(caminho, consulta) {

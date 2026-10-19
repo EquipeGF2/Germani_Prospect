@@ -5,7 +5,7 @@
 //   * REPRESENTANTE — visita a carteira. Visões: lista, cidade, bairro, onda, status. NÃO tem rota:
 //     não agrupa, não filtra e não recebe as colunas rota/subrota.
 //   * VENDEDOR      — atendimento mais amplo. Visões: lista, cidade, bairro, onda, status, rota (rota + subrota).
-//   * supervisor / administrador — todas as visões, sobre a equipe / sobre tudo.
+//   * supervisor / gerente comercial / administrador — todas as visões, sobre a equipe / sobre tudo.
 // tipo_atuacao NULL é tratado como representante (a forma mais restrita).
 //
 // Lista de prospects = só Não contactado / Em prospecção (vw_prospects.na_lista = 1).
@@ -29,7 +29,7 @@ const COLUNAS_ROTA = [
 
 /** Forma de trabalho efetiva do usuário. */
 export function formaDeTrabalho(usuario) {
-  if (usuario.perfil === 'administrador' || usuario.perfil === 'supervisor') return 'gestao';
+  if (['administrador', 'gerente', 'supervisor'].includes(usuario.perfil)) return 'gestao';
   return usuario.tipo_atuacao === 'vendedor' ? 'vendedor' : 'representante';
 }
 
@@ -39,7 +39,7 @@ export function visoesPermitidas(usuario) {
 }
 
 function escopo(usuario) {
-  if (usuario.perfil === 'administrador' || usuario.perfil === 'financeiro') return { where: [], args: [] };
+  if (['administrador', 'gerente', 'financeiro'].includes(usuario.perfil)) return { where: [], args: [] };
   if (usuario.perfil === 'supervisor') return { where: ['supervisor_id = ?'], args: [usuario.id] };
   return { where: ['vendedor_id = ?'], args: [usuario.id] };
 }

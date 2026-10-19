@@ -63,7 +63,7 @@ export async function render(conteudo, ctx) {
     ], lista, { vazio: 'Nenhum usuário com esse filtro.' }));
   }
 
-  const perfilNovo = h('select', { id: 'novo-perfil' }, h('option', { value: 'financeiro' }, 'Analista financeiro'), h('option', { value: 'administrador' }, 'Administrador'));
+  const perfilNovo = h('select', { id: 'novo-perfil' }, h('option', { value: 'financeiro' }, 'Analista financeiro'), h('option', { value: 'gerente' }, 'Gerente comercial'), h('option', { value: 'administrador' }, 'Administrador'));
   const loginNovo = h('input', { id: 'novo-login', autocapitalize: 'none' });
   const nomeNovo = h('input', { id: 'novo-nome' });
   const bCriar = h('button', { type: 'submit' }, 'Criar usuário');

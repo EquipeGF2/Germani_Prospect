@@ -37,8 +37,9 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('.aviso.erro');
   await pagina.fill('#senha', 'demo1234');
   await pagina.click('button[type=submit]');
-  await pagina.waitForSelector('h1:text("Administração")');
-  await foto('02-admin');
+  await pagina.waitForSelector('h1:text("Dashboard de acompanhamento")');   // Início = painel
+  assert.equal(await pagina.locator('#menu a[title="Visão geral"]').count(), 0);
+  await foto('02-inicio-vazio');
 
   // 1. base de prospects
   await pagina.click('#menu a[title="Base de prospects"]');
@@ -84,6 +85,12 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('button:text("Criar usuário")');
   await pagina.waitForSelector('text=Senha provisória de analista');
   const senhaAnalista = (await pagina.locator('.senha-gerada').last().innerText()).trim();
+  await pagina.selectOption('#novo-perfil', 'gerente');
+  await pagina.fill('#novo-login', 'gerente');
+  await pagina.fill('#novo-nome', 'Gerente Comercial Teste');
+  await pagina.click('button:text("Criar usuário")');
+  await pagina.waitForSelector('text=Senha provisória de gerente');
+  const senhaGerente = (await pagina.locator('.senha-gerada').last().innerText()).trim();
 
   // 4. arquivo de cadastro do ERP (2 CNPJs da base + 1 de fora)
   const { linhas } = await lerPlanilha('exemplos/base-ficticia.xlsx');
@@ -91,7 +98,10 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const cadastro = path.join(tmp, 'cadastro.csv');
   await writeFile(cadastro, `CNPJ;Data Cadastro;Codigo\n${cnpjs[0]};15/10/2026;C1\n${cnpjs[1]};16/10/2026;C2\n11222333000181;16/10/2026;C3\n`);
   await pagina.click('#menu a[title="Cadastro · Pedidos · Baixados"]');
-  await pagina.selectOption('#tipo-erp', 'cadastro');
+  await pagina.click('label.card-tipo[data-tipo="pedido"]');
+  await pagina.click('label.card-tipo[data-tipo="cadastro"]');             // escolha por cards
+  assert.ok(await pagina.isChecked('input[name="tipo-erp"][value="cadastro"]'));
+  await foto('08a-erp-cards');
   await pagina.setInputFiles('#arquivo-erp', cadastro);
   await pagina.click('button:text("Ler arquivo")');
   await pagina.selectOption('#col-data', 'Data Cadastro');
@@ -125,6 +135,44 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('text=Parâmetro salvo.');
   assert.equal(await pagina.inputValue('input[aria-label=prazo_cadastro_dias]'), '20');
 
+  // 5b. feriados: inclui um municipal e exclui
+  await pagina.click('#menu a[title="Feriados"]');
+  await pagina.waitForSelector('td:has-text("Nossa Senhora Aparecida")');   // nacionais vêm da migração
+  await pagina.selectOption('#feriado-abrangencia', 'municipal');
+  await pagina.fill('#feriado-data', '2026-10-15');
+  await pagina.fill('#feriado-descricao', 'Feriado municipal de teste');
+  await pagina.click('button:text("Incluir feriado")');
+  await pagina.waitForSelector('text=informe a UF');
+  await pagina.fill('#feriado-uf', 'rs');
+  await pagina.fill('#feriado-cidade', 'Santa Cruz do Sul');
+  await pagina.click('button:text("Incluir feriado")');
+  await pagina.waitForSelector('td:has-text("Santa Cruz do Sul/RS")');
+  await foto('09a-feriados');
+  pagina.once('dialog', (d) => d.accept());
+  await pagina.click('button[aria-label="Excluir Feriado municipal de teste"]');
+  await pagina.waitForSelector('text=Feriado excluído.');
+  assert.equal(await pagina.locator('td:has-text("Santa Cruz do Sul/RS")').count(), 0);
+
+  // 5c. Início com a base carregada: 120 prospects, 2 com crédito liberado; seletor de supervisor
+  await pagina.click('#menu a[title="Início"]');
+  await pagina.waitForSelector('#painel-supervisor');
+  const kpi = (n) => pagina.locator('.kpis').first().locator('.kpi').nth(n).locator('.valor').innerText();
+  assert.equal(await kpi(0), '120');
+  assert.equal(await kpi(3), '2');
+  const supervisores = await pagina.locator('#painel-supervisor option').allInnerTexts();
+  assert.ok(supervisores.length >= 2, 'mais de um supervisor na base fictícia');
+  await pagina.selectOption('#painel-supervisor', { label: supervisores[1] });
+  await pagina.waitForSelector(`text=Supervisor: ${supervisores[1]}`);
+  assert.ok((await pagina.locator('.tabela-agentes tbody tr').count()) >= 1);
+  await foto('09b-inicio-painel');
+  await pagina.setViewportSize({ width: 390, height: 844 });                 // o mesmo painel no celular
+  await pagina.waitForSelector('.agentes-cartoes .agente');
+  await pagina.waitForFunction(() => document.getElementById('lateral').getBoundingClientRect().right <= 0);   // menu recolhido (fim da animação)
+  const [largura, janela] = await pagina.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
+  assert.ok(largura <= janela, `painel mais largo que o celular: ${largura}`);
+  await foto('09c-inicio-celular');
+  await pagina.setViewportSize({ width: 1280, height: 900 });
+
   // 6. histórico de importações
   await pagina.click('#menu a[title="Importações"]');
   await pagina.waitForSelector('h1:text-is("Importações")');               // a tela de parâmetros também tem tabela
@@ -139,7 +187,9 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.fill('#login', '1201');
   await pagina.fill('#senha', senhaVendedor);
   await pagina.click('button:text("Entrar")');
-  await pagina.waitForSelector('text=Olá, Representante');
+  await pagina.waitForSelector('text=Sua carteira: registros e status atual');
+  assert.equal(await pagina.locator('#painel-supervisor').count(), 0, 'vendedor não escolhe supervisor');
+  await foto('10a-inicio-vendedor');
   assert.match(await pagina.locator('#usuario-lateral').innerText(), /Vendedor/);
   assert.equal(await pagina.locator('#menu a[title="Base de prospects"]').count(), 0, 'vendedor não vê o menu de administração');
   await pagina.goto(`${base}#/admin/usuarios`);
@@ -147,7 +197,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
 
   // 8. lista principal do vendedor (com visão por rota) → ficha → registrar atendido
   await pagina.goto(`${base}#/inicio`);
-  await pagina.waitForSelector('text=na lista principal');
+  await pagina.waitForSelector('h1:text("Dashboard de acompanhamento")');
   await foto('10b-inicio-vendedor');
   await pagina.click('#menu a[title="Lista principal"]');
   await pagina.waitForSelector('.cartao-prospect');
@@ -259,6 +309,26 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('td a >> nth=0');
   await pagina.waitForSelector('text=Histórico de movimentação');
   assert.match(await texto(), /Restrição de crédito\s+com restrição/);
+
+  // 13. gerente comercial: painel completo, age em qualquer carteira, sem console de crédito nem administração
+  await pagina.click('.menu-sair');
+  await pagina.waitForSelector('#login');
+  await pagina.fill('#login', 'gerente');
+  await pagina.fill('#senha', senhaGerente);
+  await pagina.click('button:text("Entrar")');
+  await pagina.waitForSelector('#painel-supervisor');
+  assert.match(await pagina.locator('#usuario-lateral').innerText(), /Gerente comercial/);
+  assert.equal(await pagina.locator('#menu a[title="Console de crédito"]').count(), 0);
+  assert.equal(await pagina.locator('#menu a[title="Usuários"]').count(), 0);
+  await pagina.click('.tabela-agentes tbody a >> nth=0');                    // agente → carteira dele
+  await pagina.waitForSelector('.cartao-prospect');
+  await pagina.click('.cartao-prospect-corpo >> nth=0');
+  await pagina.click('a:text("Registrar atendimento")');
+  await pagina.click('label.opcao:has-text("Atendido")');
+  await pagina.click('button:text("Gravar registro")');
+  await pagina.waitForSelector('text=Atendido registrado.');
+  await pagina.goto(`${base}#/financeiro`);
+  await pagina.waitForSelector('text=Seu perfil não tem acesso a esta tela.');
 });
 
 test('telas cabem no celular (sem rolagem horizontal da página)', async () => {
@@ -272,7 +342,7 @@ test('telas cabem no celular (sem rolagem horizontal da página)', async () => {
   await cel.fill('#login', 'admin');
   await cel.fill('#senha', 'demo1234');
   await cel.click('button[type=submit]');
-  await cel.waitForSelector('h1:text("Administração")');
+  await cel.waitForSelector('h1:text("Dashboard de acompanhamento")');
   for (const tela of ['#/inicio', '#/admin/usuarios', '#/carteira', '#/carteira?aba=acompanhamento', '#/carteira?visao=cidade']) {
     await cel.goto(`${base}${tela}`);
     await cel.waitForSelector('h1');

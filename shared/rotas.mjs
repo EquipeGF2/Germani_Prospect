@@ -54,13 +54,14 @@ export function comandoEncerrarRota({ usuario, rotaId, situacao }) {
   };
 }
 
-/** Paradas de uma rota, na ordem, com "atendida". Supervisor/admin podem consultar rotas da equipe. */
+/** Paradas de uma rota, na ordem, com "atendida". Supervisor consulta as rotas da equipe; gerente e admin, todas. */
 export function consultaParadas({ usuario, rotaId }) {
-  const escopo = usuario.perfil === 'administrador' ? '' : usuario.perfil === 'supervisor'
+  const tudo = ['administrador', 'gerente'].includes(usuario.perfil);
+  const escopo = tudo ? '' : usuario.perfil === 'supervisor'
     ? 'AND vendedor_id IN (SELECT id FROM usuarios WHERE supervisor_id = ?)' : 'AND vendedor_id = ?';
   return {
     sql: `SELECT * FROM vw_rota_paradas WHERE rota_id = ? ${escopo} ORDER BY ordem`,
-    args: usuario.perfil === 'administrador' ? [rotaId] : [rotaId, usuario.id],
+    args: tudo ? [rotaId] : [rotaId, usuario.id],
   };
 }
 
