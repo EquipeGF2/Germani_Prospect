@@ -36,7 +36,7 @@ erDiagram
 | Tabela | Para quê | Observações |
 |---|---|---|
 | `parametros` | prazos e limites editáveis | `prazo_cadastro_dias`=15, `prazo_analise_financeira_dias`=10, `dias_alerta_sem_lancamento`=7, `dias_alerta_sem_movimento`=30; painel (0002): `data_inicio_campanha`=2026-10-01 (data validada por trigger), `percentual_pipeline`=30, `valor_medio_cliente`=1200. Alteração gera linha em `auditoria`. |
-| `feriados` | dias que não contam como úteis na campanha (0002) | data, descrição, abrangência `nacional` · `estadual` (UF) · `municipal` (UF + cidade). Vem com os nacionais e o 20/09 (RS) de 2026–2027. Editável na tela (inclui/exclui). |
+| `feriados` | feriados **cadastrados** que não contam como úteis (0002, 0003) | data, descrição, abrangência `nacional` · `estadual` (UF) · `municipal` (UF + cidade), `recorrente` (repete todo ano, mesmo dia e mês). Os **nacionais não ficam aqui**: são calculados para qualquer ano (`shared/feriados.mjs`, inclusive a Sexta-feira Santa pela Páscoa). Vem com o 20/09 (RS) recorrente. Editável na tela (inclui/exclui). |
 | `status` | os 8 status, cor e como contam nos indicadores | `aceita_contato`, `lista_trabalho` (aparece na lista de prospects), `conta_contactado`, `conta_carteira` (inválido = 0). |
 | `motivos_sem_interesse` | lista de motivos de recusa | `exige_observacao` (Outro), `uso_app` = 0 para motivos do sistema (`NAO_INFORMADO`, usado na importação inicial). |
 

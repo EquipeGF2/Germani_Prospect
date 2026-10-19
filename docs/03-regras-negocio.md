@@ -184,6 +184,11 @@ movimentação conta sempre nos indicadores.
   cartão mostra de quem é a carteira.
 - Cada cartão: razão social, selo do status, CNPJ, fantasia, bairro/cidade, onda, rota (só vendedor),
   "atendido em…", dias corridos, retorno vencido e prazo de cadastro vencido. 50 por página.
+- **Computador** (Lista principal e Acompanhamento; o celular não muda): busca, visões, supervisor, vendedor/representante,
+  **filtro por data** (de/até sobre a data do último registro — `filtros.dataDe`/`dataAte` em `dt_ultimo_contato`) e
+  **Exibir: Cards | Lista** (tabela; escolha guardada no navegador) numa só barra. Sem o atalho "só retornos vencidos hoje".
+  Ondas sempre em ordem natural (Onda 1, 2, 3…, `ordemNatural`). **Rota em dois níveis** (`rotaEmNiveis`): nível 1 = rota;
+  clicar abre o nível 2 = subrotas daquela rota; clicar na subrota abre a lista.
 - **Ficha** (`#/ficha`): situação (status, dias corridos, registros, datas, prazos, motivo, cadastro e pedido do
   ERP), crédito liberado (forma, prazo, limite e se veio do grupo, restrição), **histórico de movimentação**
   (data, status antes → depois, detalhe, quem fez, origem, carteira da época) e cadastro com Ligar / WhatsApp
@@ -261,8 +266,9 @@ testes: [`test/painel.test.mjs`](../test/painel.test.mjs).
   Não separa com ou sem restrição.
 - **Escopo:** administrador, **gerente comercial** e analista financeiro veem tudo e escolhem o supervisor;
   **supervisor** vê só a própria equipe (sem seletor); vendedor/representante vê só a própria carteira.
-- **Feriados** (Administração → Feriados): todo feriado cadastrado sai da contagem — cadastre os estaduais e
-  municipais que valem para a operação.
+- **Feriados** (Administração → Feriados): os **nacionais são automáticos** para qualquer ano (datas fixas + Sexta-feira
+  Santa calculada pela Páscoa) — ninguém precisa lançar o ano seguinte. Estaduais e municipais são cadastrados na tela;
+  marcando **repete todo ano** valem para todos os anos. Todos saem da contagem de dias úteis.
 - **Gerente comercial** (perfil `gerente`): vê tudo e age em qualquer carteira (registro, lote, transferência);
   **não libera crédito** (trigger de `liberacoes_credito`) e não acessa a administração.
 
@@ -277,6 +283,7 @@ testes: [`test/painel.test.mjs`](../test/painel.test.mjs).
   - **Equipe** — linha fina de indicadores; um cartão por supervisor (clicar abre a equipe); barras por agente
     (carteira × contactados × atendidos) e o funil da equipe.
 - **Funil** (cumulativo, nunca cresce): base → contactados → atendidos → cadastrados no ERP → crédito liberado → venda;
+  o **% de cada etapa é sempre sobre a base de prospects** (`pctBase`);
   "sem interesse" fica fora do funil. Uma só cor (vermelho GERMANI, do claro ao escuro).
 - **Período** (só no computador): *Posição atual* (padrão — foto da carteira hoje) · desde o início da campanha · hoje ·
   esta semana · este mês · últimos 30 dias · personalizado (de/até). Com período, contam os **eventos no período**:

@@ -50,13 +50,16 @@ function escopo(usuario) {
  * @param visao    'lista' | 'cidade' | 'bairro' | 'onda' | 'status' | 'rota'
  * @param filtros  { cidadeBusca, uf, bairroBusca, onda, rota, subrota, status, somentePendentes, somenteRetornos, vendedorId, supervisorId, foraDaLista }
  *                 `supervisorId` / `vendedorId` só valem para gestão (o vendedor vê sempre a própria carteira).
+ *                 `dataDe` / `dataAte` (AAAA-MM-DD): data do último registro do prospect.
+ * @param ordemNatural  onda e rota em ordem (Onda 1, 2, 3…) em vez de por pendências (tela do computador)
+ * @param rotaEmNiveis  visão rota em 2 níveis: rotas; com `filtros.rota`, as subrotas daquela rota (tela do computador)
  *                 `foraDaLista` = só o acompanhamento (quem já saiu da lista principal).
  *                 Informar `status` (ou abrir a visão 'status') mostra a carteira inteira, não só a lista.
  *                 `somenteRetornos` na lista = retornos da lista; com `status: 'aguardando_cadastro'` = retornos da negociação.
  * @param busca    texto livre (nome, CNPJ, cidade, bairro) — acentos ignorados
  * @returns {{ sql: string, args: any[], colunas?: string[] }}
  */
-export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca = '', incluirForaDaLista = false, limite = 200, deslocamento = 0 }) {
+export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca = '', incluirForaDaLista = false, limite = 200, deslocamento = 0, ordemNatural = false, rotaEmNiveis = false }) {
   if (!usuario?.id || !usuario?.perfil) throw new Error('usuário obrigatório');
   if (!VISOES.includes(visao)) throw new Error(`visão inválida: ${visao}`);
   const permitidas = visoesPermitidas(usuario);
@@ -73,6 +76,8 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   if (filtros.status) { where.push('status_atual = ?'); args.push(filtros.status); }
   if (filtros.vendedorId && usuario.perfil !== 'vendedor') { where.push('vendedor_id = ?'); args.push(filtros.vendedorId); }
   if (filtros.supervisorId && usuario.perfil !== 'vendedor') { where.push('supervisor_id = ?'); args.push(filtros.supervisorId); }
+  if (filtros.dataDe) { where.push('dt_ultimo_contato >= ?'); args.push(filtros.dataDe); }
+  if (filtros.dataAte) { where.push('dt_ultimo_contato <= ?'); args.push(filtros.dataAte); }
   if (filtros.cidadeBusca) { where.push('cidade_busca = ?'); args.push(filtros.cidadeBusca); }
   if (filtros.uf) { where.push('uf = ?'); args.push(filtros.uf); }
   if (filtros.bairroBusca) { where.push('bairro_busca = ?'); args.push(filtros.bairroBusca); }
@@ -118,8 +123,13 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
     cidade: { chave: ['cidade_busca', 'uf'], rotulo: "COALESCE(MIN(cidade), '(sem cidade)') || '/' || COALESCE(uf, '')" },
     bairro: { chave: ['cidade_busca', 'uf', 'bairro_busca'], rotulo: "COALESCE(MIN(bairro), '(sem bairro)') || ' — ' || COALESCE(MIN(cidade), '(sem cidade)')" },
     onda: { chave: ['onda'], rotulo: "COALESCE('Onda ' || onda, '(sem onda)')" },
-    rota: { chave: ['rota', 'subrota'], rotulo: "COALESCE(rota, '(sem rota)') || COALESCE(' / ' || subrota, '')" },
+    rota: !rotaEmNiveis ? { chave: ['rota', 'subrota'], rotulo: "COALESCE(rota, '(sem rota)') || COALESCE(' / ' || subrota, '')" }
+      : filtros.rota ? { chave: ['rota', 'subrota'], rotulo: "COALESCE('Subrota ' || subrota, '(sem subrota)')", natural: 'subrota' }   // nível 2
+        : { chave: ['rota'], rotulo: "COALESCE('Rota ' || rota, '(sem rota)')", natural: 'rota' },                                    // nível 1
   }[visao];
+  // ordem natural (1, 2, 10…; vazios por último) para onda e rota/subrota
+  const campoNatural = ordemNatural ? (visao === 'onda' ? 'onda' : grupo.natural) : null;
+  const ordem = campoNatural ? `${campoNatural} IS NULL, length(${campoNatural}), ${campoNatural}` : 'pendentes_hoje DESC, prospects DESC, rotulo';
   return {
     sql: `SELECT ${grupo.chave.join(', ')}, ${grupo.rotulo} AS rotulo,
                  COUNT(*)                              AS prospects,
@@ -131,7 +141,7 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
                  AVG(longitude)                        AS longitude_media
             FROM vw_prospects ${filtro}
            GROUP BY ${grupo.chave.join(', ')}
-           ORDER BY pendentes_hoje DESC, prospects DESC, rotulo`,
+           ORDER BY ${ordem}`,
     args,
   };
 }

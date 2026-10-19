@@ -124,3 +124,26 @@ test('período: presets, posição atual × eventos no período, funil cumulativ
   assert.equal(await diasUteisCampanha(db, { inicio: '2026-10-01', hoje: '2026-10-21', periodo: { inicio: '2026-10-12', fim: '2026-10-16' } }), 4); // 12/10 feriado
   assert.equal(await diasUteisCampanha(db, { inicio: '2026-10-01', hoje: '2026-10-21', periodo: { inicio: '2026-09-01', fim: '2026-12-31' } }), 14);
 });
+
+test('feriados automáticos: nacionais calculados para qualquer ano (Páscoa) e cadastrados que repetem todo ano', async () => {
+  const { pascoa, feriadosNacionais, datasDeFeriado } = await import('../shared/feriados.mjs');
+  assert.equal(pascoa(2026), '2026-04-05');
+  assert.equal(pascoa(2027), '2027-03-28');
+  assert.equal(pascoa(2028), '2028-04-16');
+  const n2028 = feriadosNacionais(2028);
+  assert.equal(n2028.length, 10);
+  assert.ok(n2028.some((f) => f.data === '2028-04-14' && f.descricao === 'Sexta-feira Santa'));
+  assert.ok(!feriadosNacionais(2023).some((f) => f.data === '2023-11-20'));     // Consciência Negra nacional só desde 2024
+  const db = await bancoTeste();
+  // 0003: nacionais semeados saíram da tabela (vêm do cálculo); 20/09 (RS) ficou um só, repetindo todo ano
+  assert.equal(Number((await db.execute("SELECT count(*) n FROM feriados WHERE abrangencia = 'nacional'")).rows[0].n), 0);
+  assert.deepEqual((await db.execute('SELECT data, recorrente FROM feriados')).rows.map((f) => [f.data, Number(f.recorrente)]), [['2026-09-20', 1]]);
+  const d2030 = await datasDeFeriado(db, { inicio: '2030-01-01', fim: '2030-12-31' });
+  assert.ok(d2030.has('2030-09-20') && d2030.has('2030-10-12') && d2030.has('2030-04-19'));   // RS todo ano, Aparecida, Sexta-feira Santa
+  await incluirFeriado(db, { data: '2026-12-08', descricao: 'Aniversário da cidade', abrangencia: 'municipal', uf: 'RS', cidade: 'Teste', recorrente: true, executadoPor: 't' });
+  const l2031 = await listarFeriados(db, { ano: 2031 });
+  assert.ok(l2031.some((f) => f.data === '2031-12-08' && !f.automatico));
+  assert.ok(l2031.some((f) => f.data === '2031-12-25' && f.automatico));
+  await assert.rejects(incluirFeriado(db, { data: '2031-12-25', descricao: 'Natal', abrangencia: 'nacional' }), /automaticamente/);
+  assert.equal(await diasUteisCampanha(db, { inicio: '2031-12-01', hoje: '2031-12-31' }), 21);   // 23 dias úteis − 08/12 − 25/12
+});

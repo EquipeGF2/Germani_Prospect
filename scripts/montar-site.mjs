@@ -5,7 +5,8 @@
 //            GERMANI_MODO = producao | demonstracao (opcional; padrão: producao se houver token)
 // O token de ADMINISTRAÇÃO nunca entra aqui: é digitado na tela pelo administrador.
 import { build } from 'esbuild';
-import { cp, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -41,5 +42,35 @@ if (modo === 'producao' && (!process.env.TURSO_DATABASE_URL || !token)) {
 const config = { modo, tursoUrl: modo === 'producao' ? process.env.TURSO_DATABASE_URL : null, tokenApp: modo === 'producao' ? token : null,
   versao: process.env.GITHUB_SHA?.slice(0, 7) ?? 'local', geradoEm: new Date().toISOString() };
 await writeFile(path.join(destino, 'config.js'), `window.GERMANI_CONFIG = ${JSON.stringify(config)};\n`);
+
+// Versão nos endereços (?v=…): a cada publicação o navegador busca os módulos novos em vez de misturar
+// arquivos novos com antigos do cache (o GitHub Pages guarda cada arquivo por até 10 minutos).
+const versao = await carimboDoSite(destino);
+const VERSIONAR = /((?:from\s*|import\s*\(\s*)['"])(\.{1,2}\/[^'"?]+\.m?js)(['"])/g;
+for (const arquivo of await listar(destino)) {
+  if (!/\.m?js$/.test(arquivo) || arquivo.includes(`${path.sep}vendor${path.sep}`)) continue;
+  const texto = await readFile(arquivo, 'utf8');
+  const novo = texto.replace(VERSIONAR, (_, antes, caminho, depois) => `${antes}${caminho}?v=${versao}${depois}`);
+  if (novo !== texto) await writeFile(arquivo, novo);
+}
+const indice = path.join(destino, 'index.html');
+await writeFile(indice, (await readFile(indice, 'utf8')).replace(/(src|href)="((?:js|css|vendor)\/[^"?]+|config\.js)"/g, `$1="$2?v=${versao}"`));
 await writeFile(path.join(destino, '.nojekyll'), '');
 console.log(`Site montado em _site/ (modo ${modo}).`);
+
+async function listar(pasta) {
+  const saida = [];
+  for (const e of await readdir(pasta, { withFileTypes: true })) {
+    const p = path.join(pasta, e.name);
+    if (e.isDirectory()) saida.push(...(await listar(p))); else saida.push(p);
+  }
+  return saida;
+}
+
+/** Carimbo da versão: o commit publicado (GITHUB_SHA) ou, localmente, um hash do conteúdo de js/ e shared/. */
+async function carimboDoSite(pasta) {
+  if (process.env.GITHUB_SHA) return process.env.GITHUB_SHA.slice(0, 10);
+  const h = createHash('sha256');
+  for (const f of (await listar(pasta)).filter((x) => /\.(m?js|css|html)$/.test(x)).sort()) h.update(f).update(await readFile(f));
+  return h.digest('hex').slice(0, 10);
+}

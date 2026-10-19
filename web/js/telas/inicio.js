@@ -153,7 +153,7 @@ function funilBarras(t) {
     h('span', { class: 'rot' }, e.rotulo),
     h('div', { class: 'trilho' }, h('span', { style: `width:${Math.max(e.valor ? 1.5 : 0, (e.valor / base) * 100)}%;background:${CORES_FUNIL[i]}` })),
     h('b', { class: 'v' }, formatar.numero(e.valor)),
-    h('span', { class: 'taxa' }, e.taxa == null || e.taxa > 100 ? '' : `${Math.round(e.taxa)}%`))));
+    h('span', { class: 'taxa' }, pct1(e.pctBase)))));
 }
 
 function funilColunas(t) {
@@ -163,7 +163,7 @@ function funilColunas(t) {
     h('b', { class: 'v' }, formatar.numero(e.valor)),
     h('div', { class: 'bloco', style: `height:${Math.max(e.valor ? 3 : 0, Math.sqrt(e.valor / base) * 100)}%;background:${CORES_FUNIL[i]}` }),
     h('span', { class: 'rot' }, e.rotulo),
-    h('span', { class: 'taxa' }, e.taxa == null || e.taxa > 100 ? '—' : `${Math.round(e.taxa)}%`))));
+    h('span', { class: 'taxa' }, pct1(e.pctBase)))));
 }
 
 function visaoExecutivo({ t, agentesDaVez, p, dias, gestao }) {
@@ -180,7 +180,7 @@ function visaoExecutivo({ t, agentesDaVez, p, dias, gestao }) {
       h('div', {}, h('div', { class: 'r' }, 'Potencial do pipeline'), h('div', { class: 'media' }, moedaCurta(v.pipeline)),
         h('div', { class: 's' }, `${p.percentual_pipeline}% da base × ${formatar.moeda(Number(p.valor_medio_cliente))} · ${dias} dia(s) útil(eis)`))),
     h('div', { class: 'duas' },
-      h('section', { class: 'painel' }, h('h2', {}, 'Funil da campanha'), h('p', { class: 's' }, 'Cada etapa em relação à anterior'), funilBarras(t),
+      h('section', { class: 'painel' }, h('h2', {}, 'Funil da campanha'), h('p', { class: 's' }, '% sobre a base de prospects'), funilBarras(t),
         h('p', { class: 's', style: 'margin:14px 0 0' }, 'Fora do funil: ', h('b', {}, formatar.numero(t.sem_interesse)), ' sem interesse')),
       h('section', { class: 'painel' }, h('h2', {}, 'Agentes de vendas'), h('p', { class: 's' }, 'Ordenados por vendas · barra = % da carteira contactada'),
         ordenados.length ? h('div', { class: 'lista-agentes' }, ordenados.map((l) => { const x = percentuais(l); return h('div', { class: 'ag' },
@@ -207,7 +207,7 @@ function visaoArrojado({ t, agentesDaVez, p, dias, gestao, titulo, subtitulo }) 
       kpi('Sem interesse', t.sem_interesse, daBase(t.sem_interesse), '#6B7280'), kpi('Crédito liberado', t.credito_liberado, daBase(t.credito_liberado), '#B8333D'),
       kpi('Venda realizada', t.venda_realizada, daBase(t.venda_realizada), '#6B1016')),
     h('div', { class: 'duas' },
-      h('section', { class: 'painel' }, h('h2', {}, 'Funil da campanha'), h('p', { class: 's' }, 'Quantos avançam em cada etapa'), funilColunas(t)),
+      h('section', { class: 'painel' }, h('h2', {}, 'Funil da campanha'), h('p', { class: 's' }, 'Quantos chegaram a cada etapa · % sobre a base de prospects'), funilColunas(t)),
       h('section', { class: 'painel' }, h('h2', {}, 'Ranking de agentes'), h('p', { class: 's' }, 'Vendas realizadas · destaque para os 3 primeiros'),
         ordenados.length ? h('div', { class: 'ranking' }, ordenados.map((l, i) => h('div', { class: `rk ${i < 3 ? 'top' : ''}` },
           h('span', { class: 'pos' }, String(i + 1)),
