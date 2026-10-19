@@ -28,6 +28,8 @@ flowchart TD
     AC -. "pedido no ERP antes" .-> VR
     AF -. "pedido no ERP antes do OK" .-> VR
     SI -- "Pedido identificado<br/>(data de entrada do pedido)" --> AC
+    SI -. "arquivo de CADASTRO" .-> AF
+    SI -. "arquivo de PEDIDOS" .-> VR
     BX([Arquivo de CNPJs baixados]) --> INV[Inválido — congelado]
 ```
 
@@ -55,6 +57,8 @@ Cada linha guarda data, status antes → depois, **quem fez**, **de quem era a c
 - **indicadores** de atividade e funil por vendedor, equipe e geral (`consultaAtividade`).
 
 ## Regras gerais
+- **Os arquivos do ERP prevalecem:** cadastro → Análise financeira e pedido → Venda realizada para qualquer cliente
+  da base, inclusive Sem interesse e Não contactado (alerta "convertido sem registro" quando não houve atendimento).
 - "Não atendido" não gera registro; dias corridos contam sempre do 1º registro.
 - Saiu da lista principal → continua no acompanhamento e **em todos os indicadores**.
 - Representante: filtro, consulta e registros. Vendedor: também monta rotas. Nenhuma distância é calculada.
@@ -62,4 +66,3 @@ Cada linha guarda data, status antes → depois, **quem fez**, **de quem era a c
 ## Em aberto
 - Crédito **negado** pelo analista: hoje o console só registra liberação. Precisa de um caminho
   (ex.: "Restrição financeira")?
-- Pedido do ERP que chega **antes** do OK financeiro vai direto para Venda realizada (o ERP prevalece). Confirmar.

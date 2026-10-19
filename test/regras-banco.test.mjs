@@ -322,3 +322,21 @@ test('alerta de prospect parado e ranking de motivos', async () => {
   const r = (await db.execute('SELECT codigo, quantidade FROM vw_ranking_motivos')).rows;
   assert.deepEqual(r.map((x) => [x.codigo, Number(x.quantidade)]), [['PRECO', 1]]);
 });
+
+test('arquivos do ERP prevalecem: cadastro ou pedido de cliente "Sem interesse" (ou nunca contactado) segue o fluxo', async () => {
+  const a = await criarProspect(db, { n: 1 });
+  await registrarContato(db, { prospectId: a, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-01' });
+  await evento(db, { prospectId: a, tipo: 'cadastro', data: '2026-10-05', documento: 'C1' });
+  let p = await prospect(db, a);
+  assert.equal(p.status_atual, 'analise_financeira');   // cadastro → Análise financeira
+  assert.equal(p.convertido_sem_registro, 1);           // alerta: virou cliente sem "atendido" registrado
+  const b = await criarProspect(db, { n: 2 });
+  await registrarContato(db, { prospectId: b, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-01' });
+  await evento(db, { prospectId: b, tipo: 'pedido', data: '2026-10-06', documento: 'P1' });
+  assert.equal((await prospect(db, b)).status_atual, 'venda_realizada'); // pedido → Venda realizada
+  const c = await criarProspect(db, { n: 3 });
+  await evento(db, { prospectId: c, tipo: 'cadastro', data: '2026-10-05', documento: 'C3' });
+  assert.equal((await prospect(db, c)).status_atual, 'analise_financeira');
+  const mv = (await db.execute({ sql: "SELECT status_anterior, status_novo FROM movimentacoes WHERE prospect_id = ? AND tipo = 'cadastro'", args: [a] })).rows[0];
+  assert.deepEqual([mv.status_anterior, mv.status_novo], ['sem_interesse', 'analise_financeira']); // fica no histórico
+});

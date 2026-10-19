@@ -77,6 +77,9 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 | Pedidos (Senior) | `pedido` | → **Venda realizada** (final); guarda nº do pedido. Vale em qualquer etapa (o ERP prevalece) |
 | CNPJs baixados | `baixa` | → Inválido; `situacao_cadastral = baixada`; prospect **congelado**: histórico preservado como estava, sem novos contatos, sem cadastro/pedido ("impossibilitado de faturamento") |
 
+- **Os arquivos do ERP prevalecem sobre o status do app:** cadastro leva a **Análise financeira** e pedido leva a
+  **Venda realizada** para qualquer cliente da base — inclusive **Sem interesse** e **Não contactado**. A mudança
+  fica no histórico de movimentação (ex.: Sem interesse → Análise financeira).
 - Cadastro/pedido de prospect **sem nenhum "atendido" nem "pedido identificado" registrado** → `convertido_sem_registro = 1`
   (alerta para o supervisor: alguém vendeu sem lançar).
 - Cadastro posterior a um pedido não rebaixa a venda.
