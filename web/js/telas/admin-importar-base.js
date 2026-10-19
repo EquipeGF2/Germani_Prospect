@@ -4,7 +4,6 @@ import { importarBase } from '../../shared/importar-base.mjs';
 import { contarDatasPlanilha, contarStatusPlanilha, mapearCabecalho, normalizarMapaStatus } from '../../shared/importacao-base.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, passos, comEspera, aviso, tabela, formatar } from '../ui.js';
-import { abasAdmin } from './_admin.js';
 import { blocoResultado } from './_resultado.js';
 
 const OPCOES = [
@@ -107,7 +106,7 @@ export async function render(conteudo, ctx) {
     bLer,
     h('p', { class: 'ajuda', style: 'margin-top:12px' }, 'Para testar: ', h('a', { href: 'exemplos/base-ficticia.xlsx', download: true }, 'baixe a planilha fictícia'), '.')));
 
-  montar(conteudo, abasAdmin('/admin/importar/base'), h('h1', {}, 'Base de prospects'),
+  montar(conteudo, h('h1', {}, 'Base de prospects'),
     ja ? mensagem(`A base já tem ${formatar.numero(ja)} prospects. Reimportar só atualiza dados cadastrais — status, histórico e vendedor não mudam.`, 'info') : null,
     area);
 }

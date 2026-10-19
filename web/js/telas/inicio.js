@@ -1,7 +1,6 @@
 import { bancoApp } from '../db.js';
 import { consultaCarteira } from '../../shared/carteira.mjs';
 import { h, montar, mensagem, numeros } from '../ui.js';
-import { abasCarteira } from './_carteira.js';
 
 export async function render(conteudo, { usuario }) {
   const db = await bancoApp();
@@ -19,7 +18,6 @@ export async function render(conteudo, { usuario }) {
   if (retornos) atalhos.push(['#/carteira?somenteRetornos=1', 'Retornos', `${retornos} retorno(s) vencido(s) ou para hoje`]);
   if (usuario.perfil === 'administrador') atalhos.push(['#/admin', 'Administração', 'Importações, usuários e parâmetros']);
   montar(conteudo,
-    abasCarteira('/inicio', usuario),
     h('h1', {}, `Olá, ${usuario.nome.split(' ')[0]}`),
     numeros([['na lista principal', lista], ['no acompanhamento', acompanhamento], ['retornos pendentes', retornos, retornos ? 'alerta' : ''],
       ['prazos de cadastro vencidos', vencidos, vencidos ? 'erro' : '']]),

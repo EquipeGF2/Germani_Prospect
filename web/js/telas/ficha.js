@@ -4,7 +4,7 @@ import { ajustarFicha, consultaFicha, consultaLinhaTempo } from '../../shared/ca
 import { linkMapa } from '../../shared/rotas.mjs';
 import { somenteDigitos } from '../../shared/texto.mjs';
 import { h, montar, mensagem, formatar } from '../ui.js';
-import { abasCarteira, seloStatus } from './_carteira.js';
+import { seloStatus } from './_carteira.js';
 
 const NOMES_FORMA = { antecipado: 'Antecipado', a_vista: 'À vista', boleto: 'Boleto' };
 const NOMES_ORIGEM = { contato: 'app', importacao: 'importação da base', erp: 'arquivo do ERP', financeiro: 'financeiro', transferencia: 'transferência' };
@@ -31,7 +31,7 @@ export async function render(conteudo, { usuario, parametros }) {
   const db = await bancoApp();
   const id = Number(parametros.get('id'));
   const linha = id ? (await db.execute(consultaFicha({ usuario, prospectId: id }))).rows[0] : null;
-  if (!linha) return montar(conteudo, abasCarteira('', usuario), mensagem('Prospect não encontrado ou fora da sua carteira.', 'erro'));
+  if (!linha) return montar(conteudo, mensagem('Prospect não encontrado ou fora da sua carteira.', 'erro'));
   const p = ajustarFicha(usuario, linha);
   const movimentos = (await db.execute(consultaLinhaTempo({ prospectId: id }))).rows;
   const podeRegistrar = usuario.perfil !== 'financeiro' && Number(p.aceita_contato) === 1;
@@ -96,7 +96,6 @@ export async function render(conteudo, { usuario, parametros }) {
       : h('p', { class: 'ajuda' }, 'Sem movimentos.'));
 
   montar(conteudo,
-    abasCarteira(Number(p.na_lista) ? '/carteira' : '/carteira?aba=acompanhamento', usuario),
     h('a', { href: voltar, class: 'voltar' }, '‹ Voltar à lista'),
     h('h1', { style: 'margin-top:8px' }, p.razao_social),
     podeRegistrar ? h('div', { class: 'acoes', style: 'margin:0 0 16px' }, h('a', { class: 'botao', href: `#/registrar?id=${p.id}` }, 'Registrar atendimento')) : null,

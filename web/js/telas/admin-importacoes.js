@@ -1,14 +1,13 @@
 import { bancoAdmin } from '../db.js';
 import { linhasDaImportacao, listarImportacoes, NOMES_IMPORTACAO } from '../../shared/administracao.mjs';
 import { h, montar, tabela, selo, formatar, baixarCsv, comEspera } from '../ui.js';
-import { abasAdmin } from './_admin.js';
 
 export async function render(conteudo, ctx) {
   const db = await bancoAdmin();
   const id = ctx.parametros.get('id');
   if (id) return detalhe(conteudo, db, Number(id));
   const lista = await listarImportacoes(db);
-  montar(conteudo, abasAdmin('/admin/importacoes'), h('h1', {}, 'Importações'),
+  montar(conteudo, h('h1', {}, 'Importações'),
     tabela([
       { titulo: 'Nº', campo: 'id', classe: 'num' },
       { titulo: 'Tipo', valor: (i) => NOMES_IMPORTACAO[i.tipo] ?? i.tipo },
@@ -40,7 +39,7 @@ async function detalhe(conteudo, db, id) {
   }
   filtro.addEventListener('change', carregar);
   const bCsv = h('button', { class: 'secundario pequeno', onclick: () => comEspera(bCsv, async () => baixarCsv(`importacao-${id}.csv`, colunas, linhas)) }, 'Baixar CSV');
-  montar(conteudo, abasAdmin('/admin/importacoes'),
+  montar(conteudo,
     h('p', {}, h('a', { href: '#/admin/importacoes' }, '← Importações')),
     h('h1', {}, `Importação nº ${id}${imp ? ' · ' + (NOMES_IMPORTACAO[imp.tipo] ?? imp.tipo) : ''}`),
     imp ? h('p', { class: 'ajuda' }, `${imp.arquivo_nome} · ${formatar.dataHora(imp.iniciado_em)} · ${imp.executado_por} · ${imp.linhas_lidas} lidas = ${imp.linhas_aceitas} aceitas + ${imp.linhas_rejeitadas} rejeitadas + ${imp.linhas_ignoradas} ignoradas`) : null,

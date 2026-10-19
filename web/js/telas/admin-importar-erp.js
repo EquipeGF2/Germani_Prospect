@@ -3,7 +3,6 @@ import { lerArquivo } from '../arquivo.js';
 import { importarEventos } from '../../shared/importar-eventos.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, passos, comEspera, aviso } from '../ui.js';
-import { abasAdmin } from './_admin.js';
 import { blocoResultado } from './_resultado.js';
 import { seletorColuna } from './admin-importar-tipos.js';
 
@@ -58,6 +57,6 @@ export async function render(conteudo, ctx) {
     h('div', { class: 'campo' }, h('label', { for: 'tipo-erp' }, 'Tipo de arquivo'), tipo),
     h('div', { class: 'campo' }, h('label', { for: 'arquivo-erp' }, 'Arquivo (.xlsx ou .csv — o .xlsx malformado do Senior é corrigido automaticamente)'), arquivo),
     bLer));
-  montar(conteudo, abasAdmin('/admin/importar/erp'), h('h1', {}, 'Cadastro · Pedidos · Baixados'),
+  montar(conteudo, h('h1', {}, 'Cadastro · Pedidos · Baixados'),
     h('p', { class: 'ajuda' }, 'Os arquivos do ERP prevalecem: valem para qualquer cliente da base, inclusive Sem interesse. Tudo entra no histórico de movimentação.'), area);
 }

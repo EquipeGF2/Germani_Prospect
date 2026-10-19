@@ -1,13 +1,11 @@
 import { bancoAdmin } from '../db.js';
 import { alterarParametro, listarParametros } from '../../shared/administracao.mjs';
 import { h, montar, tabela, aviso, comEspera, formatar } from '../ui.js';
-import { abasAdmin } from './_admin.js';
 
 export async function render(conteudo, ctx) {
   const db = await bancoAdmin();
   const lista = await listarParametros(db);
   montar(conteudo,
-    abasAdmin('/admin/parametros'),
     h('h1', {}, 'Parâmetros'),
     h('p', { class: 'ajuda' }, 'A alteração vale para os próximos movimentos (não é retroativa) e fica registrada na auditoria.'),
     tabela([

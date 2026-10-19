@@ -10,13 +10,6 @@ export function seloStatus(p) {
   return el;
 }
 
-/** Barra de navegação de quem trabalha a carteira. */
-export function abasCarteira(ativa, usuario) {
-  const itens = [['/inicio', 'Início'], ['/carteira', 'Lista principal'], ['/carteira?aba=acompanhamento', 'Acompanhamento']];
-  if (usuario.perfil === 'administrador') itens.push(['/admin', 'Administração']);
-  return h('nav', { class: 'abas' }, itens.map(([c, t]) => h('a', { href: `#${c}`, class: c === ativa ? 'ativa' : '' }, t)));
-}
-
 // Seleção para registro em lote — fica só nesta aba do navegador.
 export function lerLote() {
   try { return JSON.parse(sessionStorage.getItem(CHAVE_LOTE)) ?? []; } catch { return []; }

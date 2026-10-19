@@ -57,6 +57,7 @@ Decisão e riscos: [ADR-0001](adr/0001-turso-direto-github-pages.md). Sem cálcu
 web/
 ├── index.html · css/app.css      casca e estilo (paleta do mockup, botões ≥ 44 px, mobile primeiro)
 ├── js/app.js                     roteador por hash (#/caminho) e controle de perfil
+├── js/menu.js                    casca: menu lateral por perfil (recolher/expandir, gaveta no celular), caminho da página
 ├── js/db.js                      conexões: token do app (embutido) · token de administração (digitado) · demonstração
 ├── js/sessao.js · js/ui.js       login e utilitários de tela (texto sempre por textContent)
 ├── js/arquivo.js                 leitura do arquivo escolhido (shared/planilha.mjs)
@@ -66,8 +67,8 @@ web/
     ├── ficha.js                  ficha + linha do tempo (vw_movimentacoes)
     ├── registrar.js              registro individual (shared/registro.mjs)
     ├── lote.js                   sem interesse em lote (shared/lote.mjs)
-    ├── _carteira.js              abas, selo de status, seleção do lote (sessionStorage)
-    └── admin-*.js · _admin.js    administração (token de administração)
+    ├── _carteira.js              selo de status, seleção do lote (sessionStorage)
+    └── admin-*.js                administração (token de administração)
 ```
 `npm run site` monta `_site/` (web + shared + migrations + bibliotecas do navegador empacotadas com esbuild,
 versões travadas no package-lock). `test-telas/` testa as telas num Chromium real, em modo demonstração.

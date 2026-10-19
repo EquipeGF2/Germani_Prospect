@@ -4,7 +4,6 @@ import { importarTipos } from '../../shared/importar-tipos.mjs';
 import { chaveCabecalho } from '../../shared/texto.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, passos, comEspera, aviso } from '../ui.js';
-import { abasAdmin } from './_admin.js';
 import { blocoResultado } from './_resultado.js';
 
 const ETAPAS = ['Arquivo', 'Colunas', 'Simulação', 'Gravação'];
@@ -51,6 +50,6 @@ export async function render(conteudo, ctx) {
     h('div', { class: 'campo' }, h('label', { for: 'arquivo-tipos' }, 'Lista (.xlsx ou .csv)'), arquivo),
     h('p', { class: 'ajuda' }, 'Duas colunas bastam: o código (o mesmo COD da planilha base) e o tipo. Aceita REPRESENTANTE, REP, RCA · VENDEDOR, VENDEDOR INTERNO, INTERNO. Também dá para ajustar um a um na tela de Usuários.'),
     bLer));
-  montar(conteudo, abasAdmin('/admin/importar/tipos'), h('h1', {}, 'Representantes e vendedores'),
+  montar(conteudo, h('h1', {}, 'Representantes e vendedores'),
     h('p', { class: 'ajuda' }, 'Representante: lista, cidade, bairro, onda e status — sem rota. Vendedor: o mesmo + rota/subrota e montagem de rotas.'), area);
 }

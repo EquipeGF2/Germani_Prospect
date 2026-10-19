@@ -1,6 +1,5 @@
 import { bancoAdmin, limparTokenAdmin, modoDemonstracao } from '../db.js';
 import { h, montar, numeros, mensagem } from '../ui.js';
-import { abasAdmin } from './_admin.js';
 
 export async function render(conteudo, { irPara }) {
   const db = await bancoAdmin();
@@ -21,7 +20,6 @@ export async function render(conteudo, { irPara }) {
     ['#/admin/parametros', 'Parâmetros', 'Prazos e alertas'],
   ];
   montar(conteudo,
-    abasAdmin('/admin'),
     h('h1', {}, 'Administração'),
     numeros([['prospects na base', c.prospects], ['equipe (vend./sup.)', c.equipe], ['sem acesso liberado', c.sem_acesso, Number(c.sem_acesso) ? 'alerta' : ''],
       ['vendedores sem tipo', c.sem_tipo, Number(c.sem_tipo) ? 'alerta' : ''], ['importações', c.importacoes], ['movimentos no histórico', c.movimentos]]),

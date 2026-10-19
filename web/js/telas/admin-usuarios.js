@@ -2,7 +2,6 @@ import { bancoAdmin } from '../db.js';
 import { criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../../shared/usuarios.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
 import { h, montar, tabela, aviso, comEspera, selo, numeros } from '../ui.js';
-import { abasAdmin } from './_admin.js';
 import { NOMES_PERFIL } from '../app.js';
 
 const SITUACAO = { sem_acesso: ['sem acesso', 'alerta'], provisoria: ['senha provisória', 'ok'], ok: ['ativo', 'ok'] };
@@ -83,7 +82,6 @@ export async function render(conteudo, ctx) {
 
   [busca, filtroPerfil, filtroSituacao].forEach((c) => c.addEventListener('input', desenhar));
   montar(conteudo,
-    abasAdmin('/admin/usuarios'),
     h('h1', {}, 'Usuários'),
     numeros([['usuários', todos.length], ['sem acesso liberado', todos.filter((u) => u.situacao_senha === 'sem_acesso').length, 'alerta'],
       ['vendedores sem tipo', todos.filter((u) => u.perfil === 'vendedor' && !u.tipo_atuacao).length, 'alerta']]),
