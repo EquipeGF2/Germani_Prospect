@@ -97,6 +97,7 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   if (filtros.uf) { where.push('uf = ?'); args.push(filtros.uf); }
   if (filtros.bairroBusca) { where.push('bairro_busca = ?'); args.push(filtros.bairroBusca); }
   if (filtros.onda) { where.push('onda = ?'); args.push(String(filtros.onda)); }
+  if (filtros.segmento) { where.push('tipologia_gtm = ?'); args.push(filtros.segmento); }
   if (visao === 'rota' || filtros.rota || filtros.subrota) where.push("vendedor_tipo_atuacao = 'vendedor'");
   if (filtros.rota) { where.push('rota = ?'); args.push(filtros.rota); }
   if (filtros.subrota) { where.push('subrota = ?'); args.push(filtros.subrota); }
@@ -201,6 +202,29 @@ export function consultaFicha({ usuario, prospectId }) {
 }
 
 /** Ondas existentes na base (para o filtro), em ordem natural: 1, 2, 3… */
+// Filtros que restringem a lista (sem nenhum deles, a gestão não carrega a Lista principal — ver precisaFiltro)
+const FILTROS_RESTRITIVOS = ['cidadeBusca', 'bairroBusca', 'onda', 'segmento', 'rota', 'subrota', 'status', 'supervisorId', 'vendedorId', 'dataDe', 'dataAte', 'somenteRetornos'];
+
+/**
+ * A Lista principal da gestão (administrador, gerente, supervisor, financeiro) só é lida depois de um filtro ou de uma
+ * busca: ninguém trabalha a base inteira de uma vez, e assim a tela não varre os ~23 mil prospects a cada entrada.
+ * Representante/vendedor vê direto a própria carteira (já é pequena).
+ */
+export function precisaFiltro(usuario, { visao = 'lista', filtros = {}, busca = '' } = {}) {
+  if (usuario?.perfil === 'vendedor' || visao !== 'lista') return false;
+  return !normalizarBusca(busca) && !FILTROS_RESTRITIVOS.some((f) => filtros[f] != null && filtros[f] !== '' && filtros[f] !== false);
+}
+
+/** Cidades da base (para o filtro), pelo índice de cidade. */
+export function consultaCidades() {
+  return { sql: 'SELECT cidade_busca, uf, MIN(cidade) AS cidade FROM prospects WHERE cidade_busca IS NOT NULL GROUP BY cidade_busca, uf ORDER BY cidade_busca, uf', args: [] };
+}
+
+/** Segmentos (TIPOLOGIA GTM da planilha base), para o filtro. */
+export function consultaSegmentos() {
+  return { sql: "SELECT DISTINCT tipologia_gtm AS segmento FROM prospects WHERE tipologia_gtm IS NOT NULL AND tipologia_gtm <> '' ORDER BY 1", args: [] };
+}
+
 export function consultaOndas() {
   return { sql: `SELECT DISTINCT onda FROM prospects WHERE onda IS NOT NULL AND onda <> '' ORDER BY ${natural('onda')}`, args: [] };
 }

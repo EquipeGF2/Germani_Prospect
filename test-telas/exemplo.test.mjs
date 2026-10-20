@@ -82,6 +82,12 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.equal(await pagina.locator('.barra-carteira #busca').count(), 1);
   assert.equal(await pagina.locator('.barra-carteira #filtro-supervisor').count(), 1);
   assert.equal(await pagina.locator('#so-retornos').count(), 0, 'sem "só retornos" no computador');
+  // gestão: a lista só carrega depois de um filtro (não varre a base inteira)
+  await pagina.waitForSelector('text=Escolha um filtro');
+  assert.equal(await pagina.locator('.cartao-prospect, .tabela-carteira').count(), 0);
+  await pagina.selectOption('#filtro-supervisor', { index: 1 });
+  await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
+  await telaPronta();
   await pagina.click('.exibicao a[data-exibicao="lista"]');
   await pagina.waitForSelector('.tabela-carteira tbody tr');
   const umaLinha = () => pagina.locator('.barra-carteira > *').evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().bottom))).size);

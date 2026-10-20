@@ -199,6 +199,11 @@ movimentação conta sempre nos indicadores.
   (data, status antes → depois, detalhe, quem fez, origem, carteira da época) e cadastro com Ligar / WhatsApp
   (telefone com DDD) / Ver no mapa (coordenadas da base). Ficha fora do escopo do usuário não abre.
 
+- **Lista principal da gestão só depois de um filtro** (administrador, gerente, supervisor, financeiro): supervisor,
+  representante, cidade, segmento (TIPOLOGIA GTM), onda, rota, status, datas ou uma busca. Sem filtro, a tela pede a
+  escolha e não lê a base. Representante/vendedor vê direto a própria carteira. Os números de toda a base ficam nas
+  visões Cidade / Bairro / Onda e no Início.
+
 ## 7. Montagem de rotas (somente vendedor)
 
 Implementação: [`shared/rotas.mjs`](../shared/rotas.mjs) · testes: [`test/rotas.test.mjs`](../test/rotas.test.mjs).

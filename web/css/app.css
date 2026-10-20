@@ -409,12 +409,16 @@ td.pct { min-width: 96px; }
 .barra-carteira .busca button { padding: 8px 12px; }
 .barra-carteira .visoes { margin: 0; }
 .barra-carteira select { font-size: 14px; padding: 8px 10px; width: 160px; min-width: 100px; max-width: 100%; }
-.barra-carteira #filtro-visao { width: 110px; } .barra-carteira #filtro-onda { width: 100px; }
-.barra-carteira #filtro-supervisor, .barra-carteira #filtro-vendedor { width: 150px; }
+.barra-carteira #filtro-onda { width: 92px; }
+.barra-carteira #filtro-supervisor, .barra-carteira #filtro-vendedor, .barra-carteira #filtro-cidade, .barra-carteira #filtro-segmento { width: 128px; }
+.cabecalho-controles { display: flex; gap: 12px; align-items: flex-end; }
+.cabecalho-controles .filtro label { font-size: 12px; margin-bottom: 4px; display: block; }
+.cabecalho-controles select { font-size: 14px; padding: 8px 10px; width: 110px; }
+.cabecalho-controles .visoes { margin: 0; }
 .tabela-carteira th a.ordenar { color: inherit; text-decoration: none; white-space: nowrap; }
 .tabela-carteira th a.ordenar:hover, .tabela-carteira th a.ordenar.ativa { color: var(--destaque); }
 .barra-carteira .datas { display: flex; gap: 6px; }
-.barra-carteira input[type=date] { width: 122px; font-size: 13.5px; padding: 8px 8px; }
+.barra-carteira input[type=date] { width: 116px; font-size: 13.5px; padding: 8px 8px; }
 .barra-carteira .exibicao a { padding: 6px 10px; }
 @media (max-width: 1300px) { .barra-carteira { flex-wrap: wrap; } }
 .tabela-carteira td { vertical-align: middle; }

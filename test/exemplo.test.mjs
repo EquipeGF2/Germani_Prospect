@@ -6,6 +6,7 @@ import { lerPlanilha } from '../lib/planilha.mjs';
 import { carregarExemplo } from '../shared/exemplo.mjs';
 import { normalizarMapaStatus } from '../shared/importacao-base.mjs';
 import { gerarHashSenha, conferirSenha } from '../shared/senha.mjs';
+import { consultaPainel } from '../shared/painel.mjs';
 
 test('dados de exemplo (modo demonstração): processo completo com as regras reais', async () => {
   const db = await bancoTeste();
@@ -24,4 +25,19 @@ test('dados de exemplo (modo demonstração): processo completo com as regras re
   assert.equal(Number((await db.execute("SELECT count(*) n FROM usuarios WHERE perfil = 'vendedor' AND tipo_atuacao IS NULL")).rows[0].n), 0);
   // reproduzível e só num banco vazio
   await assert.rejects(carregarExemplo(db, { linhasBase: linhas, mapaStatus, hoje: '2026-10-21', gerarHash: gerarHashSenha }), /banco vazio/);
+});
+
+test('Início agregado pelo índice (migração 0011) = consulta direta, com os dados de exemplo (pedidos, crédito, baixas)', async () => {
+  const db = await bancoTeste();
+  const { linhas } = await lerPlanilha('exemplos/base-ficticia.xlsx');
+  const mapaStatus = normalizarMapaStatus(JSON.parse(await readFile('config/mapa-status-planilha.json', 'utf8')));
+  await carregarExemplo(db, { linhasBase: linhas, mapaStatus, hoje: '2026-10-21', gerarHash: gerarHashSenha });
+  const sup = Number((await db.execute("SELECT id FROM usuarios WHERE perfil = 'supervisor' ORDER BY id LIMIT 1")).rows[0].id);
+  const ven = Number((await db.execute("SELECT id FROM usuarios WHERE perfil = 'vendedor' ORDER BY id LIMIT 1")).rows[0].id);
+  for (const usuario of [{ id: 1, perfil: 'administrador' }, { id: sup, perfil: 'supervisor' }, { id: ven, perfil: 'vendedor' }]) {
+    const ler = async (agregarAntes) => (await db.execute(consultaPainel({ usuario, agregarAntes }))).rows.map((r) => JSON.stringify(Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v == null ? null : Number.isFinite(Number(v)) ? Number(v) : v]))));
+    const direta = await ler(false);
+    assert.ok(direta.length, usuario.perfil);
+    assert.deepEqual(await ler(true), direta, usuario.perfil);
+  }
 });

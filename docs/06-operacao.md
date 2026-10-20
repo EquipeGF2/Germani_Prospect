@@ -117,6 +117,7 @@ rodar o workflow de novo** (ele só aplica as que faltam).
 | `0008_perfis_telas` | perfis de acesso e telas por perfil (5 perfis do sistema já com as telas de hoje); `usuarios.perfil_id`. Depois dela, rode **Criar administrador** de novo: a chave do cofre passa a poder gravar perfis |
 | `0009_perfil_ve_todas_equipes` | `perfis.ve_todos`: perfil de supervisor que vê todas as equipes (ex.: supervisor que também é gerente). Aplicada por **Criar administrador** ou **Migrar banco** |
 | `0010_indices_lista_principal` | índices parciais da Lista principal (faixa "sem próxima ação" lida já na ordem, geral e por vendedor). Só índice: nada muda no resultado |
+| `0011_indice_painel` | índice do Início (vendedor × status com as datas do funil: agrega lendo só o índice) e do segmento (filtro da Lista principal). Só índice |
 
 ## 6. Primeira carga — roteiro
 
