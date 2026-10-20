@@ -52,6 +52,30 @@ export async function reempacotarXlsx(bytes, JSZip) {
   return novo.generateAsync({ type: 'uint8array' });
 }
 
+/**
+ * Tira do .xlsx o que o sistema não usa e que o leitor (ExcelJS) expande célula por célula: nomes definidos (o Excel
+ * grava o filtro como _FilterDatabase — um filtro até a coluna XEY vira 245 milhões de células e estoura a memória),
+ * filtro automático, validação de dados e formatação condicional. Valores, fórmulas e formatos das células ficam.
+ * Devolve os bytes originais se não houver nada a tirar.
+ */
+export async function limparXlsx(bytes, JSZip) {
+  const zip = await JSZip.loadAsync(bytes);
+  let mudou = false;
+  const limpar = async (nome, padroes) => {
+    const arq = zip.file(nome);
+    if (!arq) return;
+    const xml = await arq.async('string');
+    const novo = padroes.reduce((x, re) => x.replace(re, ''), xml);
+    if (novo !== xml) { zip.file(nome, novo); mudou = true; }
+  };
+  await limpar('xl/workbook.xml', [/<definedNames>[\s\S]*?<\/definedNames>/g, /<definedNames\/>/g]);
+  for (const nome of Object.keys(zip.files).filter((n) => /^xl\/worksheets\/[^/]+\.xml$/i.test(n))) {
+    await limpar(nome, [/<autoFilter\b[^>]*\/>/g, /<autoFilter\b[\s\S]*?<\/autoFilter>/g, /<dataValidations\b[\s\S]*?<\/dataValidations>/g,
+      /<conditionalFormatting\b[\s\S]*?<\/conditionalFormatting>/g]);
+  }
+  return mudou ? zip.generateAsync({ type: 'uint8array' }) : bytes;
+}
+
 /** Decodifica CSV: UTF-8 (com ou sem BOM); se houver bytes inválidos, Windows-1252 (padrão Senior). */
 export function decodificarTexto(bytes) {
   try {
@@ -100,8 +124,10 @@ export async function lerPlanilhaDeBytes(bytes, nomeArquivo, { ExcelJS, JSZip })
     return { linhas, formato: 'csv', observacao: `CSV separador "${separador}"` };
   }
   if (ext !== '.xlsx') throw new Error(`formato não suportado: ${ext || '(sem extensão)'} (use .xlsx ou .csv)`);
+  let limpos = dados;
+  try { limpos = await limparXlsx(dados, JSZip); } catch { /* zip ilegível: segue com o original e cai no reempacotar */ }
   try {
-    const { linhas, aba } = await lerXlsx(dados, ExcelJS);
+    const { linhas, aba } = await lerXlsx(limpos, ExcelJS);
     return { linhas, formato: 'xlsx', observacao: `aba "${aba}"` };
   } catch (erro1) {
     try {

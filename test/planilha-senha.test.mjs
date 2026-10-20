@@ -69,3 +69,26 @@ test('reabertura com pedido exige data de entrada do pedido não posterior ao re
   assert.deepEqual(validarContato({ ...base, dataPedido: '2026-10-10' }), []);
   assert.match(validarContato({ canal: 'visita', resultado: 'atendido', dataContato: '2026-10-12', dataPedido: '2026-10-10' }).join(), /só vale/);
 });
+
+test('.xlsx com filtro gigante (_FilterDatabase até a coluna XEY) e validações é lido sem estourar a memória', async () => {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Tabela Principal');
+  ws.addRow([]);                                   // cabeçalho na linha 2, como na planilha real da GERMANI
+  ws.addRow(['CNPJ', 'Razão social']);
+  ws.addRow(['11222333000181', 'Mercado Teste']);
+  const zip = await JSZip.loadAsync(await wb.xlsx.writeBuffer());
+  const livro = (await zip.file('xl/workbook.xml').async('string')).replace('</sheets>',
+    `</sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'Tabela Principal'!$A$2:$XEY$15675</definedName></definedNames>`);
+  zip.file('xl/workbook.xml', livro);
+  const folha = (await zip.file('xl/worksheets/sheet1.xml').async('string')).replace('</sheetData>',
+    '</sheetData><autoFilter ref="A2:XEY15675"/><dataValidations count="1"><dataValidation type="list" sqref="B3:B23040"><formula1>"a,b"</formula1></dataValidation></dataValidations>');
+  zip.file('xl/worksheets/sheet1.xml', folha);
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'gp-'));
+  const arq = path.join(dir, 'base.xlsx');
+  await writeFile(arq, await zip.generateAsync({ type: 'nodebuffer' }));
+  const antes = process.memoryUsage().heapUsed;
+  const r = await lerPlanilha(arq);
+  assert.ok(process.memoryUsage().heapUsed - antes < 300e6, 'sem expandir o filtro célula por célula');
+  assert.deepEqual(r.linhas[1], ['CNPJ', 'Razão social']);
+  assert.deepEqual(r.linhas[2], ['11222333000181', 'Mercado Teste']);
+});
