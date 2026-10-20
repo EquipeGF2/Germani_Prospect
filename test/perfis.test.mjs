@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe } from './auxiliar.mjs';
-import { carregarAcesso, definirPerfilUsuario, listarPerfis, perfisPossiveis, salvarPerfil, telasDoUsuario, telasPadrao, TELAS } from '../shared/perfis.mjs';
+import { carregarAcesso, definirPerfilUsuario, listarPerfis, opcoesDePerfil, perfisPossiveis, salvarPerfil, telasDoUsuario, telasPadrao, TELAS } from '../shared/perfis.mjs';
 import { criarUsuarioSistema } from '../shared/usuarios.mjs';
 
 test('perfis do sistema: um por tipo-base, com as telas de hoje (financeiro só crédito; administrador todas)', async () => {
@@ -59,4 +59,19 @@ test('trocar o tipo do usuário pela tela: só entre administrador, gerente e fi
 
   await assert.rejects(definirPerfilUsuario(db, { usuarioId: 2, perfilId: sistema('gerente'), executadoPor: 'adm', executadoPorId: 4 }), /vêm da importação/);
   await assert.rejects(definirPerfilUsuario(db, { usuarioId: 4, perfilId: sistema('gerente'), executadoPor: 'adm', executadoPorId: 4 }), /próprio usuário/);
+});
+
+test('lista de perfis do usuário: todos aparecem; os que não servem trazem o motivo', async () => {
+  const db = await bancoTeste();
+  const id = await salvarPerfil(db, { nome: 'Supervisor regional', base: 'supervisor', telas: ['inicio'], executadoPor: 'adm' });
+  const perfis = await listarPerfis(db);
+  const op = (u, o) => Object.fromEntries(opcoesDePerfil(perfis, u, o).map((x) => [x.perfil.nome, x.motivo]));
+  const gerente = op({ perfil: 'gerente' });
+  assert.equal(Object.keys(gerente).length, perfis.length);
+  assert.equal(gerente['Analista financeiro'], null);
+  assert.match(gerente['Supervisor regional'], /importação/);
+  assert.match(op({ perfil: 'administrador' }, { proprio: true })['Gerente comercial'], /próprio usuário/);
+  assert.match(op({ perfil: 'vendedor' })['Gerente comercial'], /só perfis do tipo Vendedor/);
+  assert.match(op(null)['Supervisor regional'], /importação/);
+  assert.ok(perfis.some((p) => p.id === id));
 });

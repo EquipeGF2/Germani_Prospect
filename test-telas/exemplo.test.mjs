@@ -158,6 +158,8 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   const opcoesGerente = await pagina.locator('select[data-perfil-usuario="gerente"] option').allInnerTexts();
   assert.ok(opcoesGerente.includes('Analista financeiro') && opcoesGerente.includes('Administrador'), `opções: ${opcoesGerente}`);
   assert.equal(await pagina.locator('th:text-is("Prospects")').count(), 0);
+  // perfis que não servem aparecem desabilitados, com o motivo (ex.: Supervisor regional no gerente)
+  assert.ok(await pagina.locator('select[data-perfil-usuario="gerente"] option:has-text("Supervisor regional")').isDisabled());
   await foto('31-usuarios-perfil');
   await pagina.click('.menu-sair');
   await entrar(supPerfil);
