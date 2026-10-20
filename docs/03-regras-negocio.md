@@ -326,8 +326,10 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 - Os **5 perfis do sistema** vêm prontos com as telas de hoje (financeiro: só o Console de crédito). O administrador cria
   outros em **Usuários → Perfis e telas de acesso** (ex.: "Supervisor regional" sem Acompanhamento) e escolhe o perfil de
   cada usuário na coluna Perfil da lista de usuários.
+- **Novo usuário** (tela Usuários): qualquer perfil. Supervisor e vendedor/representante pedem o **código do ERP** (a
+  importação da base reconhece o mesmo usuário por ele e não o duplica) e o vendedor, também o **supervisor** da equipe.
 - **Trocar o perfil de um usuário** (coluna Perfil): supervisor e vendedor escolhem só entre perfis do próprio tipo-base
-  (o tipo vem da importação, com código do ERP e equipe). Administrador, gerente e analista financeiro trocam entre si —
+  (dependem de código do ERP e equipe). Administrador, gerente e analista financeiro trocam entre si —
   isso muda também o tipo-base (o escopo dos dados). Quem deixa de ser administrador perde o cofre de administração; quem
   passa a ser precisa ter a senha definida na tela para receber o cofre (ADR-0006). Ninguém troca o tipo do próprio usuário.
 - Lista de usuários numa linha por usuário: Nome · Login · **Perfil** · Acesso · Ações. O seletor de Perfil mostra

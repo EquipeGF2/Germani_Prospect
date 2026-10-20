@@ -1,5 +1,5 @@
 import { bancoAdmin, tokenAdminAtual } from '../db.js';
-import { criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../../shared/usuarios.mjs';
+import { criarUsuarioEquipe, criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../../shared/usuarios.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
 import { definirPerfilUsuario, listarPerfis, opcoesDePerfil, TIPOS_BASE } from '../../shared/perfis.mjs';
 import { h, montar, tabela, aviso, comEspera, selo, cartoesFiltro } from '../ui.js';
@@ -124,32 +124,57 @@ export async function render(conteudo, ctx) {
     ], lista, { vazio: 'Nenhum usuário com esse filtro.' }));
   }
 
-  // perfis que se criam aqui (os de supervisor e vendedor vêm da importação): valor "base" ou "base:id" (perfil criado)
+  // qualquer perfil; valor "base|idDoPerfilCriado|" ou "tipo:representante|vendedor" (perfil Vendedor do sistema).
+  // Supervisor e vendedor pedem o código do ERP (a importação reconhece o usuário por ele); vendedor, também o supervisor.
   const perfilNovo = h('select', { id: 'novo-perfil' },
-    opcoesAgrupadas(opcoesDePerfil(perfis, null), perfilSistema('financeiro')?.id, (p) => (p.sistema ? p.base : `${p.base}:${p.id}`)));
+    opcoesAgrupadas(opcoesDePerfil(perfis, null), perfilSistema('financeiro')?.id, (p) => `${p.base}|${p.sistema ? '' : p.id}|`, { tipo_atuacao: null }));
+  const lerPerfilNovo = () => {
+    if (perfilNovo.value.startsWith('tipo:')) return { base: 'vendedor', perfilId: null, tipo: perfilNovo.value.slice(5) };
+    const [base, id] = perfilNovo.value.split('|');
+    return { base, perfilId: id ? Number(id) : null, tipo: base === 'vendedor' ? 'representante' : null };
+  };
   const loginNovo = h('input', { id: 'novo-login', autocapitalize: 'none' });
   const nomeNovo = h('input', { id: 'novo-nome' });
   const senhaNova = h('input', { id: 'novo-senha', type: 'password', autocomplete: 'new-password', placeholder: 'vazio = gerar' });
+  const codigoNovo = h('input', { id: 'novo-codigo', autocapitalize: 'none' });
+  const supervisorNovo = h('select', { id: 'novo-supervisor' });
+  const campoCodigo = h('div', { class: 'so-equipe' }, h('label', { for: 'novo-codigo' }, 'Código do ERP'), codigoNovo);
+  const campoSupervisor = h('div', { class: 'so-equipe' }, h('label', { for: 'novo-supervisor' }, 'Supervisor'), supervisorNovo);
+  const ajustarCamposEquipe = () => {
+    const { base } = lerPerfilNovo();
+    campoCodigo.hidden = !['supervisor', 'vendedor'].includes(base);
+    campoSupervisor.hidden = base !== 'vendedor';
+    const sups = todos.filter((u) => u.perfil === 'supervisor' && Number(u.ativo));
+    montar(supervisorNovo, sups.length ? sups.map((u) => h('option', { value: u.id }, `${u.nome}${u.codigo_erp ? ' · ' + u.codigo_erp : ''}`))
+      : h('option', { value: '' }, 'cadastre antes um supervisor'));
+  };
+  perfilNovo.addEventListener('change', ajustarCamposEquipe);
   const bCriar = h('button', { type: 'submit' }, 'Criar usuário');
   const formNovo = h('form', { class: 'cartao linha-novo-usuario', onsubmit: async (ev) => {
     ev.preventDefault();
     const senha = senhaNova.value || null;
-    const [base, perfilId] = perfilNovo.value.split(':');
+    const { base, perfilId, tipo } = lerPerfilNovo();
     const r = await comEspera(bCriar, async () => {
-      const novo = await criarUsuarioSistema(db, { perfil: base, login: loginNovo.value, nome: nomeNovo.value, executadoPor: quem, senha, chaveAdmin: tokenAdminAtual() });
-      if (perfilId) await definirPerfilUsuario(db, { usuarioId: novo.id, perfilId: Number(perfilId), executadoPor: quem });
+      const novo = ['supervisor', 'vendedor'].includes(base)
+        ? await criarUsuarioEquipe(db, { perfil: base, login: loginNovo.value, nome: nomeNovo.value, codigoErp: codigoNovo.value,
+          supervisorId: supervisorNovo.value ? Number(supervisorNovo.value) : null, tipo, executadoPor: quem, senha })
+        : await criarUsuarioSistema(db, { perfil: base, login: loginNovo.value, nome: nomeNovo.value, executadoPor: quem, senha, chaveAdmin: tokenAdminAtual() });
+      if (perfilId) await definirPerfilUsuario(db, { usuarioId: novo.id, perfilId, executadoPor: quem });
       return novo;
     });
-    if (r) { if (senha) aviso(`Usuário ${r.login} criado com a senha definida.`); else mostrarSenha(r.login, r.senha); todos.splice(0, todos.length, ...(await listarUsuarios(db))); formNovo.reset(); desenhar(); }
+    if (r) { if (senha) aviso(`Usuário ${r.login} criado com a senha definida.`); else mostrarSenha(r.login, r.senha); todos.splice(0, todos.length, ...(await listarUsuarios(db))); formNovo.reset(); ajustarCamposEquipe(); desenhar(); }
   } },
-  // linha única: título curto + campos + botão (supervisores e vendedores vêm da importação da base)
+  // linha única: título curto + campos + botão
   h('b', { class: 'tit' }, 'Novo usuário'),
   h('div', {}, h('label', { for: 'novo-perfil' }, 'Perfil'), perfilNovo),
   h('div', {}, h('label', { for: 'novo-login' }, 'Login'), loginNovo),
   h('div', { class: 'nome' }, h('label', { for: 'novo-nome' }, 'Nome'), nomeNovo),
+  campoCodigo,
+  campoSupervisor,
   h('div', {}, h('label', { for: 'novo-senha' }, 'Senha (mín. 8)'), senhaNova),
   bCriar,
-  h('small', { class: 'ajuda' }, 'Supervisores e vendedores vêm da importação da base (código do ERP). Administrador: a senha abre o cofre de administração — prefira letras e números.'));
+  h('small', { class: 'ajuda' }, 'Supervisor e vendedor: informe o código do ERP — a importação da base reconhece o usuário por ele. Administrador: a senha abre o cofre de administração — prefira letras e números.'));
+  ajustarCamposEquipe();
 
   [busca, filtroPerfil].forEach((c) => c.addEventListener('input', desenhar));
   montar(conteudo,

@@ -126,10 +126,10 @@ export function opcoesDePerfil(perfis, usuario, { proprio = false } = {}) {
   return perfis.filter((p) => p.ativo == null || Number(p.ativo)).map((p) => {
     let motivo = null;
     if (!usuario) {
-      if (!BASES_TROCAVEIS.includes(p.base)) motivo = 'supervisor e vendedor vêm da importação da base';
+      // usuário novo: qualquer perfil (supervisor e vendedor pedem código do ERP e, vendedor, o supervisor)
     } else if (p.base !== usuario.perfil) {
-      if (!BASES_TROCAVEIS.includes(p.base)) motivo = 'só para supervisores e vendedores da importação';
-      else if (!BASES_TROCAVEIS.includes(usuario.perfil)) motivo = `usuário da importação: só perfis do tipo ${TIPOS_BASE[usuario.perfil]}`;
+      if (!BASES_TROCAVEIS.includes(p.base)) motivo = 'supervisor e vendedor: crie como novo usuário, com o código do ERP';
+      else if (!BASES_TROCAVEIS.includes(usuario.perfil)) motivo = `${TIPOS_BASE[usuario.perfil]}: só perfis do tipo ${TIPOS_BASE[usuario.perfil]}`;
       else if (proprio) motivo = 'não dá para mudar o tipo do próprio usuário';
     }
     return { perfil: p, disponivel: !motivo, motivo };

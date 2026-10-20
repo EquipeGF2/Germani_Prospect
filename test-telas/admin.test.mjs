@@ -99,12 +99,31 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.fill('#novo-senha', senhaAnalista);                       // senha definida pelo administrador
   await pagina.click('button:text("Criar usuário")');
   await pagina.waitForSelector('text=Usuário analista criado com a senha definida.');
-  await pagina.selectOption('#novo-perfil', 'gerente');
+  await pagina.selectOption('#novo-perfil', 'gerente||');
   await pagina.fill('#novo-login', 'gerente');
   await pagina.fill('#novo-nome', 'Gerente Comercial Teste');
   await pagina.click('button:text("Criar usuário")');
   await pagina.waitForSelector('text=Senha provisória de gerente');
   const senhaGerente = (await pagina.locator('.senha-gerada').last().innerText()).trim();
+  // supervisor e representante criados pela tela (código do ERP; representante escolhe o supervisor)
+  assert.ok(await pagina.locator('#novo-codigo').isHidden(), 'código do ERP só para supervisor/vendedor');
+  await pagina.selectOption('#novo-perfil', 'supervisor||');
+  await pagina.fill('#novo-login', 'supmanual');
+  await pagina.fill('#novo-nome', 'Supervisor Manual');
+  await pagina.fill('#novo-codigo', '990');
+  await pagina.fill('#novo-senha', 'super-2026');
+  await pagina.click('button:text("Criar usuário")');
+  await pagina.waitForSelector('text=Usuário supmanual criado com a senha definida.');
+  await pagina.selectOption('#novo-perfil', 'tipo:representante');
+  await pagina.selectOption('#novo-supervisor', { label: 'Supervisor Manual · 990' });
+  await pagina.fill('#novo-login', 'repmanual');
+  await pagina.fill('#novo-nome', 'Representante Manual');
+  await pagina.fill('#novo-codigo', '1990');
+  await pagina.fill('#novo-senha', 'repre-2026');
+  await pagina.click('button:text("Criar usuário")');
+  await pagina.waitForSelector('text=Usuário repmanual criado com a senha definida.');
+  assert.equal(await pagina.locator('select[data-perfil-usuario="repmanual"]').inputValue(), 'tipo:representante');
+  await foto('32-usuarios-equipe-manual');
 
   // 4. arquivo de cadastro do ERP (2 CNPJs da base + 1 de fora)
   const { linhas } = await lerPlanilha('exemplos/base-ficticia.xlsx');
