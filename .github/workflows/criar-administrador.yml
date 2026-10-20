@@ -61,3 +61,4 @@ jobs:
           SITE_URL: ${{ vars.TURSO_DATABASE_URL }}
           SITE_TOKEN: ${{ secrets.TURSO_APP_TOKEN }}
           ADMIN_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          ADMIN_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
