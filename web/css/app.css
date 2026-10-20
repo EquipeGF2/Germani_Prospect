@@ -33,9 +33,9 @@ a { color: var(--destaque); }
 .marca-nome b { color: #F3A6AA; font-weight: 600; }
 /* logotipo (quando web/logo-germani.jpg existe): placa branca no topo do menu; recolhido = só a sigla */
 .marca-logo, .logo-entrada { display: none; }
-.com-logo .marca-logo { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.com-logo .marca-logo img { height: 40px; max-width: 150px; object-fit: contain; background: #fff; border-radius: 8px; padding: 3px 8px; }
-.com-logo .marca-logo b { color: #F3A6AA; font: 600 1rem "IBM Plex Sans Condensed", sans-serif; white-space: nowrap; }
+/* só o logotipo, centralizado no topo do menu */
+.com-logo .marca-logo { display: flex; flex: 1; justify-content: center; align-items: center; min-width: 0; }
+.com-logo .marca-logo img { height: 46px; max-width: 190px; object-fit: contain; background: #fff; border-radius: 8px; padding: 4px 12px; }
 .com-logo .marca-nome, .com-logo .casca:not(.recolhido) .marca-sigla { display: none; }
 .com-logo .casca.recolhido .marca-logo { display: none; }
 .com-logo .logo-entrada { display: block; max-width: 260px; max-height: 120px; margin: 0 auto 14px; object-fit: contain; }
