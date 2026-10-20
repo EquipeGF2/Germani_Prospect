@@ -36,6 +36,13 @@ Na tela (passo "Datas e status da planilha") há a marcação **Considerar DT 1o
 
 ### Layout (cabeçalho comparado sem acento, sem pontuação e sem diferenciar maiúsculas)
 
+- O **cabeçalho** pode estar em qualquer uma das 10 primeiras linhas (título ou linha em branco acima dele, como na
+  planilha real "Tabela Principal", com cabeçalho na linha 2). O número de linha no relatório é o da planilha.
+- **Status Atual** com número na frente ("1 - Não Contactado", "2 - Sem Interesse") é comparado sem o número.
+- Planilhas grandes (~23 mil linhas, 4 MB) são lidas no navegador: antes da leitura saem os nomes definidos, o filtro
+  automático, a validação de dados e a formatação condicional — o leitor expandia célula por célula um filtro salvo até
+  a coluna XEY e ficava sem memória. Os valores das células não mudam.
+
 | # | Coluna | Campo | Tratamento |
 |---|---|---|---|
 | 1 | CNPJ | `cnpj` | **obrigatória**; normalizado; DV validado (numérico ou alfanumérico) |

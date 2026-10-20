@@ -65,6 +65,17 @@ export function mapearCabecalho(cabecalho) {
   return { indices, faltandoObrigatorias, faltandoOpcionais, naoReconhecidas };
 }
 
+/**
+ * Posição do cabeçalho: a 1ª linha, entre as 10 primeiras, com todas as colunas obrigatórias (a planilha pode trazer
+ * título ou linha em branco acima dele). Sem nenhuma assim, 0 (a mensagem de colunas ausentes sai da linha 1).
+ */
+export function localizarCabecalho(linhas) {
+  for (let k = 0; k < Math.min(10, linhas.length); k++) {
+    if (!mapearCabecalho(linhas[k] ?? []).faltandoObrigatorias.length) return k;
+  }
+  return 0;
+}
+
 /** Converte a linha (array) em objeto {campo: valor bruto}. */
 export function extrairCampos(linha, indices) {
   const obj = {};
@@ -151,7 +162,7 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje, considerarDatas = 
   for (const d of [d1.data, d2.data]) if (d && d > hoje) erros.push(`data de contato no futuro: ${d}`);
 
   const statusTexto = limparTexto(campos.status_planilha) ?? '';
-  const resultadoFinal = mapaStatus[normalizarBusca(statusTexto)];
+  const resultadoFinal = mapaStatus[chaveStatus(statusTexto)];
   const datas = [d1.data, d2.data].filter(Boolean);
   const tentativas = [];
   if (!considerarDatas) {
@@ -220,13 +231,18 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje, considerarDatas = 
 }
 
 /** Normaliza as chaves do mapa de status (ignora chaves iniciadas por "_"). */
+/** Chave do Status Atual: sem acento, maiúscula e sem o número na frente ("1 - Não Contactado" = "NAO CONTACTADO"). */
+export function chaveStatus(texto) {
+  return normalizarBusca(texto).replace(/^\d+\s*[-–.)]\s*/, '');
+}
+
 export function normalizarMapaStatus(mapa) {
   const validos = new Set(['sem_contato', 'contato_planilha', 'atendido', 'sem_interesse']);
   const saida = {};
   for (const [k, v] of Object.entries(mapa)) {
     if (k.startsWith('_')) continue;
     if (!validos.has(v)) throw new Error(`mapa de status: valor inválido "${v}" para "${k}"`);
-    saida[normalizarBusca(k)] = v;
+    saida[chaveStatus(k)] = v;
   }
   return saida;
 }
@@ -270,20 +286,20 @@ export function verificarConsistencia(resultados) {
 /** Valores distintos da coluna "Status Atual" (sem acento/maiúsculas) com a quantidade de linhas — mapeamento na tela. */
 /** Quantas linhas têm DT 1o ou DT 2o preenchida (decide o padrão de "considerar datas"). */
 export function contarDatasPlanilha(linhas) {
-  const [cabecalho = [], ...corpo] = linhas;
+  const [cabecalho = [], ...corpo] = linhas.slice(localizarCabecalho(linhas));
   const { indices } = mapearCabecalho(cabecalho);
   const cols = [indices.dt_1, indices.dt_2].filter((i) => i != null);
   return corpo.filter((l) => cols.some((i) => limparTexto(l[i]) !== null)).length;
 }
 
 export function contarStatusPlanilha(linhas) {
-  const [cabecalho = [], ...corpo] = linhas;
+  const [cabecalho = [], ...corpo] = linhas.slice(localizarCabecalho(linhas));
   const { indices } = mapearCabecalho(cabecalho);
   const grupos = new Map(); // chave → { valor (1º visto), quantidade }
   for (const l of corpo) {
     if (linhaVazia(l)) continue;
     const valor = limparTexto(extrairCampos(l, indices).status_planilha) ?? '';
-    const chave = normalizarBusca(valor);
+    const chave = chaveStatus(valor);
     const g = grupos.get(chave) ?? { valor, chave, quantidade: 0 };
     g.quantidade++;
     grupos.set(chave, g);

@@ -4,7 +4,7 @@
 //   * CNPJ novo → prospect "Não contactado" + tentativas de DT 1o/DT 2o como contatos de origem "importacao"
 //   * CNPJ existente → atualiza só dados cadastrais; status, contatos e vendedor NÃO mudam
 //   * prospect baixado (inválido) está congelado e não é tocado
-import { analisarLinhaBase, contarDatasPlanilha, extrairCampos, linhaVazia, mapearCabecalho, verificarConsistencia } from './importacao-base.mjs';
+import { analisarLinhaBase, contarDatasPlanilha, extrairCampos, linhaVazia, localizarCabecalho, mapearCabecalho, verificarConsistencia } from './importacao-base.mjs';
 import { normalizarBusca } from './texto.mjs';
 import { gravarEmLotes } from './gravacao.mjs';
 
@@ -12,11 +12,13 @@ const CAMPOS_CADASTRAIS = ['razao_social', 'nome_fantasia', 'endereco', 'bairro'
   'telefone', 'tipologia_gtm', 'onda', 'tipo', 'rota', 'subrota', 'obs_planilha', 'busca', 'cidade_busca', 'bairro_busca', 'cnpj_secundario'];
 
 export function analisarPlanilhaBase(linhas, { mapaStatus, hoje, considerarDatas }) {
-  const [cabecalho = [], ...corpo] = linhas;
-  const mapa = mapearCabecalho(cabecalho);
+  // cabeçalho pode não estar na 1ª linha (título ou linha em branco acima) — localizarCabecalho
+  const inicio = localizarCabecalho(linhas);
+  const mapa = mapearCabecalho(linhas[inicio] ?? []);
   if (mapa.faltandoObrigatorias.length) {
     throw new Error(`colunas obrigatórias ausentes: ${mapa.faltandoObrigatorias.join(', ')}`);
   }
+  const corpo = linhas.slice(inicio + 1);
   // padrão: considera as datas só se a planilha tiver alguma (DT 1o / DT 2o vazias → todos Não contactado)
   const datas = considerarDatas ?? contarDatasPlanilha(linhas) > 0;
   let vazias = 0;
@@ -25,7 +27,7 @@ export function analisarPlanilhaBase(linhas, { mapaStatus, hoje, considerarDatas
     if (linhaVazia(linha)) { vazias++; return; }
     const campos = extrairCampos(linha, mapa.indices);
     const r = analisarLinhaBase(campos, { mapaStatus, hoje, considerarDatas: datas });
-    resultados.push({ numeroLinha: i + 2, bruto: campos, ...r });
+    resultados.push({ numeroLinha: inicio + i + 2, bruto: campos, ...r });
   });
   const cadastros = verificarConsistencia(resultados);
   return { mapa, resultados, vazias, considerarDatas: datas, ...cadastros };

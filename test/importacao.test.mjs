@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { bancoTeste, cnpjTeste } from './auxiliar.mjs';
 import { importarBase } from '../shared/importar-base.mjs';
 import { importarEventos } from '../shared/importar-eventos.mjs';
-import { COLUNAS_BASE, mapearCabecalho, normalizarMapaStatus } from '../shared/importacao-base.mjs';
+import { COLUNAS_BASE, chaveStatus, contarStatusPlanilha, mapearCabecalho, normalizarMapaStatus } from '../shared/importacao-base.mjs';
 import { formatarCnpj } from '../shared/cnpj.mjs';
 
 const MAPA = normalizarMapaStatus({ '': 'sem_contato', 'Não contactado': 'sem_contato', 'Em prospecção': 'contato_planilha', 'Aguardando cadastro': 'atendido', 'Sem interesse': 'sem_interesse' });
@@ -178,4 +178,19 @@ test('importação de pedidos com valor (migração 0004): "1.234,56" e números
   const imp = (await db.execute("INSERT INTO importacoes (tipo, arquivo_nome, arquivo_sha256, executado_por) VALUES ('cadastro_erp','t','x','t') RETURNING id")).rows[0].id;
   await assert.rejects(db.execute({ sql: "INSERT INTO eventos_erp (prospect_id, tipo, data_evento, documento, valor, importacao_id) VALUES (?, 'cadastro', '2026-10-15', 'C9', 10, ?)", args: [pid, imp] }), /CHECK constraint/);
   await assert.rejects(db.execute({ sql: "INSERT INTO eventos_erp (prospect_id, tipo, data_evento, documento, valor, importacao_id) VALUES (?, 'pedido', '2026-10-15', 'P9', -1, ?)", args: [pid, imp] }), /CHECK constraint/);
+});
+
+test('planilha real: cabeçalho na 2ª linha e Status Atual com número na frente ("1 - Não Contactado")', async () => {
+  const db = await bancoTeste();
+  assert.equal(chaveStatus('1 - Não Contactado'), 'NAO CONTACTADO');
+  assert.equal(chaveStatus('2 - Sem Interesse'), 'SEM INTERESSE');
+  const linhas = [[], CAB, linha({ cnpj: cnpjTeste(1), status: '1 - Não Contactado' }), linha({ cnpj: cnpjTeste(2), dt1: '01/10/2026', status: '2 - Sem Interesse' }),
+    linha({ cnpj: '11.111.111/1111-11' })];
+  assert.deepEqual(contarStatusPlanilha(linhas).map((v) => [v.chave, v.quantidade]), [['NAO CONTACTADO', 1], ['SEM INTERESSE', 1], ['', 1]]);
+  const { resumo, importacaoId } = await importarBase(db, { linhas, arquivoNome: 't.xlsx', arquivoSha256: 'x', executadoPor: 'teste', mapaStatus: MAPA, hoje: HOJE });
+  assert.equal(resumo.aceitas, 2);
+  assert.equal(resumo.rejeitadas, 1);
+  // número da linha = linha real da planilha (cabeçalho na 2, dados a partir da 3)
+  const rej = (await db.execute({ sql: "SELECT numero_linha FROM importacao_linhas WHERE importacao_id = ? AND resultado = 'rejeitada'", args: [importacaoId] })).rows[0];
+  assert.equal(Number(rej.numero_linha), 5);
 });

@@ -1,7 +1,7 @@
 import { bancoAdmin } from '../db.js';
 import { lerArquivo } from '../arquivo.js';
 import { importarBase } from '../../shared/importar-base.mjs';
-import { contarDatasPlanilha, contarStatusPlanilha, mapearCabecalho, normalizarMapaStatus } from '../../shared/importacao-base.mjs';
+import { contarDatasPlanilha, contarStatusPlanilha, localizarCabecalho, mapearCabecalho, normalizarMapaStatus } from '../../shared/importacao-base.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, passos, comEspera, aviso, tabela, formatar } from '../ui.js';
 import { blocoResultado } from './_resultado.js';
@@ -46,9 +46,10 @@ export async function render(conteudo, ctx) {
   }
 
   function cabecalhoInfo() {
-    const m = mapearCabecalho(planilha.linhas[0] ?? []);
+    const inicio = localizarCabecalho(planilha.linhas);
+    const m = mapearCabecalho(planilha.linhas[inicio] ?? []);
     return h('div', {},
-      h('p', {}, `${planilha.nome} · ${planilha.observacao} · ${formatar.numero(planilha.linhas.length - 1)} linhas abaixo do cabeçalho`),
+      h('p', {}, `${planilha.nome} · ${planilha.observacao} · cabeçalho na linha ${inicio + 1} · ${formatar.numero(planilha.linhas.length - inicio - 1)} linhas abaixo dele`),
       m.faltandoObrigatorias.length ? mensagem(`Colunas obrigatórias ausentes: ${m.faltandoObrigatorias.join(', ')}. Confira o arquivo.`, 'erro') : null,
       m.faltandoOpcionais.length ? mensagem(`Colunas opcionais ausentes (ficam vazias): ${m.faltandoOpcionais.join(', ')}`, 'info') : null,
       m.naoReconhecidas.length ? mensagem(`Colunas não reconhecidas (ignoradas): ${m.naoReconhecidas.join(', ')}`, 'info') : null);
