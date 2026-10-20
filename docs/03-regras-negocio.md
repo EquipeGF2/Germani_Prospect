@@ -315,6 +315,21 @@ acesso de todos com a senha `demo1234` (inclusive `gerente` e `financeiro`) e si
 atendimentos e sem interesse dos vendedores, arquivo de cadastro do ERP, liberações no console e arquivo de pedidos —
 com o histórico de movimentação completo. Sorteio com semente fixa; nunca roda em produção (só existe no modo demonstração).
 
+## 12. Explorar carteira (migração 0012 · `shared/explorar.mjs`)
+
+- Árvore **do total até o cliente** com níveis livres, em qualquer ordem: Supervisor, Representante, Cidade, Segmento
+  (TIPOLOGIA GTM), Onda, Rota, Subrota. Os níveis são cartões **arrastáveis** (ordenar, incluir, tirar); a ordem fica
+  guardada no navegador. Cada nível aberto mostra **todos** os itens, do maior para o menor.
+- Por ramo: Prospects, Cobertura (% contactado sobre a base válida), **Em andamento** (Aguardando cadastro + Análise
+  financeira), **Aguardando pedido**, Sem interesse, Vendas, Valor dos pedidos (ERP) e Potencial (em aberto × % do
+  pipeline × valor médio — parâmetros do Início). O ramo escolhido mostra também clientes por status e o funil.
+- Filtro **Todos / Representantes / Vendedores** (tipo de atuação de quem é dono da carteira).
+- Escopo: gestão vê tudo (supervisor com "vê todas as equipes" também); **supervisor só a própria equipe, sem o nível
+  Supervisor**; vendedor só a própria carteira (sem Supervisor nem Representante).
+- **Abrir na Lista principal** só com um ramo escolhido (nunca a base inteira): a lista abre com os filtros do caminho.
+- Números vêm de `resumo_carteira` (uma linha por combinação, mantida pelos triggers) e dos pedidos do ERP agrupados —
+  nunca da carteira inteira. Teste prova que o resumo bate com a base em todo o processo e que a raiz bate com o Início.
+
 ## 11. Perfis de acesso e telas (migração 0008 · `shared/perfis.mjs`)
 
 - **Perfil** = nome + **tipo-base** + **telas**. O tipo-base é o perfil técnico do usuário e decide **quais dados** ele vê e

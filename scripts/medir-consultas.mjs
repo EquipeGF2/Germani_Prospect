@@ -11,6 +11,7 @@ import { aplicarMigracoes } from '../lib/migracoes.mjs';
 import { normalizarBusca } from '../shared/texto.mjs';
 import { consultaCarteira, consultaOndas } from '../shared/carteira.mjs';
 import { consultaPainel } from '../shared/painel.mjs';
+import { consultaPedidosResumo, consultaResumo } from '../shared/explorar.mjs';
 
 const N = Number(process.argv[2]) || 50000;
 const PLANO = process.argv.includes('--plano');
@@ -87,7 +88,11 @@ const CASOS = [
   ['Visão cidade (grupos)', consultaCarteira({ usuario: ADM, visao: 'cidade', ...pag })],
   ['Visão onda (grupos)', consultaCarteira({ usuario: ADM, visao: 'onda', ...pag })],
   ['Ondas do filtro', consultaOndas()],
-  ['Início (posição atual)', consultaPainel({ usuario: ADM })],
+  ['Início (posição atual, resumo 0012)', consultaPainel({ usuario: ADM })],
+  ['Início (posição atual, índice 0011)', consultaPainel({ usuario: ADM, fonte: 'indice' })],
+  ['Explorar carteira: resumo (admin)', consultaResumo({ usuario: ADM })],
+  ['Explorar carteira: resumo (supervisor)', consultaResumo({ usuario: SUP })],
+  ['Explorar carteira: pedidos', consultaPedidosResumo({ usuario: ADM })],
   ['Início (período: mês)', consultaPainel({ usuario: ADM, periodo: { inicio: '2026-05-01', fim: '2026-05-31' } })],
   ['Início (supervisor)', consultaPainel({ usuario: SUP })],
 ];

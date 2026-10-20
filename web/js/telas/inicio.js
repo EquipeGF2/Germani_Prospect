@@ -344,7 +344,10 @@ export async function render(conteudo, ctx) {
   const chavePeriodo = !celular && PERIODOS[parametros.get('periodo')] ? parametros.get('periodo') : 'atual';
   const periodo = resolverPeriodo(chavePeriodo, { hoje, inicioCampanha: p.data_inicio_campanha, de: parametros.get('de'), ate: parametros.get('ate') });
   const [linhas, dias] = await Promise.all([
-    lerComCache(db, consultaPainel({ usuario, periodo }), 120).then((r) => r.rows),
+    // posição atual: do resumo pronto (0012); banco ainda sem a migração → agrega pelo índice (0011)
+    lerComCache(db, consultaPainel({ usuario, periodo }), 120)
+      .catch((e) => (/no such table/i.test(String(e?.message)) ? lerComCache(db, consultaPainel({ usuario, periodo, fonte: 'indice' }), 120) : Promise.reject(e)))
+      .then((r) => r.rows),
     diasUteisCampanha(leitor, { inicio: p.data_inicio_campanha, hoje, periodo }),
   ]);
   // ao cruzar o limite celular/computador (girar o tablet, redimensionar a janela) a tela se redesenha

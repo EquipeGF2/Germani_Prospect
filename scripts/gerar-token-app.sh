@@ -22,7 +22,7 @@ fi
 curl -sSfL https://get.tur.so/install.sh | bash >/dev/null
 export PATH="$HOME/.turso:$PATH"
 # O Turso aplica as permissões também ao que os TRIGGERS gravam (status em prospects, histórico em movimentacoes,
-# índice de busca prospects_busca e suas tabelas internas) — por isso elas estão nas listas abaixo (ADR-0001).
+# índice de busca prospects_busca e suas tabelas internas, resumo_carteira da 0012) — por isso elas estão nas listas abaixo (ADR-0001).
 # validade de 90 dias; o site é republicado toda semana (agenda no pages.yml), então sempre há um token novo
 if ! turso db list >/dev/null 2>&1; then
   echo "::error::O Turso recusou a chave do Secret TURSO_API_TOKEN (inválida, revogada ou de outra conta). Crie uma nova em app.turso.tech → Settings → API Tokens → Create e cole só a chave no Secret."
@@ -42,7 +42,7 @@ if [ "${1:-app}" = "admin" ]; then
     -p importacoes:data_add,data_update -p importacao_linhas:data_add -p contatos:data_add \
     -p eventos_erp:data_add -p auditoria:data_add -p liberacoes_credito:data_add -p transferencias:data_add \
     -p feriados:data_add,data_delete -p perfis:data_add,data_update -p perfil_telas:data_add,data_delete \
-    -p movimentacoes:data_add \
+    -p movimentacoes:data_add -p resumo_carteira:data_add,data_update \
     -p prospects_busca:data_add,data_update,data_delete -p prospects_busca_data:data_add,data_update,data_delete -p prospects_busca_idx:data_add,data_update,data_delete -p prospects_busca_docsize:data_add,data_update,data_delete -p prospects_busca_config:data_add,data_update | tr -d '[:space:]')"
   conferir "$TOKEN"
   echo "::add-mask::$TOKEN"
@@ -53,7 +53,7 @@ fi
 TOKEN="$(turso db tokens create "$BANCO" --expiration 90d \
   -p all:data_read -p contatos:data_add -p transferencias:data_add \
   -p rotas:data_add,data_update -p rota_paradas:data_add,data_update,data_delete -p liberacoes_credito:data_add \
-  -p prospects:data_update -p movimentacoes:data_add | tr -d '[:space:]')"
+  -p prospects:data_update -p movimentacoes:data_add -p resumo_carteira:data_add,data_update | tr -d '[:space:]')"
 conferir "$TOKEN"
 echo "::add-mask::$TOKEN"
 echo "TURSO_APP_TOKEN_GERADO=$TOKEN" >> "$GITHUB_ENV"

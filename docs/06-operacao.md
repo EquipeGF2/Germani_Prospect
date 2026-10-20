@@ -118,6 +118,7 @@ rodar o workflow de novo** (ele só aplica as que faltam).
 | `0009_perfil_ve_todas_equipes` | `perfis.ve_todos`: perfil de supervisor que vê todas as equipes (ex.: supervisor que também é gerente). Aplicada por **Criar administrador** ou **Migrar banco** |
 | `0010_indices_lista_principal` | índices parciais da Lista principal (faixa "sem próxima ação" lida já na ordem, geral e por vendedor). Só índice: nada muda no resultado |
 | `0011_indice_painel` | índice do Início (vendedor × status com as datas do funil: agrega lendo só o índice) e do segmento (filtro da Lista principal). Só índice |
+| `0012_resumo_carteira` | tabela `resumo_carteira` (resumo pronto, mantido por triggers) e a tela **Explorar carteira** nos perfis do sistema. Os tokens passam a ter `resumo_carteira:data_add,data_update` (os triggers gravam nela). **Ordem:** mesclar → **Criar administrador** (aplica a 0012 e renova a chave) → **Publicar app → Run workflow** (token do site com a permissão nova). Sem o último passo, registrar atendimento é recusado pelo banco |
 
 ## 6. Primeira carga — roteiro
 

@@ -11,6 +11,7 @@ export const TIPOS_BASE = Object.freeze({
 /** Telas que um perfil pode receber. `bases`: tipos-base que conseguem usá-las (as regras do banco valem por cima). */
 export const TELAS = Object.freeze([
   { codigo: 'inicio', rotulo: 'Início', grupo: 'Prospecção' },
+  { codigo: 'explorar', rotulo: 'Explorar carteira', grupo: 'Prospecção', bases: ['administrador', 'gerente', 'supervisor', 'vendedor'] },
   { codigo: 'lista', rotulo: 'Lista principal', grupo: 'Prospecção' },
   { codigo: 'acompanhamento', rotulo: 'Acompanhamento', grupo: 'Prospecção' },
   { codigo: 'registrar', rotulo: 'Registrar atendimento e lote', grupo: 'Prospecção', bases: ['administrador', 'gerente', 'supervisor', 'vendedor'] },
