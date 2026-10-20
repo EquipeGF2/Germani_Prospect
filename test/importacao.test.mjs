@@ -194,3 +194,24 @@ test('planilha real: cabeçalho na 2ª linha e Status Atual com número na frent
   const rej = (await db.execute({ sql: "SELECT numero_linha FROM importacao_linhas WHERE importacao_id = ? AND resultado = 'rejeitada'", args: [importacaoId] })).rows[0];
   assert.equal(Number(rej.numero_linha), 5);
 });
+
+test('coluna TIPO define representante × vendedor; reimportar preenche quem está sem tipo e não muda quem já tem', async () => {
+  const db = await bancoTeste();
+  const iTipo = COLUNAS_BASE.findIndex((c) => c.campo === 'tipo');
+  const comTipo = (l, t) => { l[iTipo] = t; return l; };
+  const etapas = [];
+  await importarBase(db, { linhas: [CAB, comTipo(linha({ cnpj: cnpjTeste(1), cod: '10', nome: 'Vend Dez' }), 'Representante'),
+    comTipo(linha({ cnpj: cnpjTeste(2), cod: '11', nome: 'Vend Onze' }), 'Vendedor'), comTipo(linha({ cnpj: cnpjTeste(3), cod: '12', nome: 'Vend Doze' }), null)],
+  arquivoNome: 't.xlsx', arquivoSha256: 'x', executadoPor: 'teste', mapaStatus: MAPA, hoje: HOJE, aoProgredir: (p) => etapas.push(p.etapa) });
+  const tipo = async (cod) => (await db.execute({ sql: "SELECT tipo_atuacao FROM usuarios WHERE perfil = 'vendedor' AND codigo_erp = ?", args: [cod] })).rows[0].tipo_atuacao;
+  assert.equal(await tipo('10'), 'representante');
+  assert.equal(await tipo('11'), 'vendedor');
+  assert.equal(await tipo('12'), null);
+  assert.deepEqual([...new Set(etapas)], ['equipe', 'prospects', 'relatorio']);
+  await db.execute("UPDATE usuarios SET tipo_atuacao = 'vendedor' WHERE codigo_erp = '10'");   // ajustado na tela
+  await importarBase(db, { linhas: [CAB, comTipo(linha({ cnpj: cnpjTeste(1), cod: '10', nome: 'Vend Dez' }), 'Representante'),
+    comTipo(linha({ cnpj: cnpjTeste(3), cod: '12', nome: 'Vend Doze' }), 'Representante')],
+  arquivoNome: 't.xlsx', arquivoSha256: 'y', executadoPor: 'teste', mapaStatus: MAPA, hoje: HOJE });
+  assert.equal(await tipo('10'), 'vendedor', 'tipo já definido não muda');
+  assert.equal(await tipo('12'), 'representante', 'sem tipo: preenchido pela planilha');
+});

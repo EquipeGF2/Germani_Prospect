@@ -38,6 +38,11 @@ Na tela (passo "Datas e status da planilha") há a marcação **Considerar DT 1o
 
 - O **cabeçalho** pode estar em qualquer uma das 10 primeiras linhas (título ou linha em branco acima dele, como na
   planilha real "Tabela Principal", com cabeçalho na linha 2). O número de linha no relatório é o da planilha.
+- Coluna **TIPO** ("Representante" / "Vendedor") define o tipo de atuação do vendedor ao ser criado; na reimportação,
+  preenche só quem ainda está sem tipo (o que foi ajustado na tela Usuários não muda). TIPO diferente para o mesmo
+  código vira aviso e vale o da primeira linha.
+- A gravação é feita em **lotes de 100 linhas** com barra de andamento (equipe → prospects → relatório). A aba precisa
+  ficar aberta até o fim; se cair no meio, basta importar de novo o mesmo arquivo (CNPJ existente não duplica).
 - **Status Atual** com número na frente ("1 - Não Contactado", "2 - Sem Interesse") é comparado sem o número.
 - Planilhas grandes (~23 mil linhas, 4 MB) são lidas no navegador: antes da leitura saem os nomes definidos, o filtro
   automático, a validação de dados e a formatação condicional — o leitor expandia célula por célula um filtro salvo até

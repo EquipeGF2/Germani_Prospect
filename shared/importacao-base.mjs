@@ -252,6 +252,12 @@ export function normalizarMapaStatus(mapa) {
  * mesmo código com nomes diferentes. Altera `resultados` (rejeita / acrescenta avisos).
  * @param resultados [{ numeroLinha, dados, erros, avisos }]
  */
+/** Coluna TIPO da planilha → tipo de atuação do vendedor ('Representante' sem rota · 'Vendedor' com rota). */
+export function tipoAtuacao(valor) {
+  const t = normalizarBusca(valor ?? '');
+  return t.startsWith('REPRESENTANTE') ? 'representante' : t.startsWith('VENDEDOR') ? 'vendedor' : null;
+}
+
 export function verificarConsistencia(resultados) {
   const cnpjs = new Map();
   const vendedores = new Map(); // cod → { supervisor, nome, linha }
@@ -271,14 +277,17 @@ export function verificarConsistencia(resultados) {
       continue;
     }
     cnpjs.set(prospect.cnpj, r.numeroLinha);
-    if (!v) vendedores.set(vendedor.codigo, { supervisor: supervisor.codigo, nome: vendedor.nome, linha: r.numeroLinha });
-    else if (normalizarBusca(v.nome) !== normalizarBusca(vendedor.nome)) r.avisos.push(`representante ${vendedor.codigo} com nome diferente da linha ${v.linha} — mantido "${v.nome}"`);
+    const tipo = tipoAtuacao(prospect.tipo);
+    if (!v) vendedores.set(vendedor.codigo, { supervisor: supervisor.codigo, nome: vendedor.nome, linha: r.numeroLinha, tipo });
+    else if (tipo && v.tipo && tipo !== v.tipo) r.avisos.push(`representante ${vendedor.codigo} com TIPO diferente da linha ${v.linha} — mantido "${v.tipo}"`);
+    else if (tipo && !v.tipo) v.tipo = tipo;
+    if (v && normalizarBusca(v.nome) !== normalizarBusca(vendedor.nome)) r.avisos.push(`representante ${vendedor.codigo} com nome diferente da linha ${v.linha} — mantido "${v.nome}"`);
     const s = supervisores.get(supervisor.codigo);
     if (s === undefined) supervisores.set(supervisor.codigo, supervisor.nome);
     else if (normalizarBusca(s) !== normalizarBusca(supervisor.nome)) r.avisos.push(`supervisor ${supervisor.codigo} com nome diferente — mantido "${s}"`);
   }
   return {
-    vendedores: [...vendedores.entries()].map(([codigo, v]) => ({ codigo, nome: v.nome, supervisorCodigo: v.supervisor })),
+    vendedores: [...vendedores.entries()].map(([codigo, v]) => ({ codigo, nome: v.nome, supervisorCodigo: v.supervisor, tipo: v.tipo ?? null })),
     supervisores: [...supervisores.entries()].map(([codigo, nome]) => ({ codigo, nome })),
   };
 }

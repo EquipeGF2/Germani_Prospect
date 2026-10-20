@@ -91,11 +91,24 @@ export async function render(conteudo, ctx) {
   }
 
   async function gravar(botao) {
-    const r = await comEspera(botao, () => importarBase(db, parametros()));
+    // andamento: grava em lotes de 100 linhas; a aba precisa ficar aberta até o fim (reimportar é seguro: não duplica)
+    const ETAPA = { equipe: 'Cadastrando supervisores e vendedores', prospects: 'Gravando prospects', relatorio: 'Gravando o relatório da importação' };
+    const barra = h('progress', { max: 1, value: 0, style: 'width:100%' });
+    const texto = h('p', { class: 'ajuda' }, 'Preparando…');
+    const caixa = h('div', { class: 'cartao', id: 'andamento-importacao' }, h('b', {}, 'Importando — não feche nem troque esta aba'), barra, texto);
+    botao.after(caixa);
+    const segurar = (ev) => { ev.preventDefault(); ev.returnValue = ''; };
+    addEventListener('beforeunload', segurar);
+    const aoProgredir = ({ etapa, feitos, total }) => {
+      barra.max = total || 1; barra.value = feitos;
+      texto.textContent = `${ETAPA[etapa]}: ${formatar.numero(feitos)} de ${formatar.numero(total)}`;
+    };
+    const r = await comEspera(botao, () => importarBase(db, { ...parametros(), aoProgredir })).finally(() => removeEventListener('beforeunload', segurar));
+    caixa.remove();
     if (!r) return;
     aviso('Importação gravada.');
     montar(area, passos(ETAPAS, 4),
-      mensagem(`Importação nº ${r.importacaoId} concluída. Próximo passo: informar quem é representante e quem é vendedor, e liberar o acesso da equipe.`, 'ok'),
+      mensagem(`Importação nº ${r.importacaoId} concluída. Representante ou vendedor veio da coluna TIPO; confira em Usuários e libere o acesso da equipe.`, 'ok'),
       blocoResultado({ titulo: `Importação nº ${r.importacaoId}`, resumo: r.resumo, resultados: paraTela(r.resultados), nomeRelatorio: `importacao-${r.importacaoId}-base.csv` }),
       h('div', { class: 'acoes' }, h('a', { class: 'botao', href: '#/admin/importar/tipos' }, 'Representantes / vendedores'),
         h('a', { class: 'botao secundario', href: '#/admin/usuarios' }, 'Usuários e senhas')));
