@@ -1,4 +1,4 @@
-import { bancoAdmin } from '../db.js';
+import { bancoAdmin, tokenAdminAtual } from '../db.js';
 import { criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../../shared/usuarios.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
 import { h, montar, tabela, aviso, comEspera, selo, cartoesFiltro } from '../ui.js';
@@ -65,12 +65,12 @@ export async function render(conteudo, ctx) {
           const campo = h('input', { type: 'password', class: 'campo-senha', autocomplete: 'new-password', placeholder: 'mín. 8 caracteres', 'aria-label': `nova senha de ${u.login}` });
           const bSalvar = h('button', { class: 'pequeno', type: 'submit' }, 'Salvar');
           const bGerar = h('button', { class: 'pequeno secundario', type: 'button', onclick: async () => {
-            const r = await comEspera(bGerar, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem }));
+            const r = await comEspera(bGerar, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem, chaveAdmin: tokenAdminAtual() }));
             if (r) { u.situacao_senha = 'provisoria'; mostrarSenha(r.login, r.senha); desenhar(); }
           } }, 'Gerar');
           montar(acoes, h('form', { class: 'definir-senha', onsubmit: async (ev) => {
             ev.preventDefault();
-            const r = await comEspera(bSalvar, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem, senha: campo.value }));
+            const r = await comEspera(bSalvar, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem, senha: campo.value, chaveAdmin: tokenAdminAtual() }));
             if (r) { u.situacao_senha = 'ok'; aviso(`Senha de ${u.login} definida.`); desenhar(); }
           } }, campo, bSalvar, bGerar, h('button', { class: 'pequeno secundario', type: 'button', onclick: desenhar }, 'Cancelar')));
           campo.focus();
@@ -94,7 +94,7 @@ export async function render(conteudo, ctx) {
   const formNovo = h('form', { class: 'cartao linha-novo-usuario', onsubmit: async (ev) => {
     ev.preventDefault();
     const senha = senhaNova.value || null;
-    const r = await comEspera(bCriar, () => criarUsuarioSistema(db, { perfil: perfilNovo.value, login: loginNovo.value, nome: nomeNovo.value, executadoPor: quem, senha }));
+    const r = await comEspera(bCriar, () => criarUsuarioSistema(db, { perfil: perfilNovo.value, login: loginNovo.value, nome: nomeNovo.value, executadoPor: quem, senha, chaveAdmin: tokenAdminAtual() }));
     if (r) { if (senha) aviso(`Usuário ${r.login} criado com a senha definida.`); else mostrarSenha(r.login, r.senha); todos.splice(0, todos.length, ...(await listarUsuarios(db))); formNovo.reset(); desenhar(); }
   } },
   // linha única: título curto + campos + botão (supervisores e vendedores vêm da importação da base)
@@ -104,7 +104,7 @@ export async function render(conteudo, ctx) {
   h('div', { class: 'nome' }, h('label', { for: 'novo-nome' }, 'Nome'), nomeNovo),
   h('div', {}, h('label', { for: 'novo-senha' }, 'Senha (mín. 8)'), senhaNova),
   bCriar,
-  h('small', { class: 'ajuda' }, 'Supervisores e vendedores vêm da importação da base (código do ERP).'));
+  h('small', { class: 'ajuda' }, 'Supervisores e vendedores vêm da importação da base (código do ERP). Administrador: senha com ao menos 12 caracteres, letras e números (ela abre o cofre de administração).'));
 
   [busca, filtroPerfil].forEach((c) => c.addEventListener('input', desenhar));
   montar(conteudo,

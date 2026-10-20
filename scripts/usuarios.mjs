@@ -29,17 +29,19 @@ switch (comando) {
   case 'criar-financeiro': {
     // Secret colado com espaço ou quebra de linha no fim: considera só o texto
     const senhaInicial = process.env.GERMANI_SENHA_INICIAL?.trim() || null;
+    // chave de administração gerada no Actions: vai trancada no cofre do administrador (ADR-0006)
+    const chaveAdmin = comando === 'criar-admin' ? process.env.GERMANI_CHAVE_ADMIN?.trim() || null : null;
     // workflow rodado de novo para o mesmo login: redefine a senha em vez de falhar
     const existe = senhaInicial && (await db.execute({ sql: 'SELECT id FROM usuarios WHERE login = ?', args: [String(login ?? '').trim()] })).rows[0];
     if (existe) {
-      await redefinirSenha(db, { usuarioId: Number(existe.id), executadoPor: quem, senha: senhaInicial });
+      await redefinirSenha(db, { usuarioId: Number(existe.id), executadoPor: quem, senha: senhaInicial, chaveAdmin });
       await definirAtivo(db, { usuarioId: Number(existe.id), ativo: true, executadoPor: quem });
-      console.log(`Usuário ${login} já existia: senha redefinida com a do Secret ADMIN_SENHA_INICIAL e acesso ativo.`);
+      console.log(`Usuário ${login} já existia: senha redefinida com a do Secret ADMIN_SENHA_INICIAL e acesso ativo${chaveAdmin ? ' · cofre de administração gravado' : ''}.`);
       break;
     }
-    const r = await criarUsuarioSistema(db, { perfil: comando === 'criar-admin' ? 'administrador' : 'financeiro', login, nome, executadoPor: quem, senha: senhaInicial });
+    const r = await criarUsuarioSistema(db, { perfil: comando === 'criar-admin' ? 'administrador' : 'financeiro', login, nome, executadoPor: quem, senha: senhaInicial, chaveAdmin });
     // senha vinda do ambiente nunca é impressa (o log do Actions de repositório público é público)
-    console.log(senhaInicial ? `Usuário criado. Login: ${r.login}  Senha: a do Secret ADMIN_SENHA_INICIAL`
+    console.log(senhaInicial ? `Usuário criado. Login: ${r.login}  Senha: a do Secret ADMIN_SENHA_INICIAL${chaveAdmin ? ' · cofre de administração gravado' : ''}`
       : `Usuário criado. Login: ${r.login}  Senha provisória: ${r.senha}`);
     break;
   }
