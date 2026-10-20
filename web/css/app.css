@@ -444,3 +444,4 @@ td.pct { min-width: 96px; }
 .tabela-usuarios .acoes { flex-wrap: nowrap; }
 .tabela-usuarios .acoes .definir-senha { flex-wrap: nowrap; }
 .linha-novo-usuario #novo-codigo { width: 120px; }
+.sem-quebra { white-space: nowrap; }

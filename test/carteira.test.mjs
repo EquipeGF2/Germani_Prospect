@@ -200,3 +200,37 @@ test('busca com índice de texto (0006) devolve exatamente o mesmo que a busca a
     assert.deepEqual(await nova(termo), await antiga(termo), `termo "${termo}"`);
   }
 });
+
+test('lista principal em faixas (migração 0010): mesma ordem e mesmas páginas da ordenação geral', async () => {
+  const b = await bancoTeste();
+  await criarEquipe(b);
+  await b.execute("UPDATE usuarios SET tipo_atuacao = 'vendedor' WHERE id IN (2, 3)");
+  let semente = 11;
+  const r = () => { semente = (semente * 16807) % 2147483647; return semente / 2147483647; };
+  const cidades = ['Lajeado', 'Estrela', 'Arroio do Meio', 'Teutônia'];
+  const hoje = (await b.execute("SELECT date('now','-3 hours') AS d")).rows[0].d;
+  const dia = (k) => new Date(Date.parse(`${hoje}T12:00:00Z`) + k * 864e5).toISOString().slice(0, 10);
+  for (let n = 1; n <= 240; n++) {
+    const id = await criarProspect(b, { n, vendedorId: 2 + (n % 2), cidade: cidades[n % 4], bairro: n % 3 ? `B${n % 5}` : null, onda: String(1 + (n % 3)), razao: `Empresa ${n % 37}` });
+    const x = r();
+    // próxima ação: sem data / vencida / hoje / futura; alguns já em prospecção, alguns fora da lista
+    const dpa = x < 0.5 ? null : x < 0.7 ? dia(-Math.ceil(r() * 20)) : x < 0.8 ? hoje : dia(Math.ceil(r() * 20));
+    const status = r() < 0.15 ? 'aguardando_cadastro' : r() < 0.4 ? 'em_prospeccao' : 'nao_contactado';
+    await b.execute({ sql: 'UPDATE prospects SET data_proxima_acao = ?, status_atual = ? WHERE id = ?', args: [dpa, status, id] }); // só volume de teste
+  }
+  const faixas = (await b.execute("SELECT SUM(data_proxima_acao IS NULL) a, SUM(data_proxima_acao < date('now','-3 hours')) b, SUM(data_proxima_acao = date('now','-3 hours')) c, SUM(data_proxima_acao > date('now','-3 hours')) d FROM prospects")).rows[0];
+  assert.ok(Object.values(faixas).every((v) => Number(v) > 5), `todas as faixas presentes: ${JSON.stringify(faixas)}`);
+  const ADM = { id: 4, perfil: 'administrador' };
+  const casos = [
+    { usuario: ADM }, { usuario: { id: 1, perfil: 'supervisor' } }, { usuario: { id: 2, perfil: 'vendedor', tipo_atuacao: 'vendedor' } },
+    { usuario: ADM, filtros: { onda: '2' } }, { usuario: ADM, filtros: { cidadeBusca: 'LAJEADO', uf: 'RS' } }, { usuario: ADM, filtros: { vendedorId: 3 } },
+    { usuario: ADM, filtros: { somentePendentes: true } }, { usuario: ADM, filtros: { somenteRetornos: true } },
+  ];
+  for (const c of casos) {
+    for (const [limite, deslocamento] of [[51, 0], [51, 51], [20, 100], [500, 0]]) {
+      const ids = async (usarFaixas) => (await b.execute(consultaCarteira({ ...c, limite, deslocamento, usarFaixas }))).rows.map((x) => Number(x.id));
+      const geral = await ids(false);
+      assert.deepEqual(await ids(true), geral, JSON.stringify({ ...c, limite, deslocamento }));
+    }
+  }
+});

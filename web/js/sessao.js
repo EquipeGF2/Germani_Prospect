@@ -1,5 +1,5 @@
 // Login por usuário e senha (senha gerada pelo administrador; hash PBKDF2 conferido no aparelho — ADR-0001).
-import { bancoApp, guardarTokenAdmin, limparTokenAdmin } from './db.js';
+import { bancoApp, guardarTokenAdmin, limparCache, limparTokenAdmin } from './db.js';
 import { conferirSenha } from '../shared/senha.mjs';
 import { abrirCofre } from '../shared/cofre.mjs';
 import { carregarAcesso } from '../shared/perfis.mjs';
@@ -21,6 +21,7 @@ export async function entrar(login, senha) {
   if (!ok) throw new Error('Login ou senha inválidos, ou acesso ainda não liberado.');
   // administrador: a mesma senha abre o cofre com a chave de administração (ADR-0006) — sem colar token
   limparTokenAdmin();
+  limparCache();
   if (u.perfil === 'administrador' && u.cofre_admin) {
     const chave = await abrirCofre(u.cofre_admin, String(senha ?? ''));
     if (chave) guardarTokenAdmin(chave);
@@ -36,4 +37,5 @@ export async function entrar(login, senha) {
 export function sair() {
   try { localStorage.removeItem(CHAVE); } catch { /* nada */ }
   limparTokenAdmin();
+  limparCache();
 }

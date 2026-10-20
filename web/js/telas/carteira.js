@@ -2,7 +2,7 @@
 // Visões: lista, cidade, bairro, onda, status e — só vendedor — rota. Busca sem acento.
 // Computador: uma barra só (busca, visões, supervisor, vendedor, data do último registro), cards ou lista, onda em ordem
 // e rota em 2 níveis (rota → subrota). Celular: layout de sempre.
-import { bancoApp } from '../db.js';
+import { bancoApp, lerComCache } from '../db.js';
 import { consultaCarteira, consultaOndas, ORDENACOES, visoesPermitidas } from '../../shared/carteira.mjs';
 import { h, montar, mensagem, formatar, numeros } from '../ui.js';
 import { gravarLote, lerLote, seloStatus } from './_carteira.js';
@@ -44,17 +44,17 @@ function endereco(e, muda = {}) {
 async function vendedoresDoEscopo(db, usuario, supervisorId) {
   const sup = veTodasEquipes(usuario) ? supervisorId : usuario.perfil === 'supervisor' ? usuario.id : null;
   if (!veTodasEquipes(usuario) && usuario.perfil !== 'supervisor') return [];
-  return (await db.execute({
+  return (await lerComCache(db, {
     sql: `SELECT id, nome, codigo_erp, perfil, tipo_atuacao FROM usuarios
            WHERE perfil IN ('vendedor','supervisor') AND ativo = 1 ${sup ? 'AND COALESCE(supervisor_id, id) = ?' : ''}
            ORDER BY nome`,
     args: sup ? [sup] : [],
-  })).rows;
+  }, 300)).rows;
 }
 
 async function supervisoresDoEscopo(db, usuario) {
   if (!veTodasEquipes(usuario)) return [];
-  return (await db.execute("SELECT id, nome, codigo_erp FROM usuarios WHERE perfil = 'supervisor' AND ativo = 1 ORDER BY nome")).rows;
+  return (await lerComCache(db, "SELECT id, nome, codigo_erp FROM usuarios WHERE perfil = 'supervisor' AND ativo = 1 ORDER BY nome", 300)).rows;
 }
 
 const papelDoAgente = (v) => (v.perfil === 'supervisor' ? 'Supervisor' : v.tipo_atuacao === 'vendedor' ? 'Vendedor' : 'Representante');
@@ -97,7 +97,7 @@ export async function render(conteudo, ctx) {
   }
   const linhas = (await db.execute(consulta)).rows;
   const [supervisores, vendedores, ondas] = await Promise.all([supervisoresDoEscopo(db, usuario), vendedoresDoEscopo(db, usuario, e.filtros.supervisorId),
-    computador ? db.execute(consultaOndas()).then((r) => r.rows.map((x) => String(x.onda))) : []]);
+    computador ? lerComCache(db, consultaOndas(), 600).then((r) => r.rows.map((x) => String(x.onda))) : []]);
 
   const campoBusca = h('input', { type: 'search', id: 'busca', value: e.busca, placeholder: 'Nome, CNPJ, cidade ou bairro', 'aria-label': 'Buscar prospect' });
   const formBusca = h('form', { class: 'barra-busca', onsubmit: (ev) => { ev.preventDefault(); location.hash = endereco(e, { busca: campoBusca.value.trim(), pagina: 0 }); } },
@@ -262,7 +262,7 @@ function blocoLista(e, linhas, { podeRegistrar, selecao, comRota, mostrarCarteir
         h('td', {}, h('a', { href: `#/ficha?id=${p.id}`, class: 'nome' }, p.razao_social),
           h('small', {}, [formatar.cnpj(p.cnpj), p.nome_fantasia && p.nome_fantasia !== p.razao_social ? p.nome_fantasia : null].filter(Boolean).join(' · '))),
         h('td', {}, [p.cidade && `${p.cidade}/${p.uf ?? ''}`, p.bairro].filter(Boolean).join(' · ')),
-        h('td', {}, p.onda ? `Onda ${p.onda}` : ''),
+        h('td', { class: 'sem-quebra' }, p.onda ? `Onda ${p.onda}` : ''),
         comRota ? h('td', {}, p.rota ? `${p.rota}${p.subrota ? ' / ' + p.subrota : ''}` : '') : null,
         mostrarCarteira ? h('td', {}, p.vendedor_nome) : null,
         h('td', {}, seloStatus(p), Number(p.prazo_cadastro_vencido) ? h('small', { class: 'alerta-txt' }, 'prazo de cadastro vencido') : null),

@@ -3,7 +3,7 @@
 // e filtro por período (posição atual ou eventos no período).
 // Admin, gerente comercial e financeiro: geral + seletor de supervisor. Supervisor: só a equipe dele.
 // Vendedor/representante: só a própria carteira.
-import { bancoApp, modoDemonstracao } from '../db.js';
+import { bancoApp, lerComCache, leitorComCache, modoDemonstracao } from '../db.js';
 import { carregarExemplo, SENHA_EXEMPLO } from '../../shared/exemplo.mjs';
 import { lerPlanilhaDeBytes } from '../../shared/planilha.mjs';
 import { normalizarMapaStatus } from '../../shared/importacao-base.mjs';
@@ -336,15 +336,16 @@ export async function render(conteudo, ctx) {
   const { usuario, parametros } = ctx;
   const db = await bancoApp();
   const hoje = hojeSaoPaulo();
-  const p = await lerParametrosPainel(db);
+  const leitor = leitorComCache(db, 600);   // parâmetros e feriados mudam pouco
+  const p = await lerParametrosPainel(leitor);
   const mq = matchMedia('(max-width: 900px)');
   const celular = mq.matches;
   // no celular o Início não muda: sempre a posição atual, layout clássico
   const chavePeriodo = !celular && PERIODOS[parametros.get('periodo')] ? parametros.get('periodo') : 'atual';
   const periodo = resolverPeriodo(chavePeriodo, { hoje, inicioCampanha: p.data_inicio_campanha, de: parametros.get('de'), ate: parametros.get('ate') });
   const [linhas, dias] = await Promise.all([
-    db.execute(consultaPainel({ usuario, periodo })).then((r) => r.rows),
-    diasUteisCampanha(db, { inicio: p.data_inicio_campanha, hoje, periodo }),
+    lerComCache(db, consultaPainel({ usuario, periodo }), 120).then((r) => r.rows),
+    diasUteisCampanha(leitor, { inicio: p.data_inicio_campanha, hoje, periodo }),
   ]);
   // ao cruzar o limite celular/computador (girar o tablet, redimensionar a janela) a tela se redesenha
   const troca = () => { mq.removeEventListener('change', troca); if (conteudo.isConnected) render(conteudo, ctx); };

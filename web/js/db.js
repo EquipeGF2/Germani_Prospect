@@ -29,14 +29,41 @@ async function bancoDemonstracao() {
             VALUES ('administrador', 'Administrador (demonstração)', 'ADMINISTRADOR (DEMONSTRACAO)', 'admin', ?, 0)`,
       args: [await gerarHashSenha('demo1234')],
     });
-    return db;
+    return comLimpezaDeCache(db);
   })();
   return demo;
 }
 
 async function cliente(token) {
   const { createClient } = await import('../vendor/libsql-web.js');
-  return createClient({ url: cfg.tursoUrl, authToken: token });
+  return comLimpezaDeCache(createClient({ url: cfg.tursoUrl, authToken: token }));
+}
+
+// Cache curto de leituras que não mudam a cada clique (Início, listas de supervisores/vendedores/ondas, parâmetros):
+// evita ida ao banco (e leitura de linhas no Turso) ao navegar entre as telas. Qualquer gravação feita por este
+// aparelho limpa tudo na hora; mudanças de outros usuários aparecem em até `segundos`.
+const cache = new Map();
+export function limparCache() { cache.clear(); }
+export async function lerComCache(db, consulta, segundos = 120) {
+  const chave = JSON.stringify(typeof consulta === 'string' ? [consulta] : [consulta.sql, consulta.args ?? []]);
+  const item = cache.get(chave);
+  if (item && item.ate > Date.now()) return item.valor;
+  const valor = db.execute(consulta).then((r) => ({ rows: r.rows, columns: r.columns }));
+  cache.set(chave, { ate: Date.now() + segundos * 1000, valor });
+  valor.catch(() => cache.delete(chave));
+  return valor;
+}
+/** Só leitura, com cache: para funções de shared/ que recebem `db` e leem dados que mudam pouco (parâmetros, feriados). */
+export function leitorComCache(db, segundos = 600) {
+  return { execute: (c) => lerComCache(db, c, segundos) };
+}
+function comLimpezaDeCache(db) {
+  const leitura = (c) => /^\s*(SELECT|WITH|PRAGMA)\b/i.test(typeof c === 'string' ? c : c?.sql ?? '');
+  const execute = db.execute.bind(db);
+  const batch = db.batch.bind(db);
+  db.execute = (c, ...r) => { if (!leitura(c)) limparCache(); return execute(c, ...r); };
+  db.batch = (...r) => { limparCache(); return batch(...r); };
+  return db;
 }
 
 export async function bancoApp() {
