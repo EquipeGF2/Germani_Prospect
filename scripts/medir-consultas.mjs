@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { aplicarMigracoes } from '../lib/migracoes.mjs';
 import { normalizarBusca } from '../shared/texto.mjs';
-import { consultaCarteira, consultaOndas } from '../shared/carteira.mjs';
+import { consultaBairros, consultaCarteira, consultaOndas } from '../shared/carteira.mjs';
 import { consultaPainel } from '../shared/painel.mjs';
 import { consultaPedidosResumo, consultaResumo } from '../shared/explorar.mjs';
 
@@ -88,6 +88,11 @@ const CASOS = [
   ['Visão cidade (grupos)', consultaCarteira({ usuario: ADM, visao: 'cidade', ...pag })],
   ['Visão onda (grupos)', consultaCarteira({ usuario: ADM, visao: 'onda', ...pag })],
   ['Ondas do filtro', consultaOndas()],
+  ['Lista do computador: supervisor escolhido', consultaCarteira({ usuario: ADM, filtros: { supervisorId: 3 }, ...pag })],
+  ['Lista: agrupar por cidade (supervisor)', consultaCarteira({ usuario: ADM, filtros: { supervisorId: 3 }, agrupar: 'cidade', ...pag })],
+  ['Situação (contagem por status, supervisor)', consultaCarteira({ usuario: ADM, visao: 'status', filtros: { supervisorId: 3 } })],
+  ['Acompanhamento: supervisor + mês', consultaCarteira({ usuario: ADM, filtros: { supervisorId: 3, foraDaLista: true, dataDe: '2026-05-01', dataAte: '2026-05-31' }, ...pag })],
+  ['Bairros da cidade', consultaBairros({ usuario: ADM, cidadeBusca: 'LAJEADO', uf: 'RS' })],
   ['Início (posição atual, resumo 0012)', consultaPainel({ usuario: ADM })],
   ['Início (posição atual, índice 0011)', consultaPainel({ usuario: ADM, fonte: 'indice' })],
   ['Explorar carteira: resumo (admin)', consultaResumo({ usuario: ADM })],

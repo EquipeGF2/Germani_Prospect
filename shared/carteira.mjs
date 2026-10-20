@@ -21,7 +21,7 @@ const COLUNAS_LISTA = ['id', 'cnpj', 'razao_social', 'nome_fantasia', 'endereco'
   'latitude', 'longitude', 'telefone', 'tipologia_gtm', 'onda', 'status_atual', 'status_nome', 'status_descricao', 'status_cor',
   'tentativas', 'dt_primeiro_contato', 'dt_segundo_contato', 'dt_ultimo_contato', 'dt_atendido', 'data_proxima_acao',
   'dias_corridos', 'pendente_hoje', 'retorno_pendente', 'na_lista', 'atendido', 'prazo_cadastro_vencido',
-  'motivo_sem_interesse', 'dt_cadastro_erp', 'dt_pedido', 'numero_pedido', 'dt_baixa', 'vendedor_id', 'vendedor_nome'];
+  'motivo_sem_interesse', 'dt_cadastro_erp', 'dt_pedido', 'numero_pedido', 'dt_baixa', 'vendedor_id', 'vendedor_nome', 'supervisor_id'];
 // rota/subrota só existem para prospects de vendedor (nunca de representante), mesmo na visão de gestão
 const COLUNAS_ROTA = [
   "CASE WHEN vendedor_tipo_atuacao = 'vendedor' THEN rota END AS rota",
@@ -52,6 +52,25 @@ export const ORDENACOES = Object.freeze({
   ultimo: (d) => `dt_ultimo_contato IS NULL, dt_ultimo_contato ${d}`,
 });
 
+/**
+ * "Agrupar por" da lista do computador: a lista sai ordenada pelo grupo (cabeçalho a cada troca) e, dentro dele, pela
+ * ordem escolhida. Bairro só com a cidade escolhida; rota só para quem trabalha com rota.
+ */
+export const AGRUPAMENTOS = Object.freeze({
+  cidade: { nome: 'Cidade', ordem: 'cidade_busca, uf', rotulo: (p) => (p.cidade ? `${p.cidade}${p.uf ? '/' + p.uf : ''}` : '(sem cidade)') },
+  bairro: { nome: 'Bairro', ordem: 'bairro_busca', rotulo: (p) => p.bairro || '(sem bairro)' },
+  onda: { nome: 'Onda', ordem: 'onda IS NULL, length(onda), onda', rotulo: (p) => (p.onda ? `Onda ${p.onda}` : '(sem onda)') },
+  segmento: { nome: 'Segmento', ordem: 'tipologia_gtm IS NULL, tipologia_gtm', rotulo: (p) => p.tipologia_gtm || '(sem segmento)' },
+  representante: { nome: 'Representante', ordem: 'vendedor_nome, vendedor_id', rotulo: (p) => p.vendedor_nome ?? '—' },
+  rota: { nome: 'Rota', ordem: 'rota IS NULL, length(rota), rota, subrota', rotulo: (p) => (p.rota ? `Rota ${p.rota}${p.subrota ? ' / ' + p.subrota : ''}` : '(sem rota)') },
+});
+
+/** Agrupamentos que fazem sentido agora (bairro só com cidade; representante só para gestão; rota só com rota). */
+export function agrupamentosPossiveis(usuario, filtros = {}) {
+  return Object.keys(AGRUPAMENTOS).filter((k) => (k !== 'bairro' || filtros.cidadeBusca)
+    && (k !== 'representante' || usuario.perfil !== 'vendedor') && (k !== 'rota' || visoesPermitidas(usuario).includes('rota')));
+}
+
 function escopo(usuario) {
   if (veTodasEquipes(usuario)) return { where: [], args: [] };
   if (usuario.perfil === 'supervisor') return { where: ['supervisor_id = ?'], args: [usuario.id] };
@@ -74,7 +93,7 @@ function escopo(usuario) {
  * @param busca    texto livre (nome, CNPJ, cidade, bairro) — acentos ignorados
  * @returns {{ sql: string, args: any[], colunas?: string[] }}
  */
-export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca = '', incluirForaDaLista = false, limite = 200, deslocamento = 0, ordemNatural = false, rotaEmNiveis = false, ordenar = null, usarFaixas = true }) {
+export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca = '', incluirForaDaLista = false, limite = 200, deslocamento = 0, ordemNatural = false, rotaEmNiveis = false, ordenar = null, agrupar = null, usarFaixas = true }) {
   if (!usuario?.id || !usuario?.perfil) throw new Error('usuário obrigatório');
   if (!VISOES.includes(visao)) throw new Error(`visão inválida: ${visao}`);
   const permitidas = visoesPermitidas(usuario);
@@ -108,16 +127,19 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
     // cidade e BAIRRO, então o antigo "OR bairro_busca LIKE" era redundante; o CNPJ digitado com pontuação
     // continua achado pelo início do CNPJ (faixa no índice único) — mesmo resultado de antes.
     const porTexto = "id IN (SELECT rowid FROM prospects_busca WHERE busca LIKE '%' || ? || '%')";
-    where.push(termoCnpj ? `(${porTexto} OR (cnpj >= ? AND cnpj < ?))` : porTexto);
-    args.push(termo);
+    // também pelo representante/vendedor dono da carteira: nome (sem acento) ou código do ERP
+    const porDono = "vendedor_id IN (SELECT u.id FROM usuarios u WHERE u.nome_busca LIKE '%' || ? || '%' OR CAST(u.codigo_erp AS TEXT) = ?)";
+    where.push(termoCnpj ? `(${porTexto} OR ${porDono} OR (cnpj >= ? AND cnpj < ?))` : `(${porTexto} OR ${porDono})`);
+    args.push(termo, termo, termo);
     if (termoCnpj) args.push(termoCnpj, `${termoCnpj}~`);
   }
   const filtro = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
   if (visao === 'lista') {
     const colunas = comRota ? [...COLUNAS_LISTA, ...COLUNAS_ROTA] : COLUNAS_LISTA;
-    const porColuna = ORDENACOES[ordenar?.campo] && (ordenar.campo !== 'rota' || comRota)
-      ? `${ORDENACOES[ordenar.campo](ordenar.desc ? 'DESC' : 'ASC')}, razao_social, ` : '';
+    const grupo = AGRUPAMENTOS[agrupar] && (agrupar !== 'rota' || comRota) ? `${AGRUPAMENTOS[agrupar].ordem}, ` : '';
+    const porColuna = grupo + (ORDENACOES[ordenar?.campo] && (ordenar.campo !== 'rota' || comRota)
+      ? `${ORDENACOES[ordenar.campo](ordenar.desc ? 'DESC' : 'ASC')}, razao_social, ` : '');
     const nomes = colunas.map((c) => c.split(' AS ').pop());
     // Lista principal (Não contactado / Em prospecção), sem busca, sem filtro de data e sem ordenação por coluna:
     // a ordem "pendências primeiro" é a junção de 3 faixas da próxima ação — vencida/hoje (por data), sem data e
@@ -238,6 +260,43 @@ export function ajustarFicha(usuario, ficha) {
 }
 
 /** Linha do tempo (histórico de movimentação) — chamar só depois de consultaFicha confirmar o acesso. */
-export function consultaLinhaTempo({ prospectId }) {
-  return { sql: 'SELECT * FROM vw_movimentacoes WHERE prospect_id = ? ORDER BY data_evento DESC, id DESC', args: [prospectId] };
+export function consultaLinhaTempo({ prospectId, limite = null }) {
+  return { sql: `SELECT * FROM vw_movimentacoes WHERE prospect_id = ? ORDER BY data_evento DESC, id DESC${limite ? ' LIMIT ?' : ''}`,
+    args: limite ? [prospectId, limite] : [prospectId] };
+}
+
+/** Bairros da cidade escolhida (filtro Bairro, que só aparece com a cidade), no escopo do usuário. */
+export function consultaBairros({ usuario, cidadeBusca, uf = null }) {
+  const { where, args } = escopo(usuario);
+  where.push('cidade_busca = ?', "bairro_busca IS NOT NULL AND bairro_busca <> ''"); args.push(cidadeBusca);
+  if (uf) { where.push('uf = ?'); args.push(uf); }
+  return { sql: `SELECT bairro_busca, MIN(bairro) AS bairro FROM vw_prospects WHERE ${where.join(' AND ')} GROUP BY bairro_busca ORDER BY bairro_busca`, args };
+}
+
+/** Período do Acompanhamento: 'mes' (este mês até hoje), 'ultimo' (mês passado) ou 'periodo' (de · até). */
+export const PERIODOS_LISTA = Object.freeze({ mes: 'Este mês', ultimo: 'Último mês', periodo: 'Período…' });
+export function datasDoPeriodo(chave, { hoje, de = null, ate = null }) {
+  const [a, m] = hoje.split('-').map(Number);
+  const dia = (ano, mes, d) => `${ano}-${String(mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  if (chave === 'mes') return { dataDe: dia(a, m, 1), dataAte: hoje };
+  if (chave === 'ultimo') {
+    const [pa, pm] = m === 1 ? [a - 1, 12] : [a, m - 1];
+    return { dataDe: dia(pa, pm, 1), dataAte: dia(pa, pm, new Date(Date.UTC(pa, pm, 0)).getUTCDate()) };
+  }
+  if (chave === 'periodo' && (de || ate)) return { dataDe: de || null, dataAte: ate || null };
+  return { dataDe: null, dataAte: null };
+}
+
+/**
+ * O que falta escolher antes de ler a lista do computador (docs/03 §6): quem vê todas as equipes escolhe a EQUIPE
+ * (supervisor ou representante — supervisor e vendedor já têm a sua); o Acompanhamento exige também o PERÍODO do último registro.
+ * A Lista principal não tem período: não contactados não têm data nenhuma.
+ */
+export function faltaParaLista(usuario, { aba = 'principal', filtros = {}, busca = '' } = {}) {
+  const falta = [];
+  // quem vê todas as equipes (gestão, financeiro, supervisor que também é gerente) escolhe uma; supervisor e vendedor já
+  // têm a sua. Uma busca (CNPJ, nome, representante…) já é estreita o bastante e dispensa a equipe — nunca o período.
+  if (veTodasEquipes(usuario) && !filtros.supervisorId && !filtros.vendedorId && !normalizarBusca(busca)) falta.push('equipe');
+  if (aba === 'acompanhamento' && !filtros.dataDe && !filtros.dataAte) falta.push('periodo');
+  return falta;
 }

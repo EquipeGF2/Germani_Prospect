@@ -4,6 +4,7 @@
 // Admin, gerente comercial e financeiro: geral + seletor de supervisor. Supervisor: só a equipe dele.
 // Vendedor/representante: só a própria carteira.
 import { bancoApp, lerComCache, leitorComCache, modoDemonstracao } from '../db.js';
+import { bibliotecasPlanilha } from '../planilhas.js';
 import { carregarExemplo, SENHA_EXEMPLO } from '../../shared/exemplo.mjs';
 import { lerPlanilhaDeBytes } from '../../shared/planilha.mjs';
 import { normalizarMapaStatus } from '../../shared/importacao-base.mjs';
@@ -337,17 +338,20 @@ export async function render(conteudo, ctx) {
   const db = await bancoApp();
   const hoje = hojeSaoPaulo();
   const leitor = leitorComCache(db, 600);   // parâmetros e feriados mudam pouco
-  const p = await lerParametrosPainel(leitor);
   const mq = matchMedia('(max-width: 900px)');
   const celular = mq.matches;
   // no celular o Início não muda: sempre a posição atual, layout clássico
   const chavePeriodo = !celular && PERIODOS[parametros.get('periodo')] ? parametros.get('periodo') : 'atual';
+  // posição atual: do resumo pronto (0012); banco ainda sem a migração → agrega pelo índice (0011)
+  const lerPainel = (periodo) => lerComCache(db, consultaPainel({ usuario, periodo }), 120)
+    .catch((e) => (/no such table/i.test(String(e?.message)) ? lerComCache(db, consultaPainel({ usuario, periodo, fonte: 'indice' }), 120) : Promise.reject(e)))
+    .then((r) => r.rows);
+  // a posição atual não depende dos parâmetros: sai junto com eles (uma ida ao banco a menos antes de desenhar)
+  const atual = chavePeriodo === 'atual' ? lerPainel(null) : null;
+  const p = await lerParametrosPainel(leitor);
   const periodo = resolverPeriodo(chavePeriodo, { hoje, inicioCampanha: p.data_inicio_campanha, de: parametros.get('de'), ate: parametros.get('ate') });
   const [linhas, dias] = await Promise.all([
-    // posição atual: do resumo pronto (0012); banco ainda sem a migração → agrega pelo índice (0011)
-    lerComCache(db, consultaPainel({ usuario, periodo }), 120)
-      .catch((e) => (/no such table/i.test(String(e?.message)) ? lerComCache(db, consultaPainel({ usuario, periodo, fonte: 'indice' }), 120) : Promise.reject(e)))
-      .then((r) => r.rows),
+    atual && !periodo ? atual : lerPainel(periodo),
     diasUteisCampanha(leitor, { inicio: p.data_inicio_campanha, hoje, periodo }),
   ]);
   // ao cruzar o limite celular/computador (girar o tablet, redimensionar a janela) a tela se redesenha
@@ -363,9 +367,9 @@ export async function render(conteudo, ctx) {
 function blocoExemplo(db, aoTerminar) {
   const botao = h('button', { id: 'carregar-exemplo', onclick: async () => {
     const r = await comEspera(botao, async () => {
-      if (!window.ExcelJS || !window.JSZip) throw new Error('bibliotecas de planilha ainda carregando — tente de novo em instantes');
-      const [bytes, mapa] = await Promise.all([fetch('exemplos/base-ficticia.xlsx').then((x) => x.arrayBuffer()), fetch('config/mapa-status-planilha.json').then((x) => x.json())]);
-      const { linhas } = await lerPlanilhaDeBytes(new Uint8Array(bytes), 'base-ficticia.xlsx', { ExcelJS: window.ExcelJS, JSZip: window.JSZip });
+      const [bytes, mapa, libs] = await Promise.all([fetch('exemplos/base-ficticia.xlsx').then((x) => x.arrayBuffer()), fetch('config/mapa-status-planilha.json').then((x) => x.json()),
+        bibliotecasPlanilha()]);
+      const { linhas } = await lerPlanilhaDeBytes(new Uint8Array(bytes), 'base-ficticia.xlsx', libs);
       return carregarExemplo(db, { linhasBase: linhas, mapaStatus: normalizarMapaStatus(mapa), hoje: hojeSaoPaulo(), gerarHash: gerarHashSenha });
     });
     if (!r) return;

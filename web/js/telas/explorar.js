@@ -125,11 +125,18 @@ export async function render(conteudo, { usuario }) {
 
     const cab = h('div', { class: 'exp-linha cab' }, ['Ramo', 'Prospects', 'Cobertura', 'Em andamento', 'Aguard. pedido', 'Sem interesse', 'Vendas', 'Pedidos (R$)', 'Potencial (R$)']
       .map((t, i) => h('span', { class: i ? 'num' : '' }, t)));
-    const linhas = arvore.map((n) => h('div', { class: `exp-linha${n.caminho === escolhido.caminho ? ' escolhida' : ''}${n.profundidade ? '' : ' raiz'}`, dados: { caminho: n.caminho } },
+    // clicar em qualquer parte da linha escolhe o ramo e abre (de novo na linha já escolhida e aberta: fecha); a seta só abre/fecha
+    const clicarLinha = (n) => {
+      if (n.temFilhos && n.aberto && estado.sel === n.caminho) estado.abertos.delete(n.caminho);
+      else { estado.sel = n.caminho; if (n.temFilhos) estado.abertos.add(n.caminho); }
+      desenhar();
+    };
+    const linhas = arvore.map((n) => h('div', { class: `exp-linha${n.caminho === escolhido.caminho ? ' escolhida' : ''}${n.profundidade ? '' : ' raiz'}`, dados: { caminho: n.caminho },
+      onclick: () => clicarLinha(n) },
       h('span', { class: 'ramo', style: `padding-left:${n.profundidade * 24}px` },
         n.temFilhos ? h('button', { type: 'button', class: 'abre', 'aria-expanded': n.aberto ? 'true' : 'false', 'aria-label': `${n.aberto ? 'Fechar' : 'Abrir'} ${n.rotulo}`,
-          onclick: () => { if (n.aberto) estado.abertos.delete(n.caminho); else estado.abertos.add(n.caminho); desenhar(); } }, n.aberto ? '▼' : '▶') : h('span', { class: 'abre vazio' }),
-        h('button', { type: 'button', class: 'nome', onclick: () => { estado.sel = n.caminho; if (n.temFilhos) estado.abertos.add(n.caminho); desenhar(); } }, n.rotulo)),
+          onclick: (ev) => { ev.stopPropagation(); if (n.aberto) estado.abertos.delete(n.caminho); else estado.abertos.add(n.caminho); desenhar(); } }, n.aberto ? '▼' : '▶') : h('span', { class: 'abre vazio' }),
+        h('button', { type: 'button', class: 'nome' }, n.rotulo)),
       h('b', { class: 'num' }, n0(n.ind.qtd)), h('span', { class: 'num' }, pct(n.ind.cobertura)), h('span', { class: 'num' }, n0(n.ind.emAndamento)),
       h('span', { class: 'num' }, n0(n.ind.aguardandoPedido)), h('span', { class: 'num' }, n0(n.ind.semInteresse)), h('b', { class: 'num' }, n0(n.ind.vendas)),
       h('span', { class: 'num' }, reais(n.ind.valorPedidos)), h('span', { class: 'num' }, reais(n.ind.potencial))));

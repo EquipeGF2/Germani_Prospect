@@ -1,5 +1,10 @@
 // Peças comuns das telas de carteira (lista, ficha, registro).
 import { h, selo } from '../ui.js';
+import { ORDENACOES } from '../../shared/carteira.mjs';
+import { consultaResumo, opcoesEmCascata } from '../../shared/explorar.mjs';
+import { lerComCache } from '../db.js';
+
+const FILTROS = ['cidadeBusca', 'uf', 'bairroBusca', 'onda', 'segmento', 'rota', 'subrota', 'status', 'supervisorId', 'vendedorId', 'somenteRetornos', 'dataDe', 'dataAte'];
 
 const CHAVE_LOTE = 'germani.lote';
 
@@ -17,3 +22,44 @@ export function lerLote() {
 export function gravarLote(ids) {
   try { sessionStorage.setItem(CHAVE_LOTE, JSON.stringify([...new Set(ids)])); } catch { /* sem armazenamento: lote some ao sair */ }
 }
+
+/** Estado da Lista principal / Acompanhamento a partir do endereço (#/carteira?…). */
+export function lerEstado(parametros) {
+  const e = { aba: parametros.get('aba') === 'acompanhamento' ? 'acompanhamento' : 'principal', visao: parametros.get('visao') ?? '',
+    busca: parametros.get('busca') ?? '', pagina: Math.max(0, Number(parametros.get('pagina')) || 0), filtros: {},
+    ordem: ORDENACOES[parametros.get('ordem')] ? parametros.get('ordem') : '', desc: parametros.get('dir') === 'desc',
+    agrupar: parametros.get('agrupar') ?? '', periodo: parametros.get('periodo') ?? '' };
+  for (const f of FILTROS) if (parametros.get(f)) e.filtros[f] = parametros.get(f);
+  if (e.filtros.vendedorId) e.filtros.vendedorId = Number(e.filtros.vendedorId);
+  if (e.filtros.supervisorId) e.filtros.supervisorId = Number(e.filtros.supervisorId);
+  if (e.filtros.somenteRetornos) e.filtros.somenteRetornos = true;
+  e.visao ||= e.aba === 'acompanhamento' && !e.filtros.status ? 'status' : 'lista';
+  return e;
+}
+
+export function endereco(e, muda = {}) {
+  const n = { ...e, ...muda, filtros: { ...e.filtros, ...(muda.filtros ?? {}) } };
+  const q = new URLSearchParams();
+  if (n.aba === 'acompanhamento') q.set('aba', 'acompanhamento');
+  if (n.visao && n.visao !== 'lista') q.set('visao', n.visao);
+  if (n.busca) q.set('busca', n.busca);
+  if (n.agrupar) q.set('agrupar', n.agrupar);
+  if (n.periodo) q.set('periodo', n.periodo);
+  for (const [k, v] of Object.entries(n.filtros)) if (v != null && v !== '' && v !== false) q.set(k, v === true ? '1' : v);
+  if (n.ordem) { q.set('ordem', n.ordem); if (n.desc) q.set('dir', 'desc'); }
+  if (n.pagina) q.set('pagina', n.pagina);
+  const s = q.toString();
+  return `#/carteira${s ? '?' + s : ''}`;
+}
+
+
+
+// Opções dos filtros em cascata: vêm do resumo pronto (resumo_carteira, o mesmo do Explorar e em cache), nunca da
+// carteira inteira — cada filtro mostra só o que existe com os outros escolhidos (shared/explorar.mjs).
+export async function opcoesDosFiltros(db, usuario, filtros, aba) {
+  const linhas = (await lerComCache(db, consultaResumo({ usuario }), 300)).rows;
+  return opcoesEmCascata(linhas, filtros, { aba });
+}
+
+export const papelDoAgente = (v) => (v.perfil === 'supervisor' ? 'Supervisor' : v.tipo_atuacao === 'vendedor' ? 'Vendedor' : 'Representante');
+

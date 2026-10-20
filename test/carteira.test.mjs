@@ -2,7 +2,7 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, evento, registrarContato } from './auxiliar.mjs';
-import { consultaCarteira, consultaOndas, formaDeTrabalho, ORDENACOES, visoesPermitidas } from '../shared/carteira.mjs';
+import { agrupamentosPossiveis, consultaBairros, consultaCarteira, consultaOndas, datasDoPeriodo, faltaParaLista, formaDeTrabalho, ORDENACOES, visoesPermitidas } from '../shared/carteira.mjs';
 import { consultaPosicao } from '../shared/indicadores.mjs';
 import { formatarCnpj } from '../shared/cnpj.mjs';
 import { normalizarBusca } from '../shared/texto.mjs';
@@ -233,4 +233,47 @@ test('lista principal em faixas (migração 0010): mesma ordem e mesmas páginas
       assert.deepEqual(await ids(true), geral, JSON.stringify({ ...c, limite, deslocamento }));
     }
   }
+});
+
+test('lista do computador: equipe obrigatória para quem vê todas as equipes (busca dispensa), período só no Acompanhamento', () => {
+  const ADM = { id: 4, perfil: 'administrador' };
+  assert.deepEqual(faltaParaLista(ADM, {}), ['equipe']);
+  assert.deepEqual(faltaParaLista(ADM, { filtros: { supervisorId: 1 } }), []);
+  assert.deepEqual(faltaParaLista(ADM, { filtros: { vendedorId: 2 } }), []);
+  assert.deepEqual(faltaParaLista(ADM, { busca: '  ' }), ['equipe'], 'busca vazia não conta');
+  assert.deepEqual(faltaParaLista(ADM, { busca: '1101' }), [], 'uma busca já é estreita o bastante');
+  assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento', filtros: { supervisorId: 1 } }), ['periodo']);
+  assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento', busca: 'x' }), ['periodo'], 'a busca nunca dispensa o período');
+  assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento', filtros: { supervisorId: 1, dataDe: '2026-10-01' } }), []);
+  assert.deepEqual(faltaParaLista(SUP, {}), [], 'supervisor já tem a equipe');
+  assert.deepEqual(faltaParaLista({ ...SUP, ve_todos: 1 }, {}), ['equipe'], 'supervisor que vê todas escolhe a equipe');
+  assert.deepEqual(faltaParaLista(REP, { aba: 'acompanhamento' }), ['periodo']);
+  assert.deepEqual(datasDoPeriodo('mes', { hoje: '2026-10-20' }), { dataDe: '2026-10-01', dataAte: '2026-10-20' });
+  assert.deepEqual(datasDoPeriodo('ultimo', { hoje: '2026-10-20' }), { dataDe: '2026-09-01', dataAte: '2026-09-30' });
+  assert.deepEqual(datasDoPeriodo('ultimo', { hoje: '2026-01-05' }), { dataDe: '2025-12-01', dataAte: '2025-12-31' });
+  assert.deepEqual(datasDoPeriodo('ultimo', { hoje: '2028-03-10' }), { dataDe: '2028-02-01', dataAte: '2028-02-29' });
+  assert.deepEqual(datasDoPeriodo('periodo', { hoje: '2026-10-20', de: '2026-10-02', ate: '' }), { dataDe: '2026-10-02', dataAte: null });
+  assert.deepEqual(datasDoPeriodo('', { hoje: '2026-10-20' }), { dataDe: null, dataAte: null });
+});
+
+test('busca pelo dono da carteira (nome sem acento ou código), agrupar e bairros da cidade', async () => {
+  const ADM = { id: 4, perfil: 'administrador' };
+  const ids = async (busca) => (await linhas(consultaCarteira({ usuario: ADM, busca, incluirForaDaLista: true }))).map((p) => Number(p.vendedor_id));
+  assert.ok((await ids('vend onze')).every((v) => v === 3) && (await ids('vend onze')).length === 3, 'pelo nome do vendedor');
+  assert.ok((await ids('11')).includes(3), 'pelo código do ERP');
+  assert.equal((await ids('10')).filter((v) => v === 2).length, 4, 'código 10 traz toda a carteira do Vend Dez (e o que tiver "10" no texto)');
+  // agrupar: a lista sai ordenada pelo grupo; bairro só aparece com a cidade; representante só para a gestão
+  const porCidade = await linhas(consultaCarteira({ usuario: ADM, agrupar: 'cidade' }));
+  const cidades = porCidade.map((p) => p.cidade_busca);
+  assert.deepEqual(cidades, [...cidades].sort());
+  assert.ok(!agrupamentosPossiveis(ADM, {}).includes('bairro') && agrupamentosPossiveis(ADM, { cidadeBusca: 'lajeado' }).includes('bairro'));
+  assert.ok(!agrupamentosPossiveis(REP, {}).includes('representante') && !agrupamentosPossiveis(REP, {}).includes('rota'));
+  assert.ok(agrupamentosPossiveis(VEND, {}).includes('rota'));
+  // bairros da cidade, no escopo de quem pede
+  const bairros = async (usuario, cidadeBusca) => (await linhas(consultaBairros({ usuario, cidadeBusca }))).map((b) => b.bairro_busca);
+  const lajeado = normalizarBusca('Lajeado');
+  assert.deepEqual(await bairros(ADM, lajeado), [normalizarBusca('Centro'), normalizarBusca('Florestal')]);
+  assert.deepEqual(await bairros(VEND, lajeado), [normalizarBusca('Centro'), normalizarBusca('Florestal')]);
+  assert.deepEqual(await bairros(REP, lajeado), [], 'representante não vê bairros da carteira do vendedor');
+  assert.deepEqual(await bairros(SUP2, lajeado), [], 'supervisor sem equipe não vê nada');
 });
