@@ -18,7 +18,7 @@ Guarde o token administrativo num gerenciador de senhas. Ele **nunca** vai para 
 |---|---|---|
 | `.env` na máquina do administrador (copiar de `.env.example`) | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `GERMANI_EXECUTADO_POR` | importações, usuários, migração manual |
 | GitHub → Settings → Secrets and variables → **Actions** → *Repository secrets* | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | workflows "Migrar banco (produção)" e "Criar administrador" |
-| idem | `ADMIN_SENHA_INICIAL` (mín. 8 caracteres; prefira letras e números) | senha do administrador criado pelo workflow "Criar administrador" (abre o cofre de administração — ADR-0006); pode ser apagado depois |
+| idem | `ADMIN_SENHA_INICIAL` (mín. 8 caracteres; prefira letras e números) | senha do administrador criado pelo workflow "Criar administrador" (abre o cofre de administração — ADR-0006). **Manter** com a senha atual do administrador: a publicação usa para renovar o cofre sozinha |
 | Site publicado (F1) | token **do app**, com permissões restritas | ver ADR-0001 — é visível para quem abre o site |
 
 > **Atenção:** um Secret do GitHub injetado na publicação do Pages acaba dentro do JavaScript público.
@@ -58,7 +58,13 @@ turso db tokens create germaniprospec -p all:data_read,data_add,data_update \
 A chave pode incluir e alterar dados em **todas** as tabelas (nunca estrutura), então tabela nova de migração futura já
 fica coberta e a chave **não precisa ser renovada** a cada mudança. O que é somente inclusão (contatos, eventos do ERP,
 movimentações, transferências, liberações, auditoria, linhas de importação) continua protegido pelos triggers do banco;
-apagar, só onde a regra permite. Basta rodar **Criar administrador** uma vez com esta versão.
+apagar, só onde a regra permite.
+
+**Renovação automática do cofre:** a publicação confere o cofre de cada administrador. Se a chave guardada for de versão
+antiga (marca `chave` no cofre, `VERSAO_CHAVE_ADMIN` em shared/cofre.mjs) e a senha do Secret `ADMIN_SENHA_INICIAL` abrir
+o cofre, ela gera a chave nova uma única vez e regrava o cofre com a mesma senha (`scripts/renovar-cofres.mjs`, auditoria
+`cofre_renovado`). Quem trocou a senha não é tocado: o log mostra um aviso, e basta cadastrar a senha atual nesse Secret
+e publicar de novo. Falha nesse passo não impede a publicação.
 
 **O Turso aplica as permissões também às gravações feitas pelos triggers** (confirmado na 1ª importação real:
 `SQLITE_AUTH: not authorized`). O token do app (gerado a cada publicação) lista as tabelas que o site grava e as que os
@@ -67,7 +73,7 @@ status) e `resumo_carteira` (0012).
 
 **Migrações automáticas:** a publicação do site (**Publicar app**, a cada mesclagem na `main`) aplica antes as
 migrações pendentes e só depois gera o token do app e publica. Ninguém precisa rodar workflow à mão a cada mudança;
-**Migrar banco** e **Criar administrador** ficam para contingência e para criar administradores.
+**Migrar banco** e **Criar administrador** ficam só para contingência e para cadastrar administrador novo.
 Antes da carga real, conferir os itens "Verificar" do ADR-0001 (escritas feitas pelos triggers, como
 `movimentacoes`, podem exigir permissão também).
 

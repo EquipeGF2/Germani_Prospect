@@ -1,4 +1,4 @@
-import { bancoAdmin, tokenAdminAtual } from '../db.js';
+import { bancoAdmin, tokenAdminAtual, versaoTokenAdmin } from '../db.js';
 import { criarUsuarioEquipe, criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../../shared/usuarios.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
 import { definirPerfilUsuario, listarPerfis, opcoesDePerfil, TIPOS_BASE } from '../../shared/perfis.mjs';
@@ -103,12 +103,12 @@ export async function render(conteudo, ctx) {
           const campo = h('input', { type: 'password', class: 'campo-senha', autocomplete: 'new-password', placeholder: 'mín. 8 caracteres', 'aria-label': `nova senha de ${u.login}` });
           const bSalvar = h('button', { class: 'pequeno', type: 'submit' }, 'Salvar');
           const bGerar = h('button', { class: 'pequeno secundario', type: 'button', onclick: async () => {
-            const r = await comEspera(bGerar, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem, chaveAdmin: tokenAdminAtual() }));
+            const r = await comEspera(bGerar, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem, chaveAdmin: tokenAdminAtual(), versaoChave: versaoTokenAdmin() }));
             if (r) { u.situacao_senha = 'provisoria'; mostrarSenha(r.login, r.senha); desenhar(); }
           } }, 'Gerar');
           montar(acoes, h('form', { class: 'definir-senha', onsubmit: async (ev) => {
             ev.preventDefault();
-            const r = await comEspera(bSalvar, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem, senha: campo.value, chaveAdmin: tokenAdminAtual() }));
+            const r = await comEspera(bSalvar, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem, senha: campo.value, chaveAdmin: tokenAdminAtual(), versaoChave: versaoTokenAdmin() }));
             if (r) { u.situacao_senha = 'ok'; aviso(`Senha de ${u.login} definida.`); desenhar(); }
           } }, campo, bSalvar, bGerar, h('button', { class: 'pequeno secundario', type: 'button', onclick: desenhar }, 'Cancelar')));
           campo.focus();
@@ -158,7 +158,7 @@ export async function render(conteudo, ctx) {
       const novo = ['supervisor', 'vendedor'].includes(base)
         ? await criarUsuarioEquipe(db, { perfil: base, login: loginNovo.value, nome: nomeNovo.value, codigoErp: codigoNovo.value,
           supervisorId: supervisorNovo.value ? Number(supervisorNovo.value) : null, tipo, executadoPor: quem, senha })
-        : await criarUsuarioSistema(db, { perfil: base, login: loginNovo.value, nome: nomeNovo.value, executadoPor: quem, senha, chaveAdmin: tokenAdminAtual() });
+        : await criarUsuarioSistema(db, { perfil: base, login: loginNovo.value, nome: nomeNovo.value, executadoPor: quem, senha, chaveAdmin: tokenAdminAtual(), versaoChave: versaoTokenAdmin() });
       if (perfilId) await definirPerfilUsuario(db, { usuarioId: novo.id, perfilId, executadoPor: quem });
       return novo;
     });

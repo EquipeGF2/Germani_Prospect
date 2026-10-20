@@ -1,7 +1,9 @@
 // Cofre de administração (ADR-0006): guarda a chave de administração do Turso cifrada com a senha do usuário.
 // AES-GCM 256 com chave derivada por PBKDF2-SHA256 (sal próprio, diferente do hash de login). Web Crypto: Node 22+ e navegador.
-// Formato (texto JSON): { v: 1, it, sal, iv, dados } — tudo em base64.
+// Formato (texto JSON): { v: 1, it, sal, iv, dados, chave? } — tudo em base64; `chave` é a versão das permissões da chave guardada.
 const ITERACOES = 600000;
+/** Versão das permissões da chave de administração (scripts/gerar-token-app.sh). 2 = all:data_read,data_add,data_update. */
+export const VERSAO_CHAVE_ADMIN = 2;
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
@@ -21,14 +23,20 @@ async function chave(senha, sal, iteracoes, usos) {
     { name: 'AES-GCM', length: 256 }, false, usos);
 }
 
-export async function fecharCofre(segredo, senha) {
+export async function fecharCofre(segredo, senha, { versao = null } = {}) {
   if (!segredo) throw new Error('nada para guardar no cofre');
   validarSenhaCofre(senha);
   const sal = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const k = await chave(senha, sal, ITERACOES, ['encrypt']);
   const dados = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, enc.encode(segredo));
-  return JSON.stringify({ v: 1, it: ITERACOES, sal: b64(sal), iv: b64(iv), dados: b64(dados) });
+  return JSON.stringify({ v: 1, it: ITERACOES, sal: b64(sal), iv: b64(iv), dados: b64(dados), ...(versao ? { chave: versao } : {}) });
+}
+
+/** Versão das permissões da chave guardada no cofre (1 = antiga, lista tabela por tabela; sem cofre = 0). Não precisa da senha. */
+export function versaoDoCofre(cofre) {
+  if (!cofre) return 0;
+  try { return Number(JSON.parse(cofre)?.chave) || 1; } catch { return 0; }
 }
 
 /** Devolve o segredo, ou null se a senha não abrir o cofre (ou o cofre estiver corrompido). */

@@ -43,3 +43,6 @@ qualquer pessoa que abrir o site criar administradores, trocar senhas e alterar 
   garantido pelos triggers; estrutura (`schema_*`) continua fora. Risco aceito pelo dono: quem abrir o cofre pode alterar
   dados de qualquer tabela que os triggers não protegem — a chave só existe cifrada com a senha do administrador.
 - A publicação do site aplica as migrações pendentes antes de gerar o token do app e publicar (pages.yml).
+- A publicação também renova o cofre de chave antiga com a senha do Secret ADMIN_SENHA_INICIAL (autorizado pelo dono em
+  2026-10-20): gera a chave nova só quando algum cofre precisa, e só regrava o cofre que essa senha abre. O cofre guarda a
+  versão das permissões da chave (`chave`), mantida ao trocar a senha pela tela.

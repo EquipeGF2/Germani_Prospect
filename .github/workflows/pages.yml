@@ -49,6 +49,35 @@ jobs:
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      # Cofre de administração com chave de versão antiga: renova aqui mesmo com a senha do Secret ADMIN_SENHA_INICIAL
+      # (autorizado pelo dono — ADR-0006), sem rodar Criar administrador. Só gera chave nova quando algum cofre precisa;
+      # falha aqui não impede a publicação.
+      - name: Verificar cofres de administração
+        id: cofres
+        continue-on-error: true
+        run: |
+          if [ -z "$TURSO_AUTH_TOKEN" ] || [ -z "$GERMANI_SENHA_INICIAL" ]; then echo "precisa=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          node scripts/renovar-cofres.mjs verificar
+        env:
+          GERMANI_SENHA_INICIAL: ${{ secrets.ADMIN_SENHA_INICIAL }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      - name: Gerar chave de administração
+        if: steps.cofres.outputs.precisa == 'true'
+        continue-on-error: true
+        run: bash scripts/gerar-token-app.sh admin
+        env:
+          TURSO_API_TOKEN: ${{ secrets.TURSO_API_TOKEN }}
+          TURSO_DB_NAME: ${{ vars.TURSO_DB_NAME }}
+      - name: Renovar cofres de administração
+        if: steps.cofres.outputs.precisa == 'true' && env.TURSO_ADMIN_TOKEN_GERADO != ''
+        continue-on-error: true
+        run: node scripts/renovar-cofres.mjs gravar
+        env:
+          GERMANI_SENHA_INICIAL: ${{ secrets.ADMIN_SENHA_INICIAL }}
+          GERMANI_CHAVE_ADMIN: ${{ env.TURSO_ADMIN_TOKEN_GERADO }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
   montar:
     needs: migrar
     runs-on: ubuntu-24.04

@@ -1,7 +1,7 @@
 // Reabre o cofre de administração (ADR-0006) pedindo só a senha do próprio administrador — nunca token.
 // Aparece quando a sessão continua (outra aba, navegador reaberto) mas a chave aberta no login ficou na aba anterior.
 import { bancoApp, guardarTokenAdmin, modoDemonstracao } from '../db.js';
-import { abrirCofre } from '../../shared/cofre.mjs';
+import { abrirCofre, versaoDoCofre } from '../../shared/cofre.mjs';
 import { h, montar, comEspera } from '../ui.js';
 
 export async function render(conteudo, { usuario, parametros, irPara }) {
@@ -18,10 +18,10 @@ export async function render(conteudo, { usuario, parametros, irPara }) {
       if (!cofre) throw new Error('Sua chave de administração ainda não foi gerada. Rode no GitHub: Actions → Criar administrador (com o seu login) e entre de novo.');
       const aberta = await abrirCofre(cofre, senha.value);
       if (!aberta) throw new Error('Senha incorreta.');
-      return aberta;
+      return { aberta, versao: versaoDoCofre(cofre) };
     });
     if (!chave) return;
-    guardarTokenAdmin(chave);
+    guardarTokenAdmin(chave.aberta, chave.versao);
     irPara(volta);
   } },
   h('h1', {}, 'Confirme sua senha'),
