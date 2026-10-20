@@ -186,14 +186,26 @@ movimentação conta sempre nos indicadores.
   cartão mostra de quem é a carteira.
 - Cada cartão: razão social, selo do status, CNPJ, fantasia, bairro/cidade, onda, rota (só vendedor),
   "atendido em…", dias corridos, retorno vencido e prazo de cadastro vencido. 50 por página.
-- **Computador** (Lista principal e Acompanhamento; o celular não muda): **numa linha só** — busca, visão (lista de seleção), **onda**, supervisor, vendedor/representante,
-  **filtro por data** (de/até sobre a data do último registro — `filtros.dataDe`/`dataAte` em `dt_ultimo_contato`) e
-  **Exibir: Cards | Lista** (tabela; escolha guardada no navegador) numa só barra. Sem o atalho "só retornos vencidos hoje".
-  Em **Lista** (tabela), o **rótulo de cada coluna ordena** (1º clique crescente ▲, 2º decrescente ▼, 3º volta à ordem de
-  trabalho): prospect, cidade · bairro, onda (1, 2, 3…), rota, carteira, status (ordem do processo), dias e último registro.
-  A ordenação é feita no banco (`ordenar` em `consultaCarteira`, só chaves conhecidas), então vale para todas as páginas.
-  Ondas sempre em ordem natural (Onda 1, 2, 3…, `ordemNatural`). **Rota em dois níveis** (`rotaEmNiveis`): nível 1 = rota;
-  clicar abre o nível 2 = subrotas daquela rota; clicar na subrota abre a lista.
+- **Computador** (Lista principal e Acompanhamento — [`_lista.js`](../web/js/telas/_lista.js); o celular não muda):
+  **sempre em lista** (tabela; sem cards e sem visões). Filtros em grupos, cada um em cascata (`opcoesEmCascata`):
+  **Equipe** (supervisor / representante) · **Local** (UF / cidade / **bairro**, este só aparece com a cidade escolhida) ·
+  **Carteira** (onda / segmento) · **Período** (só no Acompanhamento). Abaixo, a **busca**: prospect, CNPJ, cidade, bairro e
+  o **representante** dono da carteira (nome sem acento ou código do ERP).
+  - **Obrigatórios** (`faltaParaLista`): quem vê todas as equipes escolhe a **equipe** (supervisor, com toda a equipe, ou
+    direto o representante; uma busca também basta); supervisor e vendedor já têm a sua. O **Acompanhamento** exige o
+    **período** do último registro: Este mês, Último mês ou Período (de · até) — `datasDoPeriodo`; o representante já
+    entra no mês atual. A **Lista principal não tem período** (não contactados não têm data nenhuma). Até escolher,
+    a tela pede a escolha e **não lê a lista**.
+  - **Situação**: atalhos com contagem por status da aba (Lista: Não contactado, Em prospecção; Acompanhamento: os
+    demais, na ordem do processo), da mesma consulta por status com os filtros escolhidos — e o total da lista.
+  - **Agrupar por** (no lugar das antigas visões): cidade, bairro (só com cidade), onda, segmento, representante (gestão),
+    rota (vendedor) — a lista sai ordenada pelo grupo, com um cabeçalho a cada troca (`agrupar` em `consultaCarteira`).
+  - Colunas: prospect (CNPJ), cidade · bairro, onda, segmento, rota (só vendedor), representante (gestão, com o código),
+    status; na Lista: tentativas, contato da planilha e dias; no Acompanhamento: último registro, próxima ação (retorno)
+    e dias; e Registrar. Uma linha por prospect (textos longos cortados). O **rótulo da coluna ordena** (▲, ▼, volta à
+    ordem de trabalho), no banco. "**Carregar mais 50**" acrescenta à lista sem reler o que já veio.
+  - **Clicar na linha abre a ficha ao lado** (dados, últimos 5 movimentos, Registrar e Abrir ficha completa) sem sair
+    da lista. Marcar prospects (Lista principal) mostra a barra flutuante "Sem interesse em lote".
 - **Ficha** (`#/ficha`): situação (status, dias corridos, registros, datas, prazos, motivo, cadastro e pedido do
   ERP), crédito liberado (forma, prazo, limite e se veio do grupo, restrição), **histórico de movimentação**
   (data, status antes → depois, detalhe, quem fez, origem, carteira da época) e cadastro com Ligar / WhatsApp

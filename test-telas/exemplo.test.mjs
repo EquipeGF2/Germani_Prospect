@@ -78,38 +78,48 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.ok(funil.every((v, i) => i === 0 || v <= funil[i - 1]), `funil cresceu: ${funil}`);
   await foto('23-exemplo-periodo');
 
-  // lista principal no computador: barra única, cards × lista, ondas em ordem, rota em 2 níveis, data do último registro
+  // lista principal no computador: sempre em tabela, filtros em grupos; a gestão escolhe a equipe antes de ler
   await pagina.goto(`${base}#/carteira`);
   await telaPronta();
-  assert.equal(await pagina.locator('.barra-carteira #busca').count(), 1);
-  assert.equal(await pagina.locator('.barra-carteira #filtro-supervisor').count(), 1);
-  assert.equal(await pagina.locator('#so-retornos').count(), 0, 'sem "só retornos" no computador');
-  // gestão: a lista só carrega depois de um filtro (não varre a base inteira)
-  await pagina.waitForSelector('text=Escolha um filtro');
-  assert.equal(await pagina.locator('.cartao-prospect, .tabela-carteira').count(), 0);
+  await pagina.waitForSelector('#lista-falta');
+  assert.equal(await pagina.locator('.lista-tabela').count(), 0, 'nada lido antes da equipe');
+  assert.equal(await pagina.locator('#filtro-periodo').count(), 0, 'Lista principal não tem período');
+  assert.equal(await pagina.locator('#filtro-bairro').count(), 0, 'bairro só com a cidade');
+  assert.equal(await pagina.locator('.cartao-prospect, #filtro-visao, .exibicao').count(), 0, 'sem cards e sem visões no computador');
   await pagina.selectOption('#filtro-supervisor', { index: 1 });
   await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
   await telaPronta();
-  await pagina.click('.exibicao a[data-exibicao="lista"]');
-  await pagina.waitForSelector('.tabela-carteira tbody tr');
-  const umaLinha = () => pagina.locator('.barra-carteira > *').evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().bottom))).size);
-  assert.equal(await umaLinha(), 1, 'filtros da lista numa linha só (1440 px, admin)');
+  await pagina.waitForSelector('.lista-tabela tbody tr');
+  const situacoes = await pagina.locator('.chip-situacao').evaluateAll((els) => els.map((el) => el.dataset.status));
+  assert.equal(situacoes[0], 'todos');
+  assert.ok(situacoes.slice(1).every((x) => ['nao_contactado', 'em_prospeccao'].includes(x)), `situações: ${situacoes}`);
   // rótulo da coluna ordena: Prospect crescente, depois decrescente
-  await pagina.click('.tabela-carteira th a[data-ordem="prospect"]');
+  await pagina.click('.lista-tabela th a[data-ordem="prospect"]');
   await pagina.waitForFunction(() => location.hash.includes('ordem=prospect') && !location.hash.includes('dir=desc'));
   await telaPronta();
-  const nomesAsc = await pagina.locator('.tabela-carteira tbody a.nome').allInnerTexts();
+  const nomesAsc = await pagina.locator('.lista-tabela tbody a.nome').allInnerTexts();
   assert.deepEqual(nomesAsc, [...nomesAsc].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
-  await pagina.click('.tabela-carteira th a[data-ordem="prospect"]');
+  await pagina.click('.lista-tabela th a[data-ordem="prospect"]');
   await pagina.waitForFunction(() => location.hash.includes('dir=desc'));
   await telaPronta();
-  assert.match(await pagina.locator('.tabela-carteira th a.ativa').innerText(), /▼/);
-  // filtro por onda
+  assert.match(await pagina.locator('.lista-tabela th a.ativa').innerText(), /▼/);
+  // filtro por onda (coluna 4: marca, prospect, cidade, onda)
   await pagina.selectOption('#filtro-onda', '2');
   await pagina.waitForFunction(() => location.hash.includes('onda=2'));
   await telaPronta();
-  assert.ok((await pagina.locator('.tabela-carteira tbody td:nth-child(4)').allInnerTexts()).every((t) => t === 'Onda 2'));
-  assert.equal(await umaLinha(), 1, 'com o filtro de onda continua numa linha');
+  assert.ok((await pagina.locator('.lista-tabela tbody tr:not(.linha-grupo) td:nth-child(4)').allInnerTexts()).every((t) => t === '2'));
+  // agrupar por cidade: cabeçalho a cada cidade, cidades em ordem
+  await pagina.selectOption('#agrupar', 'cidade');
+  await pagina.waitForFunction(() => location.hash.includes('agrupar=cidade'));
+  await telaPronta();
+  const gruposCidade = await pagina.locator('.lista-tabela .linha-grupo').allInnerTexts();
+  assert.ok(gruposCidade.length >= 1 && new Set(gruposCidade).size === gruposCidade.length, `grupos: ${gruposCidade}`);
+  assert.equal(await pagina.locator('#agrupar option[value=bairro]').count(), 0, 'agrupar por bairro só com a cidade');
+  await pagina.selectOption('#filtro-cidade', { index: 1 });
+  await pagina.waitForFunction(() => location.hash.includes('cidadeBusca='));
+  await telaPronta();
+  assert.equal(await pagina.locator('#filtro-bairro').count(), 1, 'com a cidade aparece o bairro');
+  assert.equal(await pagina.locator('#agrupar option[value=bairro]').count(), 1);
   await foto('25-lista-tabela');
 
   // Explorar carteira: árvore sobre o resumo, níveis arrastáveis, lista só de um ramo
@@ -140,31 +150,31 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.click('#abrir-lista');
   await pagina.waitForFunction(() => location.hash.includes('cidadeBusca='));
   await telaPronta();
-  assert.equal(await pagina.locator('text=Escolha um filtro').count(), 0, 'a lista abre filtrada');
+  // o ramo foi só a cidade: a lista abre com ela escolhida e pede a equipe (obrigatória para a gestão)
+  assert.notEqual(await pagina.locator('#filtro-cidade').inputValue(), '', 'a lista abre com a cidade do ramo');
+  await pagina.waitForSelector('#lista-falta');
   assert.ok(Number(total.replace(/\./g, '')) > 0);
-  await pagina.goto(`${base}#/carteira`);
+  // Acompanhamento: equipe e período obrigatórios; situações na ordem do processo
+  await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
   await telaPronta();
-  await pagina.goto(`${base}#/carteira?visao=onda`);
+  await pagina.waitForSelector('#lista-falta');
+  assert.equal(await pagina.locator('#filtro-periodo').count(), 1);
+  await pagina.selectOption('#filtro-supervisor', { index: 1 });
+  await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
   await telaPronta();
-  const ondas = await pagina.locator('.lista-grupos .grupo b').allInnerTexts();
-  assert.deepEqual(ondas.filter((o) => o.startsWith('Onda')), [...ondas.filter((o) => o.startsWith('Onda'))].sort((x, y) => Number(x.slice(5)) - Number(y.slice(5))));
-  await pagina.goto(`${base}#/carteira?visao=rota`);
+  await pagina.waitForSelector('#lista-falta');                            // ainda falta o período
+  await pagina.selectOption('#filtro-periodo', 'periodo');
+  await pagina.waitForFunction(() => location.hash.includes('periodo=periodo'));
   await telaPronta();
-  const rotas = await pagina.locator('.lista-grupos .grupo b').allInnerTexts();
-  assert.ok(rotas.length && rotas.every((r) => r.startsWith('Rota') || r === '(sem rota)'), `nível 1: ${rotas}`);
-  await pagina.click('.lista-grupos a.grupo >> nth=0');
+  assert.equal(await pagina.locator('#filtro-data-de').count(), 1, 'período abre as datas');
+  await pagina.selectOption('#filtro-periodo', 'mes');
+  await pagina.waitForFunction(() => location.hash.includes('periodo=mes'));
   await telaPronta();
-  assert.match(await pagina.evaluate(() => location.hash), /visao=rota.*rota=|rota=.*visao=rota/);
-  const subrotas = await pagina.locator('.lista-grupos .grupo b').allInnerTexts();
-  assert.ok(subrotas.every((r) => r.startsWith('Subrota') || r === '(sem subrota)'), `nível 2: ${subrotas}`);
-  await foto('26-rota-subrota');
-  await pagina.goto(`${base}#/carteira?aba=acompanhamento&visao=lista&dataDe=2026-10-01&dataAte=2026-10-09`);
-  await telaPronta();
-  assert.match(await pagina.locator('.chips').innerText(), /Último registro de 01\/10\/2026 até 09\/10\/2026/);
-  assert.equal(await umaLinha(), 1, 'filtros do acompanhamento numa linha só');
-  // filtros em cascata: escolher a cidade deixa só os representantes, segmentos e ondas dela
-  await pagina.goto(`${base}#/carteira?aba=acompanhamento&visao=lista`);
-  await telaPronta();
+  await pagina.waitForSelector('.lista-tabela tbody tr');
+  const ordem = await pagina.locator('.chip-situacao').evaluateAll((els) => els.slice(1).map((el) => el.dataset.status));
+  const processo = ['aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse', 'invalido'];
+  assert.ok(ordem.length >= 2 && ordem.every((x, i) => i === 0 || processo.indexOf(x) > processo.indexOf(ordem[i - 1])), `ordem: ${ordem}`);
+  // filtros em cascata: escolher a cidade deixa só os representantes dela
   const opcoesDe = (id) => pagina.locator(`#${id} option`).evaluateAll((os) => os.slice(1).map((o) => o.value));
   const repsTodos = await opcoesDe('filtro-vendedor');
   assert.ok((await opcoesDe('filtro-uf')).length >= 1, 'UF separada da cidade');
@@ -173,11 +183,6 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await telaPronta();
   const repsCidade = await opcoesDe('filtro-vendedor');
   assert.ok(repsCidade.length >= 1 && repsCidade.length <= repsTodos.length && repsCidade.every((v) => repsTodos.includes(v)), 'representantes só da cidade');
-  assert.equal(await umaLinha(), 1, 'com UF e cidade continua numa linha');
-  await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
-  await telaPronta();
-  const ordem = await pagina.locator('.status-cartao b').allInnerTexts();
-  assert.deepEqual(ordem, ['Aguardando cadastro', 'Análise financeira', 'Aguardando pedido', 'Venda realizada', 'Sem interesse', 'Inválido (baixado)']);
   await foto('27-acompanhamento');
 
   // perfis: o administrador cria "Supervisor regional" (só Início e Lista) e atribui ao 1º supervisor

@@ -213,7 +213,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   // 5d. lista principal do administrador: filtro por supervisor e por vendedor/representante
   await pagina.click('#menu a[title="Lista principal"]');
   await pagina.waitForSelector('#filtro-supervisor');
-  assert.equal(await pagina.locator('.cartao-prospect').count(), 0, 'gestão: a lista só carrega depois de um filtro');
+  await pagina.waitForSelector('#lista-falta');                            // gestão: escolhe a equipe antes de ler a lista
+  assert.equal(await pagina.locator('.lista-tabela tbody tr').count(), 0);
   await pagina.selectOption('#filtro-supervisor', { index: 2 });   // 2º supervisor (o 0 é "Todos")
   await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
   await telaPronta();
@@ -224,9 +225,9 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.selectOption('#filtro-vendedor', { index: 1 });
   await pagina.waitForFunction(() => location.hash.includes('vendedorId='));
   await telaPronta();
-  await pagina.waitForSelector('.cartao-prospect, .mensagem');
-  const cartoes = await pagina.locator('.cartao-prospect-corpo').allInnerTexts();
-  assert.ok(cartoes.every((t) => t.includes(`Carteira: ${nomeAgente}`)), 'só a carteira escolhida');
+  await pagina.waitForSelector('.lista-tabela tbody tr, .mensagem');
+  const cartoes = await pagina.locator('.lista-tabela tbody tr').allInnerTexts();
+  assert.ok(cartoes.every((t) => t.includes(nomeAgente)), 'só a carteira escolhida');
   assert.ok(cartoes.length > 0, 'filtro em cascata: só aparece representante com prospects na lista');
   await foto('09d-lista-filtros-gestao');
 
@@ -257,17 +258,20 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('.painel-web');
   await foto('10b-inicio-vendedor');
   await pagina.click('#menu a[title="Lista principal"]');
-  await pagina.waitForSelector('.cartao-prospect');
-  assert.ok(await pagina.locator('#filtro-visao option[value=rota]').count(), 'vendedor tem visão por rota');
+  await pagina.waitForSelector('.lista-tabela tbody tr');
+  assert.ok(await pagina.locator('#agrupar option[value=rota]').count(), 'vendedor agrupa por rota');
   await foto('11-lista-principal');
-  const primeiro = (await pagina.locator('.cartao-prospect-corpo b').first().innerText()).trim();
+  const primeiro = (await pagina.locator('.lista-tabela a.nome').first().innerText()).trim();
   await pagina.fill('#busca', primeiro.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
-  await pagina.click('.barra-busca button[type=submit]');
+  await pagina.click('.lista-busca button[type=submit]');
   await pagina.waitForFunction(() => location.hash.includes('busca='));
   await telaPronta();
-  await pagina.waitForSelector('.cartao-prospect');
-  assert.ok((await pagina.locator('.cartao-prospect').count()) >= 1, 'busca sem acento encontra o prospect');
-  await pagina.click('.cartao-prospect-corpo >> nth=0');
+  await pagina.waitForSelector('.lista-tabela tbody tr');
+  assert.ok((await pagina.locator('.lista-tabela tbody tr').count()) >= 1, 'busca sem acento encontra o prospect');
+  // clicar na linha abre a ficha ao lado; o nome abre a ficha completa
+  await pagina.click('.lista-tabela tbody tr td:nth-child(5) >> nth=0');
+  await pagina.waitForSelector('.ficha-lateral:not([hidden]) .ficha-historico li');
+  await pagina.click('.lista-tabela a.nome >> nth=0');
   await pagina.waitForSelector('text=Histórico de movimentação');
   await pagina.click('a:text("Registrar atendimento")');
   await pagina.waitForSelector('text=Não atendeu? Não precisa registrar.');
@@ -291,14 +295,14 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
 
   // 9. o atendido saiu da lista principal; "sem interesse" em lote para 2 prospects
   await pagina.goto(`${base}#/carteira`);
-  await pagina.waitForSelector('.cartao-prospect');
+  await pagina.waitForSelector('.lista-tabela tbody tr');
   await pagina.fill('#busca', cnpjAtendido);
-  await pagina.click('.barra-busca button[type=submit]');
+  await pagina.click('.lista-busca button[type=submit]');
   await pagina.waitForSelector(`text=Nada encontrado para "${cnpjAtendido}"`);   // atendido saiu da lista principal
   await pagina.goto(`${base}#/carteira`);
-  await pagina.waitForSelector('.cartao-prospect');
-  await pagina.check('.cartao-prospect input[type=checkbox] >> nth=0');
-  await pagina.check('.cartao-prospect input[type=checkbox] >> nth=1');
+  await pagina.waitForSelector('.lista-tabela tbody tr');
+  await pagina.check('.lista-tabela input[data-lote] >> nth=0');
+  await pagina.check('.lista-tabela input[data-lote] >> nth=1');
   await pagina.waitForSelector('text=2 selecionado(s)');
   await pagina.click('a:text("Sem interesse em lote")');
   await pagina.waitForSelector('text=Gravar 2 registro(s)');
@@ -311,12 +315,13 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
 
   // 10. acompanhamento por status → lista dos sem interesse → ficha com o motivo individual
   await pagina.click('#menu a[title="Acompanhamento"]');
-  await pagina.waitForSelector('.status-cartao');
+  await pagina.waitForSelector('.chip-situacao');                         // representante já entra no mês atual
   await foto('15-acompanhamento');
-  await pagina.click('.status-cartao:has-text("Sem interesse")');
-  await pagina.waitForSelector('.cartao-prospect');
-  assert.equal(await pagina.locator('.cartao-prospect').count(), 2);
-  await pagina.click('.cartao-prospect-corpo >> nth=0');
+  await pagina.click('.chip-situacao:has-text("Sem interesse")');
+  await pagina.waitForFunction(() => location.hash.includes('status=sem_interesse'));
+  await telaPronta();
+  assert.equal(await pagina.locator('.lista-tabela tbody tr').count(), 2);
+  await pagina.click('.lista-tabela a.nome >> nth=0');
   await pagina.waitForSelector('text=Histórico de movimentação');
   assert.match(await texto(), /(Preço acima do praticado|Já tem fornecedor)/);
   assert.ok(await pagina.locator('a:text("Registrar atendimento")').count(), 'sem interesse pode ser reaberto');
@@ -325,7 +330,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
 
   // 11. menu lateral: recolher e expandir (a preferência fica no navegador)
   await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
-  await pagina.waitForSelector('.status-cartao');
+  await pagina.waitForSelector('.chip-situacao');
   assert.equal(await pagina.locator('#menu a.ativo').innerText(), 'Acompanhamento');
   await pagina.click('#botao-menu');
   await pagina.waitForSelector('#casca.recolhido');
@@ -384,8 +389,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   assert.equal(await pagina.locator('#menu a[title="Console de crédito"]').count(), 0);
   assert.equal(await pagina.locator('#menu a[title="Usuários"]').count(), 0);
   await pagina.click('.lista-agentes a >> nth=0');                           // agente → carteira dele
-  await pagina.waitForSelector('.cartao-prospect');
-  await pagina.click('.cartao-prospect-corpo >> nth=0');
+  await pagina.waitForSelector('.lista-tabela tbody tr');
+  await pagina.click('.lista-tabela a.nome >> nth=0');
   await pagina.click('a:text("Registrar atendimento")');
   await pagina.click('label.opcao:has-text("Atendido")');
   await pagina.click('button:text("Gravar registro")');
