@@ -114,11 +114,39 @@ export async function salvarPerfil(db, { id = null, nome, base, telas, executado
   return perfilId;
 }
 
-/** Atribui um perfil ao usuário (o tipo-base do perfil tem de ser o perfil técnico do usuário — gatilho no banco). */
-export async function definirPerfilUsuario(db, { usuarioId, perfilId, executadoPor }) {
+// tipos-base trocáveis entre si na tela Usuários (supervisor e vendedor dependem do código do ERP e da equipe: vêm da importação)
+export const BASES_TROCAVEIS = Object.freeze(['administrador', 'gerente', 'financeiro']);
+
+/** Perfis que podem ser escolhidos para o usuário: mesmo tipo-base, ou qualquer tipo trocável se ele for de um deles. */
+export function perfisPossiveis(perfis, usuario) {
+  const trocavel = BASES_TROCAVEIS.includes(usuario.perfil);
+  return perfis.filter((p) => (p.ativo == null || Number(p.ativo)) && (p.base === usuario.perfil || (trocavel && BASES_TROCAVEIS.includes(p.base))));
+}
+
+/**
+ * Atribui um perfil ao usuário. Mesmo tipo-base: só muda as telas. Tipo-base diferente: permitido apenas entre
+ * administrador, gerente e financeiro (muda também usuarios.perfil, que define o escopo dos dados). Quem deixa de ser
+ * administrador perde o cofre de administração; quem passa a ser recebe o cofre ao ter a senha definida (ADR-0006).
+ * Ninguém muda o próprio tipo-base (evita o administrador se trancar fora).
+ */
+export async function definirPerfilUsuario(db, { usuarioId, perfilId, executadoPor, executadoPorId = null }) {
+  const u = (await db.execute({ sql: 'SELECT id, perfil FROM usuarios WHERE id = ?', args: [usuarioId] })).rows[0];
+  if (!u) throw new Error('usuário não encontrado');
+  // sem perfilId = perfil do sistema do tipo-base atual
+  const p = perfilId == null ? { id: null, base: u.perfil, sistema: 1 }
+    : (await db.execute({ sql: 'SELECT id, base, sistema FROM perfis WHERE id = ?', args: [perfilId] })).rows[0];
+  if (!p) throw new Error('perfil não encontrado');
+  const base = p.base;
+  if (base !== u.perfil) {
+    if (!BASES_TROCAVEIS.includes(base) || !BASES_TROCAVEIS.includes(u.perfil)) throw new Error('o tipo-base do perfil não corresponde ao usuário (supervisor e vendedor vêm da importação)');
+    if (executadoPorId != null && Number(executadoPorId) === Number(usuarioId)) throw new Error('você não pode mudar o tipo do próprio usuário');
+  }
+  const gravado = Number(p.sistema) ? null : Number(p.id);   // perfil do sistema = NULL (padrão do tipo-base)
+  const perdeCofre = u.perfil === 'administrador' && base !== 'administrador';
   await db.batch([
-    { sql: "UPDATE usuarios SET perfil_id = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?", args: [perfilId, usuarioId] },
+    { sql: `UPDATE usuarios SET perfil = ?, perfil_id = ?${perdeCofre ? ', cofre_admin = NULL' : ''}, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`, args: [base, gravado, usuarioId] },
     { sql: "INSERT INTO auditoria (executado_por, acao, entidade, entidade_id, detalhes) VALUES (?, 'perfil_usuario', 'usuarios', ?, ?)",
-      args: [executadoPor, String(usuarioId), JSON.stringify({ perfil_id: perfilId })] },
+      args: [executadoPor, String(usuarioId), JSON.stringify({ perfil_id: gravado, base, base_anterior: u.perfil })] },
   ], 'write');
+  return { base, perfilId: gravado, mudouBase: base !== u.perfil };
 }
