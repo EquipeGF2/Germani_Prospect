@@ -6,6 +6,8 @@ Sistema **GERMANI** (guarda-chuva GERMANI), estado **ativo**. Português do Bras
 - Leia `docs/03-regras-negocio.md` e `docs/02-modelo-dados.md`.
 - Regras de status vivem nos **triggers** de `db/migrations/`. Mudou regra → nova migração `NNNN_*.sql`
   (nunca edite uma migração aplicada) + teste em `test/regras-banco.test.mjs` + doc 03.
+- Tabela nova (ou coluna usada em filtro, ligação ou ordenação) já nasce com índice; mudança de consulta pesada
+  é medida com `node scripts/medir-consultas.mjs 50000 --plano` (volume de produção ~50 mil CNPJs) e nunca muda o resultado.
 - `shared/` não pode depender de Node (é usado também pelo app no navegador).
 - Telas em `web/js/telas/`: só textContent (nunca innerHTML com dado do banco); regra de negócio fica em `shared/`.
 
