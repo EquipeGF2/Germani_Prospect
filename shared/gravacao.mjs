@@ -1,8 +1,10 @@
 // Grava itens em lotes transacionais (Node e navegador — só usa db.batch). Se um lote falhar (ex.: trigger recusou uma linha),
 // o lote é refeito item a item para isolar a linha com problema — as demais seguem gravadas.
-export async function gravarEmLotes(db, itens, montar, { tamanho = 50 } = {}) {
+// `aoProgredir(feitos, total)`: chamado a cada lote (a tela mostra o andamento).
+export async function gravarEmLotes(db, itens, montar, { tamanho = 50, aoProgredir = null } = {}) {
   const resultados = new Array(itens.length);
   for (let ini = 0; ini < itens.length; ini += tamanho) {
+    aoProgredir?.(ini, itens.length);
     const fatia = itens.slice(ini, ini + tamanho);
     try {
       await db.batch(fatia.flatMap(montar), 'write');
@@ -18,6 +20,7 @@ export async function gravarEmLotes(db, itens, montar, { tamanho = 50 } = {}) {
       }
     }
   }
+  aoProgredir?.(itens.length, itens.length);
   return resultados;
 }
 

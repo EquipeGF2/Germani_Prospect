@@ -47,14 +47,17 @@ async function garantirUsuarios(db, supervisores, vendedores) {
   })), 'write');
   const sups = await idsUsuarios(db, 'supervisor');
   await db.batch(vendedores.map((v) => ({
-    sql: `INSERT INTO usuarios (perfil, codigo_erp, nome, nome_busca, login, supervisor_id) VALUES ('vendedor', ?, ?, ?, ?, ?)
-          ON CONFLICT (perfil, codigo_erp) DO NOTHING`,
-    args: [v.codigo, v.nome, normalizarBusca(v.nome), v.codigo, sups.get(v.supervisorCodigo).id],
+    // TIPO da planilha (Representante/Vendedor) define o tipo de atuação; quem já tem tipo definido não muda
+    sql: `INSERT INTO usuarios (perfil, codigo_erp, nome, nome_busca, login, supervisor_id, tipo_atuacao) VALUES ('vendedor', ?, ?, ?, ?, ?, ?)
+          ON CONFLICT (perfil, codigo_erp) DO UPDATE SET tipo_atuacao = excluded.tipo_atuacao
+          WHERE usuarios.tipo_atuacao IS NULL AND excluded.tipo_atuacao IS NOT NULL`,
+    args: [v.codigo, v.nome, normalizarBusca(v.nome), v.codigo, sups.get(v.supervisorCodigo).id, v.tipo ?? null],
   })), 'write');
   return { sups, vends: await idsUsuarios(db, 'vendedor') };
 }
 
-export async function importarBase(db, { linhas, arquivoNome, arquivoSha256, executadoPor, mapaStatus, hoje, considerarDatas, simular = false }) {
+// `aoProgredir({ etapa, feitos, total })`: andamento da gravação (a tela mostra; ~23 mil linhas levam alguns minutos)
+export async function importarBase(db, { linhas, arquivoNome, arquivoSha256, executadoPor, mapaStatus, hoje, considerarDatas, simular = false, aoProgredir = null }) {
   const analise = analisarPlanilhaBase(linhas, { mapaStatus, hoje, considerarDatas });
   const existentes = new Map((await db.execute('SELECT cnpj, vendedor_id, status_atual FROM prospects')).rows
     .map((r) => [r.cnpj, { vendedorId: Number(r.vendedor_id), status: r.status_atual }]));
@@ -80,6 +83,7 @@ export async function importarBase(db, { linhas, arquivoNome, arquivoSha256, exe
   const importacaoId = Number(imp.rows[0].id);
 
   try {
+    aoProgredir?.({ etapa: 'equipe', feitos: 0, total: analise.vendedores.length });
     const { sups, vends } = await garantirUsuarios(db, analise.supervisores, analise.vendedores);
 
     // vendedor já existente com outro supervisor → rejeita (a hierarquia não muda por importação)
@@ -98,7 +102,8 @@ export async function importarBase(db, { linhas, arquivoNome, arquivoSha256, exe
     }
 
     const paraGravar = analise.resultados.filter((r) => r.dados);
-    const gravacao = await gravarEmLotes(db, paraGravar, (r) => montarLinha(r, importacaoId));
+    const gravacao = await gravarEmLotes(db, paraGravar, (r) => montarLinha(r, importacaoId), {
+      tamanho: 100, aoProgredir: (feitos, total) => aoProgredir?.({ etapa: 'prospects', feitos, total }) });
     gravacao.forEach((g, i) => {
       if (!g.ok) {
         paraGravar[i].erros.push(`banco recusou: ${g.erro}`);
@@ -113,7 +118,10 @@ export async function importarBase(db, { linhas, arquivoNome, arquivoSha256, exe
       args: [importacaoId, r.numeroLinha, r.dados?.prospect.cnpj ?? null, r.dados ? 'aceita' : 'rejeitada',
         JSON.stringify(r.dados ? r.avisos : r.erros), JSON.stringify(r.bruto, (_, v) => v ?? null)],
     }));
-    for (let i = 0; i < registros.length; i += 200) await db.batch(registros.slice(i, i + 200), 'write');
+    for (let i = 0; i < registros.length; i += 200) {
+      aoProgredir?.({ etapa: 'relatorio', feitos: i, total: registros.length });
+      await db.batch(registros.slice(i, i + 200), 'write');
+    }
 
     const nAceitas = analise.resultados.filter((r) => r.dados).length;
     await db.execute({
