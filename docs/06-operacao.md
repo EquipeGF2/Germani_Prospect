@@ -28,12 +28,23 @@ Os comandos dos tokens do app e de administração estão na seção 3.
 
 ## 3. Tokens: app e administração
 
-**Token do app** (vai embutido no site — permissões restritas):
+**Token do app — jeito 100% web (recomendado):** o GitHub gera o token a cada publicação; ninguém instala o Turso CLI.
+1. Painel web do Turso (app.turso.tech) → *Settings* → **API Tokens** → *Create* → copie a chave.
+2. GitHub → Settings → Secrets and variables → Actions: **secret** `TURSO_API_TOKEN` = essa chave e **variável**
+   `TURSO_DATABASE_URL` = endereço do banco (opcional: variável `TURSO_DB_NAME`, padrão `germaniprospec`).
+3. Actions → *Publicar app (GitHub Pages)* → *Run workflow*.
+
+O workflow roda `scripts/gerar-token-app.sh` (Turso CLI no próprio Actions, com as permissões abaixo e validade de
+90 dias), mascara o token no log e o embute no site. O site é republicado toda segunda-feira, renovando o token.
+A chave de API é poderosa (administra a conta do Turso): fica só no Secret, nunca no site.
+
+**Token do app — à mão** (alternativa, com o Turso CLI no computador):
 ```bash
 turso db tokens create germaniprospec -p all:data_read -p contatos:data_add -p transferencias:data_add \
   -p rotas:data_add,data_update -p rota_paradas:data_add,data_update,data_delete -p liberacoes_credito:data_add
 ```
 Cadastre em GitHub → Settings → Secrets and variables → Actions: **variável** `TURSO_DATABASE_URL` e **secret** `TURSO_APP_TOKEN`.
+Se houver `TURSO_API_TOKEN`, o token gerado no Actions tem prioridade sobre o `TURSO_APP_TOKEN`.
 
 **Token de administração** (NÃO vai para o GitHub: o administrador cola na tela "Acesso de administração",
 e ele fica só naquela aba do navegador):
