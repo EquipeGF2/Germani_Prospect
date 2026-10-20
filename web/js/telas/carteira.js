@@ -256,12 +256,14 @@ function blocoLista(e, linhas, { podeRegistrar, selecao, comRota, mostrarCarteir
   // lote: só para quem ainda está na lista principal (sem interesse em lote)
   const loteVisivel = podeRegistrar && e.aba === 'principal';
   const barraLote = h('div', { class: 'barra-lote' });
+  // a barra só aparece com algum prospect marcado
   const atualizarBarra = () => {
+    barraLote.hidden = !selecao.size;
     montar(barraLote, selecao.size
       ? [h('span', {}, `${selecao.size} selecionado(s)`),
         h('a', { class: 'botao', href: '#/lote' }, 'Sem interesse em lote'),
         h('button', { class: 'secundario pequeno', onclick: () => { selecao.clear(); gravarLote([]); document.querySelectorAll('input[data-lote]').forEach((c) => { c.checked = false; }); atualizarBarra(); } }, 'Limpar seleção')]
-      : h('span', { class: 'ajuda' }, 'Marque os prospects para registrar "sem interesse" em lote.'));
+      : []);
   };
   if (loteVisivel) atualizarBarra();
 

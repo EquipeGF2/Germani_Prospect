@@ -405,7 +405,7 @@ td.pct { min-width: 96px; }
 .barra-carteira { display: flex; flex-wrap: nowrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
 .barra-carteira > .filtro { flex: 0 1 auto; min-width: 0; }
 .barra-carteira .filtro label { font-size: 12px; margin-bottom: 4px; white-space: nowrap; }
-.barra-carteira .busca { flex: 0 1 180px; } .barra-carteira .busca .barra-busca { margin: 0; gap: 6px; }
+.barra-carteira .busca { flex: 0 1 240px; } .barra-carteira .busca .barra-busca { margin: 0; gap: 6px; }
 .barra-carteira .busca button { padding: 8px 12px; }
 .barra-carteira .busca button.so-icone { width: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .barra-carteira .visoes { margin: 0; }
@@ -498,6 +498,7 @@ td.pct { min-width: 96px; }
 .exp-linha.cab { padding: 12px 16px; border-bottom-color: var(--borda); font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--suave); white-space: nowrap; }
 .exp-linha.raiz { background: #F9FAFB; } .exp-linha.raiz .nome { font-weight: 700; }
 /* linha sob o mouse fica preenchida: dá para seguir os números até a coluna sem perder a linha */
+.exp-linha:not(.cab) { cursor: pointer; }
 .exp-linha:not(.cab):hover { background: #E9EEF5; }
 .exp-linha.escolhida:hover { background: #F6D9DB; }
 .exp-linha.escolhida { background: var(--destaque-claro); box-shadow: inset 3px 0 0 var(--destaque); }

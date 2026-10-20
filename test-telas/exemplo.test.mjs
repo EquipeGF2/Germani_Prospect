@@ -30,6 +30,8 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.goto(base);
   await pagina.waitForSelector('#login');
   await entrar('admin');
+  await pagina.waitForSelector('#carregar-exemplo');
+  assert.equal(await pagina.locator('script[src*="exceljs"]').count(), 0, 'a biblioteca de planilha não carrega na abertura do site');
   await pagina.click('#carregar-exemplo');
   await pagina.waitForSelector('text=Dados de exemplo carregados', { timeout: 60000 });
   await pagina.waitForSelector('.vis-executivo');
@@ -118,7 +120,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.equal(await pagina.locator('.exp-linha.raiz .abre').getAttribute('aria-expanded'), 'true', 'a raiz já vem aberta');
   const supervisores = await pagina.locator('.exp-linha:not(.raiz):not(.cab)').count();
   assert.ok(supervisores >= 2, `supervisores: ${supervisores}`);
-  await pagina.click('.exp-linha:not(.raiz):not(.cab) .nome >> nth=0');          // escolhe e abre o 1º supervisor
+  await pagina.click('.exp-linha:not(.raiz):not(.cab) b.num >> nth=0');         // clicar em qualquer parte da linha escolhe e abre
   assert.ok(await pagina.locator('.exp-linha:not(.raiz):not(.cab)').count() > supervisores, 'abriu os representantes');
   assert.equal(await pagina.locator('.exp-kpi').count(), 8);
   await pagina.locator('.exp-nivel[data-nivel="cidade"]').dragTo(pagina.locator('.exp-nivel[data-nivel="supervisor"]'));
