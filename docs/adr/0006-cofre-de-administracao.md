@@ -24,7 +24,8 @@ qualquer pessoa que abrir o site criar administradores, trocar senhas e alterar 
    novo administrador (tela Usuários — criar ou definir senha).
 5. **Trocar a senha** regrava o cofre com a nova senha; sem a chave à mão, o cofre é **apagado** (nunca sobra um
    cofre que abre com a senha antiga). Só o perfil administrador recebe cofre.
-6. **Senha de administrador:** ao menos 12 caracteres, com letras e números — o hash de login é legível com o token
+6. **Senha de administrador:** ao menos **8 caracteres** (decisão do dono em 2026-10-20; a proposta era 12 com letras e
+   números). Risco aceito: o hash de login é legível com o token
    do app (ADR-0001) e serve de ponto de ataque por força bruta; senha curta abriria o cofre.
 
 ## Consequências
