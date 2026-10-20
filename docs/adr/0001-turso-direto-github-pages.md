@@ -81,7 +81,8 @@ O banco já foi desenhado para as três opções: o app só faz `SELECT` em view
 
 ## Verificar antes do app
 
-- [ ] Confirmar se o Turso aplica as permissões finas também às escritas feitas **pelos triggers**
+- [x] **Confirmado (2026-10-20, 1ª importação real: `SQLITE_AUTH`): o Turso aplica as permissões finas também às escritas feitas pelos triggers.** Tokens ajustados (docs/06 §3).
+      Texto original: confirmar se o Turso aplica as permissões finas também às escritas feitas **pelos triggers**
       (atualização de `prospects` e inclusão em `movimentacoes`). Se aplicar, acrescentar ao token do app
       `prospects:data_update` e `movimentacoes:data_add` — e aceitar que o token também consegue
       editar dados cadastrais de `prospects` diretamente.

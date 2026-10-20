@@ -215,3 +215,11 @@ test('coluna TIPO define representante × vendedor; reimportar preenche quem est
   assert.equal(await tipo('10'), 'vendedor', 'tipo já definido não muda');
   assert.equal(await tipo('12'), 'representante', 'sem tipo: preenchido pela planilha');
 });
+
+test('falta de permissão no banco (SQLITE_AUTH) para a importação inteira com mensagem clara, sem tentar linha a linha', async () => {
+  const { gravarEmLotes } = await import('../shared/gravacao.mjs');
+  let chamadas = 0;
+  const db = { batch: async () => { chamadas++; throw new Error('SQLITE_AUTH: SQLite error: not authorized'); } };
+  await assert.rejects(gravarEmLotes(db, [1, 2, 3], (x) => [{ sql: 'x', args: [x] }]), /falta de permissão.*Criar administrador/);
+  assert.equal(chamadas, 1);
+});
