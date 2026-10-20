@@ -40,6 +40,7 @@ erDiagram
 | `status` | os 8 status, cor e como contam nos indicadores | `aceita_contato`, `lista_trabalho` (aparece na lista de prospects), `conta_contactado`, `conta_carteira` (inválido = 0). |
 | `perfis` (0008) | perfis de acesso | `nome`, `base` (tipo-base = perfil técnico: decide o escopo dos dados e as regras do banco), `sistema` (os 5 que vêm prontos; um por tipo-base). Usuário com `usuarios.perfil_id` NULL usa o perfil do sistema do seu tipo-base; gatilho exige que o tipo-base do perfil seja o `usuarios.perfil`. `ve_todos` (0009, só tipo-base supervisor): vê os dados de todas as equipes; registra só na própria. |
 | `perfil_telas` (0008) | telas de cada perfil | `(perfil_id, tela)` — códigos em `shared/perfis.mjs`. O Administrador do sistema tem sempre todas (gatilho impede tirar). |
+| `resumo_carteira` (0012) | resumo pronto da carteira | uma linha por vendedor × cidade × segmento × onda × rota × subrota × status: `qtd`, `atendidos`, `cadastrados`, `credito` (etapas do funil, mesma regra do Início). Mantido **só** pelos triggers `trg_resumo_carteira_ins/upd` em `prospects` (importação, atendimento, ERP, crédito, transferência ajustam na mesma transação). Ausente = `''`. Lido pela tela Explorar carteira e pelo Início (posição atual) no lugar da carteira inteira. |
 | `motivos_sem_interesse` | lista de motivos de recusa | `exige_observacao` (Outro), `uso_app` = 0 para motivos do sistema (`NAO_INFORMADO`, usado na importação inicial). |
 
 ### Pessoas

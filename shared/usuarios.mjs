@@ -2,7 +2,7 @@
 // Senhas são SEMPRE geradas pelo sistema (10 caracteres aleatórios) e mostradas uma única vez (ADR-0001).
 import { gerarHashSenha } from './senha.mjs';
 import { normalizarBusca } from './texto.mjs';
-import { fecharCofre } from './cofre.mjs';
+import { abrirCofre, fecharCofre, VERSAO_CHAVE_ADMIN, versaoDoCofre } from './cofre.mjs';
 
 export const PERFIS_SISTEMA = Object.freeze(['administrador', 'gerente', 'financeiro']); // criados manualmente
 export const TIPOS_ATUACAO = Object.freeze(['representante', 'vendedor']);
@@ -45,9 +45,10 @@ export async function listarUsuarios(db) {
  * `senha` (opcional, mín. 8 caracteres): senha definida pelo administrador (tela de usuários ou Secret do workflow
  * "Criar administrador"). Sem ela, gera uma senha provisória, devolvida para mostrar uma vez.
  * `chaveAdmin` (opcional): chave de administração a trancar no cofre do novo ADMINISTRADOR com a senha dele
- * (ADR-0006) — assim ele entra só com usuário e senha. Exige senha forte (shared/cofre.mjs).
+ * (ADR-0006) — assim ele entra só com usuário e senha. Exige senha forte (shared/cofre.mjs). `versaoChave`: versão das
+ * permissões dessa chave (a da sessão de quem cria; a do Actions é a atual).
  */
-export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPor, senha: senhaInicial = null, chaveAdmin = null }) {
+export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPor, senha: senhaInicial = null, chaveAdmin = null, versaoChave = null }) {
   if (!PERFIS_SISTEMA.includes(perfil)) throw new Error('perfil deve ser administrador, gerente ou financeiro');
   const l = String(login ?? '').trim();
   const n = String(nome ?? '').trim();
@@ -55,7 +56,7 @@ export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPo
   if (n.length < 3) throw new Error('informe o nome');
   const comCofre = perfil === 'administrador' && chaveAdmin;
   const senha = senhaInicial ?? (comCofre ? gerarSenhaAdmin() : gerarSenhaProvisoria());
-  const cofre = comCofre ? await fecharCofre(chaveAdmin, senha) : null;
+  const cofre = comCofre ? await fecharCofre(chaveAdmin, senha, { versao: versaoChave }) : null;
   const r = await db.execute({
     sql: 'INSERT INTO usuarios (perfil, nome, nome_busca, login, senha_hash, senha_provisoria, cofre_admin) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
     args: [perfil, n, normalizarBusca(n), l, await gerarHashSenha(senha), senhaInicial ? 0 : 1, cofre],
@@ -103,12 +104,12 @@ export async function criarUsuarioEquipe(db, { perfil, login, nome, codigoErp, s
  * Para um ADMINISTRADOR, `chaveAdmin` regrava o cofre com a nova senha; sem ela, o cofre antigo é apagado
  * (nunca fica um cofre que abre com a senha anterior).
  */
-export async function redefinirSenha(db, { usuarioId, executadoPor, senha: definida = null, chaveAdmin = null }) {
+export async function redefinirSenha(db, { usuarioId, executadoPor, senha: definida = null, chaveAdmin = null, versaoChave = null }) {
   const alvo = (await db.execute({ sql: 'SELECT perfil FROM usuarios WHERE id = ?', args: [usuarioId] })).rows[0];
   if (!alvo) throw new Error('usuário não encontrado');
   const comCofre = alvo.perfil === 'administrador' && chaveAdmin;
   const senha = definida ?? (comCofre ? gerarSenhaAdmin() : gerarSenhaProvisoria());
-  const cofre = comCofre ? await fecharCofre(chaveAdmin, senha) : null;
+  const cofre = comCofre ? await fecharCofre(chaveAdmin, senha, { versao: versaoChave }) : null;
   const hash = await gerarHashSenha(senha);
   const r = await db.batch([
     { sql: "UPDATE usuarios SET senha_hash = ?, senha_provisoria = ?, cofre_admin = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? RETURNING login", args: [hash, definida ? 0 : 1, cofre, usuarioId] },
@@ -116,6 +117,29 @@ export async function redefinirSenha(db, { usuarioId, executadoPor, senha: defin
   ], 'write');
   if (!r[0].rows.length) throw new Error('usuário não encontrado');
   return { login: r[0].rows[0].login, senha };
+}
+
+/**
+ * Renova, sem ninguém rodar workflow, o cofre dos administradores cuja chave é de versão antiga (ADR-0006): a publicação do
+ * site chama isto com a senha do Secret ADMIN_SENHA_INICIAL. Só renova o cofre que essa senha abre (quem trocou a senha
+ * fica em `semSenha`). Sem `novaChave`, só verifica: `pendentes` diz se vale gerar uma chave nova (gera só quando precisa).
+ */
+export async function renovarCofresAdmin(db, { senha, novaChave = null, executadoPor = 'publicacao' }) {
+  const r = await db.execute("SELECT id, login, cofre_admin FROM usuarios WHERE perfil = 'administrador' AND ativo = 1 AND cofre_admin IS NOT NULL ORDER BY id");
+  const saida = { pendentes: [], semSenha: [], renovados: [] };
+  for (const u of r.rows) {
+    if (versaoDoCofre(u.cofre_admin) >= VERSAO_CHAVE_ADMIN) continue;
+    if (!senha || (await abrirCofre(u.cofre_admin, senha)) === null) { saida.semSenha.push(u.login); continue; }
+    saida.pendentes.push(u.login);
+    if (!novaChave) continue;
+    await db.batch([
+      { sql: "UPDATE usuarios SET cofre_admin = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?",
+        args: [await fecharCofre(novaChave, senha, { versao: VERSAO_CHAVE_ADMIN }), u.id] },
+      auditoria(executadoPor, 'cofre_renovado', u.id, { versao: VERSAO_CHAVE_ADMIN }),
+    ], 'write');
+    saida.renovados.push(u.login);
+  }
+  return saida;
 }
 
 export async function definirTipoAtuacao(db, { usuarioId, tipo, executadoPor }) {

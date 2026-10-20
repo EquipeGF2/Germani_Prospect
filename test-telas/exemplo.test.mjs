@@ -82,6 +82,12 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.equal(await pagina.locator('.barra-carteira #busca').count(), 1);
   assert.equal(await pagina.locator('.barra-carteira #filtro-supervisor').count(), 1);
   assert.equal(await pagina.locator('#so-retornos').count(), 0, 'sem "só retornos" no computador');
+  // gestão: a lista só carrega depois de um filtro (não varre a base inteira)
+  await pagina.waitForSelector('text=Escolha um filtro');
+  assert.equal(await pagina.locator('.cartao-prospect, .tabela-carteira').count(), 0);
+  await pagina.selectOption('#filtro-supervisor', { index: 1 });
+  await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
+  await telaPronta();
   await pagina.click('.exibicao a[data-exibicao="lista"]');
   await pagina.waitForSelector('.tabela-carteira tbody tr');
   const umaLinha = () => pagina.locator('.barra-carteira > *').evaluateAll((els) => new Set(els.map((el) => Math.round(el.getBoundingClientRect().bottom))).size);
@@ -103,6 +109,28 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.ok((await pagina.locator('.tabela-carteira tbody td:nth-child(4)').allInnerTexts()).every((t) => t === 'Onda 2'));
   assert.equal(await umaLinha(), 1, 'com o filtro de onda continua numa linha');
   await foto('25-lista-tabela');
+
+  // Explorar carteira: árvore sobre o resumo, níveis arrastáveis, lista só de um ramo
+  await pagina.goto(`${base}#/explorar`);
+  await telaPronta();
+  await pagina.waitForSelector('.exp-linha.raiz');
+  assert.equal(await pagina.locator('#abrir-lista').count(), 0, 'sem abrir a base inteira');
+  assert.equal(await pagina.locator('.exp-linha.raiz .abre').getAttribute('aria-expanded'), 'true', 'a raiz já vem aberta');
+  const supervisores = await pagina.locator('.exp-linha:not(.raiz):not(.cab)').count();
+  assert.ok(supervisores >= 2, `supervisores: ${supervisores}`);
+  await pagina.click('.exp-linha:not(.raiz):not(.cab) .nome >> nth=0');          // escolhe e abre o 1º supervisor
+  assert.ok(await pagina.locator('.exp-linha:not(.raiz):not(.cab)').count() > supervisores, 'abriu os representantes');
+  assert.equal(await pagina.locator('.exp-kpi').count(), 8);
+  await pagina.locator('.exp-nivel[data-nivel="cidade"]').dragTo(pagina.locator('.exp-nivel[data-nivel="supervisor"]'));
+  assert.match(await pagina.locator('.exp-niveis .exp-nivel >> nth=0').innerText(), /Cidade/, 'arrastou Cidade para o 1º nível');
+  await pagina.click('.exp-linha:not(.raiz):not(.cab) .nome >> nth=0');
+  await foto('33-explorar');
+  const total = (await pagina.locator('#abrir-lista').innerText()).match(/· ([\d.]+) prospects/)[1];
+  await pagina.click('#abrir-lista');
+  await pagina.waitForFunction(() => location.hash.includes('cidadeBusca='));
+  await telaPronta();
+  assert.equal(await pagina.locator('text=Escolha um filtro').count(), 0, 'a lista abre filtrada');
+  assert.ok(Number(total.replace(/\./g, '')) > 0);
   await pagina.goto(`${base}#/carteira`);
   await telaPronta();
   await pagina.goto(`${base}#/carteira?visao=onda`);

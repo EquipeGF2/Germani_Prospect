@@ -9,6 +9,7 @@ const SVG = 'http://www.w3.org/2000/svg';
 const ICONES = {
   inicio: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z',
   lista: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
+  explorar: 'M4 4h6v4H4zM14 10h6v4h-6zM14 18h6v3h-6zM7 8v10h7M7 12h7',
   acompanhamento: 'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9',
   feriados: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M8 15h.01M12 15h.01M16 15h.01',
   base: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
@@ -40,6 +41,7 @@ export function icone(nome) {
 const GRUPOS = [
   { titulo: 'Prospecção', itens: [
     { caminho: '/inicio', rotulo: 'Início', icone: 'inicio', tela: 'inicio' },
+    { caminho: '/explorar', rotulo: 'Explorar carteira', icone: 'explorar', tela: 'explorar' },
     { caminho: '/carteira', rotulo: 'Lista principal', icone: 'lista', tela: 'lista' },
     { caminho: '/carteira?aba=acompanhamento', rotulo: 'Acompanhamento', icone: 'acompanhamento', tela: 'acompanhamento' },
   ] },

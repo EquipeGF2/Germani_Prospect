@@ -40,7 +40,8 @@ const CUMULATIVO = { venda: ['venda'], credito: ['credito', 'venda'], cadastro: 
  * (cumulativo: quem avançou para uma etapa posterior no período conta nas anteriores); sem interesse = encerrado no período.
  * Total e não contactado continuam sendo a posição atual da carteira.
  */
-export function consultaPainel({ usuario, periodo = null }) {
+// `fonte`: 'resumo' (tabela resumo_carteira, 0012) ou 'indice' (agrega a carteira pelo índice, 0011 — usado se o resumo ainda não existe)
+export function consultaPainel({ usuario, periodo = null, agregarAntes = true, fonte = 'resumo' }) {
   if (!usuario?.id || !usuario?.perfil) throw new Error('usuário obrigatório');
   const where = ['s.conta_carteira = 1'];
   const escopo = [];
@@ -58,6 +59,69 @@ export function consultaPainel({ usuario, periodo = null }) {
       `SUM(p.status_atual = 'sem_interesse' AND ${entre('p.dt_ultimo_contato')})`];
     const pedidos = (agregado) => `SUM((SELECT ${agregado} FROM eventos_erp e WHERE e.prospect_id = p.id AND e.tipo = 'pedido' AND ${entre('e.data_evento')}))`;
     colunas.push(pedidos('COUNT(*)'), pedidos('SUM(e.valor)'));
+  } else if (agregarAntes && fonte === 'resumo') {
+    // Posição atual a partir do resumo pronto (migração 0012): alguns milhares de linhas em vez da carteira inteira.
+    const soma = (expr) => `SUM(CASE WHEN ${expr} THEN r.qtd ELSE 0 END)`;
+    return {
+      sql: `WITH ped AS (
+              SELECT p.vendedor_id, COUNT(*) AS qtd, SUM(e.valor) AS valor
+                FROM eventos_erp e JOIN prospects p ON p.id = e.prospect_id JOIN status st ON st.codigo = p.status_atual
+               WHERE e.tipo = 'pedido' AND st.conta_carteira = 1
+               GROUP BY p.vendedor_id)
+            SELECT v.id AS agente_id, v.nome AS agente_nome, v.perfil AS agente_perfil, v.tipo_atuacao,
+                   COALESCE(v.supervisor_id, v.id) AS supervisor_id, COALESCE(sup.nome, v.nome) AS supervisor_nome,
+                   SUM(r.qtd) AS total,
+                   ${soma("r.status_atual = 'nao_contactado'")} AS nao_contactado,
+                   ${soma("r.status_atual <> 'nao_contactado'")} AS contactados,
+                   SUM(r.atendidos) AS atendidos, SUM(r.cadastrados) AS cadastrados, SUM(r.credito) AS credito_liberado,
+                   ${soma("r.status_atual = 'venda_realizada'")} AS venda_realizada,
+                   ${soma("r.status_atual = 'sem_interesse'")} AS sem_interesse,
+                   COALESCE(MAX(ped.qtd), 0) AS qtd_pedidos, COALESCE(MAX(ped.valor), 0) AS valor_pedidos
+              FROM resumo_carteira r
+              JOIN status s   ON s.codigo = r.status_atual
+              JOIN usuarios v ON v.id = r.vendedor_id
+              LEFT JOIN usuarios sup ON sup.id = COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END)
+              LEFT JOIN ped ON ped.vendedor_id = v.id
+             WHERE r.qtd > 0 AND ${where.join(' AND ')}
+             GROUP BY v.id
+             ORDER BY v.nome`,
+      args: escopo,
+    };
+  } else if (agregarAntes) {
+    // Posição atual: agrega a carteira por vendedor × status num índice que já tem as datas das etapas (migração 0011) —
+    // lê só o índice, sem abrir a linha de cada prospect — e soma os pedidos uma vez por vendedor (antes: 2 subconsultas
+    // por prospect). Mesmo resultado da consulta direta (teste em test/painel.test.mjs).
+    const soma = (expr) => `SUM(CASE WHEN ${expr} THEN a.n ELSE 0 END)`;
+    return {
+      sql: `WITH a AS (
+              SELECT vendedor_id, status_atual, COUNT(*) AS n,
+                     SUM(${ETAPA.atendido.replace(/p\./g, '')}) AS atend, SUM(${ETAPA.cadastro.replace(/p\./g, '')}) AS cad,
+                     SUM(${ETAPA.credito.replace(/p\./g, '')}) AS cred
+                FROM prospects GROUP BY vendedor_id, status_atual),
+            ped AS (
+              SELECT p.vendedor_id, COUNT(*) AS qtd, SUM(e.valor) AS valor
+                FROM eventos_erp e JOIN prospects p ON p.id = e.prospect_id JOIN status st ON st.codigo = p.status_atual
+               WHERE e.tipo = 'pedido' AND st.conta_carteira = 1
+               GROUP BY p.vendedor_id)
+            SELECT v.id AS agente_id, v.nome AS agente_nome, v.perfil AS agente_perfil, v.tipo_atuacao,
+                   COALESCE(v.supervisor_id, v.id) AS supervisor_id, COALESCE(sup.nome, v.nome) AS supervisor_nome,
+                   SUM(a.n) AS total,
+                   ${soma("a.status_atual = 'nao_contactado'")} AS nao_contactado,
+                   ${soma("a.status_atual <> 'nao_contactado'")} AS contactados,
+                   SUM(a.atend) AS atendidos, SUM(a.cad) AS cadastrados, SUM(a.cred) AS credito_liberado,
+                   ${soma("a.status_atual = 'venda_realizada'")} AS venda_realizada,
+                   ${soma("a.status_atual = 'sem_interesse'")} AS sem_interesse,
+                   COALESCE(MAX(ped.qtd), 0) AS qtd_pedidos, COALESCE(MAX(ped.valor), 0) AS valor_pedidos
+              FROM a
+              JOIN status s   ON s.codigo = a.status_atual
+              JOIN usuarios v ON v.id = a.vendedor_id
+              LEFT JOIN usuarios sup ON sup.id = COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END)
+              LEFT JOIN ped ON ped.vendedor_id = v.id
+             WHERE ${where.join(' AND ')}
+             GROUP BY v.id
+             ORDER BY v.nome`,
+      args: escopo,
+    };
   } else {
     colunas = ["SUM(p.status_atual <> 'nao_contactado')", `SUM(${ETAPA.atendido})`, `SUM(${ETAPA.cadastro})`, `SUM(${ETAPA.credito})`,
       `SUM(${ETAPA.venda})`, "SUM(p.status_atual = 'sem_interesse')"];

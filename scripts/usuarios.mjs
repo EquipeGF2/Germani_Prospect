@@ -9,6 +9,7 @@
 //   npm run usuarios -- desativar <login> | ativar <login>
 import { abrir } from '../lib/db.mjs';
 import { executor } from '../lib/cli.mjs';
+import { VERSAO_CHAVE_ADMIN } from '../shared/cofre.mjs';
 import { criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../shared/usuarios.mjs';
 
 const [comando, login, nome] = process.argv.slice(2);
@@ -34,12 +35,12 @@ switch (comando) {
     // workflow rodado de novo para o mesmo login: redefine a senha em vez de falhar
     const existe = senhaInicial && (await db.execute({ sql: 'SELECT id FROM usuarios WHERE login = ?', args: [String(login ?? '').trim()] })).rows[0];
     if (existe) {
-      await redefinirSenha(db, { usuarioId: Number(existe.id), executadoPor: quem, senha: senhaInicial, chaveAdmin });
+      await redefinirSenha(db, { usuarioId: Number(existe.id), executadoPor: quem, senha: senhaInicial, chaveAdmin, versaoChave: VERSAO_CHAVE_ADMIN });
       await definirAtivo(db, { usuarioId: Number(existe.id), ativo: true, executadoPor: quem });
       console.log(`Usuário ${login} já existia: senha redefinida com a do Secret ADMIN_SENHA_INICIAL e acesso ativo${chaveAdmin ? ' · cofre de administração gravado' : ''}.`);
       break;
     }
-    const r = await criarUsuarioSistema(db, { perfil: comando === 'criar-admin' ? 'administrador' : 'financeiro', login, nome, executadoPor: quem, senha: senhaInicial, chaveAdmin });
+    const r = await criarUsuarioSistema(db, { perfil: comando === 'criar-admin' ? 'administrador' : 'financeiro', login, nome, executadoPor: quem, senha: senhaInicial, chaveAdmin, versaoChave: VERSAO_CHAVE_ADMIN });
     // senha vinda do ambiente nunca é impressa (o log do Actions de repositório público é público)
     console.log(senhaInicial ? `Usuário criado. Login: ${r.login}  Senha: a do Secret ADMIN_SENHA_INICIAL${chaveAdmin ? ' · cofre de administração gravado' : ''}`
       : `Usuário criado. Login: ${r.login}  Senha provisória: ${r.senha}`);

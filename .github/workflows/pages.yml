@@ -6,6 +6,7 @@
 #     aqui a cada publicação (scripts/gerar-token-app.sh) — ninguém copia token;
 #   · secret TURSO_APP_TOKEN: token do app gerado à mão (turso db tokens create …).
 # Republica toda segunda-feira para renovar o token (validade de 90 dias).
+# Antes de publicar, aplica as migrações pendentes (job migrar, Secrets do ambiente producao).
 # Sem o token, o site é publicado em MODO DEMONSTRAÇÃO (banco temporário no navegador).
 name: Publicar app (GitHub Pages)
 on:
@@ -22,7 +23,63 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
+  # Antes de publicar, aplica as migrações pendentes: o site novo nunca chega antes da estrutura do banco que ele usa,
+  # e o token do app gerado logo depois já enxerga as tabelas novas. Se a migração falhar, nada é publicado.
+  migrar:
+    runs-on: ubuntu-24.04
+    environment: producao
+    concurrency:
+      group: migracao-producao
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Aplicar migrações pendentes
+        run: |
+          if [ -z "$TURSO_DATABASE_URL" ] || [ -z "$TURSO_AUTH_TOKEN" ]; then
+            echo "::warning::Sem TURSO_DATABASE_URL/TURSO_AUTH_TOKEN no ambiente producao: migrações não aplicadas."
+            exit 0
+          fi
+          npm run migrate
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      # Cofre de administração com chave de versão antiga: renova aqui mesmo com a senha do Secret ADMIN_SENHA_INICIAL
+      # (autorizado pelo dono — ADR-0006), sem rodar Criar administrador. Só gera chave nova quando algum cofre precisa;
+      # falha aqui não impede a publicação.
+      - name: Verificar cofres de administração
+        id: cofres
+        continue-on-error: true
+        run: |
+          if [ -z "$TURSO_AUTH_TOKEN" ] || [ -z "$GERMANI_SENHA_INICIAL" ]; then echo "precisa=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          node scripts/renovar-cofres.mjs verificar
+        env:
+          GERMANI_SENHA_INICIAL: ${{ secrets.ADMIN_SENHA_INICIAL }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      - name: Gerar chave de administração
+        if: steps.cofres.outputs.precisa == 'true'
+        continue-on-error: true
+        run: bash scripts/gerar-token-app.sh admin
+        env:
+          TURSO_API_TOKEN: ${{ secrets.TURSO_API_TOKEN }}
+          TURSO_DB_NAME: ${{ vars.TURSO_DB_NAME }}
+      - name: Renovar cofres de administração
+        if: steps.cofres.outputs.precisa == 'true' && env.TURSO_ADMIN_TOKEN_GERADO != ''
+        continue-on-error: true
+        run: node scripts/renovar-cofres.mjs gravar
+        env:
+          GERMANI_SENHA_INICIAL: ${{ secrets.ADMIN_SENHA_INICIAL }}
+          GERMANI_CHAVE_ADMIN: ${{ env.TURSO_ADMIN_TOKEN_GERADO }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
   montar:
+    needs: migrar
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5

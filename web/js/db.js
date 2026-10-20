@@ -93,12 +93,20 @@ export function tokenAdminAtual() {
 }
 
 /** Guarda a chave aberta do cofre no login (sem testar a conexão: o login já falou com o banco). */
-export function guardarTokenAdmin(token) {
-  try { sessionStorage.setItem(CHAVE_TOKEN, token); } catch { /* sem armazenamento: cai na tela de acesso */ }
+export function guardarTokenAdmin(token, versao = null) {
+  try {
+    sessionStorage.setItem(CHAVE_TOKEN, token);
+    if (versao) sessionStorage.setItem(`${CHAVE_TOKEN}.versao`, String(versao)); else sessionStorage.removeItem(`${CHAVE_TOKEN}.versao`);
+  } catch { /* sem armazenamento: cai na tela de acesso */ }
   admin = null;
 }
 
+/** Versão das permissões da chave aberta nesta aba (shared/cofre.mjs), para regravá-la no cofre sem perder a marca. */
+export function versaoTokenAdmin() {
+  try { return Number(sessionStorage.getItem(`${CHAVE_TOKEN}.versao`)) || null; } catch { return null; }
+}
+
 export function limparTokenAdmin() {
-  try { sessionStorage.removeItem(CHAVE_TOKEN); } catch { /* nada */ }
+  try { sessionStorage.removeItem(CHAVE_TOKEN); sessionStorage.removeItem(`${CHAVE_TOKEN}.versao`); } catch { /* nada */ }
   admin = null;
 }

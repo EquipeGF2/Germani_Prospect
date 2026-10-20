@@ -22,7 +22,7 @@ fi
 curl -sSfL https://get.tur.so/install.sh | bash >/dev/null
 export PATH="$HOME/.turso:$PATH"
 # O Turso aplica as permissões também ao que os TRIGGERS gravam (status em prospects, histórico em movimentacoes,
-# índice de busca prospects_busca e suas tabelas internas) — por isso elas estão nas listas abaixo (ADR-0001).
+# índice de busca prospects_busca e suas tabelas internas, resumo_carteira da 0012) — por isso elas estão nas listas abaixo (ADR-0001).
 # validade de 90 dias; o site é republicado toda semana (agenda no pages.yml), então sempre há um token novo
 if ! turso db list >/dev/null 2>&1; then
   echo "::error::O Turso recusou a chave do Secret TURSO_API_TOKEN (inválida, revogada ou de outra conta). Crie uma nova em app.turso.tech → Settings → API Tokens → Create e cole só a chave no Secret."
@@ -35,15 +35,14 @@ conferir() {
   esac
 }
 if [ "${1:-app}" = "admin" ]; then
-  # chave de ADMINISTRAÇÃO (permissões da docs/06 §3, sem estrutura) para o cofre do administrador (ADR-0006);
-  # sem validade: fica cifrada com a senha dele no banco
+  # chave de ADMINISTRAÇÃO para o cofre do administrador (ADR-0006); sem validade: fica cifrada com a senha dele no banco.
+  # Incluir e alterar dados em TODAS as tabelas (nunca estrutura): tabela nova de migração futura já fica coberta e a
+  # chave não precisa ser renovada a cada mudança. O que é somente inclusão (contatos, eventos, movimentações, auditoria,
+  # transferências, liberações) continua protegido pelos triggers do banco. Apagar: só onde a regra permite.
   TOKEN="$(turso db tokens create "$BANCO" --expiration never \
-    -p all:data_read -p prospects:data_add,data_update -p usuarios:data_add,data_update -p parametros:data_update \
-    -p importacoes:data_add,data_update -p importacao_linhas:data_add -p contatos:data_add \
-    -p eventos_erp:data_add -p auditoria:data_add -p liberacoes_credito:data_add -p transferencias:data_add \
-    -p feriados:data_add,data_delete -p perfis:data_add,data_update -p perfil_telas:data_add,data_delete \
-    -p movimentacoes:data_add \
-    -p prospects_busca:data_add,data_update,data_delete -p prospects_busca_data:data_add,data_update,data_delete -p prospects_busca_idx:data_add,data_update,data_delete -p prospects_busca_docsize:data_add,data_update,data_delete -p prospects_busca_config:data_add,data_update | tr -d '[:space:]')"
+    -p all:data_read,data_add,data_update \
+    -p feriados:data_delete -p perfil_telas:data_delete -p rota_paradas:data_delete \
+    -p prospects_busca:data_delete -p prospects_busca_data:data_delete -p prospects_busca_idx:data_delete -p prospects_busca_docsize:data_delete | tr -d '[:space:]')"
   conferir "$TOKEN"
   echo "::add-mask::$TOKEN"
   echo "TURSO_ADMIN_TOKEN_GERADO=$TOKEN" >> "$GITHUB_ENV"
@@ -53,7 +52,7 @@ fi
 TOKEN="$(turso db tokens create "$BANCO" --expiration 90d \
   -p all:data_read -p contatos:data_add -p transferencias:data_add \
   -p rotas:data_add,data_update -p rota_paradas:data_add,data_update,data_delete -p liberacoes_credito:data_add \
-  -p prospects:data_update -p movimentacoes:data_add | tr -d '[:space:]')"
+  -p prospects:data_update -p movimentacoes:data_add -p resumo_carteira:data_add,data_update | tr -d '[:space:]')"
 conferir "$TOKEN"
 echo "::add-mask::$TOKEN"
 echo "TURSO_APP_TOKEN_GERADO=$TOKEN" >> "$GITHUB_ENV"

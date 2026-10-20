@@ -1,7 +1,7 @@
 // Login por usuário e senha (senha gerada pelo administrador; hash PBKDF2 conferido no aparelho — ADR-0001).
 import { bancoApp, guardarTokenAdmin, limparCache, limparTokenAdmin } from './db.js';
 import { conferirSenha } from '../shared/senha.mjs';
-import { abrirCofre } from '../shared/cofre.mjs';
+import { abrirCofre, versaoDoCofre } from '../shared/cofre.mjs';
 import { carregarAcesso } from '../shared/perfis.mjs';
 
 const CHAVE = 'germani.sessao';
@@ -24,7 +24,7 @@ export async function entrar(login, senha) {
   limparCache();
   if (u.perfil === 'administrador' && u.cofre_admin) {
     const chave = await abrirCofre(u.cofre_admin, String(senha ?? ''));
-    if (chave) guardarTokenAdmin(chave);
+    if (chave) guardarTokenAdmin(chave, versaoDoCofre(u.cofre_admin));
   }
   // perfil de acesso e telas permitidas (migração 0008); sem perfil gravado = padrão do tipo-base (shared/perfis.mjs)
   const acesso = await carregarAcesso(db, { usuarioId: Number(u.id) }).catch(() => null);

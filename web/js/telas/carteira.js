@@ -3,14 +3,14 @@
 // Computador: uma barra só (busca, visões, supervisor, vendedor, data do último registro), cards ou lista, onda em ordem
 // e rota em 2 níveis (rota → subrota). Celular: layout de sempre.
 import { bancoApp, lerComCache } from '../db.js';
-import { consultaCarteira, consultaOndas, ORDENACOES, visoesPermitidas } from '../../shared/carteira.mjs';
+import { consultaCarteira, consultaCidades, consultaOndas, consultaSegmentos, ORDENACOES, precisaFiltro, visoesPermitidas } from '../../shared/carteira.mjs';
 import { h, montar, mensagem, formatar, numeros } from '../ui.js';
 import { gravarLote, lerLote, seloStatus } from './_carteira.js';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
 
 const POR_PAGINA = 50;
 const NOMES_VISAO = { lista: 'Lista', cidade: 'Cidade', bairro: 'Bairro', onda: 'Onda', status: 'Status', rota: 'Rota' };
-const FILTROS = ['cidadeBusca', 'uf', 'bairroBusca', 'onda', 'rota', 'subrota', 'status', 'supervisorId', 'vendedorId', 'somenteRetornos', 'dataDe', 'dataAte'];
+const FILTROS = ['cidadeBusca', 'uf', 'bairroBusca', 'onda', 'segmento', 'rota', 'subrota', 'status', 'supervisorId', 'vendedorId', 'somenteRetornos', 'dataDe', 'dataAte'];
 const CHAVE_EXIBICAO = 'germani.carteiraExibicao';
 const ehCelular = () => matchMedia('(max-width: 900px)').matches;
 
@@ -66,6 +66,7 @@ function descreverFiltros(e) {
   if (f.cidadeBusca) partes.push(['cidadeBusca', `Cidade: ${f.cidadeBusca}${f.uf ? '/' + f.uf : ''}`]);
   if (f.bairroBusca) partes.push(['bairroBusca', `Bairro: ${f.bairroBusca}`]);
   if (f.onda) partes.push(['onda', `Onda ${f.onda}`]);
+  if (f.segmento) partes.push(['segmento', `Segmento: ${f.segmento}`]);
   if (f.rota) partes.push(['rota', `Rota ${f.rota}${f.subrota ? ' / ' + f.subrota : ''}`]);
   if (f.somenteRetornos) partes.push(['somenteRetornos', 'Só retornos vencidos/hoje']);
   if (f.dataDe || f.dataAte) partes.push(['dataDe', `Último registro ${f.dataDe ? 'de ' + formatar.data(f.dataDe) : ''}${f.dataAte ? ' até ' + formatar.data(f.dataAte) : ''}`]);
@@ -95,9 +96,15 @@ export async function render(conteudo, ctx) {
   } catch (erro) {
     return montar(conteudo, mensagem(erro.message, 'erro'));
   }
-  const linhas = (await db.execute(consulta)).rows;
-  const [supervisores, vendedores, ondas] = await Promise.all([supervisoresDoEscopo(db, usuario), vendedoresDoEscopo(db, usuario, e.filtros.supervisorId),
-    computador ? lerComCache(db, consultaOndas(), 600).then((r) => r.rows.map((x) => String(x.onda))) : []]);
+  // gestão: a Lista principal só é lida depois de um filtro ou busca (não varre a base inteira a cada entrada)
+  const aguardaFiltro = e.aba === 'principal' && precisaFiltro(usuario, { visao: e.visao, filtros: e.filtros, busca: e.busca });
+  const gestao = usuario.perfil !== 'vendedor';
+  const [linhas, supervisores, vendedores, ondas, cidades, segmentos] = await Promise.all([
+    aguardaFiltro ? [] : db.execute(consulta).then((r) => r.rows),
+    supervisoresDoEscopo(db, usuario), vendedoresDoEscopo(db, usuario, e.filtros.supervisorId),
+    computador ? lerComCache(db, consultaOndas(), 600).then((r) => r.rows.map((x) => String(x.onda))) : [],
+    gestao ? lerComCache(db, consultaCidades(), 600).then((r) => r.rows) : [],
+    gestao ? lerComCache(db, consultaSegmentos(), 600).then((r) => r.rows.map((x) => String(x.segmento))) : []]);
 
   const campoBusca = h('input', { type: 'search', id: 'busca', value: e.busca, placeholder: 'Nome, CNPJ, cidade ou bairro', 'aria-label': 'Buscar prospect' });
   const formBusca = h('form', { class: 'barra-busca', onsubmit: (ev) => { ev.preventDefault(); location.hash = endereco(e, { busca: campoBusca.value.trim(), pagina: 0 }); } },
@@ -120,7 +127,21 @@ export async function render(conteudo, ctx) {
     const sel = h('select', { id: 'filtro-vendedor', onchange: () => { location.hash = endereco(e, { filtros: { vendedorId: sel.value ? Number(sel.value) : null }, pagina: 0 }); } },
       h('option', { value: '' }, e.filtros.supervisorId || usuario.perfil === 'supervisor' ? 'Toda a equipe' : 'Todos'),
       vendedores.map((v) => h('option', { value: v.id, selected: Number(v.id) === e.filtros.vendedorId }, `${v.nome} · ${papelDoAgente(v)}${v.codigo_erp ? ' · ' + v.codigo_erp : ''}`)));
-    extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-vendedor' }, 'Representante / vendedor'), sel));
+    extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-vendedor' }, 'Representante'), sel));
+  }
+  if (cidades.length) {
+    const atual = e.filtros.cidadeBusca ? `${e.filtros.cidadeBusca}|${e.filtros.uf ?? ''}` : '';
+    const sel = h('select', { id: 'filtro-cidade', onchange: () => {
+      const [cidadeBusca, uf] = sel.value ? sel.value.split('|') : [null, null];
+      location.hash = endereco(e, { filtros: { cidadeBusca, uf: uf || null, bairroBusca: null }, pagina: 0 });
+    } }, h('option', { value: '' }, 'Todas'),
+    cidades.map((c) => { const v = `${c.cidade_busca}|${c.uf ?? ''}`; return h('option', { value: v, selected: v === atual }, `${c.cidade ?? c.cidade_busca}${c.uf ? '/' + c.uf : ''}`); }));
+    extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-cidade' }, 'Cidade'), sel));
+  }
+  if (segmentos.length) {
+    const sel = h('select', { id: 'filtro-segmento', onchange: () => { location.hash = endereco(e, { filtros: { segmento: sel.value || null }, pagina: 0 }); } },
+      h('option', { value: '' }, 'Todos'), segmentos.map((s) => h('option', { value: s, selected: s === e.filtros.segmento }, s)));
+    extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-segmento' }, 'Segmento'), sel));
   }
   if (!computador) {
     extras.push(h('label', { class: 'marcador' },
@@ -139,7 +160,8 @@ export async function render(conteudo, ctx) {
   });
 
   let corpo;
-  if (e.visao === 'status') corpo = blocoStatus(e, linhas);
+  if (aguardaFiltro) corpo = mensagem('Escolha um filtro — supervisor, representante, cidade, segmento, onda ou rota — ou faça uma busca para ver a lista. Para ver os números de toda a base, use a visão Cidade, Bairro ou Onda.', 'info');
+  else if (e.visao === 'status') corpo = blocoStatus(e, linhas);
   else if (e.visao === 'lista') {
     const opcoes = { podeRegistrar, selecao, comRota: permitidas.includes('rota'), mostrarCarteira: usuario.perfil !== 'vendedor' };
     corpo = blocoLista(e, linhas, { ...opcoes, comoTabela: computador && exibicao === 'lista' });
@@ -173,15 +195,15 @@ export async function render(conteudo, ctx) {
       onclick: (ev) => { ev.preventDefault(); try { localStorage.setItem(CHAVE_EXIBICAO, k); } catch { /* nada */ } render(conteudo, ctx); },
     }, t)))) : null;
   montar(conteudo,
-    h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo), h('p', {}, ajuda))),
+    // visão e exibição ficam no cabeçalho; a barra fica só com os filtros (numa linha)
+    h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo), h('p', {}, ajuda)),
+      h('div', { class: 'cabecalho-controles' }, h('div', { class: 'filtro' }, h('label', { for: 'filtro-visao' }, 'Visão'), selVisao), botoesExibicao)),
     h('div', { class: 'barra-carteira' },
       h('div', { class: 'filtro busca' }, h('label', { for: 'busca' }, 'Buscar'), formBusca),
-      h('div', { class: 'filtro' }, h('label', { for: 'filtro-visao' }, 'Visão'), selVisao),
       selOnda,
       extras,
       h('div', { class: 'filtro' }, h('label', { for: 'filtro-data-de' }, 'Último registro (de · até)'),
-        h('div', { class: 'datas' }, data('filtro-data-de', 'Último registro de', 'dataDe'), data('filtro-data-ate', 'Último registro até', 'dataAte'))),
-      botoesExibicao),
+        h('div', { class: 'datas' }, data('filtro-data-de', 'Último registro de', 'dataDe'), data('filtro-data-ate', 'Último registro até', 'dataAte')))),
     chips.length ? h('div', { class: 'chips' }, chips) : null,
     corpo);
 }

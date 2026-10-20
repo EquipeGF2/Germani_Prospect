@@ -4,7 +4,7 @@
 #   TURSO_DATABASE_URL, TURSO_AUTH_TOKEN (token administrativo)
 #   ADMIN_SENHA_INICIAL — senha do administrador (mín. 8 caracteres; ela abre o cofre — prefira letras e números). Nunca vai para o log.
 #   TURSO_API_TOKEN — chave de API da conta do Turso: gera a chave de administração trancada no cofre (ADR-0006).
-#   Depois a senha pode ser trocada na tela Usuários; pode apagar o Secret.
+#   Mantenha o Secret com a senha atual: a publicação do site usa para renovar o cofre sozinha (pages.yml).
 name: Criar administrador
 on:
   workflow_dispatch:
