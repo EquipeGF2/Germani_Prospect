@@ -64,7 +64,7 @@ const TELAS_INTERNAS = {
   '/registrar': ['/carteira', 'Registrar atendimento'],
   '/lote': ['/carteira', 'Sem interesse em lote'],
   '/financeiro/liberar': ['/financeiro', 'Liberar crédito'],
-  '/admin/acesso': ['', 'Acesso de administração'],
+  '/admin/acesso': ['', 'Confirmar senha'],
   '/admin/perfis': ['/admin/usuarios', 'Perfis'],
 };
 
