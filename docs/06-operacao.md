@@ -46,8 +46,9 @@ turso db tokens create germaniprospec -p all:data_read -p contatos:data_add -p t
 Cadastre em GitHub → Settings → Secrets and variables → Actions: **variável** `TURSO_DATABASE_URL` e **secret** `TURSO_APP_TOKEN`.
 Se houver `TURSO_API_TOKEN`, o token gerado no Actions tem prioridade sobre o `TURSO_APP_TOKEN`.
 
-**Token de administração** (NÃO vai para o GitHub: o administrador cola na tela "Acesso de administração",
-e ele fica só naquela aba do navegador):
+**Chave de administração** (NÃO vai para o GitHub nem é colada por ninguém): o workflow **Criar administrador** gera e
+tranca no cofre do administrador (ADR-0006); o login abre o cofre com a senha. Em outra aba (ou com o navegador
+reaberto), a tela **Confirme sua senha** reabre o cofre — só a senha, nunca token. Permissões da chave (referência):
 ```bash
 turso db tokens create germaniprospec -p all:data_read \
   -p prospects:data_add,data_update -p usuarios:data_add,data_update -p parametros:data_update \

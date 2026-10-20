@@ -59,16 +59,6 @@ export async function bancoAdmin() {
   return admin;
 }
 
-/** Guarda o token de administração nesta aba depois de conferir que ele conecta. */
-export async function definirTokenAdmin(token) {
-  const t = String(token ?? '').trim();
-  if (!t) throw new Error('informe o token');
-  const teste = await cliente(t);
-  await teste.execute('SELECT count(*) FROM parametros');
-  try { sessionStorage.setItem(CHAVE_TOKEN, t); } catch { throw new Error('o navegador bloqueou o armazenamento da sessão'); }
-  admin = teste;
-}
-
 /** Chave de administração aberta nesta aba (para trancar no cofre de outro administrador), ou null. */
 export function tokenAdminAtual() {
   if (modoDemonstracao()) return null;
