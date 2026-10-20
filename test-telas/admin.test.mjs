@@ -322,7 +322,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.fill('#senha', senhaAnalista);
   await pagina.click('button:text("Entrar")');
   await pagina.waitForSelector('h1:text("Console de crédito")');       // o analista cai direto no console
-  assert.equal(await pagina.locator('#menu a[title="Lista principal"]').count(), 1);
+  assert.equal(await pagina.locator('#menu a[title="Lista principal"]').count(), 0, 'financeiro vê só a análise de crédito (perfil do sistema)');
   assert.equal(await pagina.locator('#menu a[title="Usuários"]').count(), 0, 'analista não vê administração');
   assert.match(await texto(), /1\s+em análise/);                       // o 2º CNPJ do arquivo de cadastro
   await foto('19-console-credito');

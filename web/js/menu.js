@@ -1,6 +1,7 @@
 // Casca do app: menu lateral (recolher/expandir; gaveta no celular) e barra superior com o caminho da página.
 // Ícones em SVG desenhados aqui mesmo (sem biblioteca externa).
 import { h, montar } from './ui.js';
+import { podeTela } from '../shared/perfis.mjs';
 
 const CHAVE_RECOLHIDO = 'germani.menuRecolhido';
 const SVG = 'http://www.w3.org/2000/svg';
@@ -35,25 +36,25 @@ export function icone(nome) {
   return svg;
 }
 
-// Grupos do menu. `perfis` ausente = todos os perfis logados.
+// Grupos do menu. Cada item aparece se o perfil do usuário tem a tela (shared/perfis.mjs); grupo vazio some.
 const GRUPOS = [
   { titulo: 'Prospecção', itens: [
-    { caminho: '/inicio', rotulo: 'Início', icone: 'inicio' },
-    { caminho: '/carteira', rotulo: 'Lista principal', icone: 'lista' },
-    { caminho: '/carteira?aba=acompanhamento', rotulo: 'Acompanhamento', icone: 'acompanhamento' },
+    { caminho: '/inicio', rotulo: 'Início', icone: 'inicio', tela: 'inicio' },
+    { caminho: '/carteira', rotulo: 'Lista principal', icone: 'lista', tela: 'lista' },
+    { caminho: '/carteira?aba=acompanhamento', rotulo: 'Acompanhamento', icone: 'acompanhamento', tela: 'acompanhamento' },
   ] },
-  { titulo: 'Financeiro', perfis: ['financeiro', 'administrador'], itens: [
-    { caminho: '/financeiro', rotulo: 'Console de crédito', icone: 'financeiro' },
+  { titulo: 'Financeiro', itens: [
+    { caminho: '/financeiro', rotulo: 'Console de crédito', icone: 'financeiro', tela: 'credito' },
   ] },
-  { titulo: 'Administração', perfis: ['administrador'], itens: [
-    { caminho: '/admin/importar/base', rotulo: 'Base de prospects', icone: 'base' },
-    { caminho: '/admin/importar/tipos', rotulo: 'Representantes / vendedores', icone: 'tipos' },
-    { caminho: '/admin/importar/erp', rotulo: 'Cadastro · Pedidos · Baixados', icone: 'erp' },
-    { caminho: '/admin/importar/credito', rotulo: 'Relatório de crédito', icone: 'credito' },
-    { caminho: '/admin/importacoes', rotulo: 'Importações', icone: 'importacoes' },
-    { caminho: '/admin/usuarios', rotulo: 'Usuários', icone: 'usuarios' },
-    { caminho: '/admin/parametros', rotulo: 'Parâmetros', icone: 'parametros' },
-    { caminho: '/admin/feriados', rotulo: 'Feriados', icone: 'feriados' },
+  { titulo: 'Administração', itens: [
+    { caminho: '/admin/importar/base', rotulo: 'Base de prospects', icone: 'base', tela: 'admin_base' },
+    { caminho: '/admin/importar/tipos', rotulo: 'Representantes / vendedores', icone: 'tipos', tela: 'admin_tipos' },
+    { caminho: '/admin/importar/erp', rotulo: 'Cadastro · Pedidos · Baixados', icone: 'erp', tela: 'admin_erp' },
+    { caminho: '/admin/importar/credito', rotulo: 'Relatório de crédito', icone: 'credito', tela: 'admin_credito' },
+    { caminho: '/admin/importacoes', rotulo: 'Importações', icone: 'importacoes', tela: 'admin_importacoes' },
+    { caminho: '/admin/usuarios', rotulo: 'Usuários', icone: 'usuarios', tela: 'admin_usuarios' },
+    { caminho: '/admin/parametros', rotulo: 'Parâmetros', icone: 'parametros', tela: 'admin_parametros' },
+    { caminho: '/admin/feriados', rotulo: 'Feriados', icone: 'feriados', tela: 'admin_feriados' },
   ] },
 ];
 
@@ -64,6 +65,7 @@ const TELAS_INTERNAS = {
   '/lote': ['/carteira', 'Sem interesse em lote'],
   '/financeiro/liberar': ['/financeiro', 'Liberar crédito'],
   '/admin/acesso': ['', 'Acesso de administração'],
+  '/admin/perfis': ['/admin/usuarios', 'Perfis'],
 };
 
 function itemAtivo(caminho, consulta) {
@@ -109,7 +111,8 @@ export function atualizarCasca({ usuario, caminho, consulta, papel, aoSair }) {
   const ativo = itemAtivo(caminho, consulta);
   let grupoAtivo = null;
   let itemDoTopo = null;
-  montar(menu, GRUPOS.filter((g) => !g.perfis || g.perfis.includes(usuario.perfil)).map((g) => h('div', { class: 'menu-grupo' },
+  const visiveis = GRUPOS.map((g) => ({ ...g, itens: g.itens.filter((i) => podeTela(usuario, i.tela)) })).filter((g) => g.itens.length);
+  montar(menu, visiveis.map((g) => h('div', { class: 'menu-grupo' },
     h('div', { class: 'menu-titulo' }, g.titulo),
     g.itens.map((i) => {
       const marcado = i.caminho === ativo;

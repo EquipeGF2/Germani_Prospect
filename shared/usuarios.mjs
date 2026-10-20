@@ -33,7 +33,7 @@ function auditoria(executadoPor, acao, id, detalhes = {}) {
 
 export async function listarUsuarios(db) {
   const r = await db.execute(`
-    SELECT u.id, u.login, u.perfil, u.tipo_atuacao, u.codigo_erp, u.nome, u.ativo, u.supervisor_id, s.nome AS supervisor_nome,
+    SELECT u.id, u.login, u.perfil, u.perfil_id, u.tipo_atuacao, u.codigo_erp, u.nome, u.ativo, u.supervisor_id, s.nome AS supervisor_nome,
            CASE WHEN u.senha_hash IS NULL THEN 'sem_acesso' WHEN u.senha_provisoria = 1 THEN 'provisoria' ELSE 'ok' END AS situacao_senha,
            (SELECT count(*) FROM prospects p WHERE p.vendedor_id = u.id) AS prospects
       FROM usuarios u LEFT JOIN usuarios s ON s.id = u.supervisor_id

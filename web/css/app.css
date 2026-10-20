@@ -427,3 +427,12 @@ td.pct { min-width: 96px; }
   .numeros.filtrantes .numero { white-space: normal; }
   .barra-console > select, .linha-novo-usuario select, .linha-novo-usuario input, .linha-novo-usuario > div { width: 100%; }
 }
+.resumo-equipe > div + div { margin-top: 4px; }
+/* Perfis e telas de acesso */
+.lista-perfis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+.lista-perfis .cartao { margin: 0; }
+.telas-perfil { display: flex; flex-wrap: wrap; gap: 6px; }
+.grade-telas { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 6px 0 12px; }
+.grupo-telas { border: 1px solid var(--borda); border-radius: var(--raio-p); padding: 10px 14px; margin: 0; display: grid; gap: 6px; align-content: start; }
+.grupo-telas legend { font-weight: 600; font-size: 13px; padding: 0 4px; }
+.grupo-telas .indisponivel { color: var(--suave); }

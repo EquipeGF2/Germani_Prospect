@@ -309,3 +309,26 @@ No modo demonstração, o administrador vê no Início **Carregar dados de exemp
 acesso de todos com a senha `demo1234` (inclusive `gerente` e `financeiro`) e simula a campanha com as **rotinas reais**:
 atendimentos e sem interesse dos vendedores, arquivo de cadastro do ERP, liberações no console e arquivo de pedidos —
 com o histórico de movimentação completo. Sorteio com semente fixa; nunca roda em produção (só existe no modo demonstração).
+
+## 11. Perfis de acesso e telas (migração 0008 · `shared/perfis.mjs`)
+
+- **Perfil** = nome + **tipo-base** + **telas**. O tipo-base é o perfil técnico do usuário e decide **quais dados** ele vê e
+  as regras do banco; as telas decidem **o que aparece no menu** e o que pode ser aberto.
+
+| Tipo-base | Dados | Telas possíveis |
+|---|---|---|
+| Administrador | tudo, sem restrição | todas (o perfil Administrador do sistema tem sempre todas) |
+| Gerente comercial | todos os dados; não libera crédito | Início, Lista principal, Acompanhamento, Registrar |
+| Supervisor | só a equipe dele | Início, Lista principal, Acompanhamento, Registrar |
+| Vendedor / representante | só a própria carteira | Início, Lista principal, Acompanhamento, Registrar |
+| Analista financeiro | só a análise de crédito | Console de crédito (+ Início, Lista, Acompanhamento, se marcados) |
+
+- Os **5 perfis do sistema** vêm prontos com as telas de hoje (financeiro: só o Console de crédito). O administrador cria
+  outros em **Usuários → Perfis e telas de acesso** (ex.: "Supervisor regional" sem Acompanhamento) e escolhe o perfil de
+  cada usuário na coluna Perfil da lista de usuários (só perfis do mesmo tipo-base).
+- O login carrega as telas do perfil; o menu mostra só elas e o endereço de uma tela não liberada mostra "Seu perfil não
+  tem acesso a esta tela" (ou "Esta área é exclusiva do administrador"). Sem o Início no perfil, o usuário entra na
+  primeira tela permitida. Mudança de perfil vale no próximo login.
+- Telas de administração só servem ao tipo-base Administrador (gravam com a chave do cofre — ADR-0006). Alterar perfis
+  exige a chave de administração com as permissões `perfis` e `perfil_telas` (docs/06 §3).
+

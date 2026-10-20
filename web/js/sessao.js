@@ -2,6 +2,7 @@
 import { bancoApp, guardarTokenAdmin, limparTokenAdmin } from './db.js';
 import { conferirSenha } from '../shared/senha.mjs';
 import { abrirCofre } from '../shared/cofre.mjs';
+import { carregarAcesso } from '../shared/perfis.mjs';
 
 const CHAVE = 'germani.sessao';
 
@@ -24,8 +25,10 @@ export async function entrar(login, senha) {
     const chave = await abrirCofre(u.cofre_admin, String(senha ?? ''));
     if (chave) guardarTokenAdmin(chave);
   }
+  // perfil de acesso e telas permitidas (migração 0008); sem perfil gravado = padrão do tipo-base (shared/perfis.mjs)
+  const acesso = await carregarAcesso(db, { usuarioId: Number(u.id) }).catch(() => null);
   const sessao = { id: Number(u.id), login: u.login, nome: u.nome, perfil: u.perfil, tipo_atuacao: u.tipo_atuacao ?? null,
-    supervisor_id: u.supervisor_id == null ? null : Number(u.supervisor_id) };
+    supervisor_id: u.supervisor_id == null ? null : Number(u.supervisor_id), ...(acesso ?? {}) };
   try { localStorage.setItem(CHAVE, JSON.stringify(sessao)); } catch { /* sessão só nesta página */ }
   return sessao;
 }

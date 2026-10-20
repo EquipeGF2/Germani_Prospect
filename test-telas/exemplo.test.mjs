@@ -129,6 +129,42 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.deepEqual(ordem, ['Aguardando cadastro', 'Análise financeira', 'Aguardando pedido', 'Venda realizada', 'Sem interesse', 'Inválido (baixado)']);
   await foto('27-acompanhamento');
 
+  // perfis: o administrador cria "Supervisor regional" (só Início e Lista) e atribui ao 1º supervisor
+  const supPerfil = await pagina.evaluate(async () => {
+    const v = new URL(document.querySelector('script[type=module]').src).search;
+    const { bancoApp } = await import(`./js/db.js${v}`);
+    return (await (await bancoApp()).execute("SELECT login FROM usuarios WHERE perfil = 'supervisor' ORDER BY login LIMIT 1")).rows[0].login;
+  });
+  await pagina.goto(`${base}#/admin/usuarios`);
+  await telaPronta();
+  await pagina.click('#botao-perfis');
+  await pagina.waitForSelector('h1:text("Perfis e telas de acesso")');
+  assert.equal(await pagina.locator('.lista-perfis .perfil').count(), 5, 'os 5 perfis do sistema');
+  await pagina.click('#novo-perfil-botao');
+  await pagina.fill('#perfil-nome', 'Supervisor regional');
+  await pagina.selectOption('#perfil-base', 'supervisor');
+  assert.ok(await pagina.locator('#form-perfil input[data-tela="credito"]').isDisabled(), 'crédito não serve para supervisor');
+  await pagina.uncheck('#form-perfil input[data-tela="acompanhamento"]');
+  await pagina.uncheck('#form-perfil input[data-tela="registrar"]');
+  await foto('29-perfil-novo');
+  await pagina.click('#form-perfil button:text("Incluir perfil")');
+  await pagina.waitForSelector('.lista-perfis .perfil[data-perfil="Supervisor regional"]');
+  await foto('30-perfis');
+  await pagina.click('a:text("Voltar aos usuários")');
+  await telaPronta();
+  await pagina.locator(`select[data-perfil-usuario="${supPerfil}"]`).selectOption({ label: 'Supervisor regional' });
+  await pagina.waitForSelector(`text=perfil Supervisor regional`);
+  await pagina.click('.menu-sair');
+  await entrar(supPerfil);
+  await pagina.waitForSelector('h1:text("Sua equipe")');
+  const menuSup = await pagina.locator('#menu a').allInnerTexts();
+  assert.ok(menuSup.some((t) => t.includes('Lista principal')) && !menuSup.some((t) => t.includes('Acompanhamento')), `menu: ${menuSup}`);
+  await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
+  await pagina.waitForSelector('text=Seu perfil não tem acesso a esta tela.');
+  await pagina.click('.menu-sair');
+  await entrar('admin');
+  await pagina.waitForSelector('.painel-web');
+
   // outros perfis com a senha de exemplo
   await pagina.click('.menu-sair');
   await entrar('gerente');
