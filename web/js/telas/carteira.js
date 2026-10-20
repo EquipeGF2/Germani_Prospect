@@ -108,18 +108,19 @@ export async function render(conteudo, ctx) {
     .map((v) => h('a', { href: endereco(e, { visao: v, pagina: 0 }), class: v === e.visao ? 'ativa' : '' }, NOMES_VISAO[v])));
 
   const extras = [];
-  if (supervisores.length) {
+  // gestão e supervisor sempre veem os filtros de carteira (mesmo antes da importação da base: só "Todos")
+  if (VE_TUDO.includes(usuario.perfil)) {
     // trocar o supervisor limpa o vendedor (a lista de vendedores passa a ser só a equipe escolhida)
     const sel = h('select', { id: 'filtro-supervisor', onchange: () => { location.hash = endereco(e, { filtros: { supervisorId: sel.value ? Number(sel.value) : null, vendedorId: null }, pagina: 0 }); } },
       h('option', { value: '' }, 'Todos os supervisores'),
       supervisores.map((s) => h('option', { value: s.id, selected: Number(s.id) === e.filtros.supervisorId }, `${s.nome}${s.codigo_erp ? ' · ' + s.codigo_erp : ''}`)));
     extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-supervisor' }, 'Supervisor'), sel));
   }
-  if (vendedores.length) {
+  if (VE_TUDO.includes(usuario.perfil) || usuario.perfil === 'supervisor') {
     const sel = h('select', { id: 'filtro-vendedor', onchange: () => { location.hash = endereco(e, { filtros: { vendedorId: sel.value ? Number(sel.value) : null }, pagina: 0 }); } },
       h('option', { value: '' }, e.filtros.supervisorId || usuario.perfil === 'supervisor' ? 'Toda a equipe' : 'Todos'),
       vendedores.map((v) => h('option', { value: v.id, selected: Number(v.id) === e.filtros.vendedorId }, `${v.nome} · ${papelDoAgente(v)}${v.codigo_erp ? ' · ' + v.codigo_erp : ''}`)));
-    extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-vendedor' }, 'Vendedor / representante'), sel));
+    extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-vendedor' }, 'Representante / vendedor'), sel));
   }
   if (!computador) {
     extras.push(h('label', { class: 'marcador' },

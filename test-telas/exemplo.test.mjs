@@ -154,6 +154,11 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await telaPronta();
   await pagina.locator(`select[data-perfil-usuario="${supPerfil}"]`).selectOption({ label: 'Supervisor regional' });
   await pagina.waitForSelector(`text=perfil Supervisor regional`);
+  // administrador/gerente/financeiro trocam de perfil entre si; a lista não tem mais a coluna Prospects
+  const opcoesGerente = await pagina.locator('select[data-perfil-usuario="gerente"] option').allInnerTexts();
+  assert.ok(opcoesGerente.includes('Analista financeiro') && opcoesGerente.includes('Administrador'), `opções: ${opcoesGerente}`);
+  assert.equal(await pagina.locator('th:text-is("Prospects")').count(), 0);
+  await foto('31-usuarios-perfil');
   await pagina.click('.menu-sair');
   await entrar(supPerfil);
   await pagina.waitForSelector('h1:text("Sua equipe")');

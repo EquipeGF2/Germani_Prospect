@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe } from './auxiliar.mjs';
-import { carregarAcesso, definirPerfilUsuario, listarPerfis, salvarPerfil, telasDoUsuario, telasPadrao, TELAS } from '../shared/perfis.mjs';
+import { carregarAcesso, definirPerfilUsuario, listarPerfis, perfisPossiveis, salvarPerfil, telasDoUsuario, telasPadrao, TELAS } from '../shared/perfis.mjs';
+import { criarUsuarioSistema } from '../shared/usuarios.mjs';
 
 test('perfis do sistema: um por tipo-base, com as telas de hoje (financeiro só crédito; administrador todas)', async () => {
   const db = await bancoTeste();
@@ -35,4 +36,27 @@ test('perfil criado: telas só do tipo-base, atribuído ao usuário de mesmo tip
   await salvarPerfil(db, { id, nome: 'Supervisor regional', base: 'supervisor', telas: ['inicio', 'lista', 'acompanhamento'], executadoPor: 'adm' });
   assert.equal((await carregarAcesso(db, { usuarioId: 1 })).telas.length, 3);
   assert.equal((await listarPerfis(db)).find((p) => p.id === id).usuarios, 1);
+});
+
+test('trocar o tipo do usuário pela tela: só entre administrador, gerente e financeiro; ex-administrador perde o cofre', async () => {
+  const db = await bancoTeste();
+  await criarEquipe(db);   // sup 1, vendedores 2 e 3, admin 4
+  const perfis = await listarPerfis(db);
+  const sistema = (base) => perfis.find((p) => p.sistema && p.base === base).id;
+  const { id: g } = await criarUsuarioSistema(db, { perfil: 'gerente', login: 'ger', nome: 'Gerente Um', executadoPor: 'adm' });
+  assert.deepEqual(perfisPossiveis(perfis, { perfil: 'gerente' }).map((p) => p.base).sort(), ['administrador', 'financeiro', 'gerente']);
+  assert.deepEqual(perfisPossiveis(perfis, { perfil: 'vendedor' }).map((p) => p.base), ['vendedor']);
+
+  const r = await definirPerfilUsuario(db, { usuarioId: g, perfilId: sistema('financeiro'), executadoPor: 'adm', executadoPorId: 4 });
+  assert.deepEqual(r, { base: 'financeiro', perfilId: null, mudouBase: true });
+  assert.equal((await db.execute({ sql: 'SELECT perfil FROM usuarios WHERE id = ?', args: [g] })).rows[0].perfil, 'financeiro');
+  assert.deepEqual((await carregarAcesso(db, { usuarioId: g })).telas, ['credito']);
+
+  await db.execute({ sql: "UPDATE usuarios SET cofre_admin = 'x' WHERE id = ?", args: [g] });
+  await definirPerfilUsuario(db, { usuarioId: g, perfilId: sistema('administrador'), executadoPor: 'adm', executadoPorId: 4 });
+  await definirPerfilUsuario(db, { usuarioId: g, perfilId: sistema('gerente'), executadoPor: 'adm', executadoPorId: 4 });
+  assert.equal((await db.execute({ sql: 'SELECT cofre_admin FROM usuarios WHERE id = ?', args: [g] })).rows[0].cofre_admin, null);
+
+  await assert.rejects(definirPerfilUsuario(db, { usuarioId: 2, perfilId: sistema('gerente'), executadoPor: 'adm', executadoPorId: 4 }), /vêm da importação/);
+  await assert.rejects(definirPerfilUsuario(db, { usuarioId: 4, perfilId: sistema('gerente'), executadoPor: 'adm', executadoPorId: 4 }), /próprio usuário/);
 });

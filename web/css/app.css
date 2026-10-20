@@ -436,3 +436,4 @@ td.pct { min-width: 96px; }
 .grupo-telas { border: 1px solid var(--borda); border-radius: var(--raio-p); padding: 10px 14px; margin: 0; display: grid; gap: 6px; align-content: start; }
 .grupo-telas legend { font-weight: 600; font-size: 13px; padding: 0 4px; }
 .grupo-telas .indisponivel { color: var(--suave); }
+select[data-perfil-usuario] { min-width: 12.5rem; }

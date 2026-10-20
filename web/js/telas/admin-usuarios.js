@@ -1,7 +1,7 @@
 import { bancoAdmin, tokenAdminAtual } from '../db.js';
 import { criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../../shared/usuarios.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
-import { definirPerfilUsuario, listarPerfis } from '../../shared/perfis.mjs';
+import { definirPerfilUsuario, listarPerfis, perfisPossiveis } from '../../shared/perfis.mjs';
 import { h, montar, tabela, aviso, comEspera, selo, cartoesFiltro } from '../ui.js';
 import { NOMES_PERFIL } from '../app.js';
 
@@ -48,20 +48,22 @@ export async function render(conteudo, ctx) {
     montar(listaArea, tabela([
       { titulo: 'Nome', valor: (u) => h('div', {}, h('b', {}, u.nome), h('div', { class: 'ajuda', style: 'margin:0' }, `login ${u.login}${u.codigo_erp ? ' · cód. ' + u.codigo_erp : ''}`)) },
       { titulo: 'Perfil', valor: (u) => {
-        // perfis do mesmo tipo-base do usuário (o tipo-base define o escopo dos dados; o perfil, as telas)
-        const opcoes = perfis.filter((p) => p.base === u.perfil);
+        // mesmo tipo-base: muda só as telas; administrador/gerente/financeiro trocam entre si (shared/perfis.mjs)
         const atual = u.perfil_id ? Number(u.perfil_id) : perfilSistema(u.perfil)?.id;
-        if (opcoes.length < 2) return NOMES_PERFIL[u.perfil];
+        const opcoes = perfisPossiveis(perfis, u).filter((p) => u.id !== ctx.usuario.id || p.base === u.perfil);
+        if (opcoes.length < 2) return perfis.find((p) => p.id === atual)?.nome ?? NOMES_PERFIL[u.perfil];
         const s = h('select', { 'aria-label': `perfil de ${u.login}`, dados: { perfilUsuario: u.login }, onchange: async () => {
           const escolhido = perfis.find((p) => p.id === Number(s.value));
-          const ok = await comEspera(null, async () => {
-            await definirPerfilUsuario(db, { usuarioId: u.id, perfilId: escolhido.sistema ? null : escolhido.id, executadoPor: quem }); return true;
-          });
-          if (ok) { u.perfil_id = escolhido.sistema ? null : escolhido.id; aviso(`${u.nome}: perfil ${escolhido.nome}`); }
+          const r = await comEspera(null, () => definirPerfilUsuario(db, { usuarioId: u.id, perfilId: escolhido.id, executadoPor: quem, executadoPorId: ctx.usuario.id }));
+          if (!r) { s.value = String(atual); return; }
+          const virouAdmin = r.mudouBase && r.base === 'administrador';
+          u.perfil = r.base; u.perfil_id = r.perfilId;
+          aviso(`${u.nome}: perfil ${escolhido.nome}${virouAdmin ? ' — defina a senha dele para liberar a administração' : ''}`);
+          desenhar();
         } }, opcoes.map((p) => h('option', { value: p.id, selected: p.id === atual }, p.nome)));
         return s;
       } },
-      { titulo: 'Forma de trabalho', valor: (u) => {
+      { titulo: 'Representante ou vendedor', valor: (u) => {
         if (u.perfil !== 'vendedor') return '—';
         const s = h('select', { 'aria-label': `tipo de ${u.login}`, onchange: async () => {
           const ok = await comEspera(null, async () => { await definirTipoAtuacao(db, { usuarioId: u.id, tipo: s.value, executadoPor: quem }); return true; });
@@ -70,8 +72,7 @@ export async function render(conteudo, ctx) {
         ['representante', 'vendedor'].map((t) => h('option', { value: t, selected: u.tipo_atuacao === t }, t === 'vendedor' ? 'Vendedor (com rota)' : 'Representante (sem rota)')));
         return s;
       } },
-      { titulo: 'Supervisor', valor: (u) => u.supervisor_nome ?? '' },
-      { titulo: 'Prospects', campo: 'prospects', classe: 'num' },
+      { titulo: 'Supervisor da equipe', valor: (u) => u.supervisor_nome ?? '' },
       { titulo: 'Acesso', valor: (u) => Number(u.ativo) ? selo(...SITUACAO[u.situacao_senha]) : selo('desativado', 'erro') },
       { titulo: 'Ações', valor: (u) => {
         // o administrador define a senha de cada usuário (mín. 8); "Gerar" cria uma provisória aleatória

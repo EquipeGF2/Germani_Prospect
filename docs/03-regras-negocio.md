@@ -325,7 +325,13 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 
 - Os **5 perfis do sistema** vêm prontos com as telas de hoje (financeiro: só o Console de crédito). O administrador cria
   outros em **Usuários → Perfis e telas de acesso** (ex.: "Supervisor regional" sem Acompanhamento) e escolhe o perfil de
-  cada usuário na coluna Perfil da lista de usuários (só perfis do mesmo tipo-base).
+  cada usuário na coluna Perfil da lista de usuários.
+- **Trocar o perfil de um usuário** (coluna Perfil): supervisor e vendedor escolhem só entre perfis do próprio tipo-base
+  (o tipo vem da importação, com código do ERP e equipe). Administrador, gerente e analista financeiro trocam entre si —
+  isso muda também o tipo-base (o escopo dos dados). Quem deixa de ser administrador perde o cofre de administração; quem
+  passa a ser precisa ter a senha definida na tela para receber o cofre (ADR-0006). Ninguém troca o tipo do próprio usuário.
+- Colunas da lista de usuários: **Representante ou vendedor** (só para o tipo vendedor: *Representante* trabalha sem rota,
+  *Vendedor* com rota planejada pelo supervisor) e **Supervisor da equipe** (o supervisor a que o vendedor responde, vindo da importação).
 - O login carrega as telas do perfil; o menu mostra só elas e o endereço de uma tela não liberada mostra "Seu perfil não
   tem acesso a esta tela" (ou "Esta área é exclusiva do administrador"). Sem o Início no perfil, o usuário entra na
   primeira tela permitida. Mudança de perfil vale no próximo login.
