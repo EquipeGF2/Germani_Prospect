@@ -34,7 +34,9 @@ export async function render(conteudo, { usuario, parametros }) {
   if (!linha) return montar(conteudo, mensagem('Prospect não encontrado ou fora da sua carteira.', 'erro'));
   const p = ajustarFicha(usuario, linha);
   const movimentos = (await db.execute(consultaLinhaTempo({ prospectId: id }))).rows;
-  const podeRegistrar = usuario.perfil !== 'financeiro' && Number(p.aceita_contato) === 1;
+  // supervisor que vê todas as equipes registra só na própria equipe (regra do banco)
+  const daEquipe = usuario.perfil !== 'supervisor' || !usuario.ve_todos || Number(p.supervisor_id) === usuario.id || Number(p.vendedor_id) === usuario.id;
+  const podeRegistrar = usuario.perfil !== 'financeiro' && Number(p.aceita_contato) === 1 && daEquipe;
   const voltar = Number(p.na_lista) ? '#/carteira' : '#/carteira?aba=acompanhamento';
 
   const situacao = h('div', { class: 'cartao' },

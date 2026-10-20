@@ -115,6 +115,7 @@ rodar o workflow de novo** (ele só aplica as que faltam).
 | `0006_indices_volume` | índices para ~50 mil CNPJs e índice de texto (FTS5 trigram) da busca — mesmo resultado, menos linhas lidas |
 | `0007_indices_complementares` | índices de ligação e de relatório em todas as tabelas (movimentação, transferências, eventos do ERP, crédito, auditoria…) |
 | `0008_perfis_telas` | perfis de acesso e telas por perfil (5 perfis do sistema já com as telas de hoje); `usuarios.perfil_id`. Depois dela, rode **Criar administrador** de novo: a chave do cofre passa a poder gravar perfis |
+| `0009_perfil_ve_todas_equipes` | `perfis.ve_todos`: perfil de supervisor que vê todas as equipes (ex.: supervisor que também é gerente). Aplicada por **Criar administrador** ou **Migrar banco** |
 
 ## 6. Primeira carga — roteiro
 

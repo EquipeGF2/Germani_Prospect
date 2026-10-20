@@ -24,9 +24,14 @@ export async function render(conteudo, ctx) {
     const marcadas = new Set(perfil ? perfil.telas : telasPadrao(base.value));
     const grade = h('div', { class: 'grade-telas' });
     const ajudaEscopo = h('p', { class: 'ajuda' });
+    // supervisor que também é gerente: responde pela própria equipe e vê todas (migração 0009)
+    const veTodos = h('input', { type: 'checkbox', id: 'perfil-ve-todos', checked: Boolean(perfil?.ve_todos) });
+    const campoVeTodos = h('label', { class: 'marcador', for: 'perfil-ve-todos' }, veTodos,
+      ' Vê os dados de todas as equipes (registra atendimento só na própria equipe)');
     function desenharTelas() {
       const possiveis = telasPossiveis(base.value);
-      montar(ajudaEscopo, `Dados que este perfil vê: ${ESCOPO[base.value]}.`);
+      campoVeTodos.hidden = base.value !== 'supervisor';
+      montar(ajudaEscopo, `Dados que este perfil vê: ${base.value === 'supervisor' && veTodos.checked ? 'todas as equipes (registra só na própria)' : ESCOPO[base.value]}.`);
       const grupos = [...new Set(TELAS.map((t) => t.grupo))];
       montar(grade, grupos.map((g) => h('fieldset', { class: 'grupo-telas' }, h('legend', {}, g),
         TELAS.filter((t) => t.grupo === g).map((t) => {
@@ -37,6 +42,7 @@ export async function render(conteudo, ctx) {
             ' ', t.rotulo);
         }))));
     }
+    veTodos.addEventListener('change', desenharTelas);
     base.addEventListener('change', () => { marcadas.clear(); telasPadrao(base.value).forEach((t) => marcadas.add(t)); desenharTelas(); });
     desenharTelas();
     const erros = h('div');
@@ -44,7 +50,7 @@ export async function render(conteudo, ctx) {
     montar(area, h('form', { class: 'cartao', id: 'form-perfil', onsubmit: async (ev) => {
       ev.preventDefault();
       const telas = [...marcadas].filter((t) => telasPossiveis(base.value).includes(t));
-      const id = await comEspera(bSalvar, () => salvarPerfil(db, { id: perfil?.id ?? null, nome: nome.value, base: base.value, telas, executadoPor: quem }));
+      const id = await comEspera(bSalvar, () => salvarPerfil(db, { id: perfil?.id ?? null, nome: nome.value, base: base.value, telas, veTodos: veTodos.checked, executadoPor: quem }));
       if (!id) return;
       aviso(perfil ? 'Perfil salvo.' : 'Perfil incluído.');
       perfis = await listarPerfis(db);
@@ -56,6 +62,7 @@ export async function render(conteudo, ctx) {
     h('div', { class: 'linha-campos' },
       h('div', {}, h('label', { for: 'perfil-nome' }, 'Nome do perfil'), nome),
       h('div', {}, h('label', { for: 'perfil-base' }, 'Tipo-base (escopo dos dados)'), base)),
+    campoVeTodos,
     ajudaEscopo,
     h('label', {}, 'Telas que o perfil acessa'), grade, erros,
     h('div', { class: 'acoes' }, bSalvar, h('button', { type: 'button', class: 'secundario', onclick: () => montar(area) }, 'Cancelar'))));
@@ -66,7 +73,7 @@ export async function render(conteudo, ctx) {
     const rotulos = Object.fromEntries(TELAS.map((t) => [t.codigo, t.rotulo]));
     montar(lista, h('div', { class: 'lista-perfis' }, perfis.map((p) => h('div', { class: 'cartao perfil', dados: { perfil: p.nome } },
       h('div', { class: 'cartao-prospect-topo' }, h('b', {}, p.nome), p.sistema ? selo('do sistema') : selo('criado', 'ok')),
-      h('div', { class: 'ajuda', style: 'margin:4px 0' }, `${TIPOS_BASE[p.base]} · dados: ${ESCOPO[p.base]} · ${p.usuarios} usuário(s)`),
+      h('div', { class: 'ajuda', style: 'margin:4px 0' }, `${TIPOS_BASE[p.base]} · dados: ${p.ve_todos ? 'todas as equipes (registra só na própria)' : ESCOPO[p.base]} · ${p.usuarios} usuário(s)`),
       h('div', { class: 'telas-perfil' }, (p.sistema && p.base === 'administrador' ? ['todas as telas'] : p.telas.map((t) => rotulos[t] ?? t)).map((t) => h('span', { class: 'selo' }, t))),
       h('div', { class: 'acoes', style: 'margin:8px 0 0' }, h('button', { class: 'pequeno secundario', onclick: () => formulario(p) }, 'Editar'))))));
   }

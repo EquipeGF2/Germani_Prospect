@@ -92,3 +92,9 @@ test('.xlsx com filtro gigante (_FilterDatabase até a coluna XEY) e validaçõe
   assert.deepEqual(r.linhas[1], ['CNPJ', 'Razão social']);
   assert.deepEqual(r.linhas[2], ['11222333000181', 'Mercado Teste']);
 });
+
+test('lista colada do Excel (colunas separadas por tabulação)', () => {
+  const { linhas, separador } = lerCsvTexto('TIPO\tCOD SUP\tSUPERVISOR\tCOD\tNOME\nRepresentante\t4\tVOLMAR DA RÉ\t11\tSEBASTIANY REPRESENTACOES LTDA\n');
+  assert.equal(separador, '\t');
+  assert.deepEqual(linhas[1], ['Representante', '4', 'VOLMAR DA RÉ', '11', 'SEBASTIANY REPRESENTACOES LTDA']);
+});

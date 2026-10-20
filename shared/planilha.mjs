@@ -85,10 +85,11 @@ export function decodificarTexto(bytes) {
   }
 }
 
-/** CSV com aspas, separador ";" (padrão) ou "," detectado pela 1ª linha. */
+/** CSV com aspas; separador detectado pela 1ª linha: tabulação (lista colada do Excel), ";" (padrão) ou ",". */
 export function lerCsvTexto(texto) {
   const primeira = texto.split(/\r?\n/, 1)[0] ?? '';
-  const sep = (primeira.match(/;/g)?.length ?? 0) >= (primeira.match(/,/g)?.length ?? 0) ? ';' : ',';
+  const conta = (c) => primeira.split(c).length - 1;
+  const sep = conta('\t') ? '\t' : conta(';') >= conta(',') ? ';' : ',';
   const linhas = [];
   let linha = [];
   let campo = '';

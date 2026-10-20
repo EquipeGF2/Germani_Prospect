@@ -336,6 +336,12 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
   **todos** os perfis cadastrados, agrupados por tipo; os que não servem para aquele usuário aparecem desabilitados com o
   motivo. Para vendedor, o perfil do sistema aparece como **Representante (sem rota)** e **Vendedor (com rota)** — a
   escolha grava o tipo de atuação.
+- **Supervisor que também é gerente** (ex.: o supervisor 2): perfil de tipo-base Supervisor com **"Vê os dados de todas
+  as equipes"** marcado (migração 0009). Ele continua dono da própria equipe (os representantes ligados a ele) e passa a
+  ver lista, acompanhamento, Início e indicadores de todas as equipes, com o seletor de supervisor. Registrar atendimento
+  continua só na própria equipe (regra do banco; na ficha de outra equipe o botão não aparece).
+- **Representante × vendedor de quem já foi importado:** tela Representantes / vendedores — arquivo ou **lista colada do
+  Excel** (colunas COD e TIPO); altera o tipo de quem já tinha outro.
 - O login carrega as telas do perfil; o menu mostra só elas e o endereço de uma tela não liberada mostra "Seu perfil não
   tem acesso a esta tela" (ou "Esta área é exclusiva do administrador"). Sem o Início no perfil, o usuário entra na
   primeira tela permitida. Mudança de perfil vale no próximo login.
