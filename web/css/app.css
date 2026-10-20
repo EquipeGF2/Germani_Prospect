@@ -436,4 +436,10 @@ td.pct { min-width: 96px; }
 .grupo-telas { border: 1px solid var(--borda); border-radius: var(--raio-p); padding: 10px 14px; margin: 0; display: grid; gap: 6px; align-content: start; }
 .grupo-telas legend { font-weight: 600; font-size: 13px; padding: 0 4px; }
 .grupo-telas .indisponivel { color: var(--suave); }
-select[data-perfil-usuario] { min-width: 12.5rem; }
+
+/* Usuários: cada usuário numa linha só (nome · login · perfil · acesso · ações) */
+.tabela-usuarios td { vertical-align: middle; }
+.tabela-usuarios td:nth-child(2), .tabela-usuarios td:nth-child(4) { white-space: nowrap; }
+.tabela-usuarios select[data-perfil-usuario] { width: auto; min-width: 13rem; max-width: 18rem; }
+.tabela-usuarios .acoes { flex-wrap: nowrap; }
+.tabela-usuarios .acoes .definir-senha { flex-wrap: nowrap; }

@@ -330,8 +330,10 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
   (o tipo vem da importação, com código do ERP e equipe). Administrador, gerente e analista financeiro trocam entre si —
   isso muda também o tipo-base (o escopo dos dados). Quem deixa de ser administrador perde o cofre de administração; quem
   passa a ser precisa ter a senha definida na tela para receber o cofre (ADR-0006). Ninguém troca o tipo do próprio usuário.
-- Colunas da lista de usuários: **Representante ou vendedor** (só para o tipo vendedor: *Representante* trabalha sem rota,
-  *Vendedor* com rota planejada pelo supervisor) e **Supervisor da equipe** (o supervisor a que o vendedor responde, vindo da importação).
+- Lista de usuários numa linha por usuário: Nome · Login · **Perfil** · Acesso · Ações. O seletor de Perfil mostra
+  **todos** os perfis cadastrados, agrupados por tipo; os que não servem para aquele usuário aparecem desabilitados com o
+  motivo. Para vendedor, o perfil do sistema aparece como **Representante (sem rota)** e **Vendedor (com rota)** — a
+  escolha grava o tipo de atuação.
 - O login carrega as telas do perfil; o menu mostra só elas e o endereço de uma tela não liberada mostra "Seu perfil não
   tem acesso a esta tela" (ou "Esta área é exclusiva do administrador"). Sem o Início no perfil, o usuário entra na
   primeira tela permitida. Mudança de perfil vale no próximo login.

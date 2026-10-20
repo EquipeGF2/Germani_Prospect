@@ -1,11 +1,27 @@
 import { bancoAdmin, tokenAdminAtual } from '../db.js';
 import { criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../../shared/usuarios.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
-import { definirPerfilUsuario, listarPerfis, perfisPossiveis } from '../../shared/perfis.mjs';
+import { definirPerfilUsuario, listarPerfis, opcoesDePerfil, TIPOS_BASE } from '../../shared/perfis.mjs';
 import { h, montar, tabela, aviso, comEspera, selo, cartoesFiltro } from '../ui.js';
 import { NOMES_PERFIL } from '../app.js';
 
 const SITUACAO = { sem_acesso: ['sem acesso', 'alerta'], provisoria: ['senha provisória', 'ok'], ok: ['ativo', 'ok'] };
+
+// todos os perfis, agrupados por tipo; os que não servem para o usuário aparecem desabilitados, com o motivo.
+// Vendedor: o perfil do sistema vira duas opções — Representante (sem rota) e Vendedor (com rota) — e a escolha grava o tipo.
+const TIPOS_VENDEDOR = [['representante', 'Representante (sem rota)'], ['vendedor', 'Vendedor (com rota)']];
+function opcoesAgrupadas(opcoes, atual, valor = (p) => p.id, vendedor = null) {
+  return Object.entries(TIPOS_BASE).map(([base, nomeTipo]) => {
+    const doTipo = opcoes.filter((o) => o.perfil.base === base);
+    if (!doTipo.length) return null;
+    return h('optgroup', { label: nomeTipo }, doTipo.map(({ perfil: p, disponivel, motivo }) => {
+      if (vendedor && p.sistema && p.base === 'vendedor') {
+        return TIPOS_VENDEDOR.map(([t, rotulo]) => h('option', { value: `tipo:${t}`, selected: p.id === atual && vendedor.tipo_atuacao === t }, rotulo));
+      }
+      return h('option', { value: valor(p), selected: p.id === atual, disabled: !disponivel, title: motivo }, disponivel ? p.nome : `${p.nome} — ${motivo}`);
+    }));
+  });
+}
 
 export async function render(conteudo, ctx) {
   const db = await bancoAdmin();
@@ -19,7 +35,7 @@ export async function render(conteudo, ctx) {
   // situação: escolhida pelos cards (o próprio card é o filtro)
   const filtroSituacao = { value: '' };
   const cardsArea = h('div');
-  const listaArea = h('div');
+  const listaArea = h('div', { class: 'tabela-usuarios' });
 
   function mostrarSenha(login, senha) {
     montar(senhaArea, h('div', { class: 'cartao', style: 'border-color:var(--destaque)' },
@@ -46,33 +62,39 @@ export async function render(conteudo, ctx) {
       && (filtroSituacao.value !== 'sem_tipo' || (u.perfil === 'vendedor' && !u.tipo_atuacao))
       && (!termo || normalizarBusca(`${u.nome} ${u.login} ${u.codigo_erp ?? ''}`).includes(termo)));
     montar(listaArea, tabela([
-      { titulo: 'Nome', valor: (u) => h('div', {}, h('b', {}, u.nome), h('div', { class: 'ajuda', style: 'margin:0' }, `login ${u.login}${u.codigo_erp ? ' · cód. ' + u.codigo_erp : ''}`)) },
+      { titulo: 'Nome', valor: (u) => h('b', {}, u.nome) },
+      { titulo: 'Login', valor: (u) => `${u.login}${u.codigo_erp && String(u.codigo_erp) !== u.login ? ' · cód. ' + u.codigo_erp : ''}` },
       { titulo: 'Perfil', valor: (u) => {
-        // mesmo tipo-base: muda só as telas; administrador/gerente/financeiro trocam entre si (shared/perfis.mjs)
+        // mesmo tipo-base: muda só as telas; administrador/gerente/financeiro trocam entre si (shared/perfis.mjs);
+        // vendedor: Representante ou Vendedor é escolhido aqui mesmo (tipo de atuação)
         const atual = u.perfil_id ? Number(u.perfil_id) : perfilSistema(u.perfil)?.id;
-        const opcoes = perfisPossiveis(perfis, u).filter((p) => u.id !== ctx.usuario.id || p.base === u.perfil);
-        if (opcoes.length < 2) return perfis.find((p) => p.id === atual)?.nome ?? NOMES_PERFIL[u.perfil];
+        const ehVendedor = u.perfil === 'vendedor';
+        const valorAtual = () => (ehVendedor && !u.perfil_id ? (u.tipo_atuacao ? `tipo:${u.tipo_atuacao}` : '') : String(atual));
         const s = h('select', { 'aria-label': `perfil de ${u.login}`, dados: { perfilUsuario: u.login }, onchange: async () => {
+          if (s.value.startsWith('tipo:')) {
+            const tipo = s.value.slice(5);
+            const ok = await comEspera(null, async () => {
+              if (u.perfil_id) await definirPerfilUsuario(db, { usuarioId: u.id, perfilId: null, executadoPor: quem, executadoPorId: ctx.usuario.id });
+              await definirTipoAtuacao(db, { usuarioId: u.id, tipo, executadoPor: quem });
+              return true;
+            });
+            if (!ok) { s.value = valorAtual(); return; }
+            u.perfil_id = null; u.tipo_atuacao = tipo;
+            aviso(`${u.nome}: ${TIPOS_VENDEDOR.find(([t]) => t === tipo)[1]}`);
+            return desenhar();
+          }
           const escolhido = perfis.find((p) => p.id === Number(s.value));
           const r = await comEspera(null, () => definirPerfilUsuario(db, { usuarioId: u.id, perfilId: escolhido.id, executadoPor: quem, executadoPorId: ctx.usuario.id }));
-          if (!r) { s.value = String(atual); return; }
+          if (!r) { s.value = valorAtual(); return; }
           const virouAdmin = r.mudouBase && r.base === 'administrador';
           u.perfil = r.base; u.perfil_id = r.perfilId;
           aviso(`${u.nome}: perfil ${escolhido.nome}${virouAdmin ? ' — defina a senha dele para liberar a administração' : ''}`);
           desenhar();
-        } }, opcoes.map((p) => h('option', { value: p.id, selected: p.id === atual }, p.nome)));
+        } },
+        ehVendedor && !u.perfil_id && !u.tipo_atuacao ? h('option', { value: '', disabled: true, selected: true }, '— representante ou vendedor? —') : null,
+        opcoesAgrupadas(opcoesDePerfil(perfis, u, { proprio: u.id === ctx.usuario.id }), atual, undefined, ehVendedor ? u : null));
         return s;
       } },
-      { titulo: 'Representante ou vendedor', valor: (u) => {
-        if (u.perfil !== 'vendedor') return '—';
-        const s = h('select', { 'aria-label': `tipo de ${u.login}`, onchange: async () => {
-          const ok = await comEspera(null, async () => { await definirTipoAtuacao(db, { usuarioId: u.id, tipo: s.value, executadoPor: quem }); return true; });
-          if (ok) { u.tipo_atuacao = s.value; aviso(`${u.nome}: ${s.value}`); }
-        } }, h('option', { value: '', disabled: true, selected: !u.tipo_atuacao }, '— definir —'),
-        ['representante', 'vendedor'].map((t) => h('option', { value: t, selected: u.tipo_atuacao === t }, t === 'vendedor' ? 'Vendedor (com rota)' : 'Representante (sem rota)')));
-        return s;
-      } },
-      { titulo: 'Supervisor da equipe', valor: (u) => u.supervisor_nome ?? '' },
       { titulo: 'Acesso', valor: (u) => Number(u.ativo) ? selo(...SITUACAO[u.situacao_senha]) : selo('desativado', 'erro') },
       { titulo: 'Ações', valor: (u) => {
         // o administrador define a senha de cada usuário (mín. 8); "Gerar" cria uma provisória aleatória
@@ -103,9 +125,8 @@ export async function render(conteudo, ctx) {
   }
 
   // perfis que se criam aqui (os de supervisor e vendedor vêm da importação): valor "base" ou "base:id" (perfil criado)
-  const perfilNovo = h('select', { id: 'novo-perfil' }, perfis.filter((p) => ['financeiro', 'gerente', 'administrador'].includes(p.base))
-    .sort((a, b) => ['financeiro', 'gerente', 'administrador'].indexOf(a.base) - ['financeiro', 'gerente', 'administrador'].indexOf(b.base) || b.sistema - a.sistema)
-    .map((p) => h('option', { value: p.sistema ? p.base : `${p.base}:${p.id}` }, p.nome)));
+  const perfilNovo = h('select', { id: 'novo-perfil' },
+    opcoesAgrupadas(opcoesDePerfil(perfis, null), perfilSistema('financeiro')?.id, (p) => (p.sistema ? p.base : `${p.base}:${p.id}`)));
   const loginNovo = h('input', { id: 'novo-login', autocapitalize: 'none' });
   const nomeNovo = h('input', { id: 'novo-nome' });
   const senhaNova = h('input', { id: 'novo-senha', type: 'password', autocomplete: 'new-password', placeholder: 'vazio = gerar' });

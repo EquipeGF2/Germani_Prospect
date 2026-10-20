@@ -117,10 +117,28 @@ export async function salvarPerfil(db, { id = null, nome, base, telas, executado
 // tipos-base trocáveis entre si na tela Usuários (supervisor e vendedor dependem do código do ERP e da equipe: vêm da importação)
 export const BASES_TROCAVEIS = Object.freeze(['administrador', 'gerente', 'financeiro']);
 
-/** Perfis que podem ser escolhidos para o usuário: mesmo tipo-base, ou qualquer tipo trocável se ele for de um deles. */
+/**
+ * Todos os perfis ativos, cada um dizendo se serve para o usuário e, se não, por quê (a tela mostra todos, os que não
+ * servem desabilitados). Serve: mesmo tipo-base, ou troca entre administrador, gerente e financeiro (não no próprio
+ * usuário). `usuario` null = usuário novo (criado na tela: só administrador, gerente ou financeiro).
+ */
+export function opcoesDePerfil(perfis, usuario, { proprio = false } = {}) {
+  return perfis.filter((p) => p.ativo == null || Number(p.ativo)).map((p) => {
+    let motivo = null;
+    if (!usuario) {
+      if (!BASES_TROCAVEIS.includes(p.base)) motivo = 'supervisor e vendedor vêm da importação da base';
+    } else if (p.base !== usuario.perfil) {
+      if (!BASES_TROCAVEIS.includes(p.base)) motivo = 'só para supervisores e vendedores da importação';
+      else if (!BASES_TROCAVEIS.includes(usuario.perfil)) motivo = `usuário da importação: só perfis do tipo ${TIPOS_BASE[usuario.perfil]}`;
+      else if (proprio) motivo = 'não dá para mudar o tipo do próprio usuário';
+    }
+    return { perfil: p, disponivel: !motivo, motivo };
+  });
+}
+
+/** Perfis que podem ser escolhidos para o usuário. */
 export function perfisPossiveis(perfis, usuario) {
-  const trocavel = BASES_TROCAVEIS.includes(usuario.perfil);
-  return perfis.filter((p) => (p.ativo == null || Number(p.ativo)) && (p.base === usuario.perfil || (trocavel && BASES_TROCAVEIS.includes(p.base))));
+  return opcoesDePerfil(perfis, usuario).filter((o) => o.disponivel).map((o) => o.perfil);
 }
 
 /**
