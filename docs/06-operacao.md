@@ -104,6 +104,7 @@ rodar o workflow de novo** (ele só aplica as que faltam).
 | `0004_valor_pedido` | coluna `eventos_erp.valor` (valor do pedido, opcional) para o "Valor dos pedidos" do Início |
 | `0005_cofre_admin` | coluna `usuarios.cofre_admin`: chave de administração cifrada com a senha do administrador (ADR-0006) |
 | `0006_indices_volume` | índices para ~50 mil CNPJs e índice de texto (FTS5 trigram) da busca — mesmo resultado, menos linhas lidas |
+| `0007_indices_complementares` | índices de ligação e de relatório em todas as tabelas (movimentação, transferências, eventos do ERP, crédito, auditoria…) |
 
 ## 6. Primeira carga — roteiro
 

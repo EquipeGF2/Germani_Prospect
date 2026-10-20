@@ -135,6 +135,14 @@ cálculo de distância ([ADR-0005](adr/0005-sem-calculo-de-distancia.md)).
   o mesmo `LIKE '%termo%'` sem varrer a tabela (busca seletiva 70 → 2 ms; CNPJ 68 → 8 ms). O resultado é idêntico ao
   da busca antiga (teste em `test/carteira.test.mjs`); termos com menos de 3 letras continuam funcionando (sem índice).
 
+**Complementares — migração 0007** (criados com o banco vazio, quando é instantâneo): histórico de movimentação por
+status e por usuário no período; transferências por prospect e por vendedor (de/para); eventos do ERP por tipo no
+período e por arquivo; liberações de crédito por analista, por relatório e por data; contatos e prospects por
+importação e por motivo de recusa; rota_paradas por prospect; usuários por supervisor e por perfil; auditoria por
+registro e por data; importações por tipo. Critério: só onde há consulta, ligação ou gatilho que procura pela coluna.
+Custo medido: a carga de 50 mil CNPJs + 60 mil registros fica ~7% mais lenta (uma vez, na importação).
+Ao criar tabela nova, já criar os índices das colunas usadas em filtro, ligação ou ordenação.
+
 No Turso, tempo e cobrança seguem as **linhas lidas**: o vendedor lê só a própria carteira; a lista completa do
 administrador/gerente na ordem de trabalho e as visões agrupadas (cidade, onda) e o Início leem a base toda — é o
 custo de somar/ordenar tudo, sem mudar o que a tela mostra.
