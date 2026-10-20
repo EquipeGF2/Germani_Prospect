@@ -125,3 +125,16 @@ cálculo de distância ([ADR-0005](adr/0005-sem-calculo-de-distancia.md)).
 `prospects(vendedor_id, status_atual)`, `prospects(data_proxima_acao)`, `prospects(cidade_busca, uf, bairro_busca)`, `prospects(rota, subrota)`,
 `prospects(cnpj_raiz)`, `contatos(usuario_id, data_contato)`, `contatos(data_contato)`,
 `movimentacoes(prospect_id, data_evento, id)`, `eventos_erp` único por `(prospect, tipo, documento)`.
+
+**Volume de produção (~50 mil CNPJs) — migração 0006**, decidida com `node scripts/medir-consultas.mjs [prospects] [--plano]`
+(monta um banco temporário com o volume, mede cada consulta das telas e mostra o plano do SQLite):
+- `contatos(prospect_id, data_contato)` — Início com período (contactado no período);
+- `prospects(dt_ultimo_contato)` — filtro "último registro de/até" (57 → 10 ms com 50 mil);
+- `prospects(status_atual)` e `prospects(razao_social)` — acompanhamento e ordenação pela coluna Prospect (71 → 3 ms);
+- **busca por texto** com índice FTS5 *trigram* `prospects_busca` (sobre `prospects.busca`, mantido por gatilhos):
+  o mesmo `LIKE '%termo%'` sem varrer a tabela (busca seletiva 70 → 2 ms; CNPJ 68 → 8 ms). O resultado é idêntico ao
+  da busca antiga (teste em `test/carteira.test.mjs`); termos com menos de 3 letras continuam funcionando (sem índice).
+
+No Turso, tempo e cobrança seguem as **linhas lidas**: o vendedor lê só a própria carteira; a lista completa do
+administrador/gerente na ordem de trabalho e as visões agrupadas (cidade, onda) e o Início leem a base toda — é o
+custo de somar/ordenar tudo, sem mudar o que a tela mostra.

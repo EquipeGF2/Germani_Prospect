@@ -102,8 +102,13 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   const termo = normalizarBusca(busca);
   if (termo) {
     const termoCnpj = termo.replace(/[.\-\/\s]/g, '');
-    where.push("(busca LIKE '%' || ? || '%' OR COALESCE(bairro_busca, '') LIKE '%' || ? || '%' OR cnpj LIKE ? || '%')");
-    args.push(termo, termo, termoCnpj);
+    // índice de texto (FTS5 trigram, migração 0006) em vez de varrer a tabela. `busca` já contém fantasia, CNPJ,
+    // cidade e BAIRRO, então o antigo "OR bairro_busca LIKE" era redundante; o CNPJ digitado com pontuação
+    // continua achado pelo início do CNPJ (faixa no índice único) — mesmo resultado de antes.
+    const cnpjFaixa = termoCnpj ? 'cnpj >= ? AND cnpj < ?' : '1 = 1';
+    where.push(`(id IN (SELECT rowid FROM prospects_busca WHERE busca LIKE '%' || ? || '%') OR (${cnpjFaixa}))`);
+    args.push(termo);
+    if (termoCnpj) args.push(termoCnpj, `${termoCnpj}~`);
   }
   const filtro = where.length ? `WHERE ${where.join(' AND ')}` : '';
 

@@ -5,6 +5,7 @@ import { bancoTeste, criarEquipe, criarProspect, evento, registrarContato } from
 import { consultaCarteira, consultaOndas, formaDeTrabalho, ORDENACOES, visoesPermitidas } from '../shared/carteira.mjs';
 import { consultaPosicao } from '../shared/indicadores.mjs';
 import { formatarCnpj } from '../shared/cnpj.mjs';
+import { normalizarBusca } from '../shared/texto.mjs';
 
 let db;
 // usuário 2 = representante · usuário 3 = vendedor (ambos do supervisor 1)
@@ -181,4 +182,21 @@ test('lista ordenada pelos rótulos das colunas (crescente/decrescente) e ondas 
   assert.deepEqual(await nomes({ campo: 'razao_social; DROP TABLE prospects' }), await nomes(null));
   assert.deepEqual((await linhas(consultaOndas())).map((o) => o.onda), ['1', '2']);
   assert.ok((await linhas(consultaCarteira({ usuario: ADM, filtros: { onda: '1' } }))).every((p) => p.onda === '1'));
+});
+
+test('busca com índice de texto (0006) devolve exatamente o mesmo que a busca antiga (LIKE na tabela)', async () => {
+  const ADM = { id: 4, perfil: 'administrador' };
+  const antiga = async (termo) => {
+    const t = normalizarBusca(termo);
+    const c = t.replace(/[.\-\/\s]/g, '');
+    return (await db.execute({ sql: `SELECT id FROM prospects p JOIN status s ON s.codigo = p.status_atual
+      WHERE s.lista_trabalho = 1 AND (busca LIKE '%' || ? || '%' OR COALESCE(bairro_busca, '') LIKE '%' || ? || '%' OR cnpj LIKE ? || '%') ORDER BY id`,
+    args: [t, t, c] })).rows.map((r) => Number(r.id));
+  };
+  const nova = async (termo) => (await linhas(consultaCarteira({ usuario: ADM, busca: termo }))).map((p) => Number(p.id)).sort((a, b) => a - b);
+  const exemplo = (await db.execute('SELECT cnpj, bairro, cidade, razao_social FROM prospects LIMIT 1')).rows[0];
+  const cnpjFormatado = formatarCnpj(exemplo.cnpj);
+  for (const termo of ['emp', 'Empresa 1', 'santa', 'cruz do', exemplo.cnpj.slice(0, 6), cnpjFormatado.slice(0, 7), cnpjFormatado, 'zz', 'a', exemplo.bairro ?? 'centro', 'inexistente xyz']) {
+    assert.deepEqual(await nova(termo), await antiga(termo), `termo "${termo}"`);
+  }
 });
