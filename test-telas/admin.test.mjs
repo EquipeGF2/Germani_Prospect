@@ -213,7 +213,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   // 5d. lista principal do administrador: filtro por supervisor e por vendedor/representante
   await pagina.click('#menu a[title="Lista principal"]');
   await pagina.waitForSelector('#filtro-supervisor');
-  const totalTodos = await pagina.locator('.cartao-prospect').count();
+  assert.equal(await pagina.locator('.cartao-prospect').count(), 0, 'gestão: a lista só carrega depois de um filtro');
   await pagina.selectOption('#filtro-supervisor', { index: 2 });   // 2º supervisor (o 0 é "Todos")
   await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
   await telaPronta();
@@ -227,7 +227,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('.cartao-prospect, .mensagem');
   const cartoes = await pagina.locator('.cartao-prospect-corpo').allInnerTexts();
   assert.ok(cartoes.every((t) => t.includes(`Carteira: ${nomeAgente}`)), 'só a carteira escolhida');
-  assert.ok(cartoes.length <= totalTodos);
+  assert.ok(cartoes.length > 0, 'filtro em cascata: só aparece representante com prospects na lista');
   await foto('09d-lista-filtros-gestao');
 
   // 6. histórico de importações
@@ -262,7 +262,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('11-lista-principal');
   const primeiro = (await pagina.locator('.cartao-prospect-corpo b').first().innerText()).trim();
   await pagina.fill('#busca', primeiro.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
-  await pagina.click('button:text("Buscar")');
+  await pagina.click('.barra-busca button[type=submit]');
   await pagina.waitForFunction(() => location.hash.includes('busca='));
   await telaPronta();
   await pagina.waitForSelector('.cartao-prospect');
@@ -293,7 +293,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.goto(`${base}#/carteira`);
   await pagina.waitForSelector('.cartao-prospect');
   await pagina.fill('#busca', cnpjAtendido);
-  await pagina.click('button:text("Buscar")');
+  await pagina.click('.barra-busca button[type=submit]');
   await pagina.waitForSelector(`text=Nada encontrado para "${cnpjAtendido}"`);   // atendido saiu da lista principal
   await pagina.goto(`${base}#/carteira`);
   await pagina.waitForSelector('.cartao-prospect');

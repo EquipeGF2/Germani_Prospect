@@ -125,6 +125,15 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.match(await pagina.locator('.exp-niveis .exp-nivel >> nth=0').innerText(), /Cidade/, 'arrastou Cidade para o 1º nível');
   await pagina.click('.exp-linha:not(.raiz):not(.cab) .nome >> nth=0');
   await foto('33-explorar');
+  // níveis e disponíveis numa linha; caminho fora do topo, abaixo dos níveis, numa linha; botão da lista baixo
+  const alturas = await pagina.evaluate(() => {
+    const linhas = (sel) => new Set([...document.querySelectorAll(sel)].map((el) => Math.round(el.getBoundingClientRect().top))).size;
+    const r = (sel) => document.querySelector(sel).getBoundingClientRect();
+    return { niveis: linhas('.exp-niveis .exp-nivel'), caminho: linhas('.exp-caminho button'), noTopo: document.querySelectorAll('.exp-topo .exp-caminho').length,
+      abaixo: r('.exp-caminho').top >= r('.exp-niveis').bottom, botao: r('#abrir-lista').height };
+  });
+  assert.deepEqual({ niveis: alturas.niveis, caminho: alturas.caminho, noTopo: alturas.noTopo, abaixo: alturas.abaixo }, { niveis: 1, caminho: 1, noTopo: 0, abaixo: true });
+  assert.ok(alturas.botao <= 34, `botão Abrir na Lista: ${alturas.botao}px`);
   const total = (await pagina.locator('#abrir-lista').innerText()).match(/· ([\d.]+) prospects/)[1];
   await pagina.click('#abrir-lista');
   await pagina.waitForFunction(() => location.hash.includes('cidadeBusca='));
@@ -151,6 +160,18 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await telaPronta();
   assert.match(await pagina.locator('.chips').innerText(), /Último registro de 01\/10\/2026 até 09\/10\/2026/);
   assert.equal(await umaLinha(), 1, 'filtros do acompanhamento numa linha só');
+  // filtros em cascata: escolher a cidade deixa só os representantes, segmentos e ondas dela
+  await pagina.goto(`${base}#/carteira?aba=acompanhamento&visao=lista`);
+  await telaPronta();
+  const opcoesDe = (id) => pagina.locator(`#${id} option`).evaluateAll((os) => os.slice(1).map((o) => o.value));
+  const repsTodos = await opcoesDe('filtro-vendedor');
+  assert.ok((await opcoesDe('filtro-uf')).length >= 1, 'UF separada da cidade');
+  await pagina.selectOption('#filtro-cidade', { index: 1 });
+  await pagina.waitForFunction(() => location.hash.includes('cidadeBusca='));
+  await telaPronta();
+  const repsCidade = await opcoesDe('filtro-vendedor');
+  assert.ok(repsCidade.length >= 1 && repsCidade.length <= repsTodos.length && repsCidade.every((v) => repsTodos.includes(v)), 'representantes só da cidade');
+  assert.equal(await umaLinha(), 1, 'com UF e cidade continua numa linha');
   await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
   await telaPronta();
   const ordem = await pagina.locator('.status-cartao b').allInnerTexts();

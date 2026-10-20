@@ -15,7 +15,7 @@ Requisitos: Node.js 22.9+.
 
 ```bash
 npm ci
-npm test                                   # 129 testes, banco SQLite em memória
+npm test                                   # 130 testes, banco SQLite em memória
 TURSO_DATABASE_URL=file:dados/local.db npm run migrate
 npm run exemplo:planilha                   # gera exemplos/base-ficticia.xlsx (dados fictícios)
 TURSO_DATABASE_URL=file:dados/local.db npm run importar:base -- exemplos/base-ficticia.xlsx

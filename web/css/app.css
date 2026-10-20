@@ -122,7 +122,7 @@ input[type=file] { padding: 9px; }
 .tabela-wrap { overflow-x: auto; border: 1px solid var(--borda); border-radius: var(--raio); background: #fff; box-shadow: var(--sombra); }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid #F0F1F3; vertical-align: top; }
-tbody tr:hover { background: #FAFAFB; }
+tbody tr:hover { background: #E9EEF5; }
 tbody tr:last-child td { border-bottom: 0; }
 th { background: #F9FAFB; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); position: sticky; top: 0; border-bottom: 1px solid var(--borda); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -402,15 +402,17 @@ td.pct { min-width: 96px; }
 
 /* ---------- Lista principal / Acompanhamento no computador ---------- */
 /* filtros numa linha só (quebra apenas em telas estreitas) */
-.barra-carteira { display: flex; flex-wrap: nowrap; gap: 10px; align-items: flex-end; margin-bottom: 14px; }
+.barra-carteira { display: flex; flex-wrap: nowrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
 .barra-carteira > .filtro { flex: 0 1 auto; min-width: 0; }
 .barra-carteira .filtro label { font-size: 12px; margin-bottom: 4px; white-space: nowrap; }
-.barra-carteira .busca { flex: 1 1 160px; } .barra-carteira .busca .barra-busca { margin: 0; gap: 6px; }
+.barra-carteira .busca { flex: 0 1 180px; } .barra-carteira .busca .barra-busca { margin: 0; gap: 6px; }
 .barra-carteira .busca button { padding: 8px 12px; }
+.barra-carteira .busca button.so-icone { width: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; flex: none; }
 .barra-carteira .visoes { margin: 0; }
 .barra-carteira select { font-size: 14px; padding: 8px 10px; width: 160px; min-width: 100px; max-width: 100%; }
-.barra-carteira #filtro-onda { width: 92px; }
-.barra-carteira #filtro-supervisor, .barra-carteira #filtro-vendedor, .barra-carteira #filtro-cidade, .barra-carteira #filtro-segmento { width: 128px; }
+.barra-carteira #filtro-onda { width: 88px; min-width: 88px; }
+.barra-carteira #filtro-uf { width: 84px; min-width: 84px; }
+.barra-carteira #filtro-supervisor, .barra-carteira #filtro-vendedor, .barra-carteira #filtro-cidade, .barra-carteira #filtro-segmento { width: 112px; }
 .cabecalho-controles { display: flex; gap: 12px; align-items: flex-end; }
 .cabecalho-controles .filtro label { font-size: 12px; margin-bottom: 4px; display: block; }
 .cabecalho-controles select { font-size: 14px; padding: 8px 10px; width: 110px; }
@@ -418,7 +420,7 @@ td.pct { min-width: 96px; }
 .tabela-carteira th a.ordenar { color: inherit; text-decoration: none; white-space: nowrap; }
 .tabela-carteira th a.ordenar:hover, .tabela-carteira th a.ordenar.ativa { color: var(--destaque); }
 .barra-carteira .datas { display: flex; gap: 6px; }
-.barra-carteira input[type=date] { width: 116px; font-size: 13.5px; padding: 8px 8px; }
+.barra-carteira input[type=date] { width: 110px; font-size: 13.5px; padding: 8px 8px; }
 .barra-carteira .exibicao a { padding: 6px 10px; }
 @media (max-width: 1300px) { .barra-carteira { flex-wrap: wrap; } }
 .tabela-carteira td { vertical-align: middle; }
@@ -450,24 +452,25 @@ td.pct { min-width: 96px; }
 .linha-novo-usuario #novo-codigo { width: 120px; }
 .sem-quebra { white-space: nowrap; }
 /* ---------- Explorar carteira (árvore sobre o resumo) ---------- */
-.exp-topo { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin-bottom: 4px; }
+.exp-topo { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; margin-bottom: 4px; }
 .exp-topo h1 { margin: 0; white-space: nowrap; }
-.exp-caminho { flex: 999 1 300px; min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.exp-caminho button { border: 1px solid var(--borda-forte); background: #fff; color: var(--texto); border-radius: 999px; padding: 4px 12px; font: 500 13.5px "IBM Plex Sans", sans-serif; cursor: pointer; min-height: 32px; }
-.exp-caminho button.atual { border-color: var(--destaque); background: var(--destaque-claro); color: var(--destaque-escuro); font-weight: 600; }
-.exp-caminho .sep { color: #9CA3AF; }
+/* caminho do ramo: abaixo dos níveis, sempre numa linha só (etapas longas são cortadas; o nome inteiro fica no title) */
+.exp-caminho { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; overflow: hidden; margin: -4px 0 14px; min-width: 0; }
+.exp-caminho button { flex: 0 1 auto; min-width: 48px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid var(--borda-forte); background: #fff; color: var(--texto); border-radius: 999px; padding: 2px 12px; font: 500 13px "IBM Plex Sans", sans-serif; cursor: pointer; min-height: 28px; }
+.exp-caminho button.atual { flex-shrink: 0; border-color: var(--destaque); background: var(--destaque-claro); color: var(--destaque-escuro); font-weight: 600; }
+.exp-caminho .sep { color: #9CA3AF; flex: none; }
 .exp-tipo { margin: 0; flex: none; }
 .exp-sub { margin: 0 0 14px; }
-.exp-niveis { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 10px 14px; margin-bottom: 14px; }
-.exp-niveis .zona { flex: 999 1 420px; min-width: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 44px; border: 1px dashed transparent; border-radius: 10px; padding: 4px 8px; }
+/* níveis e disponíveis numa linha só, sem quebra (a ajuda encolhe; no celular as zonas empilham) */
+.exp-niveis { display: flex; flex-wrap: nowrap; gap: 12px; align-items: center; padding: 10px 14px; margin-bottom: 14px; }
+.exp-niveis .zona { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; min-height: 44px; border: 1px dashed transparent; border-radius: 10px; padding: 4px 8px; overflow-x: auto; }
 .exp-niveis .zona:hover { border-color: var(--borda-forte); }
-.exp-niveis .zona.livres { flex: 1 1 260px; background: #F9FAFB; }
-.exp-niveis .tit { font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: .06em; }
-.exp-niveis .ajuda { margin: 0; font-size: 12px; }
-.exp-nivel { display: inline-flex; align-items: center; gap: 8px; background: var(--destaque-claro); border: 1px solid #E8A0A4; color: var(--destaque-escuro); border-radius: 8px; padding: 0 4px 0 10px; font-size: 13.5px; font-weight: 600; min-height: 36px; cursor: grab; user-select: none; }
-.exp-nivel.livre { background: #fff; border-color: var(--borda-forte); color: #374151; font-weight: 500; padding-right: 10px; }
+.exp-niveis .zona.livres { flex: none; max-width: 60%; background: #F9FAFB; }
+.exp-niveis .tit { flex: none; white-space: nowrap; font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: .06em; }
+.exp-nivel { flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; background: var(--destaque-claro); border: 1px solid #E8A0A4; color: var(--destaque-escuro); border-radius: 8px; padding: 0 0 0 7px; font-size: 13px; font-weight: 600; min-height: 34px; cursor: grab; user-select: none; }
+.exp-nivel.livre { background: #fff; border-color: var(--borda-forte); color: #374151; font-weight: 500; padding-right: 8px; }
 .exp-nivel .pega { color: #B8414B; letter-spacing: -2px; } .exp-nivel.livre .pega { color: #9CA3AF; }
-.exp-nivel .tirar { border: 0; background: transparent; cursor: pointer; width: 28px; height: 30px; color: inherit; font-size: 15px; padding: 0; min-height: 0; }
+.exp-nivel .tirar { border: 0; background: transparent; cursor: pointer; width: 24px; height: 30px; color: inherit; font-size: 15px; padding: 0; min-height: 0; }
 .exp-kpis { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); background: #fff; border: 1px solid var(--borda); border-radius: var(--raio); box-shadow: var(--sombra); margin-bottom: 14px; }
 .exp-kpi { padding: 14px 14px; border-right: 1px solid var(--borda); min-width: 0; }
 .exp-kpi:last-child { border-right: 0; }
@@ -488,12 +491,15 @@ td.pct { min-width: 96px; }
 .exp-funil .e3 { background: #B8414B; } .exp-funil .e4 { background: #A42A33; } .exp-funil .e5 { background: var(--destaque-escuro); }
 .exp-status b, .exp-funil b { text-align: right; font-variant-numeric: tabular-nums; }
 .exp-status .pct, .exp-funil .pct { text-align: right; color: var(--suave); font-size: 13px; font-variant-numeric: tabular-nums; }
-.exp-quadro .botao { margin-top: 12px; display: inline-block; }
+.exp-quadro .botao { margin-top: 12px; display: inline-flex; align-items: center; }
 .exp-arvore { padding: 0; overflow: hidden; }
 .exp-arvore .rolagem { overflow-x: auto; }
 .exp-linha { display: grid; grid-template-columns: minmax(280px, 1fr) 84px 84px 108px 116px 104px 70px 110px 110px; gap: 0 14px; align-items: center; padding: 4px 16px; border-bottom: 1px solid #F3F4F6; font-size: 14px; min-width: 1080px; }
 .exp-linha.cab { padding: 12px 16px; border-bottom-color: var(--borda); font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--suave); white-space: nowrap; }
 .exp-linha.raiz { background: #F9FAFB; } .exp-linha.raiz .nome { font-weight: 700; }
+/* linha sob o mouse fica preenchida: dá para seguir os números até a coluna sem perder a linha */
+.exp-linha:not(.cab):hover { background: #E9EEF5; }
+.exp-linha.escolhida:hover { background: #F6D9DB; }
 .exp-linha.escolhida { background: var(--destaque-claro); box-shadow: inset 3px 0 0 var(--destaque); }
 .exp-linha.escolhida .nome { color: var(--destaque); font-weight: 700; }
 .exp-linha .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -503,3 +509,4 @@ td.pct { min-width: 96px; }
 .exp-linha .nome { border: 0; background: transparent; text-align: left; cursor: pointer; padding: 6px 4px; font: 500 14px "IBM Plex Sans", sans-serif; color: var(--texto); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-height: 32px; }
 @media (max-width: 1200px) { .exp-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } .exp-kpi { border-bottom: 1px solid var(--borda); } }
 @media (max-width: 700px) { .exp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .exp-niveis { flex-wrap: wrap; } .exp-niveis .zona { flex-basis: 100%; } }

@@ -24,6 +24,7 @@ const ICONES = {
   expandir: 'M13 17l5-5-5-5M6 17l5-5-5-5',
   menu: 'M3 6h18M3 12h18M3 18h18',
   sair: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
+  buscar: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35',
 };
 
 export function icone(nome) {

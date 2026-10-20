@@ -83,7 +83,7 @@ export async function render(conteudo, { usuario }) {
     const etapas = arvore.filter((n) => estado.sel === n.caminho || estado.sel.startsWith(`${n.caminho}/`) || n.caminho === '')
       .filter((n, i, l) => l.findIndex((x) => x.caminho === n.caminho) === i).sort((a, b) => a.profundidade - b.profundidade);
     const migalhas = h('nav', { class: 'exp-caminho', 'aria-label': 'Ramo escolhido' }, etapas.flatMap((n, i) => [
-      h('button', { type: 'button', class: n.caminho === escolhido.caminho ? 'atual' : '', onclick: () => { estado.sel = n.caminho; desenhar(); } },
+      h('button', { type: 'button', class: n.caminho === escolhido.caminho ? 'atual' : '', title: n.profundidade ? `${NIVEIS[n.nivel].nome}: ${n.rotulo}` : n.rotulo, onclick: () => { estado.sel = n.caminho; desenhar(); } },
         n.profundidade ? `${NIVEIS[n.nivel].nome}: ${n.rotulo}` : n.rotulo),
       i < etapas.length - 1 ? h('span', { class: 'sep', 'aria-hidden': 'true' }, '›') : null]));
     const tipos = h('div', { class: 'visoes exp-tipo', role: 'group', 'aria-label': 'Representante ou vendedor' },
@@ -91,8 +91,8 @@ export async function render(conteudo, { usuario }) {
         onclick: (ev) => { ev.preventDefault(); estado.tipo = v; estado.sel = ''; estado.abertos = new Set(['']); desenhar(); } }, t)));
 
     const niveis = h('section', { class: 'cartao exp-niveis', 'aria-label': 'Níveis da árvore' },
-      h('div', { class: 'zona', ondragover: (ev) => ev.preventDefault(), ondrop: soltarNoFim },
-        h('span', { class: 'tit' }, 'Níveis'), estado.niveis.map(cartaoNivel), h('span', { class: 'ajuda' }, 'arraste para ordenar · solte aqui para incluir no fim')),
+      h('div', { class: 'zona', title: 'Arraste para ordenar · solte aqui para incluir no fim', ondragover: (ev) => ev.preventDefault(), ondrop: soltarNoFim },
+        h('span', { class: 'tit' }, 'Níveis'), estado.niveis.map(cartaoNivel)),
       h('div', { class: 'zona livres', ondragover: (ev) => ev.preventDefault(), ondrop: soltarFora },
         h('span', { class: 'tit' }, 'Disponíveis'), possiveis.filter((n) => !estado.niveis.includes(n)).map(cartaoDisponivel)));
 
@@ -120,7 +120,7 @@ export async function render(conteudo, { usuario }) {
         h('span', { class: 'trilho', 'aria-hidden': 'true' }, h('span', { class: `e${i}`, style: `width:${ind.base ? Math.max(1, (q / ind.base) * 100) : 0}%` })),
         h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(ind.base ? (q / ind.base) * 100 : null)))),
       escolhido.profundidade
-        ? h('a', { class: 'botao', id: 'abrir-lista', href: enderecoLista(escolhido.filtros) }, `Abrir na Lista principal · ${n0(ind.qtd)} prospects`)
+        ? h('a', { class: 'botao pequeno', id: 'abrir-lista', href: enderecoLista(escolhido.filtros) }, `Abrir na Lista principal · ${n0(ind.qtd)} prospects`)
         : h('p', { class: 'ajuda', style: 'margin-top:12px' }, 'Escolha um ramo na árvore para abrir a lista dele.'));
 
     const cab = h('div', { class: 'exp-linha cab' }, ['Ramo', 'Prospects', 'Cobertura', 'Em andamento', 'Aguard. pedido', 'Sem interesse', 'Vendas', 'Pedidos (R$)', 'Potencial (R$)']
@@ -135,9 +135,9 @@ export async function render(conteudo, { usuario }) {
       h('span', { class: 'num' }, reais(n.ind.valorPedidos)), h('span', { class: 'num' }, reais(n.ind.potencial))));
 
     return [
-      h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar carteira'), migalhas, tipos),
+      h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar carteira'), tipos),
       h('p', { class: 'ajuda exp-sub' }, 'Do total até o cliente: arraste os níveis, abra os ramos; os números de cima seguem o ramo escolhido.'),
-      niveis, kpis,
+      niveis, migalhas, kpis,
       h('div', { class: 'exp-quadros' }, quadroStatus, quadroFunil),
       h('section', { class: 'cartao exp-arvore', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas)),
       h('p', { class: 'ajuda' }, 'Números do resumo pronto no banco (atualizado a cada registro e importação) — a tela não lê a carteira inteira.'),
