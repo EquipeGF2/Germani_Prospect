@@ -2,7 +2,7 @@
 # Execução manual: Actions → "Criar administrador" → Run workflow → login, nome e CRIAR.
 # Secrets necessários (Settings → Secrets and variables → Actions):
 #   TURSO_DATABASE_URL, TURSO_AUTH_TOKEN (token administrativo)
-#   ADMIN_SENHA_INICIAL — senha do administrador (mín. 12 caracteres, letras e números: ela abre o cofre). Nunca vai para o log.
+#   ADMIN_SENHA_INICIAL — senha do administrador (mín. 8 caracteres; ela abre o cofre — prefira letras e números). Nunca vai para o log.
 #   TURSO_API_TOKEN — chave de API da conta do Turso: gera a chave de administração trancada no cofre (ADR-0006).
 #   Depois a senha pode ser trocada na tela Usuários; pode apagar o Secret.
 name: Criar administrador
@@ -37,7 +37,7 @@ jobs:
       - run: npm ci
       - name: Conferir o Secret da senha
         run: |
-          if [ "${#GERMANI_SENHA_INICIAL}" -lt 12 ]; then echo "::error::Cadastre o Secret ADMIN_SENHA_INICIAL com ao menos 12 caracteres (letras e números)."; exit 1; fi
+          if [ "${#GERMANI_SENHA_INICIAL}" -lt 8 ]; then echo "::error::Cadastre o Secret ADMIN_SENHA_INICIAL com ao menos 8 caracteres."; exit 1; fi
         env:
           GERMANI_SENHA_INICIAL: ${{ secrets.ADMIN_SENHA_INICIAL }}
       - name: Aplicar migrações pendentes

@@ -7,12 +7,12 @@ const dec = new TextDecoder();
 const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
 const deB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
 
-/** Senha de quem tem cofre: ao menos 12 caracteres, com letras e números (o hash de login é legível pelo token do app). */
+/**
+ * Senha de quem tem cofre: ao menos 8 caracteres (decisão do dono — ADR-0006). O hash de login é legível pelo token do
+ * app, então a força da senha do administrador é o que protege o cofre: recomendável usar letras e números.
+ */
 export function validarSenhaCofre(senha) {
-  const s = String(senha ?? '');
-  if (s.length < 12 || !/[A-Za-z]/.test(s) || !/\d/.test(s)) {
-    throw new Error('senha de administrador: ao menos 12 caracteres, com letras e números');
-  }
+  if (String(senha ?? '').length < 8) throw new Error('senha de administrador: ao menos 8 caracteres');
 }
 
 async function chave(senha, sal, iteracoes, usos) {

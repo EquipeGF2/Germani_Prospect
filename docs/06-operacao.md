@@ -18,7 +18,7 @@ Guarde o token administrativo num gerenciador de senhas. Ele **nunca** vai para 
 |---|---|---|
 | `.env` na máquina do administrador (copiar de `.env.example`) | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `GERMANI_EXECUTADO_POR` | importações, usuários, migração manual |
 | GitHub → Settings → Secrets and variables → **Actions** → *Repository secrets* | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | workflows "Migrar banco (produção)" e "Criar administrador" |
-| idem | `ADMIN_SENHA_INICIAL` (mín. 12 caracteres, letras e números) | senha do administrador criado pelo workflow "Criar administrador" (abre o cofre de administração — ADR-0006); pode ser apagado depois |
+| idem | `ADMIN_SENHA_INICIAL` (mín. 8 caracteres; prefira letras e números) | senha do administrador criado pelo workflow "Criar administrador" (abre o cofre de administração — ADR-0006); pode ser apagado depois |
 | Site publicado (F1) | token **do app**, com permissões restritas | ver ADR-0001 — é visível para quem abre o site |
 
 > **Atenção:** um Secret do GitHub injetado na publicação do Pages acaba dentro do JavaScript público.
@@ -79,7 +79,7 @@ Local: `npm run site && npm run servir` → http://localhost:8080 (modo demonstr
 ### 5.1 Primeiro administrador (pelo GitHub, sem máquina local)
 
 1. Settings → Secrets and variables → Actions → *New repository secret*: `ADMIN_SENHA_INICIAL` = senha inicial
-   (mín. 12 caracteres, com letras e números). O valor nunca aparece no log nem no repositório (que é público).
+   (mín. 8 caracteres; prefira letras e números). O valor nunca aparece no log nem no repositório (que é público).
 2. Actions → *Criar administrador* → *Run workflow* → login (ex.: `genaro`), nome completo e `CRIAR`.
    O workflow aplica as migrações pendentes, gera a chave de administração (com o Secret `TURSO_API_TOKEN`) e cria o
    administrador com essa senha, trancando a chave no **cofre** dele (ADR-0006): no site ele entra só com usuário e

@@ -10,8 +10,8 @@ test('cofre: abre só com a senha certa; senha fraca não tranca; texto cifrado 
   assert.equal(await abrirCofre(c, 'Germani2026forte'), 'eyJ.chave.secreta');
   assert.equal(await abrirCofre(c, 'outra-senha-123'), null);
   assert.equal(await abrirCofre('lixo', 'Germani2026forte'), null);
-  await assert.rejects(fecharCofre('x', '37197525'), /12 caracteres/);
-  await assert.rejects(fecharCofre('x', 'somenteletrasaqui'), /letras e números/);
+  await assert.rejects(fecharCofre('x', '1234567'), /8 caracteres/);
+  assert.equal(await abrirCofre(await fecharCofre('eyJ.x', '12345678'), '12345678'), 'eyJ.x');   // 8 dígitos bastam
 });
 
 test('administrador com cofre: criado com a chave; nova senha regrava; senha sem chave apaga o cofre', async () => {
@@ -27,7 +27,7 @@ test('administrador com cofre: criado com a chave; nova senha regrava; senha sem
   assert.equal(await abrirCofre(await cofre(), 'SenhaForte2026'), null, 'a senha anterior não abre mais');
   await redefinirSenha(db, { usuarioId: a.id, executadoPor: 't', senha: 'OutraSenha2027' });
   assert.equal(await cofre(), null, 'sem a chave, o cofre antigo é apagado');
-  await assert.rejects(criarUsuarioSistema(db, { perfil: 'administrador', login: 'fraco', nome: 'Fraco Teste', executadoPor: 't', senha: '37197525', chaveAdmin: 'eyJ.adm' }), /12 caracteres/);
+  await assert.rejects(criarUsuarioSistema(db, { perfil: 'administrador', login: 'fraco', nome: 'Fraco Teste', executadoPor: 't', senha: 'curta', chaveAdmin: 'eyJ.adm' }), /8 caracteres/);
   // outros perfis nunca recebem cofre
   const f = await criarUsuarioSistema(db, { perfil: 'financeiro', login: 'fin', nome: 'Fin Teste', executadoPor: 't', senha: 'financeiro1', chaveAdmin: 'eyJ.adm' });
   assert.equal((await db.execute({ sql: 'SELECT cofre_admin FROM usuarios WHERE id = ?', args: [f.id] })).rows[0].cofre_admin, null);

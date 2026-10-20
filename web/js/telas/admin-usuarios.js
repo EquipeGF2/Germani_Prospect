@@ -104,7 +104,7 @@ export async function render(conteudo, ctx) {
   h('div', { class: 'nome' }, h('label', { for: 'novo-nome' }, 'Nome'), nomeNovo),
   h('div', {}, h('label', { for: 'novo-senha' }, 'Senha (mín. 8)'), senhaNova),
   bCriar,
-  h('small', { class: 'ajuda' }, 'Supervisores e vendedores vêm da importação da base (código do ERP). Administrador: senha com ao menos 12 caracteres, letras e números (ela abre o cofre de administração).'));
+  h('small', { class: 'ajuda' }, 'Supervisores e vendedores vêm da importação da base (código do ERP). Administrador: a senha abre o cofre de administração — prefira letras e números.'));
 
   [busca, filtroPerfil].forEach((c) => c.addEventListener('input', desenhar));
   montar(conteudo,
