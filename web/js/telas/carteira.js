@@ -3,10 +3,12 @@
 // Computador: uma barra só (busca, visões, supervisor, vendedor, data do último registro), cards ou lista, onda em ordem
 // e rota em 2 níveis (rota → subrota). Celular: layout de sempre.
 import { bancoApp, lerComCache } from '../db.js';
-import { consultaCarteira, consultaCidades, consultaOndas, consultaSegmentos, ORDENACOES, precisaFiltro, visoesPermitidas } from '../../shared/carteira.mjs';
+import { consultaCarteira, ORDENACOES, precisaFiltro, visoesPermitidas } from '../../shared/carteira.mjs';
+import { consultaResumo, opcoesEmCascata } from '../../shared/explorar.mjs';
 import { h, montar, mensagem, formatar, numeros } from '../ui.js';
 import { gravarLote, lerLote, seloStatus } from './_carteira.js';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
+import { icone } from '../menu.js';
 
 const POR_PAGINA = 50;
 const NOMES_VISAO = { lista: 'Lista', cidade: 'Cidade', bairro: 'Bairro', onda: 'Onda', status: 'Status', rota: 'Rota' };
@@ -40,21 +42,11 @@ function endereco(e, muda = {}) {
 }
 
 
-// Donos de carteira que o usuário pode filtrar (gestão vê todos; supervisor, a equipe). Com supervisorId, só a equipe dele.
-async function vendedoresDoEscopo(db, usuario, supervisorId) {
-  const sup = veTodasEquipes(usuario) ? supervisorId : usuario.perfil === 'supervisor' ? usuario.id : null;
-  if (!veTodasEquipes(usuario) && usuario.perfil !== 'supervisor') return [];
-  return (await lerComCache(db, {
-    sql: `SELECT id, nome, codigo_erp, perfil, tipo_atuacao FROM usuarios
-           WHERE perfil IN ('vendedor','supervisor') AND ativo = 1 ${sup ? 'AND COALESCE(supervisor_id, id) = ?' : ''}
-           ORDER BY nome`,
-    args: sup ? [sup] : [],
-  }, 300)).rows;
-}
-
-async function supervisoresDoEscopo(db, usuario) {
-  if (!veTodasEquipes(usuario)) return [];
-  return (await lerComCache(db, "SELECT id, nome, codigo_erp FROM usuarios WHERE perfil = 'supervisor' AND ativo = 1 ORDER BY nome", 300)).rows;
+// Opções dos filtros em cascata: vêm do resumo pronto (resumo_carteira, o mesmo do Explorar e em cache), nunca da
+// carteira inteira — cada filtro mostra só o que existe com os outros escolhidos (shared/explorar.mjs).
+async function opcoesDosFiltros(db, usuario, filtros, aba) {
+  const linhas = (await lerComCache(db, consultaResumo({ usuario }), 300)).rows;
+  return opcoesEmCascata(linhas, filtros, { aba });
 }
 
 const papelDoAgente = (v) => (v.perfil === 'supervisor' ? 'Supervisor' : v.tipo_atuacao === 'vendedor' ? 'Vendedor' : 'Representante');
@@ -63,7 +55,8 @@ function descreverFiltros(e) {
   const f = e.filtros;
   const partes = [];
   if (f.status) partes.push(['status', `Status: ${f.status.replace(/_/g, ' ')}`]);
-  if (f.cidadeBusca) partes.push(['cidadeBusca', `Cidade: ${f.cidadeBusca}${f.uf ? '/' + f.uf : ''}`]);
+  if (f.uf) partes.push(['uf', `UF: ${f.uf}`]);
+  if (f.cidadeBusca) partes.push(['cidadeBusca', `Cidade: ${f.cidadeBusca}`]);
   if (f.bairroBusca) partes.push(['bairroBusca', `Bairro: ${f.bairroBusca}`]);
   if (f.onda) partes.push(['onda', `Onda ${f.onda}`]);
   if (f.segmento) partes.push(['segmento', `Segmento: ${f.segmento}`]);
@@ -99,16 +92,19 @@ export async function render(conteudo, ctx) {
   // gestão: a Lista principal só é lida depois de um filtro ou busca (não varre a base inteira a cada entrada)
   const aguardaFiltro = e.aba === 'principal' && precisaFiltro(usuario, { visao: e.visao, filtros: e.filtros, busca: e.busca });
   const gestao = usuario.perfil !== 'vendedor';
-  const [linhas, supervisores, vendedores, ondas, cidades, segmentos] = await Promise.all([
+  const [linhas, opcoes] = await Promise.all([
     aguardaFiltro ? [] : db.execute(consulta).then((r) => r.rows),
-    supervisoresDoEscopo(db, usuario), vendedoresDoEscopo(db, usuario, e.filtros.supervisorId),
-    computador ? lerComCache(db, consultaOndas(), 600).then((r) => r.rows.map((x) => String(x.onda))) : [],
-    gestao ? lerComCache(db, consultaCidades(), 600).then((r) => r.rows) : [],
-    gestao ? lerComCache(db, consultaSegmentos(), 600).then((r) => r.rows.map((x) => String(x.segmento))) : []]);
+    opcoesDosFiltros(db, usuario, e.filtros, e.aba)]);
+  const { supervisores, vendedores } = opcoes;
+  const ondas = computador ? opcoes.ondas : [];
+  const ufs = gestao ? opcoes.ufs : [];
+  const cidades = gestao ? opcoes.cidades : [];
+  const segmentos = gestao ? opcoes.segmentos : [];
 
-  const campoBusca = h('input', { type: 'search', id: 'busca', value: e.busca, placeholder: 'Nome, CNPJ, cidade ou bairro', 'aria-label': 'Buscar prospect' });
+  const campoBusca = h('input', { type: 'search', id: 'busca', value: e.busca, placeholder: 'Nome/CNPJ', title: 'Busca por nome, CNPJ, cidade ou bairro', 'aria-label': 'Buscar prospect' });
   const formBusca = h('form', { class: 'barra-busca', onsubmit: (ev) => { ev.preventDefault(); location.hash = endereco(e, { busca: campoBusca.value.trim(), pagina: 0 }); } },
-    campoBusca, h('button', { type: 'submit' }, 'Buscar'));
+    // computador: lupa no lugar do texto (abre espaço para os filtros na mesma linha)
+    campoBusca, computador ? h('button', { type: 'submit', class: 'so-icone', title: 'Buscar', 'aria-label': 'Buscar' }, icone('buscar')) : h('button', { type: 'submit' }, 'Buscar'));
 
   const visoesDaAba = permitidas.filter((v) => (e.aba === 'acompanhamento' ? ['status', 'lista', 'cidade', 'bairro', 'onda', 'rota'].includes(v) : v !== 'status'));
   const visoes = h('div', { class: 'visoes', role: 'tablist' }, visoesDaAba
@@ -119,7 +115,7 @@ export async function render(conteudo, ctx) {
   if (veTodasEquipes(usuario)) {
     // trocar o supervisor limpa o vendedor (a lista de vendedores passa a ser só a equipe escolhida)
     const sel = h('select', { id: 'filtro-supervisor', onchange: () => { location.hash = endereco(e, { filtros: { supervisorId: sel.value ? Number(sel.value) : null, vendedorId: null }, pagina: 0 }); } },
-      h('option', { value: '' }, 'Todos os supervisores'),
+      h('option', { value: '' }, 'Todos'),
       supervisores.map((s) => h('option', { value: s.id, selected: Number(s.id) === e.filtros.supervisorId }, `${s.nome}${s.codigo_erp ? ' · ' + s.codigo_erp : ''}`)));
     extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-supervisor' }, 'Supervisor'), sel));
   }
@@ -129,13 +125,21 @@ export async function render(conteudo, ctx) {
       vendedores.map((v) => h('option', { value: v.id, selected: Number(v.id) === e.filtros.vendedorId }, `${v.nome} · ${papelDoAgente(v)}${v.codigo_erp ? ' · ' + v.codigo_erp : ''}`)));
     extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-vendedor' }, 'Representante'), sel));
   }
+  if (ufs.length) {
+    // trocar a UF limpa a cidade (a lista de cidades passa a ser só a da UF)
+    const sel = h('select', { id: 'filtro-uf', onchange: () => { location.hash = endereco(e, { filtros: { uf: sel.value || null, cidadeBusca: null, bairroBusca: null }, pagina: 0 }); } },
+      h('option', { value: '' }, 'Todas'), ufs.map((u) => h('option', { value: u, selected: u === e.filtros.uf }, u)));
+    extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-uf' }, 'UF'), sel));
+  }
   if (cidades.length) {
     const atual = e.filtros.cidadeBusca ? `${e.filtros.cidadeBusca}|${e.filtros.uf ?? ''}` : '';
+    // mesma cidade em duas UFs (sem UF escolhida): a UF aparece no nome para diferenciar
+    const repetida = new Set(cidades.filter((c, i) => cidades.findIndex((x) => x.cidade_busca === c.cidade_busca) !== i).map((c) => c.cidade_busca));
     const sel = h('select', { id: 'filtro-cidade', onchange: () => {
       const [cidadeBusca, uf] = sel.value ? sel.value.split('|') : [null, null];
-      location.hash = endereco(e, { filtros: { cidadeBusca, uf: uf || null, bairroBusca: null }, pagina: 0 });
+      location.hash = endereco(e, { filtros: { cidadeBusca, uf: cidadeBusca ? uf || null : e.filtros.uf ?? null, bairroBusca: null }, pagina: 0 });
     } }, h('option', { value: '' }, 'Todas'),
-    cidades.map((c) => { const v = `${c.cidade_busca}|${c.uf ?? ''}`; return h('option', { value: v, selected: v === atual }, `${c.cidade ?? c.cidade_busca}${c.uf ? '/' + c.uf : ''}`); }));
+    cidades.map((c) => { const v = `${c.cidade_busca}|${c.uf ?? ''}`; return h('option', { value: v, selected: v === atual }, `${c.cidade}${repetida.has(c.cidade_busca) && c.uf ? '/' + c.uf : ''}`); }));
     extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-cidade' }, 'Cidade'), sel));
   }
   if (segmentos.length) {
@@ -153,7 +157,7 @@ export async function render(conteudo, ctx) {
 
   const chips = descreverFiltros(e).map(([chave, texto]) => {
     const limpa = { [chave]: null };
-    if (chave === 'cidadeBusca') Object.assign(limpa, { uf: null, bairroBusca: null });
+    if (chave === 'uf' || chave === 'cidadeBusca') Object.assign(limpa, { cidadeBusca: null, bairroBusca: null });
     if (chave === 'rota') limpa.subrota = null;
     if (chave === 'dataDe') limpa.dataAte = null;
     return h('a', { class: 'chip', href: endereco(e, { filtros: limpa, pagina: 0 }), title: 'Remover filtro' }, texto, ' ✕');

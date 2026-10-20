@@ -120,3 +120,49 @@ test('Explorar carteira: árvore do resumo bate com o Início, filhos somam o pa
   const soVen = montarArvore({ linhas: res, pedidos: ped, niveis, abertos: new Set(), tipo: 'vendedor', parametros })[0].ind.qtd;
   assert.equal(soRep + soVen, raiz.qtd);
 });
+
+test('filtros em cascata (Lista principal e Acompanhamento) pelo resumo = valores distintos da própria carteira com os outros filtros', async () => {
+  const { consultaResumo, opcoesEmCascata } = await import('../shared/explorar.mjs');
+  const db = await bancoTeste();
+  const { linhas } = await lerPlanilha('exemplos/base-ficticia.xlsx');
+  const mapaStatus = normalizarMapaStatus(JSON.parse(await readFile('config/mapa-status-planilha.json', 'utf8')));
+  await carregarExemplo(db, { linhasBase: linhas, mapaStatus, hoje: '2026-10-21', gerarHash: gerarHashSenha });
+  const ADM = { id: 1, perfil: 'administrador' };
+  const resumo = (await db.execute(consultaResumo({ usuario: ADM }))).rows;
+  // direto na carteira: valores distintos de uma coluna com os OUTROS filtros (o que a cascata promete)
+  const direto = async (coluna, f, aba) => {
+    const w = [aba === 'acompanhamento' ? "p.status_atual NOT IN ('nao_contactado','em_prospeccao')" : "p.status_atual IN ('nao_contactado','em_prospeccao')"]; const a = [];
+    const sup = "COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END)";
+    if (f.supervisorId && coluna !== 'sup') { w.push(`${sup} = ?`); a.push(f.supervisorId); }
+    if (f.vendedorId && coluna !== 'p.vendedor_id') { w.push('p.vendedor_id = ?'); a.push(f.vendedorId); }
+    if (f.uf && coluna !== 'p.uf') { w.push('p.uf = ?'); a.push(f.uf); }
+    if (f.cidadeBusca && coluna !== 'p.cidade_busca') { w.push('p.cidade_busca = ?'); a.push(f.cidadeBusca); }
+    if (f.segmento && coluna !== 'p.tipologia_gtm') { w.push('p.tipologia_gtm = ?'); a.push(f.segmento); }
+    if (f.onda && coluna !== 'p.onda') { w.push('p.onda = ?'); a.push(f.onda); }
+    const col = coluna === 'sup' ? sup : coluna;
+    const r = await db.execute({ sql: `SELECT DISTINCT ${col} AS x FROM prospects p JOIN usuarios v ON v.id = p.vendedor_id
+      WHERE ${w.join(' AND ')} AND ${col} IS NOT NULL AND ${col} <> ''`, args: a });
+    return r.rows.map((l) => String(l.x)).sort();
+  };
+  const conferir = async (f, aba) => {
+    const o = opcoesEmCascata(resumo, f, { aba });
+    const s = (l) => l.map(String).sort();
+    assert.deepEqual(s(o.supervisores.map((x) => x.id)), await direto('sup', f, aba), `supervisores ${JSON.stringify(f)} ${aba}`);
+    assert.deepEqual(s(o.vendedores.map((x) => x.id)), await direto('p.vendedor_id', f, aba), `vendedores ${JSON.stringify(f)} ${aba}`);
+    assert.deepEqual(s(o.ufs), await direto('p.uf', f, aba));
+    assert.deepEqual(s([...new Set(o.cidades.map((x) => x.cidade_busca))]), await direto('p.cidade_busca', f, aba));
+    assert.deepEqual(s(o.segmentos), await direto('p.tipologia_gtm', f, aba));
+    assert.deepEqual(s(o.ondas), await direto('p.onda', f, aba));
+    return o;
+  };
+  const tudo = await conferir({}, 'principal');
+  assert.ok(tudo.cidades.length > 1 && tudo.vendedores.length > 1, 'a base de exemplo tem mais de uma cidade e representante');
+  const cidade = tudo.cidades[0];
+  const naCidade = await conferir({ cidadeBusca: cidade.cidade_busca, uf: cidade.uf }, 'principal');
+  assert.ok(naCidade.vendedores.length <= tudo.vendedores.length);
+  const rep = tudo.vendedores[0].id;
+  await conferir({ vendedorId: rep }, 'principal');
+  await conferir({ supervisorId: tudo.supervisores[0].id, onda: tudo.ondas[0] }, 'principal');
+  await conferir({}, 'acompanhamento');
+  await conferir({ cidadeBusca: cidade.cidade_busca, vendedorId: rep }, 'acompanhamento');
+});

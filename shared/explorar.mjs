@@ -4,10 +4,11 @@
 // Escopo: gestão vê tudo (supervisor com "vê todas as equipes" também); supervisor só a equipe; vendedor só a carteira.
 // docs/03 §12
 import { veTodasEquipes } from './perfis.mjs';
+import { STATUS_LISTA } from './status.mjs';
 
-const colunasUsuario = `v.nome AS vendedor_nome, v.tipo_atuacao, v.perfil AS vendedor_perfil,
+const colunasUsuario = `v.nome AS vendedor_nome, v.tipo_atuacao, v.perfil AS vendedor_perfil, v.codigo_erp AS vendedor_codigo,
        COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END) AS supervisor_id,
-       COALESCE(sup.nome, v.nome) AS supervisor_nome`;
+       COALESCE(sup.nome, v.nome) AS supervisor_nome, COALESCE(sup.codigo_erp, v.codigo_erp) AS supervisor_codigo`;
 const juntaUsuario = `JOIN usuarios v ON v.id = x.vendedor_id
        LEFT JOIN usuarios sup ON sup.id = COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END)`;
 
@@ -122,4 +123,39 @@ export function montarArvore({ linhas, pedidos = [], niveis, abertos, tipo = '',
   };
   visitar('', 0, L, P, rotuloRaiz, null, {});
   return saida;
+}
+
+/**
+ * Filtros em cascata da Lista principal e do Acompanhamento, sobre as mesmas linhas do resumo (consultaResumo, já em cache):
+ * cada filtro mostra só as opções que existem com os OUTROS filtros escolhidos (cidade → só os representantes, supervisores,
+ * segmentos e ondas dela; representante → só as cidades dele…), sem nenhuma leitura a mais no banco.
+ * `aba`: 'principal' (não contactado / em prospecção) ou 'acompanhamento' (os demais), como a própria lista.
+ */
+export function opcoesEmCascata(linhas, filtros = {}, { aba = 'principal' } = {}) {
+  const f = filtros;
+  const naAba = (l) => (f.status ? l.status_atual === f.status : (aba === 'acompanhamento') !== STATUS_LISTA.includes(l.status_atual));
+  const testes = {
+    supervisor: (l) => !f.supervisorId || Number(l.supervisor_id) === Number(f.supervisorId),
+    vendedor: (l) => !f.vendedorId || Number(l.vendedor_id) === Number(f.vendedorId),
+    uf: (l) => !f.uf || l.uf === f.uf,
+    cidade: (l) => !f.cidadeBusca || l.cidade_busca === f.cidadeBusca,
+    segmento: (l) => !f.segmento || l.tipologia_gtm === f.segmento,
+    onda: (l) => !f.onda || String(l.onda) === String(f.onda),
+  };
+  const fixos = (l) => naAba(l) && (!f.rota || l.rota === f.rota) && (!f.subrota || l.subrota === f.subrota);
+  const base = linhas.filter((l) => Number(l.qtd) > 0 && fixos(l));
+  // linhas que passam em todos os filtros, menos o da própria faceta
+  const sem = (faceta) => base.filter((l) => Object.entries(testes).every(([k, t]) => k === faceta || t(l)));
+  const unicos = (rows, chave, montar) => { const m = new Map(); for (const l of rows) { const k = chave(l); if (k !== '' && k != null && !m.has(k)) m.set(k, montar(l)); } return [...m.values()]; };
+  const porNome = (a, b) => String(a.nome).localeCompare(String(b.nome), 'pt-BR');
+  return {
+    supervisores: unicos(sem('supervisor'), (l) => l.supervisor_id, (l) => ({ id: Number(l.supervisor_id), nome: l.supervisor_nome ?? '—', codigo_erp: l.supervisor_codigo ?? null })).sort(porNome),
+    vendedores: unicos(sem('vendedor'), (l) => l.vendedor_id, (l) => ({ id: Number(l.vendedor_id), nome: l.vendedor_nome ?? '—', codigo_erp: l.vendedor_codigo ?? null,
+      perfil: l.vendedor_perfil, tipo_atuacao: l.tipo_atuacao })).sort(porNome),
+    ufs: unicos(sem('uf'), (l) => l.uf, (l) => l.uf).sort(),
+    cidades: unicos(sem('cidade'), (l) => (l.cidade_busca ? `${l.cidade_busca}|${l.uf}` : ''), (l) => ({ cidade_busca: l.cidade_busca, uf: l.uf || null, cidade: l.cidade ?? l.cidade_busca }))
+      .sort((a, b) => a.cidade_busca.localeCompare(b.cidade_busca, 'pt-BR') || String(a.uf).localeCompare(String(b.uf))),
+    segmentos: unicos(sem('segmento'), (l) => l.tipologia_gtm, (l) => l.tipologia_gtm).sort((a, b) => a.localeCompare(b, 'pt-BR')),
+    ondas: unicos(sem('onda'), (l) => String(l.onda ?? ''), (l) => String(l.onda)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })),
+  };
 }

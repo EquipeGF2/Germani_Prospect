@@ -327,6 +327,13 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 - Escopo: gestão vê tudo (supervisor com "vê todas as equipes" também); **supervisor só a própria equipe, sem o nível
   Supervisor**; vendedor só a própria carteira (sem Supervisor nem Representante).
 - **Abrir na Lista principal** só com um ramo escolhido (nunca a base inteira): a lista abre com os filtros do caminho.
+- Tela: níveis e disponíveis numa linha só; o caminho do ramo fica abaixo dos níveis, também numa linha (etapa longa é
+  cortada, o nome inteiro aparece ao passar o mouse); a linha da árvore sob o mouse fica preenchida.
+- **Filtros em cascata da Lista principal e do Acompanhamento** (`opcoesEmCascata`): cada filtro (supervisor,
+  representante, UF, cidade, segmento, onda) mostra só o que existe com os outros filtros escolhidos e na aba atual — ex.:
+  escolher Alpestre deixa só os representantes, supervisores, segmentos e ondas de Alpestre. As opções saem do mesmo
+  `resumo_carteira` (lido uma vez, em cache), nunca da carteira. UF e cidade são filtros separados; trocar a UF limpa a
+  cidade. Teste prova que as opções = valores distintos da carteira com os mesmos filtros.
 - Números vêm de `resumo_carteira` (uma linha por combinação, mantida pelos triggers) e dos pedidos do ERP agrupados —
   nunca da carteira inteira. Teste prova que o resumo bate com a base em todo o processo e que a raiz bate com o Início.
 

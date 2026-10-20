@@ -203,7 +203,7 @@ export function consultaFicha({ usuario, prospectId }) {
 
 /** Ondas existentes na base (para o filtro), em ordem natural: 1, 2, 3… */
 // Filtros que restringem a lista (sem nenhum deles, a gestão não carrega a Lista principal — ver precisaFiltro)
-const FILTROS_RESTRITIVOS = ['cidadeBusca', 'bairroBusca', 'onda', 'segmento', 'rota', 'subrota', 'status', 'supervisorId', 'vendedorId', 'dataDe', 'dataAte', 'somenteRetornos'];
+const FILTROS_RESTRITIVOS = ['uf', 'cidadeBusca', 'bairroBusca', 'onda', 'segmento', 'rota', 'subrota', 'status', 'supervisorId', 'vendedorId', 'dataDe', 'dataAte', 'somenteRetornos'];
 
 /**
  * A Lista principal da gestão (administrador, gerente, supervisor, financeiro) só é lida depois de um filtro ou de uma
