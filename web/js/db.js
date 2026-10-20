@@ -1,6 +1,7 @@
 // Conexões com o banco (ADR-0001).
 //   bancoApp()   — token do APP embutido no site (permissões restritas)
-//   bancoAdmin() — token de ADMINISTRAÇÃO digitado na tela; fica só nesta aba (sessionStorage)
+//   bancoAdmin() — chave de ADMINISTRAÇÃO: aberta do cofre no login do administrador (ADR-0006) ou, em último caso,
+//                  colada na tela "Acesso de administração"; fica só nesta aba (sessionStorage)
 // Modo demonstração: banco SQLite temporário no navegador, com a mesma estrutura e regras.
 const cfg = window.GERMANI_CONFIG ?? { modo: 'demonstracao' };
 const CHAVE_TOKEN = 'germani.tokenAdmin';
@@ -66,6 +67,18 @@ export async function definirTokenAdmin(token) {
   await teste.execute('SELECT count(*) FROM parametros');
   try { sessionStorage.setItem(CHAVE_TOKEN, t); } catch { throw new Error('o navegador bloqueou o armazenamento da sessão'); }
   admin = teste;
+}
+
+/** Chave de administração aberta nesta aba (para trancar no cofre de outro administrador), ou null. */
+export function tokenAdminAtual() {
+  if (modoDemonstracao()) return null;
+  try { return sessionStorage.getItem(CHAVE_TOKEN); } catch { return null; }
+}
+
+/** Guarda a chave aberta do cofre no login (sem testar a conexão: o login já falou com o banco). */
+export function guardarTokenAdmin(token) {
+  try { sessionStorage.setItem(CHAVE_TOKEN, token); } catch { /* sem armazenamento: cai na tela de acesso */ }
+  admin = null;
 }
 
 export function limparTokenAdmin() {

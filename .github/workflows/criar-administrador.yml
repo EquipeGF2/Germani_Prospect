@@ -2,7 +2,8 @@
 # Execução manual: Actions → "Criar administrador" → Run workflow → login, nome e CRIAR.
 # Secrets necessários (Settings → Secrets and variables → Actions):
 #   TURSO_DATABASE_URL, TURSO_AUTH_TOKEN (token administrativo)
-#   ADMIN_SENHA_INICIAL — senha do administrador (mín. 8 caracteres). Nunca vai para o log.
+#   ADMIN_SENHA_INICIAL — senha do administrador (mín. 12 caracteres, letras e números: ela abre o cofre). Nunca vai para o log.
+#   TURSO_API_TOKEN — chave de API da conta do Turso: gera a chave de administração trancada no cofre (ADR-0006).
 #   Depois a senha pode ser trocada na tela Usuários; pode apagar o Secret.
 name: Criar administrador
 on:
@@ -36,7 +37,7 @@ jobs:
       - run: npm ci
       - name: Conferir o Secret da senha
         run: |
-          if [ "${#GERMANI_SENHA_INICIAL}" -lt 8 ]; then echo "::error::Cadastre o Secret ADMIN_SENHA_INICIAL com ao menos 8 caracteres."; exit 1; fi
+          if [ "${#GERMANI_SENHA_INICIAL}" -lt 12 ]; then echo "::error::Cadastre o Secret ADMIN_SENHA_INICIAL com ao menos 12 caracteres (letras e números)."; exit 1; fi
         env:
           GERMANI_SENHA_INICIAL: ${{ secrets.ADMIN_SENHA_INICIAL }}
       - name: Aplicar migrações pendentes
@@ -44,6 +45,11 @@ jobs:
         env:
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      - name: Gerar chave de administração para o cofre (Turso)
+        run: bash scripts/gerar-token-app.sh admin
+        env:
+          TURSO_API_TOKEN: ${{ secrets.TURSO_API_TOKEN }}
+          TURSO_DB_NAME: ${{ vars.TURSO_DB_NAME }}
       - name: Criar administrador
         run: npm run usuarios -- criar-admin "$LOGIN" "$NOME"
         env:
@@ -51,6 +57,7 @@ jobs:
           NOME: ${{ github.event.inputs.nome }}
           GERMANI_EXECUTADO_POR: ${{ github.actor }}
           GERMANI_SENHA_INICIAL: ${{ secrets.ADMIN_SENHA_INICIAL }}
+          GERMANI_CHAVE_ADMIN: ${{ env.TURSO_ADMIN_TOKEN_GERADO }}
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
       - name: Gerar token do app (Turso)

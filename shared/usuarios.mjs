@@ -2,6 +2,7 @@
 // Senhas são SEMPRE geradas pelo sistema (10 caracteres aleatórios) e mostradas uma única vez (ADR-0001).
 import { gerarHashSenha } from './senha.mjs';
 import { normalizarBusca } from './texto.mjs';
+import { fecharCofre } from './cofre.mjs';
 
 export const PERFIS_SISTEMA = Object.freeze(['administrador', 'gerente', 'financeiro']); // criados manualmente
 export const TIPOS_ATUACAO = Object.freeze(['representante', 'vendedor']);
@@ -16,6 +17,11 @@ export function gerarSenhaProvisoria(tamanho = 10) {
     }
   }
   return saida.join('');
+}
+
+/** Senha gerada para quem terá cofre de administração: 14 caracteres, com letras e números. */
+function gerarSenhaAdmin() {
+  for (;;) { const s = gerarSenhaProvisoria(14); if (/[A-Za-z]/.test(s) && /\d/.test(s)) return s; }
 }
 
 function auditoria(executadoPor, acao, id, detalhes = {}) {
@@ -39,17 +45,21 @@ export async function listarUsuarios(db) {
  * Cria administrador, gerente comercial ou analista financeiro.
  * `senha` (opcional, mín. 8 caracteres): senha definida pelo administrador (tela de usuários ou Secret do workflow
  * "Criar administrador"). Sem ela, gera uma senha provisória, devolvida para mostrar uma vez.
+ * `chaveAdmin` (opcional): chave de administração a trancar no cofre do novo ADMINISTRADOR com a senha dele
+ * (ADR-0006) — assim ele entra só com usuário e senha. Exige senha forte (shared/cofre.mjs).
  */
-export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPor, senha: senhaInicial = null }) {
+export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPor, senha: senhaInicial = null, chaveAdmin = null }) {
   if (!PERFIS_SISTEMA.includes(perfil)) throw new Error('perfil deve ser administrador, gerente ou financeiro');
   const l = String(login ?? '').trim();
   const n = String(nome ?? '').trim();
   if (!/^[A-Za-z0-9._-]{3,40}$/.test(l)) throw new Error('login: 3 a 40 caracteres (letras, números, ponto, hífen)');
   if (n.length < 3) throw new Error('informe o nome');
-  const senha = senhaInicial ?? gerarSenhaProvisoria();
+  const comCofre = perfil === 'administrador' && chaveAdmin;
+  const senha = senhaInicial ?? (comCofre ? gerarSenhaAdmin() : gerarSenhaProvisoria());
+  const cofre = comCofre ? await fecharCofre(chaveAdmin, senha) : null;
   const r = await db.execute({
-    sql: 'INSERT INTO usuarios (perfil, nome, nome_busca, login, senha_hash, senha_provisoria) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
-    args: [perfil, n, normalizarBusca(n), l, await gerarHashSenha(senha), senhaInicial ? 0 : 1],
+    sql: 'INSERT INTO usuarios (perfil, nome, nome_busca, login, senha_hash, senha_provisoria, cofre_admin) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
+    args: [perfil, n, normalizarBusca(n), l, await gerarHashSenha(senha), senhaInicial ? 0 : 1, cofre],
   });
   const id = Number(r.rows[0].id);
   await db.execute(auditoria(executadoPor, `criar_${perfil}`, id, { login: l }));
@@ -59,12 +69,18 @@ export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPo
 /**
  * Define a senha do usuário (também libera o acesso de quem veio da importação sem senha).
  * `senha` informada pelo administrador (mín. 8 caracteres); sem ela, gera uma senha provisória.
+ * Para um ADMINISTRADOR, `chaveAdmin` regrava o cofre com a nova senha; sem ela, o cofre antigo é apagado
+ * (nunca fica um cofre que abre com a senha anterior).
  */
-export async function redefinirSenha(db, { usuarioId, executadoPor, senha: definida = null }) {
-  const senha = definida ?? gerarSenhaProvisoria();
+export async function redefinirSenha(db, { usuarioId, executadoPor, senha: definida = null, chaveAdmin = null }) {
+  const alvo = (await db.execute({ sql: 'SELECT perfil FROM usuarios WHERE id = ?', args: [usuarioId] })).rows[0];
+  if (!alvo) throw new Error('usuário não encontrado');
+  const comCofre = alvo.perfil === 'administrador' && chaveAdmin;
+  const senha = definida ?? (comCofre ? gerarSenhaAdmin() : gerarSenhaProvisoria());
+  const cofre = comCofre ? await fecharCofre(chaveAdmin, senha) : null;
   const hash = await gerarHashSenha(senha);
   const r = await db.batch([
-    { sql: "UPDATE usuarios SET senha_hash = ?, senha_provisoria = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? RETURNING login", args: [hash, definida ? 0 : 1, usuarioId] },
+    { sql: "UPDATE usuarios SET senha_hash = ?, senha_provisoria = ?, cofre_admin = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? RETURNING login", args: [hash, definida ? 0 : 1, cofre, usuarioId] },
     auditoria(executadoPor, definida ? 'senha_definida' : 'senha_provisoria', usuarioId),
   ], 'write');
   if (!r[0].rows.length) throw new Error('usuário não encontrado');

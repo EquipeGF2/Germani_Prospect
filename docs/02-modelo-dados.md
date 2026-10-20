@@ -49,7 +49,7 @@ erDiagram
 | `perfil` | `administrador` · `gerente` (gerente comercial — migração 0002) · `supervisor` · `vendedor` · `financeiro` (analista do console de crédito) |
 | `codigo_erp` | COD (vendedor) ou COD SUP (supervisor) da planilha/Senior. Único por perfil. |
 | `login` | criado pela importação: vendedor = código; supervisor = `sup` + código. Único, sem diferenciar maiúsculas. |
-| `senha_hash` | PBKDF2; `NULL` = acesso ainda não liberado. A senha é **definida pelo administrador** na tela Usuários (mín. 8 caracteres) ou gerada aleatoriamente ("Gerar" / `npm run usuarios -- senha <login>`). `senha_provisoria` = 1 só para a gerada (indicador na tela; não há troca obrigatória no 1º acesso). |
+| `senha_hash` | PBKDF2; `NULL` = acesso ainda não liberado. A senha é **definida pelo administrador** na tela Usuários (mín. 8 caracteres) ou gerada aleatoriamente ("Gerar" / `npm run usuarios -- senha <login>`). `senha_provisoria` = 1 só para a gerada (indicador na tela; não há troca obrigatória no 1º acesso). `cofre_admin` (0005): só administrador — chave de administração cifrada com a senha dele (ADR-0006); senha de administrador com 12+ caracteres, letras e números. |
 | `supervisor_id` | obrigatório para vendedor; precisa apontar para um supervisor (trigger). |
 | `tipo_atuacao` | `representante` (sem rota) · `vendedor` (com rota). Preenchido pela lista do administrador (`npm run importar:tipos`). `NULL` = tratado como representante. |
 | `ativo` | inativo não registra contato nem recebe transferência. |
