@@ -51,21 +51,23 @@ Se houver `TURSO_API_TOKEN`, o token gerado no Actions tem prioridade sobre o `T
 tranca no cofre do administrador (ADR-0006); o login abre o cofre com a senha. Em outra aba (ou com o navegador
 reaberto), a tela **Confirme sua senha** reabre o cofre — só a senha, nunca token. Permissões da chave (referência):
 ```bash
-turso db tokens create germaniprospec -p all:data_read \
-  -p prospects:data_add,data_update -p usuarios:data_add,data_update -p parametros:data_update \
-  -p importacoes:data_add,data_update -p importacao_linhas:data_add -p contatos:data_add \
-  -p eventos_erp:data_add -p auditoria:data_add -p liberacoes_credito:data_add -p transferencias:data_add \
-  -p feriados:data_add,data_delete -p perfis:data_add,data_update -p perfil_telas:data_add,data_delete \
-  -p movimentacoes:data_add -p prospects_busca:data_add,data_update,data_delete -p prospects_busca_data:data_add,data_update,data_delete \
-  -p prospects_busca_idx:data_add,data_update,data_delete -p prospects_busca_docsize:data_add,data_update,data_delete -p prospects_busca_config:data_add,data_update
+turso db tokens create germaniprospec -p all:data_read,data_add,data_update \
+  -p feriados:data_delete -p perfil_telas:data_delete -p rota_paradas:data_delete \
+  -p prospects_busca:data_delete -p prospects_busca_data:data_delete -p prospects_busca_idx:data_delete -p prospects_busca_docsize:data_delete
 ```
+A chave pode incluir e alterar dados em **todas** as tabelas (nunca estrutura), então tabela nova de migração futura já
+fica coberta e a chave **não precisa ser renovada** a cada mudança. O que é somente inclusão (contatos, eventos do ERP,
+movimentações, transferências, liberações, auditoria, linhas de importação) continua protegido pelos triggers do banco;
+apagar, só onde a regra permite. Basta rodar **Criar administrador** uma vez com esta versão.
+
 **O Turso aplica as permissões também às gravações feitas pelos triggers** (confirmado na 1ª importação real:
-`SQLITE_AUTH: not authorized`). Por isso: `movimentacoes` (histórico de status), `prospects:data_update` no app (o
-registro de atendimento muda o status) e `prospects_busca*` (índice de busca da migração 0006) na chave de
-administração. Mudou a lista → rodar **Criar administrador** de novo (renova a chave do cofre) e republicar o site
-(renova o token do app).
-A permissão `feriados` entrou com a migração 0002 (tela Feriados): quem gerou o token de administração antes
-precisa gerar um novo com o comando acima.
+`SQLITE_AUTH: not authorized`). O token do app (gerado a cada publicação) lista as tabelas que o site grava e as que os
+triggers gravam por causa delas: `prospects:data_update` e `movimentacoes:data_add` (o registro de atendimento muda o
+status) e `resumo_carteira` (0012).
+
+**Migrações automáticas:** a publicação do site (**Publicar app**, a cada mesclagem na `main`) aplica antes as
+migrações pendentes e só depois gera o token do app e publica. Ninguém precisa rodar workflow à mão a cada mudança;
+**Migrar banco** e **Criar administrador** ficam para contingência e para criar administradores.
 Antes da carga real, conferir os itens "Verificar" do ADR-0001 (escritas feitas pelos triggers, como
 `movimentacoes`, podem exigir permissão também).
 
@@ -118,7 +120,7 @@ rodar o workflow de novo** (ele só aplica as que faltam).
 | `0009_perfil_ve_todas_equipes` | `perfis.ve_todos`: perfil de supervisor que vê todas as equipes (ex.: supervisor que também é gerente). Aplicada por **Criar administrador** ou **Migrar banco** |
 | `0010_indices_lista_principal` | índices parciais da Lista principal (faixa "sem próxima ação" lida já na ordem, geral e por vendedor). Só índice: nada muda no resultado |
 | `0011_indice_painel` | índice do Início (vendedor × status com as datas do funil: agrega lendo só o índice) e do segmento (filtro da Lista principal). Só índice |
-| `0012_resumo_carteira` | tabela `resumo_carteira` (resumo pronto, mantido por triggers) e a tela **Explorar carteira** nos perfis do sistema. Os tokens passam a ter `resumo_carteira:data_add,data_update` (os triggers gravam nela). **Ordem:** mesclar → **Criar administrador** (aplica a 0012 e renova a chave) → **Publicar app → Run workflow** (token do site com a permissão nova). Sem o último passo, registrar atendimento é recusado pelo banco |
+| `0012_resumo_carteira` | tabela `resumo_carteira` (resumo pronto, mantido por triggers) e a tela **Explorar carteira** nos perfis do sistema. O token do app passa a ter `resumo_carteira:data_add,data_update` (os triggers gravam nela). Aplicada sozinha na publicação |
 
 ## 6. Primeira carga — roteiro
 

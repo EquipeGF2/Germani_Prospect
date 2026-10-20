@@ -35,3 +35,11 @@ qualquer pessoa que abrir o site criar administradores, trocar senhas e alterar 
 - A tela "Acesso de administração" (colar token) continua como contingência (ex.: administrador sem cofre).
 - Para revogar tudo: `turso db tokens invalidate germaniprospec` (invalida todas as chaves), rodar "Criar administrador"
   de novo (novo cofre) e republicar o site (novo token do app).
+
+## Atualização 2026-10-20 — chave sem renovação e migrações na publicação
+
+- A chave do cofre passou a `all:data_read,data_add,data_update` (+ apagar só em feriados, perfil_telas, rota_paradas e
+  no índice de busca): tabela nova já fica coberta e a chave não é mais renovada a cada migração. Somente-inclusão segue
+  garantido pelos triggers; estrutura (`schema_*`) continua fora. Risco aceito pelo dono: quem abrir o cofre pode alterar
+  dados de qualquer tabela que os triggers não protegem — a chave só existe cifrada com a senha do administrador.
+- A publicação do site aplica as migrações pendentes antes de gerar o token do app e publicar (pages.yml).
