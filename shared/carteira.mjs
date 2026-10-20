@@ -74,7 +74,7 @@ function escopo(usuario) {
  * @param busca    texto livre (nome, CNPJ, cidade, bairro) — acentos ignorados
  * @returns {{ sql: string, args: any[], colunas?: string[] }}
  */
-export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca = '', incluirForaDaLista = false, limite = 200, deslocamento = 0, ordemNatural = false, rotaEmNiveis = false, ordenar = null }) {
+export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca = '', incluirForaDaLista = false, limite = 200, deslocamento = 0, ordemNatural = false, rotaEmNiveis = false, ordenar = null, usarFaixas = true }) {
   if (!usuario?.id || !usuario?.perfil) throw new Error('usuário obrigatório');
   if (!VISOES.includes(visao)) throw new Error(`visão inválida: ${visao}`);
   const permitidas = visoesPermitidas(usuario);
@@ -106,8 +106,8 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
     // índice de texto (FTS5 trigram, migração 0006) em vez de varrer a tabela. `busca` já contém fantasia, CNPJ,
     // cidade e BAIRRO, então o antigo "OR bairro_busca LIKE" era redundante; o CNPJ digitado com pontuação
     // continua achado pelo início do CNPJ (faixa no índice único) — mesmo resultado de antes.
-    const cnpjFaixa = termoCnpj ? 'cnpj >= ? AND cnpj < ?' : '1 = 1';
-    where.push(`(id IN (SELECT rowid FROM prospects_busca WHERE busca LIKE '%' || ? || '%') OR (${cnpjFaixa}))`);
+    const porTexto = "id IN (SELECT rowid FROM prospects_busca WHERE busca LIKE '%' || ? || '%')";
+    where.push(termoCnpj ? `(${porTexto} OR (cnpj >= ? AND cnpj < ?))` : porTexto);
     args.push(termo);
     if (termoCnpj) args.push(termoCnpj, `${termoCnpj}~`);
   }
@@ -117,10 +117,32 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
     const colunas = comRota ? [...COLUNAS_LISTA, ...COLUNAS_ROTA] : COLUNAS_LISTA;
     const porColuna = ORDENACOES[ordenar?.campo] && (ordenar.campo !== 'rota' || comRota)
       ? `${ORDENACOES[ordenar.campo](ordenar.desc ? 'DESC' : 'ASC')}, razao_social, ` : '';
+    const nomes = colunas.map((c) => c.split(' AS ').pop());
+    // Lista principal (Não contactado / Em prospecção), sem busca, sem filtro de data e sem ordenação por coluna:
+    // a ordem "pendências primeiro" é a junção de 3 faixas da próxima ação — vencida/hoje (por data), sem data e
+    // futura (por data) —, cada uma lida pelo índice já na ordem e cortada no tamanho da página (migração 0010).
+    // Mesmo resultado da ordenação geral, sem ler e ordenar a base inteira a cada página.
+    const faixas = usarFaixas && !porColuna && where.includes('na_lista = 1') && !termo && !filtros.dataDe && !filtros.dataAte;
+    if (faixas) {
+      const corte = limite + deslocamento;
+      const hoje = "date('now','-3 hours')";
+      const faixa = (n, condicao, ordem) => `SELECT * FROM (SELECT ${n} AS _faixa, ${colunas.join(', ')}, data_proxima_acao AS _dpa
+            FROM vw_prospects WHERE ${[...where, condicao].join(' AND ')} ORDER BY ${ordem} LIMIT ${corte})`;
+      const resto = 'cidade_busca, bairro_busca, razao_social, id';
+      return {
+        colunas: nomes,
+        sql: `${faixa(0, `data_proxima_acao <= ${hoje}`, `data_proxima_acao, ${resto}`)}
+              UNION ALL ${faixa(1, 'data_proxima_acao IS NULL', resto)}
+              UNION ALL ${faixa(2, `data_proxima_acao > ${hoje}`, `data_proxima_acao, ${resto}`)}
+              ORDER BY _faixa, _dpa, cidade_busca, bairro_busca, razao_social, id
+              LIMIT ? OFFSET ?`,
+        args: [...args, ...args, ...args, limite, deslocamento],
+      };
+    }
     return {
-      colunas: colunas.map((c) => c.split(' AS ').pop()),
+      colunas: nomes,
       sql: `SELECT ${colunas.join(', ')} FROM vw_prospects ${filtro}
-            ORDER BY ${porColuna}pendente_hoje DESC, retorno_pendente DESC, COALESCE(data_proxima_acao, '0000-00-00'), cidade_busca, bairro_busca, razao_social
+            ORDER BY ${porColuna}pendente_hoje DESC, retorno_pendente DESC, COALESCE(data_proxima_acao, '0000-00-00'), cidade_busca, bairro_busca, razao_social, id
             LIMIT ? OFFSET ?`,
       args: [...args, limite, deslocamento],
     };

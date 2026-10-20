@@ -58,7 +58,7 @@ web/
 ├── index.html · css/app.css      casca e estilo (paleta do mockup, botões ≥ 44 px, mobile primeiro)
 ├── js/app.js                     roteador por hash (#/caminho) e controle de perfil
 ├── js/menu.js                    casca: menu lateral por perfil (recolher/expandir, gaveta no celular), caminho da página
-├── js/db.js                      conexões: token do app (embutido) · chave de administração (cofre aberto pela senha — ADR-0006) · demonstração
+├── js/db.js                      conexões: token do app (embutido) · chave de administração (cofre aberto pela senha — ADR-0006) · cache curto de leituras (limpo a cada gravação) · demonstração
 ├── js/sessao.js · js/ui.js       login e utilitários de tela (texto sempre por textContent)
 ├── js/arquivo.js                 leitura do arquivo escolhido (shared/planilha.mjs)
 └── js/telas/                     uma tela por arquivo; importam shared/ diretamente

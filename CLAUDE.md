@@ -8,6 +8,8 @@ Sistema **GERMANI** (guarda-chuva GERMANI), estado **ativo**. Português do Bras
   (nunca edite uma migração aplicada) + teste em `test/regras-banco.test.mjs` + doc 03.
 - Tabela nova (ou coluna usada em filtro, ligação ou ordenação) já nasce com índice; mudança de consulta pesada
   é medida com `node scripts/medir-consultas.mjs 50000 --plano` (volume de produção ~50 mil CNPJs) e nunca muda o resultado.
+  Lista principal: ordem em 3 faixas da próxima ação (shared/carteira.mjs) com teste de equivalência; leituras que mudam pouco
+  passam por `lerComCache` (web/js/db.js), que se limpa a cada gravação.
 - `shared/` não pode depender de Node (é usado também pelo app no navegador).
 - Telas em `web/js/telas/`: só textContent (nunca innerHTML com dado do banco); regra de negócio fica em `shared/`.
 
