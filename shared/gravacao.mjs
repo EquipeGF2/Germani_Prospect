@@ -9,7 +9,9 @@ export async function gravarEmLotes(db, itens, montar, { tamanho = 50, aoProgred
     try {
       await db.batch(fatia.flatMap(montar), 'write');
       fatia.forEach((_, i) => (resultados[ini + i] = { ok: true }));
-    } catch {
+    } catch (e) {
+      // falta de permissão no banco vale para todas as linhas: para tudo com uma mensagem clara (sem tentar linha a linha)
+      if (semPermissao(e)) throw new Error(`o banco recusou por falta de permissão (${mensagemErro(e)}). A chave de administração precisa ser renovada: rode no GitHub Actions → Criar administrador e entre de novo.`);
       for (let i = 0; i < fatia.length; i++) {
         try {
           await db.batch(montar(fatia[i]), 'write');
@@ -23,6 +25,8 @@ export async function gravarEmLotes(db, itens, montar, { tamanho = 50, aoProgred
   aoProgredir?.(itens.length, itens.length);
   return resultados;
 }
+
+export const semPermissao = (e) => /SQLITE_AUTH|not authorized/i.test(String(e?.message ?? e));
 
 /** Mensagem legível do erro do libSQL (remove prefixos "SQLITE_CONSTRAINT: SQLite error:"). */
 export function mensagemErro(e) {

@@ -41,7 +41,8 @@ A chave de API é poderosa (administra a conta do Turso): fica só no Secret, nu
 **Token do app — à mão** (alternativa, com o Turso CLI no computador):
 ```bash
 turso db tokens create germaniprospec -p all:data_read -p contatos:data_add -p transferencias:data_add \
-  -p rotas:data_add,data_update -p rota_paradas:data_add,data_update,data_delete -p liberacoes_credito:data_add
+  -p rotas:data_add,data_update -p rota_paradas:data_add,data_update,data_delete -p liberacoes_credito:data_add \
+  -p prospects:data_update -p movimentacoes:data_add
 ```
 Cadastre em GitHub → Settings → Secrets and variables → Actions: **variável** `TURSO_DATABASE_URL` e **secret** `TURSO_APP_TOKEN`.
 Se houver `TURSO_API_TOKEN`, o token gerado no Actions tem prioridade sobre o `TURSO_APP_TOKEN`.
@@ -54,8 +55,15 @@ turso db tokens create germaniprospec -p all:data_read \
   -p prospects:data_add,data_update -p usuarios:data_add,data_update -p parametros:data_update \
   -p importacoes:data_add,data_update -p importacao_linhas:data_add -p contatos:data_add \
   -p eventos_erp:data_add -p auditoria:data_add -p liberacoes_credito:data_add -p transferencias:data_add \
-  -p feriados:data_add,data_delete -p perfis:data_add,data_update -p perfil_telas:data_add,data_delete
+  -p feriados:data_add,data_delete -p perfis:data_add,data_update -p perfil_telas:data_add,data_delete \
+  -p movimentacoes:data_add -p prospects_busca:data_add,data_update,data_delete -p prospects_busca_data:data_add,data_update,data_delete \
+  -p prospects_busca_idx:data_add,data_update,data_delete -p prospects_busca_docsize:data_add,data_update,data_delete -p prospects_busca_config:data_add,data_update
 ```
+**O Turso aplica as permissões também às gravações feitas pelos triggers** (confirmado na 1ª importação real:
+`SQLITE_AUTH: not authorized`). Por isso: `movimentacoes` (histórico de status), `prospects:data_update` no app (o
+registro de atendimento muda o status) e `prospects_busca*` (índice de busca da migração 0006) na chave de
+administração. Mudou a lista → rodar **Criar administrador** de novo (renova a chave do cofre) e republicar o site
+(renova o token do app).
 A permissão `feriados` entrou com a migração 0002 (tela Feriados): quem gerou o token de administração antes
 precisa gerar um novo com o comando acima.
 Antes da carga real, conferir os itens "Verificar" do ADR-0001 (escritas feitas pelos triggers, como
