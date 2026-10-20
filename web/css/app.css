@@ -443,3 +443,4 @@ td.pct { min-width: 96px; }
 .tabela-usuarios select[data-perfil-usuario] { width: auto; min-width: 13rem; max-width: 18rem; }
 .tabela-usuarios .acoes { flex-wrap: nowrap; }
 .tabela-usuarios .acoes .definir-senha { flex-wrap: nowrap; }
+.linha-novo-usuario #novo-codigo { width: 120px; }

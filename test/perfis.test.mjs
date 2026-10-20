@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe } from './auxiliar.mjs';
 import { carregarAcesso, definirPerfilUsuario, listarPerfis, opcoesDePerfil, perfisPossiveis, salvarPerfil, telasDoUsuario, telasPadrao, TELAS } from '../shared/perfis.mjs';
-import { criarUsuarioSistema } from '../shared/usuarios.mjs';
+import { criarUsuarioEquipe, criarUsuarioSistema } from '../shared/usuarios.mjs';
 
 test('perfis do sistema: um por tipo-base, com as telas de hoje (financeiro só crédito; administrador todas)', async () => {
   const db = await bancoTeste();
@@ -69,9 +69,21 @@ test('lista de perfis do usuário: todos aparecem; os que não servem trazem o m
   const gerente = op({ perfil: 'gerente' });
   assert.equal(Object.keys(gerente).length, perfis.length);
   assert.equal(gerente['Analista financeiro'], null);
-  assert.match(gerente['Supervisor regional'], /importação/);
+  assert.match(gerente['Supervisor regional'], /novo usuário/);
   assert.match(op({ perfil: 'administrador' }, { proprio: true })['Gerente comercial'], /próprio usuário/);
   assert.match(op({ perfil: 'vendedor' })['Gerente comercial'], /só perfis do tipo Vendedor/);
-  assert.match(op(null)['Supervisor regional'], /importação/);
+  assert.equal(op(null)['Supervisor regional'], null, 'usuário novo pode ser supervisor ou vendedor');
   assert.ok(perfis.some((p) => p.id === id));
+});
+
+test('supervisor e vendedor criados pela tela: código do ERP obrigatório, vendedor com supervisor e tipo', async () => {
+  const db = await bancoTeste();
+  const sup = await criarUsuarioEquipe(db, { perfil: 'supervisor', login: 'ana', nome: 'Ana Sup', codigoErp: '950', executadoPor: 'adm', senha: 'senha1234' });
+  await assert.rejects(criarUsuarioEquipe(db, { perfil: 'supervisor', login: 'ana2', nome: 'Ana Dois', codigoErp: '950', executadoPor: 'adm' }), /já existe supervisor com o código 950/);
+  await assert.rejects(criarUsuarioEquipe(db, { perfil: 'vendedor', login: 'rep1', nome: 'Rep Um', codigoErp: '', executadoPor: 'adm' }), /código do ERP/);
+  await assert.rejects(criarUsuarioEquipe(db, { perfil: 'vendedor', login: 'rep1', nome: 'Rep Um', codigoErp: '1501', tipo: 'representante', executadoPor: 'adm' }), /supervisor da equipe/);
+  const v = await criarUsuarioEquipe(db, { perfil: 'vendedor', login: 'rep1', nome: 'Rep Um', codigoErp: '1501', supervisorId: sup.id, tipo: 'vendedor', executadoPor: 'adm' });
+  const u = (await db.execute({ sql: 'SELECT perfil, codigo_erp, supervisor_id, tipo_atuacao, senha_provisoria FROM usuarios WHERE id = ?', args: [v.id] })).rows[0];
+  assert.deepEqual({ ...u }, { perfil: 'vendedor', codigo_erp: '1501', supervisor_id: sup.id, tipo_atuacao: 'vendedor', senha_provisoria: 1 });
+  assert.equal(v.senha.length, 10);
 });

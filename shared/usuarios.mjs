@@ -66,6 +66,38 @@ export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPo
 }
 
 /**
+ * Cria supervisor ou vendedor/representante pela tela (antes ou além da importação da base). Precisa do código do ERP
+ * (é por ele que a importação reconhece o mesmo usuário e liga os prospects) e, para vendedor, do supervisor da equipe.
+ * `tipo` (vendedor): 'representante' (sem rota) ou 'vendedor' (com rota).
+ */
+export async function criarUsuarioEquipe(db, { perfil, login, nome, codigoErp, supervisorId = null, tipo = null, executadoPor, senha: senhaInicial = null }) {
+  if (!['supervisor', 'vendedor'].includes(perfil)) throw new Error('perfil deve ser supervisor ou vendedor');
+  const l = String(login ?? '').trim();
+  const n = String(nome ?? '').trim();
+  const cod = String(codigoErp ?? '').trim();
+  if (!/^[A-Za-z0-9._-]{3,40}$/.test(l)) throw new Error('login: 3 a 40 caracteres (letras, números, ponto, hífen)');
+  if (n.length < 3) throw new Error('informe o nome');
+  if (!cod) throw new Error('informe o código do ERP (a importação da base usa esse código)');
+  if (perfil === 'vendedor') {
+    if (!TIPOS_ATUACAO.includes(tipo)) throw new Error('escolha representante ou vendedor');
+    const sup = (await db.execute({ sql: "SELECT id FROM usuarios WHERE id = ? AND perfil = 'supervisor'", args: [supervisorId ?? 0] })).rows[0];
+    if (!sup) throw new Error('escolha o supervisor da equipe');
+  }
+  const repetido = (await db.execute({ sql: 'SELECT login FROM usuarios WHERE perfil = ? AND codigo_erp = ?', args: [perfil, cod] })).rows[0];
+  if (repetido) throw new Error(`já existe ${perfil} com o código ${cod} (login ${repetido.login})`);
+  const senha = senhaInicial ?? gerarSenhaProvisoria();
+  const r = await db.execute({
+    sql: `INSERT INTO usuarios (perfil, codigo_erp, nome, nome_busca, login, senha_hash, senha_provisoria, supervisor_id, tipo_atuacao)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    args: [perfil, cod, n, normalizarBusca(n), l, await gerarHashSenha(senha), senhaInicial ? 0 : 1,
+      perfil === 'vendedor' ? supervisorId : null, perfil === 'vendedor' ? tipo : null],
+  });
+  const id = Number(r.rows[0].id);
+  await db.execute(auditoria(executadoPor, `criar_${perfil}`, id, { login: l, codigo_erp: cod, tipo }));
+  return { id, login: l, senha };
+}
+
+/**
  * Define a senha do usuário (também libera o acesso de quem veio da importação sem senha).
  * `senha` informada pelo administrador (mín. 8 caracteres); sem ela, gera uma senha provisória.
  * Para um ADMINISTRADOR, `chaveAdmin` regrava o cofre com a nova senha; sem ela, o cofre antigo é apagado
