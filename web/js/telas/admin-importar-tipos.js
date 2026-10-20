@@ -2,6 +2,7 @@ import { bancoAdmin } from '../db.js';
 import { lerArquivo } from '../arquivo.js';
 import { importarTipos } from '../../shared/importar-tipos.mjs';
 import { chaveCabecalho } from '../../shared/texto.mjs';
+import { lerCsvTexto, sha256Hex } from '../../shared/planilha.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, passos, comEspera, aviso } from '../ui.js';
 import { blocoResultado } from './_resultado.js';
@@ -20,6 +21,17 @@ export async function render(conteudo, ctx) {
   let planilha = null;
   const arquivo = h('input', { type: 'file', accept: '.xlsx,.csv', id: 'arquivo-tipos' });
   const bLer = h('button', { onclick: async () => { planilha = await comEspera(bLer, () => lerArquivo(arquivo.files[0])); if (planilha) colunas(); } }, 'Ler arquivo');
+  // ou: lista copiada do Excel e colada aqui (colunas separadas por tabulação; 1ª linha = cabeçalho)
+  const colada = h('textarea', { id: 'lista-colada', rows: 8, placeholder: 'TIPO\tCOD SUP\tSUPERVISOR\tCOD\tNOME\nVendedor\t6\tCLERIO CAGLIARI\t29\t…', style: 'width:100%;font-family:monospace' });
+  const bColar = h('button', { class: 'secundario', onclick: async () => {
+    planilha = await comEspera(bColar, async () => {
+      const texto = colada.value.trim();
+      if (!texto) throw new Error('cole a lista (com a linha de cabeçalho)');
+      const { linhas } = lerCsvTexto(`${texto}\n`);
+      return { linhas, nome: 'lista colada', observacao: 'colada na tela', sha256: await sha256Hex(new TextEncoder().encode(texto)) };
+    });
+    if (planilha) colunas();
+  } }, 'Usar lista colada');
   let cCod; let cTipo;
 
   const paraTela = (rs) => rs.map((r) => ({ numeroLinha: r.numeroLinha, resultado: r.resultado, cnpj: null, mensagens: r.mensagens }));
@@ -49,7 +61,9 @@ export async function render(conteudo, ctx) {
   montar(area, passos(ETAPAS, 0), h('div', { class: 'cartao' },
     h('div', { class: 'campo' }, h('label', { for: 'arquivo-tipos' }, 'Lista (.xlsx ou .csv)'), arquivo),
     h('p', { class: 'ajuda' }, 'Duas colunas bastam: o código (o mesmo COD da planilha base) e o tipo. Aceita REPRESENTANTE, REP, RCA · VENDEDOR, VENDEDOR INTERNO, INTERNO. Também dá para ajustar um a um na tela de Usuários.'),
-    bLer));
+    bLer,
+    h('div', { class: 'campo', style: 'margin-top:16px' }, h('label', { for: 'lista-colada' }, 'Ou cole a lista copiada do Excel (com o cabeçalho)'), colada),
+    bColar));
   montar(conteudo, h('h1', {}, 'Representantes e vendedores'),
     h('p', { class: 'ajuda' }, 'Representante: lista, cidade, bairro, onda e status — sem rota. Vendedor: o mesmo + rota/subrota e montagem de rotas.'), area);
 }

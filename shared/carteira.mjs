@@ -13,6 +13,7 @@
 // Aguardando cadastro, Sem interesse, Cadastrado, Venda e Inválido — para o vendedor seguir o andamento.
 // Indicadores não usam este módulo (contam tudo — shared/indicadores.mjs).
 import { normalizarBusca } from './texto.mjs';
+import { veTodasEquipes } from './perfis.mjs';
 
 export const VISOES = Object.freeze(['lista', 'cidade', 'bairro', 'onda', 'status', 'rota']);
 
@@ -52,7 +53,7 @@ export const ORDENACOES = Object.freeze({
 });
 
 function escopo(usuario) {
-  if (['administrador', 'gerente', 'financeiro'].includes(usuario.perfil)) return { where: [], args: [] };
+  if (veTodasEquipes(usuario)) return { where: [], args: [] };
   if (usuario.perfil === 'supervisor') return { where: ['supervisor_id = ?'], args: [usuario.id] };
   return { where: ['vendedor_id = ?'], args: [usuario.id] };
 }

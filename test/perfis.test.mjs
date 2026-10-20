@@ -87,3 +87,32 @@ test('supervisor e vendedor criados pela tela: código do ERP obrigatório, vend
   assert.deepEqual({ ...u }, { perfil: 'vendedor', codigo_erp: '1501', supervisor_id: sup.id, tipo_atuacao: 'vendedor', senha_provisoria: 1 });
   assert.equal(v.senha.length, 10);
 });
+
+test('supervisor que vê todas as equipes (migração 0009): lê tudo, registra só na própria equipe', async () => {
+  const { bancoTeste: b, criarEquipe: ce, criarProspect: cp, registrarContato: rc } = await import('./auxiliar.mjs');
+  const { consultaCarteira } = await import('../shared/carteira.mjs');
+  const { consultaPainel } = await import('../shared/painel.mjs');
+  const { veTodasEquipes } = await import('../shared/perfis.mjs');
+  const db = await b();
+  await ce(db);   // sup 1 (vendedores 2 e 3), admin 4, sup 5 (sem equipe)
+  await db.execute("INSERT INTO usuarios (perfil, codigo_erp, nome, nome_busca, login, supervisor_id) VALUES ('vendedor', '12', 'Vend Doze', 'VEND DOZE', 'v12', 5)"); // id 6, equipe do sup 5
+  await cp(db, { n: 1, vendedorId: 2 });
+  const deOutra = await cp(db, { n: 2, vendedorId: 6 });
+  const idGer = await salvarPerfil(db, { nome: 'Gerente que vê', base: 'gerente', telas: ['inicio'], veTodos: true, executadoPor: 'adm' });
+  assert.equal(Number((await db.execute({ sql: 'SELECT ve_todos FROM perfis WHERE id = ?', args: [idGer] })).rows[0].ve_todos), 0, 'só supervisor amplia');
+  await assert.rejects(db.execute("INSERT INTO perfis (nome, base, ve_todos) VALUES ('x', 'vendedor', 1)"), /CHECK constraint/);
+  const id = await salvarPerfil(db, { nome: 'Supervisor gerente', base: 'supervisor', telas: ['inicio', 'lista', 'acompanhamento', 'registrar'], veTodos: true, executadoPor: 'adm' });
+  await definirPerfilUsuario(db, { usuarioId: 5, perfilId: id, executadoPor: 'adm' });
+  const acesso = await carregarAcesso(db, { usuarioId: 5 });
+  assert.equal(acesso.ve_todos, true);
+  const sup = { id: 5, perfil: 'supervisor', ...acesso };
+  assert.ok(veTodasEquipes(sup));
+  assert.ok(!veTodasEquipes({ id: 1, perfil: 'supervisor' }));
+  const lista = (await db.execute(consultaCarteira({ usuario: sup }))).rows;
+  assert.equal(lista.length, 2, 'vê as duas equipes');
+  assert.equal((await db.execute(consultaCarteira({ usuario: { id: 1, perfil: 'supervisor' } }))).rows.length, 1, 'supervisor comum: só a equipe');
+  assert.equal((await db.execute(consultaPainel({ usuario: sup }))).rows.length >= 2, true);
+  // registrar fora da equipe: o banco recusa (a leitura ampliada não muda a regra de gravação)
+  await assert.rejects(rc(db, { prospectId: 1, usuarioId: 5, resultado: 'atendido', data: '2026-10-01' }));
+  await rc(db, { prospectId: deOutra, usuarioId: 5, resultado: 'atendido', data: '2026-10-01' });
+});

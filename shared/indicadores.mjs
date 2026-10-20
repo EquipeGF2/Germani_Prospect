@@ -13,6 +13,7 @@
 //   pct_conversao    = vendas ÷ contactados
 // Agrupamento por vendedor/supervisor usa a carteira ATUAL (transferências não reescrevem o passado).
 // Agrupamentos: geral · vendedor · supervisor · cidade · bairro · onda · rota (rota: só vendedores, nunca representantes).
+import { veTodasEquipes } from './perfis.mjs';
 
 const AGRUPAMENTOS = {
   geral: { chave: "'geral'", rotulo: "'Total geral'" },
@@ -134,7 +135,7 @@ export function consultaMovimentacoes({ usuario, inicio, fim, filtros = {}, limi
   const where = [];
   const args = [];
   if (usuario?.perfil === 'vendedor') { where.push('vendedor_id = ?'); args.push(usuario.id); }
-  else if (usuario?.perfil === 'supervisor') { where.push('supervisor_id = ?'); args.push(usuario.id); }
+  else if (usuario?.perfil === 'supervisor' && !veTodasEquipes(usuario)) { where.push('supervisor_id = ?'); args.push(usuario.id); }
   if (inicio) { where.push('data_evento >= ?'); args.push(inicio); }
   if (fim) { where.push('data_evento <= ?'); args.push(fim); }
   if (filtros.tipos?.length) {

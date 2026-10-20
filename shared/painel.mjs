@@ -9,11 +9,13 @@
 //   valor dos pedidos = soma real do valor dos pedidos importados do ERP (eventos_erp.valor, migração 0004)
 // Filtro de período (resolverPeriodo): sem período = posição atual; com período = eventos com data no período.
 import { datasDeFeriado } from './feriados.mjs';
+import { veTodasEquipes } from './perfis.mjs';
 
 export const PERFIS_VISAO_TOTAL = Object.freeze(['administrador', 'gerente', 'financeiro']);
 export const PARAMETROS_PAINEL = Object.freeze(['data_inicio_campanha', 'percentual_pipeline', 'valor_medio_cliente']);
 
-export const vePainelCompleto = (usuario) => PERFIS_VISAO_TOTAL.includes(usuario?.perfil);
+// supervisor com perfil "vê todas as equipes" (migração 0009) também vê o painel completo
+export const vePainelCompleto = (usuario) => veTodasEquipes(usuario);
 
 // Etapas do funil, cumulativas ("chegou pelo menos até aqui"), para o funil nunca crescer de uma etapa para a outra.
 const ETAPA = {
@@ -42,8 +44,9 @@ export function consultaPainel({ usuario, periodo = null }) {
   if (!usuario?.id || !usuario?.perfil) throw new Error('usuário obrigatório');
   const where = ['s.conta_carteira = 1'];
   const escopo = [];
-  if (usuario.perfil === 'supervisor') { where.push('COALESCE(v.supervisor_id, v.id) = ?'); escopo.push(usuario.id); }
-  else if (!vePainelCompleto(usuario)) { where.push('v.id = ?'); escopo.push(usuario.id); }
+  if (vePainelCompleto(usuario)) { /* tudo */ }
+  else if (usuario.perfil === 'supervisor') { where.push('COALESCE(v.supervisor_id, v.id) = ?'); escopo.push(usuario.id); }
+  else { where.push('v.id = ?'); escopo.push(usuario.id); }
   const args = [];
   let colunas;
   if (periodo) {

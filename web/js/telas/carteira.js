@@ -6,6 +6,7 @@ import { bancoApp } from '../db.js';
 import { consultaCarteira, consultaOndas, ORDENACOES, visoesPermitidas } from '../../shared/carteira.mjs';
 import { h, montar, mensagem, formatar, numeros } from '../ui.js';
 import { gravarLote, lerLote, seloStatus } from './_carteira.js';
+import { veTodasEquipes } from '../../shared/perfis.mjs';
 
 const POR_PAGINA = 50;
 const NOMES_VISAO = { lista: 'Lista', cidade: 'Cidade', bairro: 'Bairro', onda: 'Onda', status: 'Status', rota: 'Rota' };
@@ -38,12 +39,11 @@ function endereco(e, muda = {}) {
   return `#/carteira${s ? '?' + s : ''}`;
 }
 
-const VE_TUDO = ['administrador', 'gerente', 'financeiro'];
 
 // Donos de carteira que o usuário pode filtrar (gestão vê todos; supervisor, a equipe). Com supervisorId, só a equipe dele.
 async function vendedoresDoEscopo(db, usuario, supervisorId) {
-  const sup = VE_TUDO.includes(usuario.perfil) ? supervisorId : usuario.perfil === 'supervisor' ? usuario.id : null;
-  if (!VE_TUDO.includes(usuario.perfil) && usuario.perfil !== 'supervisor') return [];
+  const sup = veTodasEquipes(usuario) ? supervisorId : usuario.perfil === 'supervisor' ? usuario.id : null;
+  if (!veTodasEquipes(usuario) && usuario.perfil !== 'supervisor') return [];
   return (await db.execute({
     sql: `SELECT id, nome, codigo_erp, perfil, tipo_atuacao FROM usuarios
            WHERE perfil IN ('vendedor','supervisor') AND ativo = 1 ${sup ? 'AND COALESCE(supervisor_id, id) = ?' : ''}
@@ -53,7 +53,7 @@ async function vendedoresDoEscopo(db, usuario, supervisorId) {
 }
 
 async function supervisoresDoEscopo(db, usuario) {
-  if (!VE_TUDO.includes(usuario.perfil)) return [];
+  if (!veTodasEquipes(usuario)) return [];
   return (await db.execute("SELECT id, nome, codigo_erp FROM usuarios WHERE perfil = 'supervisor' AND ativo = 1 ORDER BY nome")).rows;
 }
 
@@ -109,14 +109,14 @@ export async function render(conteudo, ctx) {
 
   const extras = [];
   // gestão e supervisor sempre veem os filtros de carteira (mesmo antes da importação da base: só "Todos")
-  if (VE_TUDO.includes(usuario.perfil)) {
+  if (veTodasEquipes(usuario)) {
     // trocar o supervisor limpa o vendedor (a lista de vendedores passa a ser só a equipe escolhida)
     const sel = h('select', { id: 'filtro-supervisor', onchange: () => { location.hash = endereco(e, { filtros: { supervisorId: sel.value ? Number(sel.value) : null, vendedorId: null }, pagina: 0 }); } },
       h('option', { value: '' }, 'Todos os supervisores'),
       supervisores.map((s) => h('option', { value: s.id, selected: Number(s.id) === e.filtros.supervisorId }, `${s.nome}${s.codigo_erp ? ' · ' + s.codigo_erp : ''}`)));
     extras.push(h('div', { class: 'filtro' }, h('label', { for: 'filtro-supervisor' }, 'Supervisor'), sel));
   }
-  if (VE_TUDO.includes(usuario.perfil) || usuario.perfil === 'supervisor') {
+  if (veTodasEquipes(usuario) || usuario.perfil === 'supervisor') {
     const sel = h('select', { id: 'filtro-vendedor', onchange: () => { location.hash = endereco(e, { filtros: { vendedorId: sel.value ? Number(sel.value) : null }, pagina: 0 }); } },
       h('option', { value: '' }, e.filtros.supervisorId || usuario.perfil === 'supervisor' ? 'Toda a equipe' : 'Todos'),
       vendedores.map((v) => h('option', { value: v.id, selected: Number(v.id) === e.filtros.vendedorId }, `${v.nome} · ${papelDoAgente(v)}${v.codigo_erp ? ' · ' + v.codigo_erp : ''}`)));

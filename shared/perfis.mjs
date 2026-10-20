@@ -49,24 +49,34 @@ export function podeTela(usuario, tela) {
 }
 
 /** Lê do banco o perfil e as telas de um usuário (no login). */
+/**
+ * Lê os dados de todas as equipes? Administrador, gerente e financeiro sempre; supervisor só com perfil marcado
+ * "vê todas as equipes" (migração 0009). Vale para leitura — registrar continua restrito à própria equipe (banco).
+ */
+export function veTodasEquipes(usuario) {
+  return ['administrador', 'gerente', 'financeiro'].includes(usuario?.perfil) || (usuario?.perfil === 'supervisor' && Boolean(usuario?.ve_todos));
+}
+
 export async function carregarAcesso(db, { usuarioId }) {
-  const r = await db.execute({
-    sql: `SELECT p.id, p.nome, p.sistema, (SELECT group_concat(t.tela) FROM perfil_telas t WHERE t.perfil_id = p.id) AS telas
+  // sem a migração 0009 aplicada (site publicado antes de migrar), lê sem ve_todos em vez de perder o perfil
+  const consulta = (ve) => db.execute({
+    sql: `SELECT p.id, p.nome, p.sistema, ${ve ? 'p.ve_todos' : '0 AS ve_todos'}, (SELECT group_concat(t.tela) FROM perfil_telas t WHERE t.perfil_id = p.id) AS telas
             FROM usuarios u JOIN perfis p ON p.id = COALESCE(u.perfil_id, (SELECT s.id FROM perfis s WHERE s.sistema = 1 AND s.base = u.perfil))
            WHERE u.id = ?`,
     args: [usuarioId],
   });
+  const r = await consulta(true).catch((e) => (/no such column/i.test(String(e?.message)) ? consulta(false) : Promise.reject(e)));
   const p = r.rows[0];
   if (!p) return null;
-  return { perfil_id: Number(p.id), perfil_nome: p.nome, perfil_sistema: Boolean(Number(p.sistema)), telas: p.telas ? String(p.telas).split(',') : [] };
+  return { perfil_id: Number(p.id), perfil_nome: p.nome, perfil_sistema: Boolean(Number(p.sistema)), ve_todos: Boolean(Number(p.ve_todos)), telas: p.telas ? String(p.telas).split(',') : [] };
 }
 
 export async function listarPerfis(db) {
-  const r = await db.execute(`SELECT p.id, p.nome, p.base, p.sistema, p.ativo,
+  const r = await db.execute(`SELECT p.*,
       (SELECT group_concat(t.tela) FROM perfil_telas t WHERE t.perfil_id = p.id) AS telas,
       (SELECT COUNT(*) FROM usuarios u WHERE COALESCE(u.perfil_id, (SELECT s.id FROM perfis s WHERE s.sistema = 1 AND s.base = u.perfil)) = p.id AND u.ativo = 1) AS usuarios
     FROM perfis p ORDER BY p.sistema DESC, p.nome`);
-  return r.rows.map((p) => ({ ...p, id: Number(p.id), sistema: Number(p.sistema), telas: p.telas ? String(p.telas).split(',') : [], usuarios: Number(p.usuarios) }));
+  return r.rows.map((p) => ({ ...p, id: Number(p.id), sistema: Number(p.sistema), ve_todos: Number(p.ve_todos ?? 0), telas: p.telas ? String(p.telas).split(',') : [], usuarios: Number(p.usuarios) }));
 }
 
 /** Valida um perfil antes de gravar; devolve a lista de erros (vazia = ok). */
@@ -87,7 +97,7 @@ export function validarPerfil({ nome, base, telas }) {
  * Inclui (sem `id`) ou altera um perfil e grava as telas dele (substitui a lista). Perfil do sistema: o tipo-base não
  * muda; o Administrador do sistema tem sempre todas as telas (não é editável aqui).
  */
-export async function salvarPerfil(db, { id = null, nome, base, telas, executadoPor }) {
+export async function salvarPerfil(db, { id = null, nome, base, telas, veTodos = false, executadoPor }) {
   const lista = [...new Set(telas ?? [])];
   let atual = null;
   if (id) {
@@ -99,17 +109,18 @@ export async function salvarPerfil(db, { id = null, nome, base, telas, executado
   const erros = validarPerfil({ nome, base, telas: lista });
   if (erros.length) throw new Error(erros.join('; '));
   const n = String(nome).trim();
+  const ve = base === 'supervisor' && veTodos ? 1 : 0;   // só supervisor amplia a leitura (os outros tipos já veem o que veem)
   let perfilId = id ? Number(id) : null;
   if (id) {
-    await db.execute({ sql: "UPDATE perfis SET nome = ?, base = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?", args: [n, base, id] });
+    await db.execute({ sql: "UPDATE perfis SET nome = ?, base = ?, ve_todos = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?", args: [n, base, ve, id] });
   } else {
-    perfilId = Number((await db.execute({ sql: 'INSERT INTO perfis (nome, base) VALUES (?, ?) RETURNING id', args: [n, base] })).rows[0].id);
+    perfilId = Number((await db.execute({ sql: 'INSERT INTO perfis (nome, base, ve_todos) VALUES (?, ?, ?) RETURNING id', args: [n, base, ve] })).rows[0].id);
   }
   await db.batch([
     { sql: 'DELETE FROM perfil_telas WHERE perfil_id = ?', args: [perfilId] },
     ...lista.map((t) => ({ sql: 'INSERT INTO perfil_telas (perfil_id, tela) VALUES (?, ?)', args: [perfilId, t] })),
     { sql: "INSERT INTO auditoria (executado_por, acao, entidade, entidade_id, detalhes) VALUES (?, ?, 'perfis', ?, ?)",
-      args: [executadoPor, id ? 'alterar_perfil' : 'incluir_perfil', String(perfilId), JSON.stringify({ nome: n, base, telas: lista })] },
+      args: [executadoPor, id ? 'alterar_perfil' : 'incluir_perfil', String(perfilId), JSON.stringify({ nome: n, base, telas: lista, ve_todos: ve })] },
   ], 'write');
   return perfilId;
 }
