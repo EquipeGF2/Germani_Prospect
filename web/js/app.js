@@ -3,26 +3,35 @@ import { modoDemonstracao, temTokenAdmin } from './db.js';
 import { sair, usuarioAtual } from './sessao.js';
 import { h, montar, mensagem } from './ui.js';
 import { atualizarCasca, iniciarCasca } from './menu.js';
+import { podeTela } from '../shared/perfis.mjs';
 
+// `telas`: códigos de shared/perfis.mjs — basta o perfil do usuário ter um deles (função = depende do endereço)
 const ROTAS = [
   { caminho: '/entrar', tela: () => import('./telas/entrar.js'), publica: true },
-  { caminho: '/inicio', tela: () => import('./telas/inicio.js') },
-  { caminho: '/carteira', tela: () => import('./telas/carteira.js') },
-  { caminho: '/ficha', tela: () => import('./telas/ficha.js') },
-  { caminho: '/registrar', tela: () => import('./telas/registrar.js'), perfis: ['administrador', 'gerente', 'supervisor', 'vendedor'] },
-  { caminho: '/lote', tela: () => import('./telas/lote.js'), perfis: ['administrador', 'gerente', 'supervisor', 'vendedor'] },
-  { caminho: '/financeiro', tela: () => import('./telas/financeiro.js'), perfis: ['financeiro', 'administrador'] },
-  { caminho: '/financeiro/liberar', tela: () => import('./telas/financeiro-liberar.js'), perfis: ['financeiro', 'administrador'] },
+  { caminho: '/inicio', tela: () => import('./telas/inicio.js'), telas: ['inicio'] },
+  { caminho: '/carteira', tela: () => import('./telas/carteira.js'), telas: (q) => [q.get('aba') === 'acompanhamento' ? 'acompanhamento' : 'lista'] },
+  { caminho: '/ficha', tela: () => import('./telas/ficha.js'), telas: ['lista', 'acompanhamento', 'credito'] },
+  { caminho: '/registrar', tela: () => import('./telas/registrar.js'), telas: ['registrar'] },
+  { caminho: '/lote', tela: () => import('./telas/lote.js'), telas: ['registrar'] },
+  { caminho: '/financeiro', tela: () => import('./telas/financeiro.js'), telas: ['credito'] },
+  { caminho: '/financeiro/liberar', tela: () => import('./telas/financeiro-liberar.js'), telas: ['credito'] },
   { caminho: '/admin/acesso', tela: () => import('./telas/admin-acesso.js'), perfis: ['administrador'], semToken: true },
-  { caminho: '/admin/importar/base', tela: () => import('./telas/admin-importar-base.js'), perfis: ['administrador'] },
-  { caminho: '/admin/importar/tipos', tela: () => import('./telas/admin-importar-tipos.js'), perfis: ['administrador'] },
-  { caminho: '/admin/importar/erp', tela: () => import('./telas/admin-importar-erp.js'), perfis: ['administrador'] },
-  { caminho: '/admin/importar/credito', tela: () => import('./telas/admin-importar-credito.js'), perfis: ['administrador'] },
-  { caminho: '/admin/importacoes', tela: () => import('./telas/admin-importacoes.js'), perfis: ['administrador'] },
-  { caminho: '/admin/usuarios', tela: () => import('./telas/admin-usuarios.js'), perfis: ['administrador'] },
-  { caminho: '/admin/parametros', tela: () => import('./telas/admin-parametros.js'), perfis: ['administrador'] },
-  { caminho: '/admin/feriados', tela: () => import('./telas/admin-feriados.js'), perfis: ['administrador'] },
+  { caminho: '/admin/importar/base', tela: () => import('./telas/admin-importar-base.js'), telas: ['admin_base'] },
+  { caminho: '/admin/importar/tipos', tela: () => import('./telas/admin-importar-tipos.js'), telas: ['admin_tipos'] },
+  { caminho: '/admin/importar/erp', tela: () => import('./telas/admin-importar-erp.js'), telas: ['admin_erp'] },
+  { caminho: '/admin/importar/credito', tela: () => import('./telas/admin-importar-credito.js'), telas: ['admin_credito'] },
+  { caminho: '/admin/importacoes', tela: () => import('./telas/admin-importacoes.js'), telas: ['admin_importacoes'] },
+  { caminho: '/admin/usuarios', tela: () => import('./telas/admin-usuarios.js'), telas: ['admin_usuarios'] },
+  { caminho: '/admin/perfis', tela: () => import('./telas/admin-perfis.js'), telas: ['admin_usuarios'] },
+  { caminho: '/admin/parametros', tela: () => import('./telas/admin-parametros.js'), telas: ['admin_parametros'] },
+  { caminho: '/admin/feriados', tela: () => import('./telas/admin-feriados.js'), telas: ['admin_feriados'] },
 ];
+// primeira tela permitida (destino quando o perfil não tem o Início)
+const ENTRADAS = [['inicio', '/inicio'], ['lista', '/carteira'], ['acompanhamento', '/carteira?aba=acompanhamento'], ['credito', '/financeiro'],
+  ['admin_usuarios', '/admin/usuarios'], ['admin_base', '/admin/importar/base']];
+export function telaInicial(usuario) {
+  return ENTRADAS.find(([t]) => podeTela(usuario, t))?.[1] ?? '/inicio';
+}
 
 export const NOMES_PERFIL = { administrador: 'Administrador', gerente: 'Gerente comercial', supervisor: 'Supervisor', vendedor: 'Vendedor', financeiro: 'Analista financeiro' };
 
@@ -47,8 +56,13 @@ async function navegar() {
   atualizarCasca({ usuario, caminho, consulta, papel: usuario ? papelDe(usuario) : '', aoSair: () => { sair(); irPara('/entrar'); } });
   const rota = ROTAS.find((r) => r.caminho === caminho) ?? (usuario ? ROTAS.find((r) => r.caminho === '/inicio') : null);
   if (!rota || (!rota.publica && !usuario)) return irPara('/entrar');
-  if (rota.perfis && !rota.perfis.includes(usuario.perfil)) {
-    montar(conteudo, mensagem(rota.caminho.startsWith('/admin') ? 'Esta área é exclusiva do administrador.' : 'Seu perfil não tem acesso a esta tela.', 'erro'));
+  const telasRota = typeof rota.telas === 'function' ? rota.telas(new URLSearchParams(consulta)) : rota.telas;
+  const liberada = (!rota.perfis || rota.perfis.includes(usuario?.perfil)) && (!telasRota || telasRota.some((t) => podeTela(usuario, t)));
+  if (!rota.publica && !liberada) {
+    // sem o Início no perfil: vai para a primeira tela permitida
+    if (rota.caminho === '/inicio' && telaInicial(usuario) !== '/inicio') return irPara(telaInicial(usuario));
+    montar(conteudo, mensagem(rota.caminho.startsWith('/admin') && usuario.perfil !== 'administrador'
+      ? 'Esta área é exclusiva do administrador.' : 'Seu perfil não tem acesso a esta tela.', 'erro'));
     area.dataset.pronto = alvo;
     return;
   }

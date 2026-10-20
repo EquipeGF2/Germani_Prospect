@@ -39,7 +39,7 @@ if [ "${1:-app}" = "admin" ]; then
     -p all:data_read -p prospects:data_add,data_update -p usuarios:data_add,data_update -p parametros:data_update \
     -p importacoes:data_add,data_update -p importacao_linhas:data_add -p contatos:data_add \
     -p eventos_erp:data_add -p auditoria:data_add -p liberacoes_credito:data_add -p transferencias:data_add \
-    -p feriados:data_add,data_delete | tr -d '[:space:]')"
+    -p feriados:data_add,data_delete -p perfis:data_add,data_update -p perfil_telas:data_add,data_delete | tr -d '[:space:]')"
   conferir "$TOKEN"
   echo "::add-mask::$TOKEN"
   echo "TURSO_ADMIN_TOKEN_GERADO=$TOKEN" >> "$GITHUB_ENV"

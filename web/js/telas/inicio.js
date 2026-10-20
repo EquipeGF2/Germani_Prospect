@@ -260,8 +260,11 @@ function visaoEquipe({ linhas, t, p, dias, gestao, supervisores, supAtual, aoEsc
         funilPainel(ts).map((e) => h('div', { class: 'etp' }, h('span', {}, e.rotulo), h('span', {}, h('b', {}, formatar.numero(e.valor)),
           h('small', {}, ts.total ? pct1((e.valor / ts.total) * 100) : '')))),
         h('div', { class: 'etp' }, h('span', {}, 'Sem interesse'), h('span', {}, h('b', {}, formatar.numero(ts.sem_interesse)))),
-        h('p', { class: 's', style: 'margin:14px 0 0' }, 'Valor de conversão ', h('b', {}, formatar.moeda(ts.venda_realizada * Number(p.valor_medio_cliente))),
-          ' · valor dos pedidos ', h('b', {}, formatar.moeda(Number(ts.valor_pedidos))), ` · ${dias} dia(s) útil(eis)`))));
+        // um valor por linha (o card é estreito)
+        h('div', { class: 's resumo-equipe', style: 'margin:14px 0 0' },
+          h('div', {}, 'Valor de conversão ', h('b', {}, formatar.moeda(ts.venda_realizada * Number(p.valor_medio_cliente)))),
+          h('div', {}, 'Valor dos pedidos ', h('b', {}, formatar.moeda(Number(ts.valor_pedidos)))),
+          h('div', {}, `${dias} dia(s) útil(eis)`)))));
 }
 
 function renderComputador(conteudo, { usuario, linhas, p, dias, periodo, chavePeriodo, parametros }) {

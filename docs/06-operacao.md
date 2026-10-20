@@ -53,7 +53,7 @@ turso db tokens create germaniprospec -p all:data_read \
   -p prospects:data_add,data_update -p usuarios:data_add,data_update -p parametros:data_update \
   -p importacoes:data_add,data_update -p importacao_linhas:data_add -p contatos:data_add \
   -p eventos_erp:data_add -p auditoria:data_add -p liberacoes_credito:data_add -p transferencias:data_add \
-  -p feriados:data_add,data_delete
+  -p feriados:data_add,data_delete -p perfis:data_add,data_update -p perfil_telas:data_add,data_delete
 ```
 A permissão `feriados` entrou com a migração 0002 (tela Feriados): quem gerou o token de administração antes
 precisa gerar um novo com o comando acima.
@@ -105,6 +105,7 @@ rodar o workflow de novo** (ele só aplica as que faltam).
 | `0005_cofre_admin` | coluna `usuarios.cofre_admin`: chave de administração cifrada com a senha do administrador (ADR-0006) |
 | `0006_indices_volume` | índices para ~50 mil CNPJs e índice de texto (FTS5 trigram) da busca — mesmo resultado, menos linhas lidas |
 | `0007_indices_complementares` | índices de ligação e de relatório em todas as tabelas (movimentação, transferências, eventos do ERP, crédito, auditoria…) |
+| `0008_perfis_telas` | perfis de acesso e telas por perfil (5 perfis do sistema já com as telas de hoje); `usuarios.perfil_id`. Depois dela, rode **Criar administrador** de novo: a chave do cofre passa a poder gravar perfis |
 
 ## 6. Primeira carga — roteiro
 

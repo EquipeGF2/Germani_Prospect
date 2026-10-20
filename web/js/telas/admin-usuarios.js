@@ -1,6 +1,7 @@
 import { bancoAdmin, tokenAdminAtual } from '../db.js';
 import { criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../../shared/usuarios.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
+import { definirPerfilUsuario, listarPerfis } from '../../shared/perfis.mjs';
 import { h, montar, tabela, aviso, comEspera, selo, cartoesFiltro } from '../ui.js';
 import { NOMES_PERFIL } from '../app.js';
 
@@ -9,7 +10,8 @@ const SITUACAO = { sem_acesso: ['sem acesso', 'alerta'], provisoria: ['senha pro
 export async function render(conteudo, ctx) {
   const db = await bancoAdmin();
   const quem = ctx.usuario.login;
-  const todos = await listarUsuarios(db);
+  const [todos, perfis] = await Promise.all([listarUsuarios(db), listarPerfis(db)]);
+  const perfilSistema = (base) => perfis.find((p) => p.sistema && p.base === base);
   const senhaArea = h('div');
   const busca = h('input', { type: 'search', placeholder: 'Buscar por nome, login ou código', 'aria-label': 'Buscar' });
   const filtroPerfil = h('select', { 'aria-label': 'Perfil', id: 'filtro-perfil' }, h('option', { value: '' }, 'Todos os perfis'),
@@ -45,7 +47,20 @@ export async function render(conteudo, ctx) {
       && (!termo || normalizarBusca(`${u.nome} ${u.login} ${u.codigo_erp ?? ''}`).includes(termo)));
     montar(listaArea, tabela([
       { titulo: 'Nome', valor: (u) => h('div', {}, h('b', {}, u.nome), h('div', { class: 'ajuda', style: 'margin:0' }, `login ${u.login}${u.codigo_erp ? ' · cód. ' + u.codigo_erp : ''}`)) },
-      { titulo: 'Perfil', valor: (u) => NOMES_PERFIL[u.perfil] },
+      { titulo: 'Perfil', valor: (u) => {
+        // perfis do mesmo tipo-base do usuário (o tipo-base define o escopo dos dados; o perfil, as telas)
+        const opcoes = perfis.filter((p) => p.base === u.perfil);
+        const atual = u.perfil_id ? Number(u.perfil_id) : perfilSistema(u.perfil)?.id;
+        if (opcoes.length < 2) return NOMES_PERFIL[u.perfil];
+        const s = h('select', { 'aria-label': `perfil de ${u.login}`, dados: { perfilUsuario: u.login }, onchange: async () => {
+          const escolhido = perfis.find((p) => p.id === Number(s.value));
+          const ok = await comEspera(null, async () => {
+            await definirPerfilUsuario(db, { usuarioId: u.id, perfilId: escolhido.sistema ? null : escolhido.id, executadoPor: quem }); return true;
+          });
+          if (ok) { u.perfil_id = escolhido.sistema ? null : escolhido.id; aviso(`${u.nome}: perfil ${escolhido.nome}`); }
+        } }, opcoes.map((p) => h('option', { value: p.id, selected: p.id === atual }, p.nome)));
+        return s;
+      } },
       { titulo: 'Forma de trabalho', valor: (u) => {
         if (u.perfil !== 'vendedor') return '—';
         const s = h('select', { 'aria-label': `tipo de ${u.login}`, onchange: async () => {
@@ -86,7 +101,10 @@ export async function render(conteudo, ctx) {
     ], lista, { vazio: 'Nenhum usuário com esse filtro.' }));
   }
 
-  const perfilNovo = h('select', { id: 'novo-perfil' }, h('option', { value: 'financeiro' }, 'Analista financeiro'), h('option', { value: 'gerente' }, 'Gerente comercial'), h('option', { value: 'administrador' }, 'Administrador'));
+  // perfis que se criam aqui (os de supervisor e vendedor vêm da importação): valor "base" ou "base:id" (perfil criado)
+  const perfilNovo = h('select', { id: 'novo-perfil' }, perfis.filter((p) => ['financeiro', 'gerente', 'administrador'].includes(p.base))
+    .sort((a, b) => ['financeiro', 'gerente', 'administrador'].indexOf(a.base) - ['financeiro', 'gerente', 'administrador'].indexOf(b.base) || b.sistema - a.sistema)
+    .map((p) => h('option', { value: p.sistema ? p.base : `${p.base}:${p.id}` }, p.nome)));
   const loginNovo = h('input', { id: 'novo-login', autocapitalize: 'none' });
   const nomeNovo = h('input', { id: 'novo-nome' });
   const senhaNova = h('input', { id: 'novo-senha', type: 'password', autocomplete: 'new-password', placeholder: 'vazio = gerar' });
@@ -94,7 +112,12 @@ export async function render(conteudo, ctx) {
   const formNovo = h('form', { class: 'cartao linha-novo-usuario', onsubmit: async (ev) => {
     ev.preventDefault();
     const senha = senhaNova.value || null;
-    const r = await comEspera(bCriar, () => criarUsuarioSistema(db, { perfil: perfilNovo.value, login: loginNovo.value, nome: nomeNovo.value, executadoPor: quem, senha, chaveAdmin: tokenAdminAtual() }));
+    const [base, perfilId] = perfilNovo.value.split(':');
+    const r = await comEspera(bCriar, async () => {
+      const novo = await criarUsuarioSistema(db, { perfil: base, login: loginNovo.value, nome: nomeNovo.value, executadoPor: quem, senha, chaveAdmin: tokenAdminAtual() });
+      if (perfilId) await definirPerfilUsuario(db, { usuarioId: novo.id, perfilId: Number(perfilId), executadoPor: quem });
+      return novo;
+    });
     if (r) { if (senha) aviso(`Usuário ${r.login} criado com a senha definida.`); else mostrarSenha(r.login, r.senha); todos.splice(0, todos.length, ...(await listarUsuarios(db))); formNovo.reset(); desenhar(); }
   } },
   // linha única: título curto + campos + botão (supervisores e vendedores vêm da importação da base)
@@ -108,7 +131,8 @@ export async function render(conteudo, ctx) {
 
   [busca, filtroPerfil].forEach((c) => c.addEventListener('input', desenhar));
   montar(conteudo,
-    h('h1', {}, 'Usuários'),
+    h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, 'Usuários')),
+      h('a', { class: 'botao secundario', href: '#/admin/perfis', id: 'botao-perfis' }, 'Perfis e telas de acesso')),
     // 1ª linha: cards (filtro) + busca + perfil · 2ª: cadastro de novo usuário · depois a lista
     h('div', { class: 'barra-console' }, cardsArea, h('div', { class: 'barra-busca' }, busca), filtroPerfil),
     formNovo,
