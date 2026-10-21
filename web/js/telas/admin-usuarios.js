@@ -1,5 +1,5 @@
 import { bancoAdmin, tokenAdminAtual, versaoTokenAdmin } from '../db.js';
-import { criarUsuarioEquipe, criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, redefinirSenha } from '../../shared/usuarios.mjs';
+import { aplicarAcessos, criarUsuarioEquipe, criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, planoDeAcessos, redefinirSenha } from '../../shared/usuarios.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
 import { definirPerfilUsuario, listarPerfis, opcoesDePerfil, TIPOS_BASE } from '../../shared/perfis.mjs';
 import { h, montar, tabela, aviso, comEspera, selo, cartoesFiltro } from '../ui.js';
@@ -176,10 +176,42 @@ export async function render(conteudo, ctx) {
   h('small', { class: 'ajuda' }, 'Supervisor e vendedor: informe o código do ERP — a importação da base reconhece o usuário por ele. Administrador: a senha abre o cofre de administração — prefira letras e números.'));
   ajustarCamposEquipe();
 
+  // Padronizar logins: supervisor pelo primeiro nome, representante/vendedor pelo código (shared/usuarios.mjs). Mostra o que
+  // muda, o administrador desmarca quem não deve mudar e aplica; nada é gravado antes do botão.
+  const padronizarArea = h('div');
+  const abrirPadronizar = () => {
+    const mudam = planoDeAcessos(todos).filter((p) => p.loginNovo !== p.loginAtual || p.aviso);
+    const marcados = new Set(mudam.filter((p) => p.loginNovo !== p.loginAtual).map((p) => p.id));
+    const bAplicar = h('button', { type: 'button', id: 'aplicar-logins' }, `Aplicar ${marcados.size} login(s)`);
+    const progresso = h('span', { class: 'ajuda' });
+    bAplicar.addEventListener('click', async () => {
+      const itens = mudam.filter((p) => marcados.has(p.id));
+      const r = await comEspera(bAplicar, () => aplicarAcessos(db, { itens, executadoPor: quem, aoProgredir: (f, t) => { progresso.textContent = `${f} de ${t}`; } }));
+      if (!r) return;
+      aviso(`${r.feitos} login(s) padronizado(s).`);
+      render(conteudo, ctx);
+    });
+    montar(padronizarArea, h('section', { class: 'cartao', id: 'painel-logins' },
+      h('h2', {}, 'Padronizar logins'),
+      h('p', { class: 'ajuda' }, 'Supervisor (e gerente com equipe) entra com o primeiro nome em minúsculas; representante e vendedor, com o código do ERP. Nome repetido ganha a inicial do último nome. Desmarque quem não deve mudar. As senhas não mudam aqui.'),
+      tabela([
+        { titulo: '', valor: (p) => (p.loginNovo !== p.loginAtual ? h('input', { type: 'checkbox', checked: marcados.has(p.id), 'aria-label': `Mudar o login de ${p.nome}`, dados: { id: p.id },
+          onchange: (ev) => { if (ev.target.checked) marcados.add(p.id); else marcados.delete(p.id); bAplicar.textContent = `Aplicar ${marcados.size} login(s)`; } }) : '') },
+        { titulo: 'Nome', campo: 'nome' },
+        { titulo: 'Tipo', valor: (p) => (p.perfil === 'supervisor' ? 'Supervisor' : p.tipo_atuacao === 'vendedor' ? 'Vendedor' : 'Representante') },
+        { titulo: 'Login atual', campo: 'loginAtual' }, { titulo: 'Login novo', campo: 'loginNovo' }, { titulo: 'Aviso', campo: 'aviso' },
+      ], mudam, { vazio: 'Todos os logins já estão no padrão.' }),
+      h('div', { class: 'acoes' }, mudam.length ? bAplicar : null, progresso,
+        h('button', { type: 'button', class: 'secundario', onclick: () => montar(padronizarArea) }, 'Fechar'))));
+  };
+
   [busca, filtroPerfil].forEach((c) => c.addEventListener('input', desenhar));
   montar(conteudo,
     h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, 'Usuários')),
-      h('a', { class: 'botao secundario', href: '#/admin/perfis', id: 'botao-perfis' }, 'Perfis e telas de acesso')),
+      h('div', { class: 'acoes', style: 'margin:0' },
+        h('button', { type: 'button', class: 'secundario', id: 'botao-padronizar', onclick: abrirPadronizar }, 'Padronizar logins'),
+        h('a', { class: 'botao secundario', href: '#/admin/perfis', id: 'botao-perfis' }, 'Perfis e telas de acesso'))),
+    padronizarArea,
     // 1ª linha: cards (filtro) + busca + perfil · 2ª: cadastro de novo usuário · depois a lista
     h('div', { class: 'barra-console' }, cardsArea, h('div', { class: 'barra-busca' }, busca), filtroPerfil),
     formNovo,

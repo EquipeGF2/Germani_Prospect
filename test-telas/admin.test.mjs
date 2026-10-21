@@ -76,6 +76,13 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
 
   // 3. usuários: liberar acesso do vendedor 1201
   await pagina.click('#menu a[title="Usuários"]');
+  // padronizar logins: mostra o que muda (supervisor pelo primeiro nome) e só grava no botão
+  await pagina.click('#botao-padronizar');
+  await pagina.waitForSelector('#painel-logins');
+  const novos = await pagina.locator('#painel-logins tbody tr td:nth-child(5)').allInnerTexts();
+  assert.ok(novos.length && novos.every((l) => !/^sup\d/.test(l)), `logins novos: ${novos}`);
+  await pagina.click('#painel-logins button:text("Fechar")');
+  assert.equal(await pagina.locator('#painel-logins').count(), 0);
   await pagina.fill('input[aria-label=Buscar]', '1201');
   // o administrador define a senha do vendedor (curta é recusada)
   await pagina.click('button:text("Liberar acesso")');

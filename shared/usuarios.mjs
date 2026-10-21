@@ -156,3 +156,70 @@ export async function definirAtivo(db, { usuarioId, ativo, executadoPor }) {
     auditoria(executadoPor, ativo ? 'ativar' : 'desativar', usuarioId),
   ], 'write');
 }
+
+// ---------- Padronizar acessos (tela Usuários, só administrador) ----------
+// Regras do dono (2026-10-21): supervisor (e quem é gerente com equipe) entra com o PRIMEIRO NOME em minúsculas; representante
+// e vendedor entram com o código do ERP. Administrador, gerente comercial e financeiro não mudam. A tela calcula no navegador
+// e grava com a chave do administrador. Senha inicial = código: pendente de decisão (ver aplicarAcessos).
+const semAcento = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+const parteLogin = (s) => semAcento(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Primeiro nome em minúsculas, sem acento ("JÚLIO REICHEL" → "julio"); com menos de 3 letras, junta a inicial do último nome. */
+export function loginPrimeiroNome(nome) {
+  const partes = String(nome ?? '').trim().split(/\s+/).map(parteLogin).filter(Boolean);
+  let l = partes[0] ?? '';
+  if (l.length < 3 && partes.length > 1) l += partes[partes.length - 1].slice(0, 3 - l.length);
+  return l;
+}
+
+/**
+ * O que a padronização faria, sem gravar: [{ id, nome, perfil, loginAtual, loginNovo, senha, aviso }].
+ * Login repetido (dois supervisores com o mesmo primeiro nome, ou um login que já existe) ganha ".inicial do último nome",
+ * e se ainda repetir, o código. Sem código do ERP não há senha (aviso).
+ */
+export function planoDeAcessos(usuarios) {
+  const ativos = usuarios.filter((u) => Number(u.ativo) === 1 && ['supervisor', 'vendedor'].includes(u.perfil));
+  const usados = new Set(usuarios.filter((u) => !ativos.includes(u)).map((u) => String(u.login).toLowerCase()));
+  const plano = [];
+  // primeiro os de login fixo (código), depois os de primeiro nome — assim o nome nunca toma o login de um código
+  for (const u of [...ativos].sort((a, b) => (a.perfil === 'vendedor' ? 0 : 1) - (b.perfil === 'vendedor' ? 0 : 1) || Number(a.id) - Number(b.id))) {
+    const codigo = String(u.codigo_erp ?? '').replace(/\D/g, '');
+    let login = u.perfil === 'vendedor' ? codigo || String(u.login) : loginPrimeiroNome(u.nome);
+    let aviso = null;
+    if (u.perfil !== 'vendedor') {
+      const partes = String(u.nome ?? '').trim().split(/\s+/).map(parteLogin).filter(Boolean);
+      if (usados.has(login) && partes.length > 1) login = `${login}.${partes[partes.length - 1][0]}`;
+      if (usados.has(login) && codigo) login = `${login}${codigo}`;
+    }
+    if (!login || login.length < 3 && u.perfil !== 'vendedor') { login = String(u.login); aviso = 'nome curto demais: login mantido'; }
+    if (usados.has(login.toLowerCase())) { login = String(u.login); aviso = 'login já usado por outro usuário: mantido'; }
+    usados.add(login.toLowerCase());
+    if (!codigo) aviso = [aviso, 'sem código do ERP: senha não definida'].filter(Boolean).join('; ');
+    plano.push({ id: Number(u.id), nome: u.nome, perfil: u.perfil, tipo_atuacao: u.tipo_atuacao, loginAtual: u.login, loginNovo: login, senha: codigo || null, aviso });
+  }
+  return plano;
+}
+
+/**
+ * Grava o plano, com auditoria (nunca a senha). `itens`: linhas do plano já filtradas pela tela (o administrador pode tirar
+ * alguém). `aplicarSenha` (desligado por padrão): senha inicial = código, provisória — esbarra no mínimo de 8 caracteres de
+ * shared/senha.mjs para códigos curtos; só será ligado quando o dono decidir a regra da senha (o site não obriga troca no
+ * 1º acesso: o token público não altera usuários). `aoProgredir(feitos, total)`.
+ */
+export async function aplicarAcessos(db, { itens, executadoPor, aplicarLogin = true, aplicarSenha = false, aoProgredir = null }) {
+  let feitos = 0;
+  for (const i of itens) {
+    const sets = []; const args = [];
+    if (aplicarLogin && i.loginNovo && i.loginNovo !== i.loginAtual) { sets.push('login = ?'); args.push(i.loginNovo); }
+    if (aplicarSenha && i.senha) { sets.push('senha_hash = ?', 'senha_provisoria = 1'); args.push(await gerarHashSenha(i.senha)); }
+    if (sets.length) {
+      await db.batch([
+        { sql: `UPDATE usuarios SET ${sets.join(', ')}, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?`, args: [...args, i.id] },
+        auditoria(executadoPor, 'acesso_padronizado', i.id, { login: aplicarLogin ? i.loginNovo : undefined, senha_inicial: Boolean(aplicarSenha && i.senha) }),
+      ], 'write');
+    }
+    feitos += 1;
+    aoProgredir?.(feitos, itens.length);
+  }
+  return { feitos };
+}
