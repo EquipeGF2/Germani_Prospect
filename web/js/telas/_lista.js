@@ -1,7 +1,8 @@
 // Lista principal e Acompanhamento no COMPUTADOR (docs/03 §6) — sempre em lista (tabela), filtros em grupos:
 // Equipe (supervisor / representante) · Local (UF / cidade / bairro, este só com a cidade) · Carteira (onda / segmento)
-// · Período (só no Acompanhamento). A gestão escolhe a equipe antes de ler; o Acompanhamento exige o período.
-// Atalhos de situação com contagem, "Agrupar por", ficha ao lado e "Carregar mais". O celular segue em carteira.js.
+// · Período (só no Acompanhamento). Os filtros só valem no botão Buscar (nada é lido antes); a gestão escolhe a equipe e
+// o Acompanhamento exige o período. Situação com contagem, "Agrupar por" (só na Lista), ficha ao lado e "Carregar mais".
+// O celular segue em carteira.js.
 import { bancoApp, lerComCache } from '../db.js';
 import {
   AGRUPAMENTOS, agrupamentosPossiveis, consultaBairros, consultaCarteira, consultaLinhaTempo, datasDoPeriodo, faltaParaLista,
@@ -11,7 +12,8 @@ import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, formatar } from '../ui.js';
 import { icone } from '../menu.js';
-import { endereco, gravarLote, lerEstado, lerLote, opcoesDosFiltros, papelDoAgente, seloStatus } from './_carteira.js';
+import { consultaResumo, opcoesEmCascata } from '../../shared/explorar.mjs';
+import { endereco, gravarLote, lerEstado, lerLote, papelDoAgente, seloStatus } from './_carteira.js';
 
 const POR_VEZ = 50;
 const NA_LISTA = ['nao_contactado', 'em_prospeccao'];
@@ -35,7 +37,7 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
   }
   if (!e.filtros.cidadeBusca) delete e.filtros.bairroBusca;
   const agrupaveis = agrupamentosPossiveis(usuario, e.filtros);
-  if (!agrupaveis.includes(e.agrupar)) e.agrupar = '';
+  if (acomp || !agrupaveis.includes(e.agrupar)) e.agrupar = '';
   const falta = faltaParaLista(usuario, { aba: e.aba, filtros: e.filtros, busca: e.busca });
   const ir = (muda) => { location.hash = endereco(e, muda); };
 
@@ -46,15 +48,31 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
   try { consulta = pedir(0); } catch (erro) { return montar(conteudo, mensagem(erro.message, 'erro')); }
   const contagem = consultaCarteira({ usuario, visao: 'status', filtros: { ...e.filtros, status: null, foraDaLista: acomp }, busca: e.busca });
 
-  const [linhas, porStatus, opcoes, bairros] = await Promise.all([
-    falta.length ? [] : db.execute(consulta).then((r) => r.rows),
-    falta.length ? [] : db.execute(contagem).then((r) => r.rows),
-    opcoesDosFiltros(db, usuario, e.filtros, e.aba),
-    e.filtros.cidadeBusca ? lerComCache(db, consultaBairros({ usuario, cidadeBusca: e.filtros.cidadeBusca, uf: e.filtros.uf }), 300).then((r) => r.rows) : [],
+  // nada é lido da lista enquanto os filtros não forem aplicados no botão Buscar (?ver=1); o representante já entra com a
+  // própria carteira. As opções dos filtros saem do resumo pronto (em cache) e mudam no navegador, sem ir ao banco.
+  const ler = (e.ver || usuario.perfil === 'vendedor') && !falta.length;
+  const [linhas, porStatus, resumo] = await Promise.all([
+    ler ? db.execute(consulta).then((r) => r.rows) : [],
+    ler ? db.execute(contagem).then((r) => r.rows) : [],
+    lerComCache(db, consultaResumo({ usuario }), 300).then((r) => r.rows),
   ]);
-  const codigoDe = new Map(opcoes.vendedores.map((v) => [Number(v.id), v.codigo_erp]));
+  const codigoDe = new Map(resumo.map((l) => [Number(l.vendedor_id), l.vendedor_codigo]));
 
-  // ---------- filtros ----------
+  // ---------- filtros: um rascunho que só vale ao clicar em Buscar ----------
+  const rascunho = { filtros: { ...e.filtros }, periodo: e.periodo };
+  const bairrosDe = (cidadeBusca, uf) => lerComCache(db, consultaBairros({ usuario, cidadeBusca, uf }), 300).then((r) => r.rows);
+  const painelFiltros = h('form', { class: 'cartao lista-filtros', 'aria-label': 'Filtros', onsubmit: (ev) => { ev.preventDefault(); aplicar(); } });
+  const campoBusca = h('input', { type: 'search', id: 'busca', value: e.busca, 'aria-label': 'Buscar',
+    placeholder: 'Buscar: prospect, CNPJ, representante (nome ou código), cidade ou bairro' });
+  function aplicar() {
+    const f = { ...rascunho.filtros };
+    if (rascunho.periodo !== 'periodo') { delete f.dataDe; delete f.dataAte; }
+    // a situação e a ordem continuam; filtros, período e busca passam a ser os do painel
+    location.hash = endereco({ aba: e.aba, ordem: e.ordem, desc: e.desc, agrupar: e.agrupar, filtros: {} },
+      { filtros: f, periodo: rascunho.periodo, busca: campoBusca.value.trim(), ver: true });
+  }
+  const mudar = (muda, extra = {}) => { Object.assign(rascunho.filtros, muda); Object.assign(rascunho, extra); desenharFiltros(); };
+
   const selecao = (id, rotulo, valor, opcoesSel, aoMudar, { vazio = 'Todos', classe = '' } = {}) => h('div', { class: `filtro ${classe}` },
     h('label', { for: id }, rotulo),
     h('select', { id, onchange: (ev) => aoMudar(ev.target.value) },
@@ -63,49 +81,54 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
     h('span', { class: 'lista-grupo-tit' }, titulo, obrigatorio ? h('span', { class: 'obrigatorio' }, ' • obrigatório') : null),
     h('div', { class: 'lista-grupo-campos' }, campos.filter(Boolean)));
 
-  const grupos = [];
-  if (gestao) {
-    // quem vê todas as equipes escolhe supervisor (ou direto o representante); o supervisor só escolhe na própria equipe
-    const todas = veTodasEquipes(usuario);
-    grupos.push(grupo('Equipe', todas ? 'equipe' : null,
-      todas ? selecao('filtro-supervisor', 'Supervisor', e.filtros.supervisorId, opcoes.supervisores.map((s) => [s.id, `${s.nome}${s.codigo_erp ? ' · ' + s.codigo_erp : ''}`]),
-        (v) => ir({ filtros: { supervisorId: v ? Number(v) : null, vendedorId: null } }), { vazio: 'Escolha…' }) : null,
-      selecao('filtro-vendedor', 'Representante', e.filtros.vendedorId, opcoes.vendedores.map((v) => [v.id, `${v.nome} · ${papelDoAgente(v)}${v.codigo_erp ? ' · ' + v.codigo_erp : ''}`]),
-        (v) => ir({ filtros: { vendedorId: v ? Number(v) : null } }), { vazio: e.filtros.supervisorId || !todas ? 'Toda a equipe' : 'Escolha…' })));
+  async function desenharFiltros() {
+    const f = rascunho.filtros;
+    const opcoes = opcoesEmCascata(resumo, f);
+    const bairros = f.cidadeBusca ? await bairrosDe(f.cidadeBusca, f.uf) : [];
+    const grupos = [];
+    if (gestao) {
+      // quem vê todas as equipes escolhe supervisor (ou direto o representante); o supervisor só escolhe na própria equipe
+      const todas = veTodasEquipes(usuario);
+      grupos.push(grupo('Equipe', todas ? 'equipe' : null,
+        todas ? selecao('filtro-supervisor', 'Supervisor', f.supervisorId, opcoes.supervisores.map((s) => [s.id, `${s.nome}${s.codigo_erp ? ' · ' + s.codigo_erp : ''}`]),
+          (v) => mudar({ supervisorId: v ? Number(v) : null, vendedorId: null }), { vazio: 'Escolha…' }) : null,
+        selecao('filtro-vendedor', 'Representante', f.vendedorId, opcoes.vendedores.map((v) => [v.id, `${v.nome} · ${papelDoAgente(v)}${v.codigo_erp ? ' · ' + v.codigo_erp : ''}`]),
+          (v) => mudar({ vendedorId: v ? Number(v) : null }), { vazio: f.supervisorId || !todas ? 'Toda a equipe' : 'Escolha…' })));
+    }
+    const cidadeAtual = f.cidadeBusca ? `${f.cidadeBusca}|${f.uf ?? ''}` : '';
+    const repetida = new Set(opcoes.cidades.filter((c, i) => opcoes.cidades.findIndex((x) => x.cidade_busca === c.cidade_busca) !== i).map((c) => c.cidade_busca));
+    grupos.push(grupo('Local', null,
+      selecao('filtro-uf', 'UF', f.uf, opcoes.ufs.map((u) => [u, u]), (v) => mudar({ uf: v || null, cidadeBusca: null, bairroBusca: null }), { vazio: 'Todas', classe: 'estreito' }),
+      h('div', { class: 'filtro' }, h('label', { for: 'filtro-cidade' }, 'Cidade'),
+        h('select', { id: 'filtro-cidade', onchange: (ev) => { const [c, u] = ev.target.value ? ev.target.value.split('|') : [null, null];
+          mudar({ cidadeBusca: c, uf: c ? u || null : f.uf ?? null, bairroBusca: null }); } },
+        h('option', { value: '' }, 'Todas'),
+        opcoes.cidades.map((c) => { const v = `${c.cidade_busca}|${c.uf ?? ''}`; return h('option', { value: v, selected: v === cidadeAtual }, `${c.cidade}${repetida.has(c.cidade_busca) && c.uf ? '/' + c.uf : ''}`); }))),
+      // bairro só filtra com a cidade escolhida; sem cidade o campo nem aparece
+      f.cidadeBusca ? selecao('filtro-bairro', 'Bairro', f.bairroBusca, bairros.map((b) => [b.bairro_busca, b.bairro ?? b.bairro_busca]),
+        (v) => mudar({ bairroBusca: v || null })) : null));
+    grupos.push(grupo('Carteira', null,
+      selecao('filtro-onda', 'Onda', f.onda, opcoes.ondas.map((o) => [o, `Onda ${o}`]), (v) => mudar({ onda: v || null }), { vazio: 'Todas', classe: 'estreito' }),
+      selecao('filtro-segmento', 'Segmento', f.segmento, opcoes.segmentos.map((s) => [s, s]), (v) => mudar({ segmento: v || null }))));
+    if (acomp) {
+      const data = (id, rotulo, chave) => h('input', { type: 'date', id, 'aria-label': rotulo, value: f[chave] ?? '',
+        onchange: (ev) => { f[chave] = ev.target.value || null; } });
+      grupos.push(grupo('Período', 'periodo',
+        selecao('filtro-periodo', 'Último registro', rascunho.periodo, Object.entries(PERIODOS_LISTA), (v) => mudar({}, { periodo: v }), { vazio: 'Escolha…' }),
+        rascunho.periodo === 'periodo' ? h('div', { class: 'filtro' }, h('label', { for: 'filtro-data-de' }, 'De · até'),
+          h('div', { class: 'datas' }, data('filtro-data-de', 'Último registro de', 'dataDe'), data('filtro-data-ate', 'Último registro até', 'dataAte'))) : null));
+    }
+    montar(painelFiltros,
+      h('div', { class: `lista-filtros-grupos g${grupos.length}` }, grupos),
+      h('div', { class: 'lista-busca' },
+        h('span', { class: 'lupa', 'aria-hidden': 'true' }, icone('buscar')), campoBusca,
+        h('button', { type: 'submit', id: 'aplicar-filtros' }, 'Buscar'),
+        h('a', { href: endereco({ aba: e.aba, filtros: {} }), class: 'limpar' }, 'Limpar filtros')));
   }
-  const cidadeAtual = e.filtros.cidadeBusca ? `${e.filtros.cidadeBusca}|${e.filtros.uf ?? ''}` : '';
-  const repetida = new Set(opcoes.cidades.filter((c, i) => opcoes.cidades.findIndex((x) => x.cidade_busca === c.cidade_busca) !== i).map((c) => c.cidade_busca));
-  grupos.push(grupo('Local', null,
-    selecao('filtro-uf', 'UF', e.filtros.uf, opcoes.ufs.map((u) => [u, u]), (v) => ir({ filtros: { uf: v || null, cidadeBusca: null, bairroBusca: null } }), { vazio: 'Todas', classe: 'estreito' }),
-    h('div', { class: 'filtro' }, h('label', { for: 'filtro-cidade' }, 'Cidade'),
-      h('select', { id: 'filtro-cidade', onchange: (ev) => { const [c, u] = ev.target.value ? ev.target.value.split('|') : [null, null];
-        ir({ filtros: { cidadeBusca: c, uf: c ? u || null : e.filtros.uf ?? null, bairroBusca: null } }); } },
-      h('option', { value: '' }, 'Todas'),
-      opcoes.cidades.map((c) => { const v = `${c.cidade_busca}|${c.uf ?? ''}`; return h('option', { value: v, selected: v === cidadeAtual }, `${c.cidade}${repetida.has(c.cidade_busca) && c.uf ? '/' + c.uf : ''}`); }))),
-    // bairro só filtra com a cidade escolhida; sem cidade o campo nem aparece
-    e.filtros.cidadeBusca ? selecao('filtro-bairro', 'Bairro', e.filtros.bairroBusca, bairros.map((b) => [b.bairro_busca, b.bairro ?? b.bairro_busca]),
-      (v) => ir({ filtros: { bairroBusca: v || null } })) : null));
-  grupos.push(grupo('Carteira', null,
-    selecao('filtro-onda', 'Onda', e.filtros.onda, opcoes.ondas.map((o) => [o, `Onda ${o}`]), (v) => ir({ filtros: { onda: v || null } }), { vazio: 'Todas', classe: 'estreito' }),
-    selecao('filtro-segmento', 'Segmento', e.filtros.segmento, opcoes.segmentos.map((s) => [s, s]), (v) => ir({ filtros: { segmento: v || null } }))));
-  if (acomp) {
-    const data = (id, rotulo, chave) => h('input', { type: 'date', id, 'aria-label': rotulo, value: e.filtros[chave] ?? '',
-      onchange: (ev) => ir({ periodo: 'periodo', filtros: { [chave]: ev.target.value || null } }) });
-    grupos.push(grupo('Período', 'periodo',
-      selecao('filtro-periodo', 'Último registro', e.periodo, Object.entries(PERIODOS_LISTA),
-        (v) => ir({ periodo: v, filtros: v === 'periodo' ? {} : { dataDe: null, dataAte: null } }), { vazio: 'Escolha…' }),
-      e.periodo === 'periodo' ? h('div', { class: 'filtro' }, h('label', { for: 'filtro-data-de' }, 'De · até'),
-        h('div', { class: 'datas' }, data('filtro-data-de', 'Último registro de', 'dataDe'), data('filtro-data-ate', 'Último registro até', 'dataAte'))) : null));
-  }
+  await desenharFiltros();
 
-  const campoBusca = h('input', { type: 'search', id: 'busca', value: e.busca, 'aria-label': 'Buscar',
-    placeholder: 'Buscar: prospect, CNPJ, representante (nome ou código), cidade ou bairro' });
-  const busca = h('form', { class: 'lista-busca', onsubmit: (ev) => { ev.preventDefault(); ir({ busca: campoBusca.value.trim() }); } },
-    h('span', { class: 'lupa', 'aria-hidden': 'true' }, icone('buscar')), campoBusca,
-    h('button', { type: 'submit', class: 'secundario pequeno' }, 'Buscar'),
-    h('a', { href: endereco({ aba: e.aba, filtros: {} }), class: 'limpar' }, 'Limpar filtros'));
-
-  const agrupar = h('div', { class: 'filtro' }, h('label', { for: 'agrupar' }, 'Agrupar por'),
+  // agrupar só na Lista principal (no Acompanhamento a situação já separa)
+  const agrupar = acomp ? null : h('div', { class: 'filtro' }, h('label', { for: 'agrupar' }, 'Agrupar por'),
     h('select', { id: 'agrupar', onchange: (ev) => ir({ agrupar: ev.target.value }) },
       h('option', { value: '' }, 'Nenhum'), agrupaveis.map((k) => h('option', { value: k, selected: k === e.agrupar }, AGRUPAMENTOS[k].nome))));
 
@@ -113,17 +136,16 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
   const ajuda = acomp
     ? 'Quem já saiu da lista principal: aguardando cadastro, análise financeira, aguardando pedido, venda, sem interesse e inválidos.'
     : 'Não contactados e em prospecção. Registrou atendido ou sem interesse, o cliente passa para o Acompanhamento.';
-  const cabecalho = h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo), h('p', {}, ajuda)), h('div', { class: 'cabecalho-controles' }, agrupar));
-  const painelFiltros = h('section', { class: 'cartao lista-filtros', 'aria-label': 'Filtros' },
-    h('div', { class: `lista-filtros-grupos g${grupos.length}` }, grupos), busca);
+  const cabecalho = h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo), h('p', {}, ajuda)), agrupar ? h('div', { class: 'cabecalho-controles' }, agrupar) : null);
 
-  if (falta.length) {
-    const texto = falta.includes('equipe') && falta.includes('periodo') ? 'Escolha a equipe e o período para ver a lista'
-      : falta.includes('equipe') ? 'Escolha a equipe para ver a lista' : 'Escolha o período para ver a lista';
+  if (!ler) {
+    const texto = !e.ver ? 'Defina os filtros e clique em Buscar'
+      : falta.includes('equipe') && falta.includes('periodo') ? 'Escolha a equipe e o período e clique em Buscar'
+        : falta.includes('equipe') ? 'Escolha a equipe e clique em Buscar' : 'Escolha o período e clique em Buscar';
     return montar(conteudo, cabecalho, painelFiltros,
       h('div', { class: 'lista-vazia', id: 'lista-falta' }, h('b', {}, texto),
-        h('span', {}, falta.includes('equipe') ? 'Supervisor (com toda a equipe) ou representante. ' : '',
-          falta.includes('periodo') ? 'O período vale pela data do último registro. ' : '', 'A lista só é lida depois disso — nunca a base inteira.')));
+        h('span', {}, falta.includes('equipe') ? 'Equipe: supervisor (com toda a equipe) ou representante. ' : '',
+          falta.includes('periodo') ? 'Período: pela data do último registro. ' : '', 'A lista só é lida depois disso — nunca a base inteira.')));
   }
 
   // ---------- situação (atalhos com contagem, das mesmas linhas de status) ----------

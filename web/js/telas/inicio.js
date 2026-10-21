@@ -50,7 +50,7 @@ function tipoAgente(l) {
 }
 
 function agentes(linhas, { link, rodape }) {
-  const nome = (l) => (link ? h('a', { href: `#/carteira?vendedorId=${l.agente_id}`, title: 'Abrir a carteira' }, h('b', {}, l.agente_nome)) : h('b', {}, l.agente_nome));
+  const nome = (l) => (link ? h('a', { href: `#/carteira?vendedorId=${l.agente_id}&ver=1`, title: 'Abrir a carteira' }, h('b', {}, l.agente_nome)) : h('b', {}, l.agente_nome));
   const celulas = (l) => { const p = percentuais(l); return [
     h('td', { class: 'num' }, formatar.numero(l.total)), h('td', { class: 'num' }, formatar.numero(l.nao_contactado)),
     h('td', { class: 'num' }, formatar.numero(l.sem_interesse)), h('td', { class: 'num' }, formatar.numero(l.credito_liberado)),
@@ -145,7 +145,7 @@ function rotuloPedidos(t) {
 }
 
 function linkAgente(l, gestao) {
-  return gestao ? h('a', { href: `#/carteira?vendedorId=${l.agente_id}`, title: 'Abrir a carteira' }, l.agente_nome) : l.agente_nome;
+  return gestao ? h('a', { href: `#/carteira?vendedorId=${l.agente_id}&ver=1`, title: 'Abrir a carteira' }, l.agente_nome) : l.agente_nome;
 }
 
 function papel(l) {

@@ -83,3 +83,36 @@ test('administrador define a senha de um usuário existente; sem senha informada
   assert.equal(Number((await db.execute('SELECT senha_provisoria FROM usuarios WHERE id = 2')).rows[0].senha_provisoria), 1);
   assert.match(g.senha, /^[A-Za-z0-9]{10}$/);
 });
+
+test('padronizar acessos: supervisor pelo primeiro nome (repetido ganha inicial), vendedor pelo código; senha só quando pedida', async () => {
+  const { aplicarAcessos, loginPrimeiroNome, planoDeAcessos } = await import('../shared/usuarios.mjs');
+  assert.equal(loginPrimeiroNome('JÚLIO REICHEL'), 'julio');
+  assert.equal(loginPrimeiroNome('Bo Silva'), 'bos');
+  const db = await bancoTeste();
+  await db.batch([
+    { sql: "INSERT INTO usuarios (perfil, codigo_erp, nome, nome_busca, login) VALUES ('supervisor', '2', 'JÚLIO REICHEL', 'JULIO REICHEL', 'sup2')" },
+    { sql: "INSERT INTO usuarios (perfil, codigo_erp, nome, nome_busca, login) VALUES ('supervisor', '7', 'JULIO SANTOS', 'JULIO SANTOS', 'sup7')" },
+    { sql: "INSERT INTO usuarios (perfil, codigo_erp, nome, nome_busca, login, supervisor_id) VALUES ('vendedor', '1101', 'ANA LIMA', 'ANA LIMA', 'ana', 1)" },
+    { sql: "INSERT INTO usuarios (perfil, nome, nome_busca, login) VALUES ('administrador', 'Genaro', 'GENARO', 'genaro')" },
+    { sql: "INSERT INTO usuarios (perfil, codigo_erp, nome, nome_busca, login) VALUES ('supervisor', NULL, 'Genaro Teste', 'GENARO TESTE', 'supx')" },
+  ], 'write');
+  const plano = planoDeAcessos(await listarUsuarios(db));
+  const por = Object.fromEntries(plano.map((p) => [p.loginAtual, p]));
+  assert.equal(por.sup2.loginNovo, 'julio');
+  assert.equal(por.sup7.loginNovo, 'julio.s', 'primeiro nome repetido ganha a inicial do último nome');
+  assert.equal(por.ana.loginNovo, '1101');
+  assert.equal(por.sup2.senha, '2');
+  assert.equal(por.supx.loginNovo, 'genaro.t', 'não toma o login do administrador');
+  assert.match(por.supx.aviso, /sem código/);
+  assert.ok(!plano.some((p) => p.perfil === 'administrador'), 'administrador não muda');
+  await aplicarAcessos(db, { itens: plano, executadoPor: 'adm' });
+  const u = async (login) => (await db.execute({ sql: 'SELECT login, senha_hash FROM usuarios WHERE login = ?', args: [login] })).rows[0];
+  assert.ok(await u('julio') && await u('julio.s') && await u('1101') && await u('genaro.t'), 'logins novos gravados');
+  assert.equal((await u('julio')).senha_hash, null, 'senha não muda sem pedir');
+  assert.equal((await u('genaro')).login, 'genaro');
+  // senha = código curto esbarra no mínimo de 8 caracteres (decisão pendente com o dono)
+  await assert.rejects(aplicarAcessos(db, { itens: plano.filter((p) => p.senha === '1101'), executadoPor: 'adm', aplicarSenha: true }), /8 caracteres/);
+  const aud = (await db.execute("SELECT detalhes FROM auditoria WHERE acao = 'acesso_padronizado'")).rows;
+  assert.equal(aud.length, 4);
+  assert.ok(aud.every((a) => Object.keys(JSON.parse(a.detalhes)).every((k) => k === 'login' || k === 'senha_inicial')), 'a auditoria nunca guarda a senha');
+});

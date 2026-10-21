@@ -4,7 +4,6 @@
 // Escopo: gestão vê tudo (supervisor com "vê todas as equipes" também); supervisor só a equipe; vendedor só a carteira.
 // docs/03 §12
 import { veTodasEquipes } from './perfis.mjs';
-import { STATUS_LISTA } from './status.mjs';
 
 const colunasUsuario = `v.nome AS vendedor_nome, v.tipo_atuacao, v.perfil AS vendedor_perfil, v.codigo_erp AS vendedor_codigo,
        COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END) AS supervisor_id,
@@ -129,11 +128,12 @@ export function montarArvore({ linhas, pedidos = [], niveis, abertos, tipo = '',
  * Filtros em cascata da Lista principal e do Acompanhamento, sobre as mesmas linhas do resumo (consultaResumo, já em cache):
  * cada filtro mostra só as opções que existem com os OUTROS filtros escolhidos (cidade → só os representantes, supervisores,
  * segmentos e ondas dela; representante → só as cidades dele…), sem nenhuma leitura a mais no banco.
- * `aba`: 'principal' (não contactado / em prospecção) ou 'acompanhamento' (os demais), como a própria lista.
  */
-export function opcoesEmCascata(linhas, filtros = {}, { aba = 'principal' } = {}) {
+export function opcoesEmCascata(linhas, filtros = {}) {
   const f = filtros;
-  const naAba = (l) => (f.status ? l.status_atual === f.status : (aba === 'acompanhamento') !== STATUS_LISTA.includes(l.status_atual));
+  // as opções valem para a carteira toda (não só os status da aba): o Acompanhamento tem poucos clientes no começo da
+  // campanha e não pode ficar sem equipe, cidade ou segmento para escolher. Só um status escolhido restringe.
+  const naAba = (l) => !f.status || l.status_atual === f.status;
   const testes = {
     supervisor: (l) => !f.supervisorId || Number(l.supervisor_id) === Number(f.supervisorId),
     vendedor: (l) => !f.vendedorId || Number(l.vendedor_id) === Number(f.vendedorId),

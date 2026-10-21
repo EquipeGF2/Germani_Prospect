@@ -471,31 +471,11 @@ td.pct { min-width: 96px; }
 .exp-nivel.livre { background: #fff; border-color: var(--borda-forte); color: #374151; font-weight: 500; padding-right: 8px; }
 .exp-nivel .pega { color: #B8414B; letter-spacing: -2px; } .exp-nivel.livre .pega { color: #9CA3AF; }
 .exp-nivel .tirar { border: 0; background: transparent; cursor: pointer; width: 24px; height: 30px; color: inherit; font-size: 15px; padding: 0; min-height: 0; }
-.exp-kpis { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); background: #fff; border: 1px solid var(--borda); border-radius: var(--raio); box-shadow: var(--sombra); margin-bottom: 14px; }
-.exp-kpi { padding: 14px 14px; border-right: 1px solid var(--borda); min-width: 0; }
-.exp-kpi:last-child { border-right: 0; }
-.exp-kpi .rotulo { font-size: 13px; font-weight: 500; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.exp-kpi .valor { font: 600 1.45rem/1.2 "IBM Plex Sans Condensed", sans-serif; margin: 6px 0 4px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.exp-kpi .detalhe { font-size: 11.5px; color: var(--suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .exp-quadros { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
-.exp-quadro { flex: 1 1 380px; min-width: 0; margin: 0; }
-.exp-quadro h2 { margin: 0; } .exp-quadro > .ajuda { margin: 2px 0 10px; }
-.exp-status, .exp-funil { display: grid; grid-template-columns: 175px minmax(0, 1fr) 68px 56px; gap: 12px; align-items: center; padding: 5px 0; font-size: 14px; }
-.exp-funil { grid-template-columns: 150px minmax(0, 1fr) 64px 56px; }
-.exp-status .nome, .exp-funil .nome { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.exp-status .ponto { width: 12px; height: 12px; border-radius: 3px; flex: none; }
-.exp-status .trilho, .exp-funil .trilho { display: block; height: 14px; background: #F3F4F6; border-radius: 4px; overflow: hidden; }
-.exp-funil .trilho { height: 18px; }
-.exp-status .trilho > span, .exp-funil .trilho > span { display: block; height: 100%; border-radius: 4px; }
-.exp-funil .e0 { background: #E8A0A4; } .exp-funil .e1 { background: #E08A90; } .exp-funil .e2 { background: #D06A72; }
-.exp-funil .e3 { background: #B8414B; } .exp-funil .e4 { background: #A42A33; } .exp-funil .e5 { background: var(--destaque-escuro); }
-.exp-status b, .exp-funil b { text-align: right; font-variant-numeric: tabular-nums; }
-.exp-status .pct, .exp-funil .pct { text-align: right; color: var(--suave); font-size: 13px; font-variant-numeric: tabular-nums; }
-.exp-quadro .botao { margin-top: 12px; display: inline-flex; align-items: center; }
 .exp-arvore { padding: 0; overflow: hidden; }
 .exp-arvore .rolagem { overflow-x: auto; }
-.exp-linha { display: grid; grid-template-columns: minmax(280px, 1fr) 84px 84px 108px 116px 104px 70px 110px 110px; gap: 0 14px; align-items: center; padding: 4px 16px; border-bottom: 1px solid #F3F4F6; font-size: 14px; min-width: 1080px; }
-.exp-linha.cab { padding: 12px 16px; border-bottom-color: var(--borda); font-size: 11.5px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--suave); white-space: nowrap; }
+.exp-linha { display: grid; grid-template-columns: minmax(200px, 1fr) repeat(8, 72px) 100px 100px; gap: 0 10px; align-items: center; padding: 4px 16px; border-bottom: 1px solid #F3F4F6; font-size: 14px; min-width: 1080px; }
+.exp-linha.cab { padding: 10px 16px; border-bottom-color: var(--borda); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--suave); line-height: 1.25; align-items: end; }
 .exp-linha.raiz { background: #F9FAFB; } .exp-linha.raiz .nome { font-weight: 700; }
 /* linha sob o mouse fica preenchida: dá para seguir os números até a coluna sem perder a linha */
 .exp-linha:not(.cab) { cursor: pointer; }
@@ -504,12 +484,13 @@ td.pct { min-width: 96px; }
 .exp-linha.escolhida { background: var(--destaque-claro); box-shadow: inset 3px 0 0 var(--destaque); }
 .exp-linha.escolhida .nome { color: var(--destaque); font-weight: 700; }
 .exp-linha .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.exp-linha.cab .num { white-space: normal; }
 .exp-linha .ramo { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .exp-linha .abre { border: 1px solid var(--borda); background: #fff; border-radius: 6px; cursor: pointer; width: 26px; height: 26px; min-height: 0; padding: 0; font-size: 11px; color: #374151; flex: none; }
 .exp-linha .abre.vazio { border: 0; background: transparent; cursor: default; }
 .exp-linha .nome { border: 0; background: transparent; text-align: left; cursor: pointer; padding: 6px 4px; font: 500 14px "IBM Plex Sans", sans-serif; color: var(--texto); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-height: 32px; }
-@media (max-width: 1200px) { .exp-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } .exp-kpi { border-bottom: 1px solid var(--borda); } }
-@media (max-width: 700px) { .exp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+
 @media (max-width: 900px) { .exp-niveis { flex-wrap: wrap; } .exp-niveis .zona { flex-basis: 100%; } }
 
 /* Lista principal e Acompanhamento no computador (web/js/telas/_lista.js) */
@@ -561,3 +542,24 @@ td.pct { min-width: 96px; }
 .ficha-historico { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
 .ficha-lateral .ficha-acoes { display: flex; gap: 8px; margin-top: auto; flex-wrap: wrap; }
 @media (max-width: 1200px) { .lista-filtros-grupos, .lista-filtros-grupos.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Explorar: "Da totalidade" (barra 100%) e "Dos contactados" (etapas do processo) */
+.exp-grafico { margin: 0; flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; }
+.exp-grafico .tit { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--suave); }
+.exp-grafico h2 { margin: 2px 0 0; font-size: 17px; }
+.exp-grafico-topo { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.exp-total { text-align: right; } .exp-total b { display: block; font: 700 28px/1 "IBM Plex Sans Condensed", sans-serif; } .exp-total span { font-size: 12px; color: var(--suave); }
+.exp-barra100 { display: flex; gap: 2px; height: 28px; border-radius: 6px; overflow: hidden; background: #fff; }
+.exp-barra100 > span { min-width: 3px; }
+.exp-legenda { display: grid; grid-template-columns: 14px minmax(0, 1fr) 76px 56px; gap: 10px; align-items: center; font-size: 14px; }
+.exp-legenda .ponto { width: 12px; height: 12px; border-radius: 3px; } .exp-legenda .ponto.claro { box-shadow: inset 0 0 0 1px #9CA3AF; }
+.exp-legenda small { color: var(--suave); font-size: 12px; }
+.exp-legenda b, .exp-etapa b { text-align: right; font-variant-numeric: tabular-nums; }
+.exp-legenda .pct, .exp-etapa .pct { text-align: right; color: var(--suave); font-size: 13px; font-variant-numeric: tabular-nums; }
+.exp-rodape { margin: 0; padding-top: 10px; border-top: 1px solid #F3F4F6; font-size: 13px; color: #374151; }
+.exp-etapa { display: grid; grid-template-columns: 170px minmax(0, 1fr) 70px 56px; gap: 12px; align-items: center; font-size: 14px; }
+.exp-etapa .trilho { display: block; height: 16px; background: #F3F4F6; border-radius: 4px; overflow: hidden; }
+.exp-etapa .trilho > span { display: block; height: 100%; border-radius: 4px; }
+.exp-mini { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding-top: 10px; border-top: 1px solid #F3F4F6; }
+.exp-mini b { display: block; font: 700 20px/1.3 "IBM Plex Sans Condensed", sans-serif; } .exp-mini small { color: var(--suave); font-size: 12px; }
+.exp-grafico .botao { align-self: flex-start; }

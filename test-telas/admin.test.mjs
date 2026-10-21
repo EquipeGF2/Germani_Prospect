@@ -76,6 +76,13 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
 
   // 3. usuários: liberar acesso do vendedor 1201
   await pagina.click('#menu a[title="Usuários"]');
+  // padronizar logins: mostra o que muda (supervisor pelo primeiro nome) e só grava no botão
+  await pagina.click('#botao-padronizar');
+  await pagina.waitForSelector('#painel-logins');
+  const novos = await pagina.locator('#painel-logins tbody tr td:nth-child(5)').allInnerTexts();
+  assert.ok(novos.length && novos.every((l) => !/^sup\d/.test(l)), `logins novos: ${novos}`);
+  await pagina.click('#painel-logins button:text("Fechar")');
+  assert.equal(await pagina.locator('#painel-logins').count(), 0);
   await pagina.fill('input[aria-label=Buscar]', '1201');
   // o administrador define a senha do vendedor (curta é recusada)
   await pagina.click('button:text("Liberar acesso")');
@@ -216,6 +223,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('#lista-falta');                            // gestão: escolhe a equipe antes de ler a lista
   assert.equal(await pagina.locator('.lista-tabela tbody tr').count(), 0);
   await pagina.selectOption('#filtro-supervisor', { index: 2 });   // 2º supervisor (o 0 é "Todos")
+  await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
   await telaPronta();
   await pagina.waitForFunction(() => document.querySelector('#filtro-vendedor')?.options[0]?.text === 'Toda a equipe');
@@ -223,6 +231,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   assert.ok(agentesDoSup.length >= 1 && agentesDoSup.every((t) => / · (Vendedor|Representante|Supervisor)/.test(t)));
   const nomeAgente = agentesDoSup[0].split(' · ')[0];
   await pagina.selectOption('#filtro-vendedor', { index: 1 });
+  await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('vendedorId='));
   await telaPronta();
   await pagina.waitForSelector('.lista-tabela tbody tr, .mensagem');

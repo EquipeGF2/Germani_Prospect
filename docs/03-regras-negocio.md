@@ -191,6 +191,11 @@ movimentação conta sempre nos indicadores.
   **Equipe** (supervisor / representante) · **Local** (UF / cidade / **bairro**, este só aparece com a cidade escolhida) ·
   **Carteira** (onda / segmento) · **Período** (só no Acompanhamento). Abaixo, a **busca**: prospect, CNPJ, cidade, bairro e
   o **representante** dono da carteira (nome sem acento ou código do ERP).
+  - **Os filtros só valem no botão Buscar** (`?ver=1`): escolher um filtro só refaz as opções em cascata no navegador
+    (do resumo já lido, em cache) — nenhuma leitura da lista até clicar em Buscar. O representante já entra com a
+    própria carteira. Links do Início (agente) e do Explorar já chegam aplicados.
+  - As opções de equipe, local e carteira valem para a carteira toda, nas duas abas (o Acompanhamento começa quase vazio
+    e não pode ficar sem opções); só um status escolhido as restringe.
   - **Obrigatórios** (`faltaParaLista`): quem vê todas as equipes escolhe a **equipe** (supervisor, com toda a equipe, ou
     direto o representante; uma busca também basta); supervisor e vendedor já têm a sua. O **Acompanhamento** exige o
     **período** do último registro: Este mês, Último mês ou Período (de · até) — `datasDoPeriodo`; o representante já
@@ -198,7 +203,7 @@ movimentação conta sempre nos indicadores.
     a tela pede a escolha e **não lê a lista**.
   - **Situação**: atalhos com contagem por status da aba (Lista: Não contactado, Em prospecção; Acompanhamento: os
     demais, na ordem do processo), da mesma consulta por status com os filtros escolhidos — e o total da lista.
-  - **Agrupar por** (no lugar das antigas visões): cidade, bairro (só com cidade), onda, segmento, representante (gestão),
+  - **Agrupar por** (só na Lista principal; no lugar das antigas visões): cidade, bairro (só com cidade), onda, segmento, representante (gestão),
     rota (vendedor) — a lista sai ordenada pelo grupo, com um cabeçalho a cada troca (`agrupar` em `consultaCarteira`).
   - Colunas: prospect (CNPJ), cidade · bairro, onda, segmento, rota (só vendedor), representante (gestão, com o código),
     status; na Lista: tentativas, contato da planilha e dias; no Acompanhamento: último registro, próxima ação (retorno)
@@ -332,9 +337,16 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 - Árvore **do total até o cliente** com níveis livres, em qualquer ordem: Supervisor, Representante, Cidade, Segmento
   (TIPOLOGIA GTM), Onda, Rota, Subrota. Os níveis são cartões **arrastáveis** (ordenar, incluir, tirar); a ordem fica
   guardada no navegador. Cada nível aberto mostra **todos** os itens, do maior para o menor.
-- Por ramo: Prospects, Cobertura (% contactado sobre a base válida), **Em andamento** (Aguardando cadastro + Análise
-  financeira), **Aguardando pedido**, Sem interesse, Vendas, Valor dos pedidos (ERP) e Potencial (em aberto × % do
-  pipeline × valor médio — parâmetros do Início). O ramo escolhido mostra também clientes por status e o funil.
+- O ramo escolhido mostra dois gráficos (no lugar dos cards, de "Clientes por status" e do funil):
+  - **Da totalidade**: barra de 100% em 4 partes que somam os prospects do ramo — Contactados (sem os sem interesse),
+    Sem interesse, Não contactados e Inativos (inválidos/baixados) — e a **Cobertura** = contactados (com os sem
+    interesse) ÷ base válida (sem inativos), com os números.
+  - **Dos contactados**: onde estão os que seguem no processo (contactados sem os sem interesse) — Aguardando cadastro,
+    Aguardando financeiro, Aguardando pedido e Pedido realizado, cada um com % — e Valor dos pedidos, Potencial (em
+    aberto × % do pipeline × valor médio) e Conversão (vendas ÷ contactados). "Em prospecção" (contato da planilha,
+    sem resultado) não é etapa do processo: só conta entre os contactados da totalidade.
+- Grade por ramo: Prospects, **Contactados**, Cobertura, Sem interesse, Ag. cadastro, Ag. financeiro, Ag. pedido,
+  Pedido realizado, Pedidos (R$) e Potencial (R$).
 - Filtro **Todos / Representantes / Vendedores** (tipo de atuação de quem é dono da carteira).
 - Escopo: gestão vê tudo (supervisor com "vê todas as equipes" também); **supervisor só a própria equipe, sem o nível
   Supervisor**; vendedor só a própria carteira (sem Supervisor nem Representante).
@@ -342,7 +354,7 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 - Tela: níveis e disponíveis numa linha só; o caminho do ramo fica abaixo dos níveis, também numa linha (etapa longa é
   cortada, o nome inteiro aparece ao passar o mouse); a linha da árvore sob o mouse fica preenchida.
 - **Filtros em cascata da Lista principal e do Acompanhamento** (`opcoesEmCascata`): cada filtro (supervisor,
-  representante, UF, cidade, segmento, onda) mostra só o que existe com os outros filtros escolhidos e na aba atual — ex.:
+  representante, UF, cidade, segmento, onda) mostra só o que existe na carteira com os outros filtros escolhidos — ex.:
   escolher Alpestre deixa só os representantes, supervisores, segmentos e ondas de Alpestre. As opções saem do mesmo
   `resumo_carteira` (lido uma vez, em cache), nunca da carteira. UF e cidade são filtros separados; trocar a UF limpa a
   cidade. Teste prova que as opções = valores distintos da carteira com os mesmos filtros.

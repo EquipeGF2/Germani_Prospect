@@ -87,6 +87,10 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.equal(await pagina.locator('#filtro-bairro').count(), 0, 'bairro só com a cidade');
   assert.equal(await pagina.locator('.cartao-prospect, #filtro-visao, .exibicao').count(), 0, 'sem cards e sem visões no computador');
   await pagina.selectOption('#filtro-supervisor', { index: 1 });
+  // escolher um filtro não lê nada: só o botão Buscar aplica
+  assert.ok(!(await pagina.evaluate(() => location.hash)).includes('supervisorId='), 'o filtro só vale no Buscar');
+  assert.equal(await pagina.locator('#lista-falta').count(), 1);
+  await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
   await telaPronta();
   await pagina.waitForSelector('.lista-tabela tbody tr');
@@ -105,6 +109,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.match(await pagina.locator('.lista-tabela th a.ativa').innerText(), /▼/);
   // filtro por onda (coluna 4: marca, prospect, cidade, onda)
   await pagina.selectOption('#filtro-onda', '2');
+  await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('onda=2'));
   await telaPronta();
   assert.ok((await pagina.locator('.lista-tabela tbody tr:not(.linha-grupo) td:nth-child(4)').allInnerTexts()).every((t) => t === '2'));
@@ -116,6 +121,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.ok(gruposCidade.length >= 1 && new Set(gruposCidade).size === gruposCidade.length, `grupos: ${gruposCidade}`);
   assert.equal(await pagina.locator('#agrupar option[value=bairro]').count(), 0, 'agrupar por bairro só com a cidade');
   await pagina.selectOption('#filtro-cidade', { index: 1 });
+  await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('cidadeBusca='));
   await telaPronta();
   assert.equal(await pagina.locator('#filtro-bairro').count(), 1, 'com a cidade aparece o bairro');
@@ -132,7 +138,13 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.ok(supervisores >= 2, `supervisores: ${supervisores}`);
   await pagina.click('.exp-linha:not(.raiz):not(.cab) b.num >> nth=0');         // clicar em qualquer parte da linha escolhe e abre
   assert.ok(await pagina.locator('.exp-linha:not(.raiz):not(.cab)').count() > supervisores, 'abriu os representantes');
-  assert.equal(await pagina.locator('.exp-kpi').count(), 8);
+  // da totalidade: 4 partes que somam o total do ramo; dos contactados: as 4 etapas do processo
+  const partesTotal = await pagina.locator('#grafico-totalidade .exp-legenda b').allInnerTexts();
+  const totalRamo = Number((await pagina.locator('#grafico-totalidade .exp-total b').innerText()).replace(/\./g, ''));
+  assert.equal(partesTotal.length, 4);
+  assert.equal(partesTotal.reduce((t, x) => t + Number(x.replace(/\./g, '')), 0), totalRamo, 'as 4 partes somam o total');
+  assert.equal(await pagina.locator('#grafico-contactados .exp-etapa').count(), 4);
+  assert.equal(await pagina.locator('.exp-linha.cab span').count(), 11, 'colunas: ramo, prospects, contactados, cobertura, sem interesse, 3 etapas, pedido realizado, R$');
   await pagina.locator('.exp-nivel[data-nivel="cidade"]').dragTo(pagina.locator('.exp-nivel[data-nivel="supervisor"]'));
   assert.match(await pagina.locator('.exp-niveis .exp-nivel >> nth=0').innerText(), /Cidade/, 'arrastou Cidade para o 1º nível');
   await pagina.click('.exp-linha:not(.raiz):not(.cab) .nome >> nth=0');
@@ -159,15 +171,20 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await telaPronta();
   await pagina.waitForSelector('#lista-falta');
   assert.equal(await pagina.locator('#filtro-periodo').count(), 1);
+  assert.equal(await pagina.locator('#agrupar').count(), 0, 'sem agrupar no Acompanhamento');
+  assert.ok((await pagina.locator('#filtro-supervisor option').count()) > 1, 'equipes para escolher mesmo com o Acompanhamento vazio');
   await pagina.selectOption('#filtro-supervisor', { index: 1 });
+  await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
   await telaPronta();
   await pagina.waitForSelector('#lista-falta');                            // ainda falta o período
   await pagina.selectOption('#filtro-periodo', 'periodo');
+  await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('periodo=periodo'));
   await telaPronta();
   assert.equal(await pagina.locator('#filtro-data-de').count(), 1, 'período abre as datas');
   await pagina.selectOption('#filtro-periodo', 'mes');
+  await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('periodo=mes'));
   await telaPronta();
   await pagina.waitForSelector('.lista-tabela tbody tr');
@@ -179,6 +196,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   const repsTodos = await opcoesDe('filtro-vendedor');
   assert.ok((await opcoesDe('filtro-uf')).length >= 1, 'UF separada da cidade');
   await pagina.selectOption('#filtro-cidade', { index: 1 });
+  await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('cidadeBusca='));
   await telaPronta();
   const repsCidade = await opcoesDe('filtro-vendedor');

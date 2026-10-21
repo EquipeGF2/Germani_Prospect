@@ -121,7 +121,7 @@ test('Explorar carteira: árvore do resumo bate com o Início, filhos somam o pa
   assert.equal(soRep + soVen, raiz.qtd);
 });
 
-test('filtros em cascata (Lista principal e Acompanhamento) pelo resumo = valores distintos da própria carteira com os outros filtros', async () => {
+test('filtros em cascata pelo resumo = valores distintos da carteira (toda, nas duas abas) com os outros filtros', async () => {
   const { consultaResumo, opcoesEmCascata } = await import('../shared/explorar.mjs');
   const db = await bancoTeste();
   const { linhas } = await lerPlanilha('exemplos/base-ficticia.xlsx');
@@ -131,7 +131,7 @@ test('filtros em cascata (Lista principal e Acompanhamento) pelo resumo = valore
   const resumo = (await db.execute(consultaResumo({ usuario: ADM }))).rows;
   // direto na carteira: valores distintos de uma coluna com os OUTROS filtros (o que a cascata promete)
   const direto = async (coluna, f, aba) => {
-    const w = [aba === 'acompanhamento' ? "p.status_atual NOT IN ('nao_contactado','em_prospeccao')" : "p.status_atual IN ('nao_contactado','em_prospeccao')"]; const a = [];
+    const w = ['1 = 1']; const a = [];   // a carteira toda: as opções não dependem da aba (Acompanhamento começa quase vazio)
     const sup = "COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END)";
     if (f.supervisorId && coluna !== 'sup') { w.push(`${sup} = ?`); a.push(f.supervisorId); }
     if (f.vendedorId && coluna !== 'p.vendedor_id') { w.push('p.vendedor_id = ?'); a.push(f.vendedorId); }
@@ -145,7 +145,7 @@ test('filtros em cascata (Lista principal e Acompanhamento) pelo resumo = valore
     return r.rows.map((l) => String(l.x)).sort();
   };
   const conferir = async (f, aba) => {
-    const o = opcoesEmCascata(resumo, f, { aba });
+    const o = opcoesEmCascata(resumo, f);
     const s = (l) => l.map(String).sort();
     assert.deepEqual(s(o.supervisores.map((x) => x.id)), await direto('sup', f, aba), `supervisores ${JSON.stringify(f)} ${aba}`);
     assert.deepEqual(s(o.vendedores.map((x) => x.id)), await direto('p.vendedor_id', f, aba), `vendedores ${JSON.stringify(f)} ${aba}`);

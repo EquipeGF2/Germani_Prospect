@@ -65,7 +65,7 @@ export async function render(conteudo, ctx) {
       r.recusados.length ? mensagem(r.recusados.map((x) => `${prospects.find((p) => Number(p.id) === x.prospectId)?.razao_social}: ${x.erros.join('; ')}`).join(' · '), 'erro') : null,
       h('p', { class: 'ajuda' }, 'Os clientes gravados saíram da lista principal e aparecem no acompanhamento como "Sem interesse".'),
       h('div', { class: 'acoes' }, h('a', { class: 'botao', href: '#/carteira' }, 'Voltar à lista'),
-        h('a', { class: 'botao secundario', href: '#/carteira?aba=acompanhamento&status=sem_interesse' }, 'Ver sem interesse')));
+        h('a', { class: 'botao secundario', href: '#/carteira?aba=acompanhamento&status=sem_interesse&periodo=mes&ver=1' }, 'Ver sem interesse')));
   }
 
   montar(conteudo,

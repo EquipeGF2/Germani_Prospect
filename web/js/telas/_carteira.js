@@ -28,7 +28,7 @@ export function lerEstado(parametros) {
   const e = { aba: parametros.get('aba') === 'acompanhamento' ? 'acompanhamento' : 'principal', visao: parametros.get('visao') ?? '',
     busca: parametros.get('busca') ?? '', pagina: Math.max(0, Number(parametros.get('pagina')) || 0), filtros: {},
     ordem: ORDENACOES[parametros.get('ordem')] ? parametros.get('ordem') : '', desc: parametros.get('dir') === 'desc',
-    agrupar: parametros.get('agrupar') ?? '', periodo: parametros.get('periodo') ?? '' };
+    agrupar: parametros.get('agrupar') ?? '', periodo: parametros.get('periodo') ?? '', ver: parametros.get('ver') === '1' };
   for (const f of FILTROS) if (parametros.get(f)) e.filtros[f] = parametros.get(f);
   if (e.filtros.vendedorId) e.filtros.vendedorId = Number(e.filtros.vendedorId);
   if (e.filtros.supervisorId) e.filtros.supervisorId = Number(e.filtros.supervisorId);
@@ -45,6 +45,7 @@ export function endereco(e, muda = {}) {
   if (n.busca) q.set('busca', n.busca);
   if (n.agrupar) q.set('agrupar', n.agrupar);
   if (n.periodo) q.set('periodo', n.periodo);
+  if (n.ver) q.set('ver', '1');
   for (const [k, v] of Object.entries(n.filtros)) if (v != null && v !== '' && v !== false) q.set(k, v === true ? '1' : v);
   if (n.ordem) { q.set('ordem', n.ordem); if (n.desc) q.set('dir', 'desc'); }
   if (n.pagina) q.set('pagina', n.pagina);
@@ -56,9 +57,9 @@ export function endereco(e, muda = {}) {
 
 // Opções dos filtros em cascata: vêm do resumo pronto (resumo_carteira, o mesmo do Explorar e em cache), nunca da
 // carteira inteira — cada filtro mostra só o que existe com os outros escolhidos (shared/explorar.mjs).
-export async function opcoesDosFiltros(db, usuario, filtros, aba) {
+export async function opcoesDosFiltros(db, usuario, filtros) {
   const linhas = (await lerComCache(db, consultaResumo({ usuario }), 300)).rows;
-  return opcoesEmCascata(linhas, filtros, { aba });
+  return opcoesEmCascata(linhas, filtros);
 }
 
 export const papelDoAgente = (v) => (v.perfil === 'supervisor' ? 'Supervisor' : v.tipo_atuacao === 'vendedor' ? 'Vendedor' : 'Representante');
