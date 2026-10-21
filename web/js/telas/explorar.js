@@ -87,7 +87,8 @@ export async function render(conteudo, { usuario }) {
       h('button', { type: 'button', class: n.caminho === escolhido.caminho ? 'atual' : '', title: n.profundidade ? `${NIVEIS[n.nivel].nome}: ${n.rotulo}` : n.rotulo, onclick: () => { estado.sel = n.caminho; desenhar(); } },
         n.profundidade ? `${NIVEIS[n.nivel].nome}: ${n.rotulo}` : n.rotulo),
       i < etapas.length - 1 ? h('span', { class: 'sep', 'aria-hidden': 'true' }, '›') : null]));
-    const tipos = h('div', { class: 'visoes exp-tipo', role: 'group', 'aria-label': 'Representante ou vendedor' },
+    // representante × vendedor só faz sentido para quem vê mais de uma carteira (supervisor, gerente, administrador)
+    const tipos = usuario.perfil === 'vendedor' ? null : h('div', { class: 'visoes exp-tipo', role: 'group', 'aria-label': 'Representante ou vendedor' },
       [['', 'Todos'], ['representante', 'Representantes'], ['vendedor', 'Vendedores']].map(([v, t]) => h('a', { href: '#', class: estado.tipo === v ? 'ativa' : '', dados: { tipo: v || 'todos' },
         onclick: (ev) => { ev.preventDefault(); estado.tipo = v; estado.sel = ''; estado.abertos = new Set(['']); desenhar(); } }, t)));
 
@@ -100,18 +101,18 @@ export async function render(conteudo, { usuario }) {
     // Da totalidade: uma barra de 100% em 4 partes que somam todos os prospects do ramo
     const contSemSI = ind.contactados - ind.semInteresse;   // contactados que seguem no processo (sem os sem interesse)
     const partes = [
-      ['contactados', 'Contactados', contSemSI, '#1D4ED8', 'atendidos; sem os sem interesse'],
-      ['sem_interesse', 'Sem interesse', ind.semInteresse, '#3F3F46', ''],
-      ['nao_contactados', 'Não contactados', ind.status.nao_contactado, '#9CA3AF', ''],
-      ['inativos', 'Inativos (inválidos / baixados)', ind.status.invalido, '#E5E7EB', ''],
+      ['contactados', 'Contactados', contSemSI, '#1D4ED8'],
+      ['sem_interesse', 'Sem interesse', ind.semInteresse, '#3F3F46'],
+      ['nao_contactados', 'Não contactados', ind.status.nao_contactado, '#9CA3AF'],
+      ['inativos', 'Inativos (inválidos / baixados)', ind.status.invalido, '#E5E7EB'],
     ];
     const totalidade = h('section', { class: 'cartao exp-grafico', id: 'grafico-totalidade' },
       h('div', { class: 'exp-grafico-topo' }, h('div', {}, h('span', { class: 'tit' }, 'Da totalidade'), h('h2', {}, escolhido.rotulo)),
         h('div', { class: 'exp-total' }, h('b', {}, n0(ind.qtd)), h('span', {}, 'prospects'))),
       h('div', { class: 'exp-barra100', role: 'img', 'aria-label': partes.map(([, nome, q]) => `${nome}: ${n0(q)}`).join(', ') },
         partes.filter(([, , q]) => q > 0).map(([chave, nome, q, cor]) => h('span', { dados: { parte: chave }, title: `${nome}: ${n0(q)}`, style: `flex:${q} 1 0;background:${cor}` }))),
-      partes.map(([chave, nome, q, cor, nota]) => h('div', { class: 'exp-legenda', dados: { parte: chave } },
-        h('span', { class: `ponto${chave === 'inativos' ? ' claro' : ''}`, style: `background:${cor}` }), h('span', {}, nome, nota ? h('small', {}, ` (${nota})`) : null),
+      partes.map(([chave, nome, q, cor]) => h('div', { class: 'exp-legenda', dados: { parte: chave } },
+        h('span', { class: `ponto${chave === 'inativos' ? ' claro' : ''}`, style: `background:${cor}` }), h('span', {}, nome),
         h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(ind.qtd ? (q / ind.qtd) * 100 : null)))),
       h('p', { class: 'exp-rodape' }, h('b', {}, `Cobertura ${pct(ind.cobertura)}`),
         ` = contactados com sem interesse (${n0(ind.contactados)}) ÷ base válida (${n0(ind.base)}, sem inativos)`));
@@ -123,12 +124,12 @@ export async function render(conteudo, { usuario }) {
       ['Pedido realizado', ind.vendas, status.venda_realizada?.cor ?? '#1D4ED8']];
     const doProcesso = h('section', { class: 'cartao exp-grafico', id: 'grafico-contactados' },
       h('div', { class: 'exp-grafico-topo' }, h('div', {}, h('span', { class: 'tit' }, 'Dos contactados'),
-        h('h2', {}, `Onde estão os ${n0(contSemSI)} que seguem no processo`)), h('span', { class: 'ajuda' }, '% sobre os contactados sem os sem interesse')),
-      etapasProcesso.map(([nome, q, cor]) => h('div', { class: 'exp-etapa' }, h('span', {}, nome),
+        h('h2', {}, `Onde estão os ${n0(contSemSI)} que seguem no processo`))),
+      etapasProcesso.map(([nome, q, cor]) => h('div', { class: 'exp-etapa' }, h('span', { class: 'nome' }, nome),
         h('span', { class: 'trilho', 'aria-hidden': 'true' }, h('span', { style: `width:${q && contSemSI ? Math.max(1.5, (q / contSemSI) * 100) : 0}%;background:${cor}` })),
         h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(contSemSI ? (q / contSemSI) * 100 : null)))),
       h('div', { class: 'exp-mini' },
-        h('div', {}, h('span', { class: 'tit' }, 'Valor dos pedidos'), h('b', {}, reais(ind.valorPedidos))),
+        h('div', {}, h('span', { class: 'tit' }, 'Valor dos pedidos'), h('b', {}, reais(ind.valorPedidos)), h('small', {}, `de ${n0(ind.vendas)} cliente(s)`)),
         h('div', {}, h('span', { class: 'tit' }, 'Potencial'), h('b', {}, reais(ind.potencial)), h('small', {}, `em aberto × ${parametros.percentual_pipeline ?? 0}%`)),
         h('div', {}, h('span', { class: 'tit' }, 'Conversão'), h('b', {}, pct(ind.conversao)), h('small', {}, 'vendas ÷ contactados'))),
       escolhido.profundidade
@@ -144,15 +145,16 @@ export async function render(conteudo, { usuario }) {
       desenhar();
     };
     const linhas = arvore.map((n) => h('div', { class: `exp-linha${n.caminho === escolhido.caminho ? ' escolhida' : ''}${n.profundidade ? '' : ' raiz'}`, dados: { caminho: n.caminho },
-      onclick: () => clicarLinha(n) },
+      style: `--prof:${n.profundidade}`, onclick: () => clicarLinha(n) },
       h('span', { class: 'ramo', style: `padding-left:${n.profundidade * 24}px` },
         n.temFilhos ? h('button', { type: 'button', class: 'abre', 'aria-expanded': n.aberto ? 'true' : 'false', 'aria-label': `${n.aberto ? 'Fechar' : 'Abrir'} ${n.rotulo}`,
           onclick: (ev) => { ev.stopPropagation(); if (n.aberto) estado.abertos.delete(n.caminho); else estado.abertos.add(n.caminho); desenhar(); } }, n.aberto ? '▼' : '▶') : h('span', { class: 'abre vazio' }),
         h('button', { type: 'button', class: 'nome', title: n.rotulo }, n.rotulo)),
-      h('b', { class: 'num' }, n0(n.ind.qtd)), h('span', { class: 'num' }, n0(n.ind.contactados)), h('span', { class: 'num' }, pct(n.ind.cobertura)),
-      h('span', { class: 'num' }, n0(n.ind.semInteresse)), h('span', { class: 'num' }, n0(n.ind.status.aguardando_cadastro)),
-      h('span', { class: 'num' }, n0(n.ind.status.analise_financeira)), h('span', { class: 'num' }, n0(n.ind.aguardandoPedido)), h('b', { class: 'num' }, n0(n.ind.vendas)),
-      h('span', { class: 'num' }, reais(n.ind.valorPedidos)), h('span', { class: 'num' }, reais(n.ind.potencial))));
+      h('b', { class: 'num qtd' }, n0(n.ind.qtd)), h('span', { class: 'quebra', 'aria-hidden': 'true' }), h('span', { class: 'num', dados: { r: 'Contact.' } }, n0(n.ind.contactados)), h('span', { class: 'num', dados: { r: 'Cobertura' } }, pct(n.ind.cobertura)),
+      h('span', { class: 'num', dados: { r: 'S. int.' } }, n0(n.ind.semInteresse)), h('span', { class: 'num etapa', dados: { r: 'Cad.' } }, n0(n.ind.status.aguardando_cadastro)),
+      h('span', { class: 'num etapa', dados: { r: 'Fin.' } }, n0(n.ind.status.analise_financeira)), h('span', { class: 'num etapa', dados: { r: 'Ped.' } }, n0(n.ind.aguardandoPedido)),
+      h('b', { class: 'num', dados: { r: 'Vendas' } }, n0(n.ind.vendas)),
+      h('span', { class: 'num', dados: { r: 'Pedidos' } }, reais(n.ind.valorPedidos)), h('span', { class: 'num potencial' }, reais(n.ind.potencial))));
 
     return [
       h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar carteira'), tipos),

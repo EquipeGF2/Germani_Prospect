@@ -7,8 +7,10 @@ import { h, montar, mensagem, formatar, numeros } from '../ui.js';
 import { endereco, gravarLote, lerEstado, lerLote, opcoesDosFiltros, papelDoAgente, seloStatus } from './_carteira.js';
 import { renderComputador } from './_lista.js';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
+import { consultaResumo } from '../../shared/explorar.mjs';
 
 const POR_PAGINA = 50;
+const NA_LISTA = ['nao_contactado', 'em_prospeccao'];
 const NOMES_VISAO = { lista: 'Lista', cidade: 'Cidade', bairro: 'Bairro', onda: 'Onda', status: 'Status', rota: 'Rota' };
 const ehCelular = () => matchMedia('(max-width: 900px)').matches;
 
@@ -51,16 +53,18 @@ export async function render(conteudo, ctx) {
   } catch (erro) {
     return montar(conteudo, mensagem(erro.message, 'erro'));
   }
-  // gestão: a Lista principal só é lida depois de um filtro ou busca (não varre a base inteira a cada entrada)
-  const aguardaFiltro = e.aba === 'principal' && precisaFiltro(usuario, { visao: e.visao, filtros: e.filtros, busca: e.busca });
+  // a Lista principal só é lida depois de um filtro ou busca (no celular também a do representante: escolhe a cidade)
+  const aguardaFiltro = e.aba === 'principal' && precisaFiltro(usuario, { visao: e.visao, filtros: e.filtros, busca: e.busca, celular: true });
   const gestao = usuario.perfil !== 'vendedor';
-  const [linhas, opcoes] = await Promise.all([
+  // opções e atalhos de cidade saem do resumo pronto (em cache), nunca da carteira
+  const [linhas, opcoes, resumo] = await Promise.all([
     aguardaFiltro ? [] : db.execute(consulta).then((r) => r.rows),
-    opcoesDosFiltros(db, usuario, e.filtros)]);
+    opcoesDosFiltros(db, usuario, e.filtros),
+    aguardaFiltro && !gestao ? lerComCache(db, consultaResumo({ usuario }), 300).then((r) => r.rows) : []]);
   const { supervisores, vendedores } = opcoes;
-  const ufs = gestao ? opcoes.ufs : [];
-  const cidades = gestao ? opcoes.cidades : [];
-  const segmentos = gestao ? opcoes.segmentos : [];
+  const ufs = opcoes.ufs.length > 1 || gestao ? opcoes.ufs : [];
+  const cidades = opcoes.cidades;
+  const segmentos = opcoes.segmentos;
 
   const campoBusca = h('input', { type: 'search', id: 'busca', value: e.busca, placeholder: 'Nome/CNPJ', title: 'Busca por nome, CNPJ, cidade ou bairro', 'aria-label': 'Buscar prospect' });
   const formBusca = h('form', { class: 'barra-busca', onsubmit: (ev) => { ev.preventDefault(); location.hash = endereco(e, { busca: campoBusca.value.trim(), pagina: 0 }); } },
@@ -120,7 +124,8 @@ export async function render(conteudo, ctx) {
   });
 
   let corpo;
-  if (aguardaFiltro) corpo = mensagem('Escolha um filtro — supervisor, representante, cidade, segmento, onda ou rota — ou faça uma busca para ver a lista. Para ver os números de toda a base, use a visão Cidade, Bairro ou Onda.', 'info');
+  if (aguardaFiltro && !gestao) corpo = blocoEscolherCidade(e, resumo);
+  else if (aguardaFiltro) corpo = mensagem('Escolha um filtro — supervisor, representante, cidade, segmento, onda ou rota — ou faça uma busca para ver a lista. Para ver os números de toda a base, use a visão Cidade, Bairro ou Onda.', 'info');
   else if (e.visao === 'status') corpo = blocoStatus(e, linhas);
   else if (e.visao === 'lista') {
     const opcoes = { podeRegistrar, selecao, comRota: permitidas.includes('rota'), mostrarCarteira: usuario.perfil !== 'vendedor' };
@@ -138,6 +143,25 @@ export async function render(conteudo, ctx) {
     h('div', { class: 'filtros-linha' }, extras),
     chips.length ? h('div', { class: 'chips' }, chips) : null,
     corpo);
+}
+
+// Representante no celular: antes de ler a lista, escolhe a cidade (com quantos ainda estão na Lista principal em cada)
+function blocoEscolherCidade(e, resumo) {
+  const porCidade = new Map();
+  for (const l of resumo) {
+    if (!l.cidade_busca || !NA_LISTA.includes(l.status_atual)) continue;
+    const k = `${l.cidade_busca}|${l.uf ?? ''}`;
+    const c = porCidade.get(k) ?? { cidade_busca: l.cidade_busca, uf: l.uf || null, cidade: l.cidade ?? l.cidade_busca, qtd: 0 };
+    c.qtd += Number(l.qtd) || 0;
+    porCidade.set(k, c);
+  }
+  const cidades = [...porCidade.values()].filter((c) => c.qtd > 0).sort((a, b) => b.qtd - a.qtd || a.cidade_busca.localeCompare(b.cidade_busca, 'pt-BR'));
+  if (!cidades.length) return mensagem('Nenhum prospect na sua Lista principal.', 'info');
+  return h('section', { class: 'escolher-cidade', id: 'escolher-cidade' },
+    h('p', { class: 'ajuda' }, 'Escolha uma cidade — ou busque por nome, CNPJ ou bairro — para ver os prospects.'),
+    h('div', { class: 'lista-grupos' }, cidades.map((c) => h('a', { class: 'grupo', dados: { cidade: c.cidade_busca },
+      href: endereco(e, { filtros: { cidadeBusca: c.cidade_busca, uf: c.uf, bairroBusca: null }, pagina: 0 }) },
+    h('b', {}, `${c.cidade}${c.uf ? '/' + c.uf : ''}`), h('span', { class: 'ajuda' }, `${formatar.numero(c.qtd)} na lista`)))));
 }
 
 function blocoStatus(e, linhas) {

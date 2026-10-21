@@ -2,7 +2,7 @@
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, evento, registrarContato } from './auxiliar.mjs';
-import { agrupamentosPossiveis, consultaBairros, consultaCarteira, consultaOndas, datasDoPeriodo, faltaParaLista, formaDeTrabalho, ORDENACOES, visoesPermitidas } from '../shared/carteira.mjs';
+import { agrupamentosPossiveis, consultaBairros, consultaCarteira, consultaOndas, datasDoPeriodo, precisaFiltro, faltaParaLista, formaDeTrabalho, ORDENACOES, visoesPermitidas } from '../shared/carteira.mjs';
 import { consultaPosicao } from '../shared/indicadores.mjs';
 import { formatarCnpj } from '../shared/cnpj.mjs';
 import { normalizarBusca } from '../shared/texto.mjs';
@@ -282,4 +282,15 @@ test('busca pelo dono da carteira (nome sem acento ou código), agrupar e bairro
   assert.deepEqual(await bairros(VEND, lajeado), [normalizarBusca('Centro'), normalizarBusca('Florestal')]);
   assert.deepEqual(await bairros(REP, lajeado), [], 'representante não vê bairros da carteira do vendedor');
   assert.deepEqual(await bairros(SUP2, lajeado), [], 'supervisor sem equipe não vê nada');
+});
+
+test('lista do celular: o representante escolhe uma cidade (ou outro filtro) ou busca antes de ler', () => {
+  assert.equal(precisaFiltro(REP, {}), false, 'no computador o representante vê a carteira direto');
+  assert.equal(precisaFiltro(REP, { celular: true }), true);
+  assert.equal(precisaFiltro(REP, { celular: true, filtros: { uf: 'RS' } }), true, 'UF não estreita a carteira dele');
+  assert.equal(precisaFiltro(REP, { celular: true, filtros: { cidadeBusca: 'LAJEADO', uf: 'RS' } }), false);
+  assert.equal(precisaFiltro(REP, { celular: true, busca: 'padaria' }), false);
+  assert.equal(precisaFiltro(REP, { celular: true, filtros: { somenteRetornos: true } }), false);
+  assert.equal(precisaFiltro(REP, { celular: true, visao: 'cidade' }), false, 'as visões agrupadas são o resumo');
+  assert.equal(precisaFiltro(SUP, { celular: true, filtros: { vendedorId: 2 } }), false, 'para a gestão a equipe já estreita');
 });
