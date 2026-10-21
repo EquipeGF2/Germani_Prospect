@@ -90,14 +90,22 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 - **Os arquivos do ERP prevalecem sobre o status do app:** cadastro leva a **Análise financeira** e pedido leva a
   **Venda realizada** para qualquer cliente da base — inclusive **Sem interesse** e **Não contactado**. A mudança
   fica no histórico de movimentação (ex.: Sem interesse → Análise financeira).
-- **Atendimento automático** (migração 0013): cadastro/pedido de prospect **sem nenhum "atendido" nem "pedido
-  identificado" registrado** vira o atendimento — "atendido em" e o **1º registro** passam a ser a data do cadastro (ou do
-  pedido), os dias corridos contam dela, e o histórico ganha o movimento "atendido" (origem ERP, sem usuário: "atendimento
-  automático pelo cadastro do ERP"). Fica `convertido_sem_registro = 1` (alerta para o supervisor: atendimento não lançado).
-- **As duas possibilidades convivem:** o representante/vendedor continua registrando o atendimento no app.
-  - Registrou **antes** do cadastro: fluxo normal (Aguardando cadastro → Análise financeira), vale a data dele, sem alerta.
-  - Registrou **depois** do automático: a fase não muda (só registra); vale a data **mais antiga** entre a informada e a do
-    cadastro (o 1º registro recua junto) e o alerta "convertido sem registro" sai — ele informou.
+- **No atendimento e nas datas, o registro do representante sempre prevalece — o ERP nunca sobrepõe o que ele informou**
+  (migrações 0013 e 0014). O ERP decide só a fase (acima).
+- **Atendimento automático** só quando o representante/vendedor **não registrou nada** no app (nem atendido, nem sem
+  interesse, nem pedido identificado): o cadastro (ou pedido) vira o atendimento — "atendido em" e o **1º registro** passam a
+  ser a data do arquivo, os dias corridos contam dela, e o histórico ganha o movimento "atendido" (origem ERP, sem usuário:
+  "atendimento automático via importação do cadastro (código) — sem registro do representante").
+- **Com registro do representante** (ex.: **sem interesse**) e o cadastro chega: considera a **próxima etapa** (Análise
+  financeira; pedido → Venda realizada) e as datas dele ficam como estão — nenhum atendimento automático é criado.
+- **Todo movimento do ERP registra que veio da importação** no histórico: "via importação do cadastro (C123)", "via
+  importação do pedido (P9)", "via importação de CNPJs baixados".
+- Cadastro/pedido sem "atendido" (nem "pedido identificado") registrado pelo representante → `convertido_sem_registro = 1`
+  (alerta para o supervisor). A ficha diz se foi atendimento automático ou só avanço de etapa.
+- **O representante continua registrando:**
+  - Registrou o atendimento **antes** do cadastro: fluxo normal (Aguardando cadastro → Análise financeira), sem alerta.
+  - Registrou **depois** do automático: a fase não muda (só registra); **vale a data dele** ("atendido em" e o 1º registro
+    passam a ser os dele, mesmo que depois do cadastro) e o alerta "convertido sem registro" sai.
 - Cadastro posterior a um pedido não rebaixa a venda.
 - Reimportar o mesmo arquivo não duplica eventos (índice único por prospect + tipo + documento). O valor entra junto
   com o pedido e não é alterado depois (eventos são só de inclusão).
