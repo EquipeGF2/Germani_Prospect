@@ -56,7 +56,7 @@ export async function render(conteudo, ctx) {
   const gestao = usuario.perfil !== 'vendedor';
   const [linhas, opcoes] = await Promise.all([
     aguardaFiltro ? [] : db.execute(consulta).then((r) => r.rows),
-    opcoesDosFiltros(db, usuario, e.filtros, e.aba)]);
+    opcoesDosFiltros(db, usuario, e.filtros)]);
   const { supervisores, vendedores } = opcoes;
   const ufs = gestao ? opcoes.ufs : [];
   const cidades = gestao ? opcoes.cidades : [];

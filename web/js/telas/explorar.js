@@ -29,6 +29,7 @@ function guardarNiveis(n) { try { localStorage.setItem(CHAVE_NIVEIS, JSON.string
 function enderecoLista(filtros) {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(filtros)) if (v != null && v !== '') q.set(k, v);
+  q.set('ver', '1');   // já aplicado: a lista lê direto (se a equipe estiver no caminho)
   return `#/carteira?${q.toString()}`;
 }
 
