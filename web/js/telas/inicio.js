@@ -11,6 +11,7 @@ import { normalizarMapaStatus } from '../../shared/importacao-base.mjs';
 import { gerarHashSenha } from '../../shared/senha.mjs';
 import { consultaPainel, diasUteisCampanha, funilPainel, lerParametrosPainel, PERIODOS, percentuais, resolverPeriodo, somarPainel, supervisoresDoPainel, valoresPainel, vePainelCompleto } from '../../shared/painel.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
+import { minhaEquipe } from '../../shared/perfis.mjs';
 import { h, montar, mensagem, formatar, aviso, comEspera } from '../ui.js';
 
 const pct = (v) => `${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
@@ -93,7 +94,7 @@ function renderClassico(conteudo, { usuario, linhas, p, dias }) {
     const supervisores = supervisoresDoPainel(linhas);
     let escolhido = null;
     if (completo) {
-      try { escolhido = Number(sessionStorage.getItem(CHAVE_SUP)) || null; } catch { /* sem armazenamento */ }
+      try { escolhido = Number(sessionStorage.getItem(CHAVE_SUP)) || minhaEquipe(usuario); } catch { escolhido = minhaEquipe(usuario); }
       if (!supervisores.some((s) => s.id === escolhido)) escolhido = supervisores[0]?.id ?? null;
     }
     const area = h('div');
@@ -275,7 +276,9 @@ function renderComputador(conteudo, { usuario, linhas, p, dias, periodo, chavePe
   let visao = lerArmazenado(CHAVE_VISAO, 'executivo');
   if (!VISOES_WEB[visao]) visao = 'executivo';
   // supervisor escolhido: '' = todos (Executivo/Arrojado); na visão Equipe sempre há um selecionado
-  let sup = completo ? Number(lerArmazenado(CHAVE_SUP, '', sessionStorage)) || null : null;
+  // sem escolha guardada nesta visita: o supervisor que vê todas as equipes abre na dele ('' guardado = todos)
+  const guardado = completo ? lerArmazenado(CHAVE_SUP, null, sessionStorage) : null;
+  let sup = completo ? (guardado == null ? minhaEquipe(usuario) : Number(guardado) || null) : null;
   if (sup && !supervisores.some((s) => s.id === sup)) sup = null;
 
   const irPeriodo = (muda) => {

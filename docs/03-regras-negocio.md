@@ -419,6 +419,11 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 | Vendedor / representante | só a própria carteira | Início, Lista principal, Acompanhamento, Registrar |
 | Analista financeiro | só a análise de crédito | Console de crédito (+ Início, Lista, Acompanhamento, se marcados) |
 
+- **Supervisor que também é gerente** (ex.: Julio): tipo-base **Supervisor** (mantém a equipe dele) com um perfil marcado
+  **"vê todas as equipes"**. Ele vê todas as equipes e registra só na dele. As telas **abrem na equipe dele**
+  (`minhaEquipe`): Início com o supervisor dele escolhido, Lista/Acompanhamento com o filtro Supervisor já nele (nada é
+  lido antes do Buscar) e Explorar com o ramo dele aberto. Ele troca para as outras equipes quando quiser. Os demais
+  supervisores não mudam (já veem só a própria equipe).
 - Os **5 perfis do sistema** vêm prontos com as telas de hoje (financeiro: só o Console de crédito). O administrador cria
   outros em **Usuários → Perfis e telas de acesso** (ex.: "Supervisor regional" sem Acompanhamento) e escolhe o perfil de
   cada usuário na coluna Perfil da lista de usuários.

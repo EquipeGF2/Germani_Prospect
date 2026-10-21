@@ -4,7 +4,7 @@
 import { bancoApp, lerComCache, leitorComCache } from '../db.js';
 import { consultaPedidosResumo, consultaResumo, montarArvore, NIVEIS, niveisPossiveis } from '../../shared/explorar.mjs';
 import { lerParametrosPainel } from '../../shared/painel.mjs';
-import { veTodasEquipes } from '../../shared/perfis.mjs';
+import { minhaEquipe, veTodasEquipes } from '../../shared/perfis.mjs';
 import { h, montar, mensagem, formatar } from '../ui.js';
 
 const CHAVE_NIVEIS = 'germani.explorarNiveis';
@@ -49,6 +49,12 @@ export async function render(conteudo, { usuario }) {
   const tudo = veTodasEquipes(usuario);
   const raiz = tudo ? 'Toda a base' : usuario.perfil === 'supervisor' ? 'Minha equipe' : 'Minha carteira';
   const estado = { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cidade', 'segmento']), abertos: new Set(['']), sel: '', tipo: '', editarNiveis: false };
+  // supervisor que vê todas as equipes: abre já no ramo da equipe dele (com Supervisor como 1º nível)
+  const meu = minhaEquipe(usuario);
+  if (meu && estado.niveis[0] === 'supervisor' && resumo.some((l) => Number(l.supervisor_id) === meu)) {
+    estado.sel = `/supervisor=${meu}`;
+    estado.abertos.add(estado.sel);
+  }
 
   const area = h('div', { class: 'explorar' });
   montar(conteudo, area);
