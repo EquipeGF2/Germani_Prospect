@@ -58,7 +58,7 @@ export async function render(conteudo, { usuario, parametros }) {
       dado('Baixa do CNPJ', formatar.data(p.dt_baixa))),
     [Number(p.prazo_cadastro_vencido) ? mensagem('Prazo de cadastro vencido.', 'erro') : null,
       Number(p.analise_financeira_vencida) ? mensagem('Análise financeira fora do prazo.', 'erro') : null,
-      Number(p.convertido_sem_registro) ? mensagem('Convertido sem registro de atendimento no app.', 'info') : null,
+      Number(p.convertido_sem_registro) ? mensagem(`Atendimento automático pelo ERP em ${formatar.data(p.dt_atendido)}: o atendimento não foi registrado no app. Registre o atendimento para informar a data real.`, 'info') : null,
       Number(p.parado) ? mensagem(`Sem movimento há ${p.dias_sem_movimento} dias.`, 'info') : null]);
 
   const credito = p.dt_liberacao_credito ? h('div', { class: 'cartao' },
