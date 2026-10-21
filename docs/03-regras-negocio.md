@@ -244,8 +244,8 @@ movimentação conta sempre nos indicadores.
     em e Dias (as numéricas centralizadas); rótulos centralizados e **repetidos em cada página**; um prospect nunca
     se divide entre páginas; rodapé "uso interno" e **Página X de N**.
   - Colunas: prospect (CNPJ), cidade · bairro, onda, segmento, rota (só vendedor), representante (gestão, com o código),
-    status; na Lista: tentativas, contato da planilha e dias; no Acompanhamento: último registro, próxima ação (retorno)
-    e dias; e Registrar. Uma linha por prospect (textos longos cortados). O **rótulo da coluna ordena** (▲, ▼, volta à
+    status; na Lista: tentativas, **1º registro em** (data do 1º registro) e dias; no Acompanhamento: último registro, próxima ação (retorno)
+    e dias; e Registrar. Rótulos centralizados; status, tentativas, datas e dias centralizados. Uma linha por prospect (textos longos cortados). O **rótulo da coluna ordena** (▲, ▼, volta à
     ordem de trabalho). Na Lista não há coluna Representante (ele é o filtro); no Acompanhamento há.
   - **Clicar na linha abre a ficha ao lado** (dados, últimos 5 movimentos, Registrar e Abrir ficha completa) sem sair
     da lista. Marcar prospects (Lista principal) mostra a barra flutuante "Sem interesse em lote".

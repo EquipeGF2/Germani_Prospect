@@ -217,7 +217,7 @@ function visaoArrojado({ t, agentesDaVez, p, dias, gestao, titulo, subtitulo }) 
       kpi('Venda realizada', t.venda_realizada, daBase(t.venda_realizada), '#6B1016')),
     h('div', { class: 'duas' },
       h('section', { class: 'painel' }, h('h2', {}, 'Funil da campanha'), h('p', { class: 's' }, 'Quantos chegaram a cada etapa · % sobre a base de prospects'), funilColunas(t)),
-      h('section', { class: 'painel' }, h('h2', {}, 'Ranking de agentes'), h('p', { class: 's' }, 'Vendas realizadas · destaque para os 3 primeiros'),
+      h('section', { class: 'painel' }, h('h2', {}, 'Ranking de agentes'), h('p', { class: 's' }, `Top ${ordenados.length} por vendas realizadas · os 3 primeiros em destaque`),
         ordenados.length ? h('div', { class: 'ranking' }, ordenados.map((l, i) => h('div', { class: `rk ${i < 3 ? 'top' : ''}` },
           h('span', { class: 'pos' }, String(i + 1)),
           h('div', {}, h('b', {}, linkAgente(l, gestao)), ' ', h('span', { class: 'chip-tipo' }, papel(l)), h('div', { class: 'trilho' }, h('span', { style: `width:${(l.venda_realizada / maxV) * 100}%` }))),
