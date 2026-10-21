@@ -575,21 +575,3 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .lista-tabela .abre-grupo { width: 100%; text-align: left; border: 0; background: transparent; color: #374151; font: 600 13.5px "IBM Plex Sans", sans-serif; padding: 9px 16px; min-height: 0; cursor: pointer; border-radius: 0; }
 .lista-tabela .abre-grupo:hover { background: #E9EEF5; color: var(--texto); }
 .lista-tabela .abre-grupo .conta { color: var(--suave); font-weight: 400; }
-#impressao { display: none; }
-@media print {
-  @page { size: A4 landscape; margin: 10mm; }
-  body > *:not(#impressao) { display: none !important; }
-  #impressao { display: block; font: 8pt/1.25 "IBM Plex Sans", Arial, sans-serif; color: #000; }
-  #impressao h1 { font-size: 12pt; margin: 0 0 2mm; }
-  #impressao p { margin: 0 0 3mm; font-size: 8pt; }
-  #impressao table { width: 100%; border-collapse: collapse; table-layout: auto; }
-  #impressao thead { display: table-header-group; }   /* rótulos repetidos em cada página */
-  html, body { background: #fff !important; }
-  #impressao table { font-size: 7.5pt; background: #fff; }
-  #impressao th { position: static; background: #fff; color: #000; text-transform: none; letter-spacing: 0; font-size: 7.5pt; text-align: left; font-weight: 700; border-bottom: 1px solid #000; padding: 1mm 1.2mm; }
-  #impressao td { border-bottom: 0.5px solid #999; padding: 0.8mm 1.2mm; vertical-align: top; }
-  #impressao td:nth-child(3), #impressao td:nth-child(7) { white-space: nowrap; }   /* CNPJ e telefone numa linha */
-  #impressao tr { page-break-inside: avoid; }
-  #impressao tbody tr:hover { background: none; }
-  #impressao tr.imp-grupo td { font-weight: 700; background: #eee; }
-}

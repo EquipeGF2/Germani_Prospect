@@ -2,6 +2,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
 import { servir } from '../scripts/servir.mjs';
 
@@ -124,12 +125,13 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.click('.lista-tabela .abre-grupo >> nth=0');
   assert.ok(await pagina.locator('.lista-tabela tbody tr:not(.linha-grupo)').count() > 0, 'o clique abre o grupo');
   assert.equal(await pagina.evaluate(() => location.hash), enderecoAntes, 'nada disso voltou ao banco');
-  // relatório para imprimir/PDF: todas as colunas e rótulos que se repetem (thead)
-  await pagina.evaluate(() => { window.print = () => { window.__imprimiu = document.querySelectorAll('#impressao thead th').length; }; });
-  await pagina.click('#imprimir-lista');
-  assert.equal(await pagina.evaluate(() => window.__imprimiu), 13);
-  assert.ok(await pagina.locator('#impressao tbody tr').count() > 0);
-  await pagina.evaluate(() => document.getElementById('impressao')?.remove());
+  // relatório em PDF (jsPDF, carregado só agora): baixa um PDF da lista como está na tela, com o representante no nome
+  assert.equal(await pagina.locator('script[src*="jspdf"]').count(), 0, 'a biblioteca de PDF só carrega ao gerar');
+  const [baixado] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#imprimir-lista')]);
+  assert.match(baixado.suggestedFilename(), /^lista-.+-\d{4}-\d{2}-\d{2}\.pdf$/);
+  const pdf = await readFile(await baixado.path());
+  assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
+  assert.ok(pdf.length > 20000, 'PDF com o logotipo e a tabela');
   // filtro por onda (coluna 4: marca, prospect, cidade, onda)
   await pagina.selectOption('#agrupar', '');
   await pagina.selectOption('#filtro-onda', { index: 1 });

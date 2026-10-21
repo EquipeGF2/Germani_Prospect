@@ -33,6 +33,9 @@ await cp(de('node_modules', '@libsql', 'client-wasm', 'node_modules', '@libsql',
   path.join(destino, 'vendor', 'sqlite3.wasm'));
 await cp(de('node_modules', 'exceljs', 'dist', 'exceljs.min.js'), path.join(destino, 'vendor', 'exceljs.min.js'));
 await cp(de('node_modules', 'jszip', 'dist', 'jszip.min.js'), path.join(destino, 'vendor', 'jszip.min.js'));
+// relatório da Lista em PDF (carregados só ao gerar — web/js/relatorio.js)
+await cp(de('node_modules', 'jspdf', 'dist', 'jspdf.umd.min.js'), path.join(destino, 'vendor', 'jspdf.umd.min.js'));
+await cp(de('node_modules', 'jspdf-autotable', 'dist', 'jspdf.plugin.autotable.min.js'), path.join(destino, 'vendor', 'jspdf.plugin.autotable.min.js'));
 
 const token = process.env.TURSO_APP_TOKEN ?? '';
 const modo = process.env.GERMANI_MODO || (token ? 'producao' : 'demonstracao');
