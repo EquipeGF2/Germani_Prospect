@@ -172,11 +172,17 @@ export async function render(conteudo, { usuario }) {
         n.temFilhos ? h('button', { type: 'button', class: 'abre', 'aria-expanded': n.aberto ? 'true' : 'false', 'aria-label': `${n.aberto ? 'Fechar' : 'Abrir'} ${n.rotulo}`,
           onclick: (ev) => { ev.stopPropagation(); if (n.aberto) estado.abertos.delete(n.caminho); else estado.abertos.add(n.caminho); desenhar(); } }, n.aberto ? '▼' : '▶') : h('span', { class: 'abre vazio' }),
         h('button', { type: 'button', class: 'nome', title: n.rotulo }, n.rotulo)),
-      h('b', { class: 'num qtd' }, n0(n.ind.qtd)), h('span', { class: 'quebra', 'aria-hidden': 'true' }), h('span', { class: 'num', dados: { r: 'Contact.' } }, n0(n.ind.contactados)), h('span', { class: 'num', dados: { r: 'Cobertura' } }, pct(n.ind.cobertura)),
-      h('span', { class: 'num', dados: { r: 'S. int.' } }, n0(n.ind.semInteresse)), h('span', { class: 'num etapa', dados: { r: 'Cad.' } }, n0(n.ind.status.aguardando_cadastro)),
-      h('span', { class: 'num etapa', dados: { r: 'Fin.' } }, n0(n.ind.status.analise_financeira)), h('span', { class: 'num etapa', dados: { r: 'Ped.' } }, n0(n.ind.aguardandoPedido)),
-      h('b', { class: 'num', dados: { r: 'Vendas' } }, n0(n.ind.vendas)),
-      h('span', { class: 'num', dados: { r: 'Pedidos' } }, reais(n.ind.valorPedidos)), h('span', { class: 'num potencial' }, reais(n.ind.potencial))));
+      // `dados.r` = rótulo do número no cartão do celular; `cel` = ordem nele (grade 4 × 2); inativos só aparecem no celular
+      h('b', { class: 'num qtd' }, n0(n.ind.qtd)), h('span', { class: 'quebra', 'aria-hidden': 'true' }),
+      h('span', { class: 'num contact' }, n0(n.ind.contactados)),
+      h('span', { class: 'num', dados: { r: 'Cobert.', cel: 7 } }, pct(n.ind.cobertura)),
+      h('span', { class: 'num', dados: { r: 'S. int.', cel: 5 } }, n0(n.ind.semInteresse)),
+      h('span', { class: 'num', dados: { r: 'Ag. cad.', cel: 1 } }, n0(n.ind.status.aguardando_cadastro)),
+      h('span', { class: 'num', dados: { r: 'Ag. fin.', cel: 2 } }, n0(n.ind.status.analise_financeira)),
+      h('span', { class: 'num', dados: { r: 'Ag. ped.', cel: 3 } }, n0(n.ind.aguardandoPedido)),
+      h('b', { class: 'num', dados: { r: 'Pedidos', cel: 4 } }, n0(n.ind.vendas)),
+      h('span', { class: 'num', dados: { r: 'Valor', cel: 8 } }, reais(n.ind.valorPedidos)), h('span', { class: 'num potencial' }, reais(n.ind.potencial)),
+      h('span', { class: 'num so-celular', dados: { r: 'Inativos', cel: 6 } }, n0(n.ind.status.invalido))));
 
     return [
       h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar carteira'), tipos),

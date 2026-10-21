@@ -483,7 +483,7 @@ td.pct { min-width: 96px; }
 .exp-linha.escolhida:hover { background: #F6D9DB; }
 .exp-linha.escolhida { background: var(--destaque-claro); box-shadow: inset 3px 0 0 var(--destaque); }
 .exp-linha.escolhida .nome { color: var(--destaque); font-weight: 700; }
-.exp-linha .quebra { display: none; }
+.exp-linha .quebra, .exp-linha .so-celular { display: none; }
 .exp-niveis-cel { display: none; }
 @media (max-width: 700px) {
   .exp-niveis { display: none; }
@@ -595,17 +595,18 @@ td.pct { min-width: 96px; }
   .exp-mini .tit { grid-area: tit; } .exp-mini small { grid-area: nota; } .exp-mini b { grid-area: valor; font-size: 19px; text-align: right; }
   .exp-grafico .botao { align-self: stretch; text-align: center; }
   .exp-linha.cab { display: none; }
-  .exp-linha { min-width: 0; display: flex; flex-wrap: wrap; gap: 2px 10px; padding: 8px 12px; font-size: 13px; }
-  .exp-linha .ramo { flex: 1 1 0; padding-left: 0 !important; }
-  .exp-linha:not(.raiz) .ramo { margin-left: calc(var(--prof, 0) * 14px); }
-  .exp-linha .qtd { flex: none; align-self: center; font-size: 15px; }
-  .exp-linha .etapa, .exp-linha .potencial, .exp-linha [data-r="S. int."] { display: none; }
-  .exp-linha .num[data-r] { order: 2; flex: 1 1 0; min-width: 0; text-align: left; font-size: 13.5px; }
+  /* cartão por ramo: nome e prospects; abaixo, grade 4 × 2 — Ag. cad. · Ag. fin. · Ag. ped. · Pedidos /
+     S. int. · Inativos · Cobert. · Valor */
+  .exp-linha { min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.35fr); gap: 6px 8px; padding: 10px 12px 10px calc(12px + var(--prof, 0) * 14px); font-size: 13px; }
+  .exp-linha .ramo { grid-column: 1 / 4; padding-left: 0 !important; }
+  .exp-linha .qtd { grid-column: 4; justify-self: end; align-self: center; font-size: 16px; }
+  .exp-linha .contact, .exp-linha .potencial, .exp-linha .quebra { display: none; }
+  .exp-linha .num[data-r] { text-align: left; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #F9FAFB; border-radius: 6px; padding: 3px 6px; }
+  .exp-linha.escolhida .num[data-r] { background: rgba(255,255,255,.7); }
   .exp-linha .num[data-r]::before { content: attr(data-r); display: block; color: var(--suave); font-weight: 400; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0; }
-  .exp-linha .quebra + .num[data-r] { margin-left: calc(32px + var(--prof, 0) * 14px); }
-  .exp-linha .num[data-r="Pedidos"] { flex: none; min-width: 84px; text-align: right; }
-  .exp-linha .ramo, .exp-linha .qtd { order: 1; }
-  .exp-linha .quebra { display: block; order: 1; flex-basis: 100%; height: 0; }
+  .exp-linha .num[data-cel="1"] { order: 1; } .exp-linha .num[data-cel="2"] { order: 2; } .exp-linha .num[data-cel="3"] { order: 3; } .exp-linha .num[data-cel="4"] { order: 4; }
+  .exp-linha .num[data-cel="5"] { order: 5; } .exp-linha .num[data-cel="6"] { order: 6; } .exp-linha .num[data-cel="7"] { order: 7; } .exp-linha .num[data-cel="8"] { order: 8; font-size: 12.5px; }
+  .exp-linha .so-celular { display: block; }
 }
 
 /* Lista: situação e ordenação no navegador, grupos recolhidos, relatório para imprimir/PDF */
