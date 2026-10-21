@@ -232,7 +232,7 @@ test('fluxo completo: atendido → aguardando cadastro → (cadastro) análise f
   ]);
   assert.equal(m[1].usuario_nome, 'Vend Dez');
   assert.ok(m.every((x) => x.vendedor_nome === 'Vend Dez'));
-  assert.equal(m[3].detalhe, 'P9');
+  assert.equal(m[3].detalhe, 'via importação do pedido (P9)');   // o histórico diz que veio da importação
 });
 
 test('pedido sem cadastro antes vai direto para venda realizada', async () => {
@@ -355,7 +355,8 @@ test('sem atendimento registrado, o cadastro do ERP vira o atendimento (data, 1�
     ['cadastro', 'nao_contactado', 'analise_financeira', 'erp'],
   ]);
   assert.equal(m[1].usuario_id, null);
-  assert.equal(m[1].detalhe, 'atendimento automático pelo cadastro do ERP (C1)');
+  assert.equal(m[1].detalhe, 'atendimento automático via importação do cadastro (C1) — sem registro do representante');
+  assert.equal(m[2].detalhe, 'via importação do cadastro (C1)');
   // pedido sem cadastro e sem atendimento: o pedido vira o atendimento
   const v = await criarProspect(db, { n: 2 });
   await evento(db, { prospectId: v, tipo: 'pedido', data: '2026-10-07', documento: 'P1' });
@@ -370,21 +371,54 @@ test('sem atendimento registrado, o cadastro do ERP vira o atendimento (data, 1�
   assert.equal((await db.execute({ sql: "SELECT COUNT(*) AS n FROM movimentacoes WHERE prospect_id = ? AND tipo = 'atendido'", args: [r] })).rows[0].n, 1);
 });
 
-test('atendimento informado depois do automático: vale a data informada (se anterior) e o alerta sai', async () => {
+test('atendimento informado depois do automático: vale sempre a primeira data e o histórico diz quando a dele é posterior', async () => {
+  const detalheDo = async (pid) => (await db.execute({ sql: "SELECT detalhe FROM movimentacoes WHERE prospect_id = ? AND origem = 'contato' ORDER BY id DESC LIMIT 1", args: [pid] })).rows[0].detalhe;
+  // informou data ANTERIOR à importação: vale a dele (o atendimento real)
   const id = await criarProspect(db, { n: 1 });
   await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-05', documento: 'C1' });
   await registrarContato(db, { prospectId: id, resultado: 'atendido', data: '2026-10-02' });
   let p = await prospect(db, id);
   assert.equal(p.status_atual, 'analise_financeira', 'o registro não muda a fase');
-  assert.equal(p.dt_atendido, '2026-10-02', 'o atendimento real, anterior ao cadastro');
+  assert.equal(p.dt_atendido, '2026-10-02');
   assert.equal(p.dt_primeiro_contato, '2026-10-02');
   assert.equal(p.convertido_sem_registro, 0, 'o representante informou');
-  // informado depois do cadastro: a data do cadastro (anterior) continua
+  assert.doesNotMatch(await detalheDo(id) ?? '', /posterior/);
+  // informou data POSTERIOR à importação: continua a primeira data (a da importação) e fica registrado
   const b = await criarProspect(db, { n: 2 });
   await evento(db, { prospectId: b, tipo: 'cadastro', data: '2026-10-05', documento: 'C2' });
   await registrarContato(db, { prospectId: b, resultado: 'atendido', data: '2026-10-08' });
   p = await prospect(db, b);
-  assert.equal(p.dt_atendido, '2026-10-05');
+  assert.equal(p.dt_atendido, '2026-10-05', 'sempre a primeira data');
   assert.equal(p.dt_primeiro_contato, '2026-10-05');
   assert.equal(p.convertido_sem_registro, 0);
+  assert.equal(await detalheDo(b), 'representante informou data posterior à importação (atendimento considerado em 05/10/2026)');
+  // um 2º atendimento não mexe mais nas datas nem repete o aviso
+  await registrarContato(db, { prospectId: b, resultado: 'atendido', data: '2026-10-10' });
+  p = await prospect(db, b);
+  assert.equal(p.dt_atendido, '2026-10-05');
+  assert.equal(p.dt_primeiro_contato, '2026-10-05');
+  assert.doesNotMatch(await detalheDo(b) ?? '', /posterior/);
+  // nada é substituído: o atendimento automático e cada registro do representante ficam no histórico, um por linha
+  const hist = (await db.execute({ sql: 'SELECT tipo, origem, data_evento FROM movimentacoes WHERE prospect_id = ? ORDER BY id', args: [b] })).rows;
+  assert.deepEqual(hist.slice(1).map((x) => [x.tipo, x.origem, x.data_evento]), [
+    ['atendido', 'erp', '2026-10-05'], ['cadastro', 'erp', '2026-10-05'],
+    ['atendido', 'contato', '2026-10-08'], ['atendido', 'contato', '2026-10-10'],
+  ]);
+  assert.equal((await db.execute({ sql: 'SELECT COUNT(*) AS n FROM contatos WHERE prospect_id = ?', args: [b] })).rows[0].n, 2);
+});
+
+test('representante registrou "sem interesse" e o cadastro chega: próxima etapa, sem atendimento automático, via importação', async () => {
+  const id = await criarProspect(db, { n: 1 });
+  await registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-01' });
+  await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-05', documento: 'C1' });
+  const p = await prospect(db, id);
+  assert.equal(p.status_atual, 'analise_financeira', 'considera a próxima etapa');
+  assert.equal(p.dt_atendido, null, 'o ERP não cria atendimento sobre o registro do representante');
+  assert.equal(p.dt_primeiro_contato, '2026-10-01', 'o 1º registro continua o do representante');
+  assert.equal(p.convertido_sem_registro, 1, 'alerta: cadastrou sem "atendido" registrado');
+  const m = (await db.execute({ sql: 'SELECT tipo, status_anterior, status_novo, origem, detalhe FROM movimentacoes WHERE prospect_id = ? ORDER BY id', args: [id] })).rows;
+  assert.deepEqual(m.slice(1).map((x) => [x.tipo, x.status_anterior, x.status_novo, x.origem, x.detalhe]), [
+    ['sem_interesse', 'nao_contactado', 'sem_interesse', 'contato', 'Preço acima do praticado'],
+    ['cadastro', 'sem_interesse', 'analise_financeira', 'erp', 'via importação do cadastro (C1)'],
+  ]);
 });
