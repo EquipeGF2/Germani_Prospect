@@ -12,9 +12,13 @@ export function usuarioAtual() {
 
 export async function entrar(login, senha) {
   const db = await bancoApp();
+  // login sem diferença de maiúsculas (COLLATE NOCASE) nem de acento: "Júlio" acha "julio" (logins padronizados não têm acento)
+  const digitado = String(login ?? '').trim();
+  const semAcento = digitado.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const r = await db.execute({
-    sql: 'SELECT id, login, nome, perfil, tipo_atuacao, supervisor_id, senha_hash, ativo, cofre_admin FROM usuarios WHERE login = ?',
-    args: [String(login ?? '').trim()],
+    sql: `SELECT id, login, nome, perfil, tipo_atuacao, supervisor_id, senha_hash, ativo, cofre_admin FROM usuarios
+           WHERE login = ? OR login = ? ORDER BY login = ? DESC LIMIT 1`,
+    args: [digitado, semAcento, digitado],
   });
   const u = r.rows[0];
   const ok = u && Number(u.ativo) === 1 && u.senha_hash && (await conferirSenha(String(senha ?? ''), u.senha_hash));
