@@ -48,7 +48,7 @@ export async function render(conteudo, { usuario }) {
   const possiveis = niveisPossiveis(usuario);
   const tudo = veTodasEquipes(usuario);
   const raiz = tudo ? 'Toda a base' : usuario.perfil === 'supervisor' ? 'Minha equipe' : 'Minha carteira';
-  const estado = { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cidade', 'segmento']), abertos: new Set(['']), sel: '', tipo: '' };
+  const estado = { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cidade', 'segmento']), abertos: new Set(['']), sel: '', tipo: '', editarNiveis: false };
 
   const area = h('div', { class: 'explorar' });
   montar(conteudo, area);
@@ -97,6 +97,28 @@ export async function render(conteudo, { usuario }) {
         h('span', { class: 'tit' }, 'Níveis'), estado.niveis.map(cartaoNivel)),
       h('div', { class: 'zona livres', ondragover: (ev) => ev.preventDefault(), ondrop: soltarFora },
         h('span', { class: 'tit' }, 'Disponíveis'), possiveis.filter((n) => !estado.niveis.includes(n)).map(cartaoDisponivel)));
+
+    // celular: arrastar não funciona no toque — os níveis numa linha (com "Mudar") e, ao abrir, uma lista para ligar,
+    // desligar e subir/descer cada nível. Tudo no navegador, sem ler o banco.
+    const mover = (nivel, d) => { const n = [...estado.niveis]; const i = n.indexOf(nivel); const j = i + d;
+      if (i < 0 || j < 0 || j >= n.length) return; [n[i], n[j]] = [n[j], n[i]]; mudarNiveis(n); };
+    const ordemEdicao = [...estado.niveis, ...possiveis.filter((n) => !estado.niveis.includes(n))];
+    const niveisCelular = h('section', { class: 'cartao exp-niveis-cel', 'aria-label': 'Níveis da árvore' },
+      h('div', { class: 'exp-niveis-cel-topo' }, h('span', { class: 'tit' }, 'Níveis'),
+        h('span', { class: 'ordem' }, estado.niveis.length ? estado.niveis.map((n) => NIVEIS[n].nome).join(' › ') : 'nenhum'),
+        h('button', { type: 'button', class: 'secundario pequeno', id: 'mudar-niveis', 'aria-expanded': estado.editarNiveis ? 'true' : 'false',
+          onclick: () => { estado.editarNiveis = !estado.editarNiveis; desenhar(); } }, estado.editarNiveis ? 'Pronto' : 'Mudar')),
+      estado.editarNiveis ? h('ol', { class: 'exp-niveis-cel-lista' }, ordemEdicao.map((nivel) => {
+        const i = estado.niveis.indexOf(nivel);
+        const ligado = i >= 0;
+        return h('li', { class: ligado ? 'ligado' : '', dados: { nivel } },
+          h('label', {}, h('input', { type: 'checkbox', checked: ligado,
+            onchange: () => mudarNiveis(ligado ? estado.niveis.filter((x) => x !== nivel) : [...estado.niveis, nivel]) }),
+          ligado ? `${i + 1}. ${NIVEIS[nivel].nome}` : NIVEIS[nivel].nome),
+          ligado ? h('span', { class: 'setas' },
+            h('button', { type: 'button', class: 'secundario pequeno', 'aria-label': `Subir ${NIVEIS[nivel].nome}`, disabled: i === 0, onclick: () => mover(nivel, -1) }, '↑'),
+            h('button', { type: 'button', class: 'secundario pequeno', 'aria-label': `Descer ${NIVEIS[nivel].nome}`, disabled: i === estado.niveis.length - 1, onclick: () => mover(nivel, 1) }, '↓')) : null);
+      })) : null);
 
     // Da totalidade: uma barra de 100% em 4 partes que somam todos os prospects do ramo
     const contSemSI = ind.contactados - ind.semInteresse;   // contactados que seguem no processo (sem os sem interesse)
@@ -158,8 +180,8 @@ export async function render(conteudo, { usuario }) {
 
     return [
       h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar carteira'), tipos),
-      h('p', { class: 'ajuda exp-sub' }, 'Do total até o cliente: arraste os níveis, abra os ramos; os números de cima seguem o ramo escolhido.'),
-      niveis, migalhas,
+      h('p', { class: 'ajuda exp-sub' }, 'Do total até o cliente: escolha e ordene os níveis, abra os ramos; os números de cima seguem o ramo escolhido.'),
+      niveis, niveisCelular, migalhas,
       h('div', { class: 'exp-quadros' }, totalidade, doProcesso),
       h('section', { class: 'cartao exp-arvore', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas)),
       h('p', { class: 'ajuda' }, 'Números do resumo pronto no banco (atualizado a cada registro e importação) — a tela não lê a carteira inteira.'),
