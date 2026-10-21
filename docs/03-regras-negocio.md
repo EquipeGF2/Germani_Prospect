@@ -186,6 +186,10 @@ movimentação conta sempre nos indicadores.
   cartão mostra de quem é a carteira.
 - Cada cartão: razão social, selo do status, CNPJ, fantasia, bairro/cidade, onda, rota (só vendedor),
   "atendido em…", dias corridos, retorno vencido e prazo de cadastro vencido. 50 por página.
+- **Celular — a Lista principal não lê nada antes de um filtro ou busca** (`precisaFiltro(…, { celular: true })`), também
+  para o representante/vendedor: a tela mostra as **cidades da carteira com quantos ainda estão na lista** (do resumo pronto,
+  em cache — sem ler a carteira) e só lê a lista depois de escolher uma cidade (ou bairro, onda, segmento, rota,
+  "só retornos") ou de buscar. UF sozinha não basta para ele. As visões Cidade/Bairro/Onda/Rota continuam lendo só o resumo.
 - **Computador** (Lista principal e Acompanhamento — [`_lista.js`](../web/js/telas/_lista.js); o celular não muda):
   **sempre em lista** (tabela; sem cards e sem visões). Filtros em grupos, cada um em cascata (`opcoesEmCascata`):
   **Equipe** (supervisor / representante) · **Local** (UF / cidade / **bairro**, este só aparece com a cidade escolhida) ·
@@ -357,7 +361,12 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
     sem resultado) não é etapa do processo: só conta entre os contactados da totalidade.
 - Grade por ramo: Prospects, **Contactados**, Cobertura, Sem interesse, Ag. cadastro, Ag. financeiro, Ag. pedido,
   Pedido realizado, Pedidos (R$) e Potencial (R$).
-- Filtro **Todos / Representantes / Vendedores** (tipo de atuação de quem é dono da carteira).
+- Filtro **Todos / Representantes / Vendedores** (tipo de atuação de quem é dono da carteira) — só para quem vê mais de
+  uma carteira (supervisor, gerente, administrador); o representante/vendedor logado não o vê.
+- **Celular**: os dois gráficos ocupam a largura do cartão (etapas com a barra abaixo do nome; Valor dos pedidos, Potencial
+  e Conversão um por linha, valor à direita) e a grade vira **um cartão por ramo**: nome e prospects na 1ª linha;
+  Contactados, Cobertura, Vendas e Pedidos (R$) rotulados na 2ª — sem rolagem para o lado. As etapas e o potencial de cada
+  ramo aparecem nos gráficos ao escolher o ramo.
 - Escopo: gestão vê tudo (supervisor com "vê todas as equipes" também); **supervisor só a própria equipe, sem o nível
   Supervisor**; vendedor só a própria carteira (sem Supervisor nem Representante).
 - **Abrir na Lista principal** só com um ramo escolhido (nunca a base inteira): a lista abre com os filtros do caminho.

@@ -270,6 +270,25 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.goto(`${base}#/inicio`);
   await pagina.waitForSelector('.painel-web');
   await foto('10b-inicio-vendedor');
+  // celular: a Lista do representante espera uma cidade (ou busca) antes de ler; o Explorar não tem representante × vendedor
+  await pagina.setViewportSize({ width: 390, height: 844 });
+  await pagina.goto(`${base}#/carteira?visao=lista`);
+  await pagina.waitForSelector('#escolher-cidade a.grupo');
+  assert.equal(await pagina.locator('.cartao-prospect').count(), 0, 'nada lido antes de escolher a cidade');
+  await pagina.click('#escolher-cidade a.grupo >> nth=0');
+  await pagina.waitForFunction(() => location.hash.includes('cidadeBusca='));
+  await pagina.waitForSelector('.cartao-prospect');
+  await foto('10c-lista-celular');
+  await pagina.goto(`${base}#/explorar`);
+  await pagina.waitForSelector('#grafico-contactados');
+  assert.equal(await pagina.locator('.exp-tipo').count(), 0, 'vendedor não escolhe representante × vendedor');
+  assert.doesNotMatch(await texto(), /sem os sem interesse/);
+  const [largExp, janExp] = await pagina.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
+  assert.ok(largExp <= janExp, `Explorar mais largo que o celular: ${largExp}`);
+  await foto('10d-explorar-celular');
+  await pagina.setViewportSize({ width: 1280, height: 900 });
+  await pagina.goto(`${base}#/inicio`);
+  await pagina.waitForSelector('.painel-web');
   await pagina.click('#menu a[title="Lista principal"]');
   await pagina.waitForSelector('.lista-tabela tbody tr');
   assert.ok(await pagina.locator('#agrupar option[value=rota]').count(), 'vendedor agrupa por rota');

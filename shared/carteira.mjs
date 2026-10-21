@@ -227,14 +227,21 @@ export function consultaFicha({ usuario, prospectId }) {
 // Filtros que restringem a lista (sem nenhum deles, a gestão não carrega a Lista principal — ver precisaFiltro)
 const FILTROS_RESTRITIVOS = ['uf', 'cidadeBusca', 'bairroBusca', 'onda', 'segmento', 'rota', 'subrota', 'status', 'supervisorId', 'vendedorId', 'dataDe', 'dataAte', 'somenteRetornos'];
 
+// No celular o representante/vendedor estreita a própria carteira por um destes (UF e equipe não estreitam a dele)
+const FILTROS_DO_CELULAR = FILTROS_RESTRITIVOS.filter((f) => !['uf', 'supervisorId', 'vendedorId'].includes(f));
+
 /**
  * A Lista principal da gestão (administrador, gerente, supervisor, financeiro) só é lida depois de um filtro ou de uma
  * busca: ninguém trabalha a base inteira de uma vez, e assim a tela não varre os ~23 mil prospects a cada entrada.
- * Representante/vendedor vê direto a própria carteira (já é pequena).
+ * Representante/vendedor vê direto a própria carteira no computador; no celular (`celular`), também ele escolhe antes
+ * uma cidade (ou outro filtro) ou faz uma busca — o celular não carrega a carteira toda página a página.
  */
-export function precisaFiltro(usuario, { visao = 'lista', filtros = {}, busca = '' } = {}) {
-  if (usuario?.perfil === 'vendedor' || visao !== 'lista') return false;
-  return !normalizarBusca(busca) && !FILTROS_RESTRITIVOS.some((f) => filtros[f] != null && filtros[f] !== '' && filtros[f] !== false);
+export function precisaFiltro(usuario, { visao = 'lista', filtros = {}, busca = '', celular = false } = {}) {
+  if (visao !== 'lista') return false;
+  const vendedor = usuario?.perfil === 'vendedor';
+  if (vendedor && !celular) return false;
+  const restritivos = vendedor ? FILTROS_DO_CELULAR : FILTROS_RESTRITIVOS;
+  return !normalizarBusca(busca) && !restritivos.some((f) => filtros[f] != null && filtros[f] !== '' && filtros[f] !== false);
 }
 
 /** Cidades da base (para o filtro), pelo índice de cidade. */
