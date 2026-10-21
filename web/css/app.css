@@ -484,6 +484,23 @@ td.pct { min-width: 96px; }
 .exp-linha.escolhida { background: var(--destaque-claro); box-shadow: inset 3px 0 0 var(--destaque); }
 .exp-linha.escolhida .nome { color: var(--destaque); font-weight: 700; }
 .exp-linha .quebra { display: none; }
+.exp-niveis-cel { display: none; }
+@media (max-width: 700px) {
+  .exp-niveis { display: none; }
+  .exp-niveis-cel { display: block; padding: 10px 12px; margin-bottom: 12px; }
+  .exp-niveis-cel-topo { display: flex; align-items: center; gap: 10px; }
+  .exp-niveis-cel .tit { flex: none; font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: .06em; }
+  .exp-niveis-cel .ordem { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--destaque-escuro); font-size: 14px; }
+  .exp-niveis-cel-topo button { flex: none; }
+  .exp-niveis-cel-lista { list-style: none; margin: 10px 0 0; padding: 0; border-top: 1px solid #F3F4F6; }
+  .exp-niveis-cel-lista li { display: flex; align-items: center; gap: 8px; min-height: 48px; border-bottom: 1px solid #F3F4F6; }
+  .exp-niveis-cel-lista li:last-child { border-bottom: 0; }
+  .exp-niveis-cel-lista label { flex: 1 1 auto; display: flex; align-items: center; gap: 10px; font-size: 15px; min-height: 44px; }
+  .exp-niveis-cel-lista li.ligado label { font-weight: 600; }
+  .exp-niveis-cel-lista input { width: 20px; height: 20px; min-height: 0; accent-color: var(--destaque); }
+  .exp-niveis-cel-lista .setas { display: flex; gap: 6px; }
+  .exp-niveis-cel-lista .setas button { width: 40px; min-height: 40px; padding: 0; font-size: 16px; }
+}
 .exp-linha .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .exp-linha.cab .num { white-space: normal; }
 .exp-linha .ramo { display: flex; align-items: center; gap: 6px; min-width: 0; }
@@ -602,3 +619,50 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .lista-tabela .abre-grupo { width: 100%; text-align: left; border: 0; background: transparent; color: #374151; font: 600 13.5px "IBM Plex Sans", sans-serif; padding: 9px 16px; min-height: 0; cursor: pointer; border-radius: 0; }
 .lista-tabela .abre-grupo:hover { background: #E9EEF5; color: var(--texto); }
 .lista-tabela .abre-grupo .conta { color: var(--suave); font-weight: 400; }
+
+/* Acompanhamento no celular (_lista.js com `celular`): filtros que abrem e fecham, situação em faixa, um cartão por
+   prospect (cada célula com o rótulo da coluna) e a ficha subindo por baixo */
+.filtros-celular { margin-bottom: 12px; }
+.filtros-celular > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 14px; background: #fff; border: 1px solid var(--borda); border-radius: var(--raio); font-weight: 600; }
+.filtros-celular > summary::-webkit-details-marker { display: none; }
+.filtros-celular > summary::after { content: "▾"; margin-left: auto; color: var(--suave); }
+.filtros-celular[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.filtros-celular[open] > summary::after { content: "▴"; }
+.filtros-celular > summary .ajuda { font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filtros-celular .lista-filtros { border-top-left-radius: 0; border-top-right-radius: 0; margin: 0; padding: 14px; }
+.filtros-celular .lista-filtros-grupos { grid-template-columns: 1fr !important; }
+.filtros-celular .lista-busca { flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .lista-situacao:has(#ordem-celular) { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .lista-situacao:has(#ordem-celular) > * { flex: none; }
+  .lista-situacao:has(#ordem-celular) .lista-grupo-tit { display: none; }
+  #ordem-celular { min-height: 34px; max-width: 220px; }
+  .lista-tabela.celular { padding: 0; background: transparent; border: 0; box-shadow: none; }
+  .lista-tabela.celular .tabela-carteira thead { display: none; }
+  .lista-tabela.celular .tabela-carteira, .lista-tabela.celular .tabela-carteira tbody { display: block; }
+  .lista-tabela.celular .tabela-carteira tr { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; background: #fff; border: 1px solid var(--borda); border-radius: var(--raio); padding: 12px 14px; margin-bottom: 8px; box-shadow: var(--sombra); }
+  .lista-tabela.celular .tabela-carteira tr.aberta { border-color: var(--destaque); }
+  .lista-tabela.celular .tabela-carteira td { display: block; padding: 0; border: 0; font-size: 13.5px; }
+  .lista-tabela.celular .tabela-carteira td[data-r="Prospect"] { flex: 1 1 100%; }
+  .lista-tabela.celular .tabela-carteira td[data-r="Cidade · bairro"] { flex: 1 1 100%; color: #374151; }
+  .lista-tabela.celular .tabela-carteira td[data-r="Cidade · bairro"] .corta, .lista-tabela.celular .tabela-carteira td[data-r="Cidade · bairro"] small { display: inline; }
+  .lista-tabela.celular .tabela-carteira td[data-r="Cidade · bairro"] small::before { content: " · "; }
+  .lista-tabela.celular .tabela-carteira td[data-r="Onda"], .lista-tabela.celular .tabela-carteira td[data-r="Segmento"], .lista-tabela.celular .tabela-carteira td[data-r="Rota"] { display: none; }
+  .lista-tabela.celular .tabela-carteira td { order: 5; }
+  .lista-tabela.celular .tabela-carteira td[data-r="Prospect"], .lista-tabela.celular .tabela-carteira td[data-r="Cidade · bairro"] { order: 1; }
+  .lista-tabela.celular .tabela-carteira td[data-r="Status"] { order: 2; flex: 1 0 60%; align-self: center; }
+  .lista-tabela.celular .tabela-carteira td[data-r="Representante"] { order: 4; flex: 1 1 100%; }
+  .lista-tabela.celular .tabela-carteira td[data-r="Status"] small { display: inline; margin-left: 6px; }
+  .lista-tabela.celular .tabela-carteira td[data-r="Último registro"]::before, .lista-tabela.celular .tabela-carteira td[data-r="Próxima ação"]::before,
+  .lista-tabela.celular .tabela-carteira td[data-r="Dias"]::before, .lista-tabela.celular .tabela-carteira td[data-r="Representante"]::before { content: attr(data-r) " "; color: var(--suave); font-size: 12px; }
+  .lista-tabela.celular .tabela-carteira td[data-r="Representante"] small { display: inline; margin-left: 4px; }
+  .lista-tabela.celular .tabela-carteira td[data-r=""] { order: 3; margin-left: auto; }
+  .lista-tabela.celular .tabela-carteira td[data-r=""] .registrar { display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px; border-radius: 8px; background: var(--destaque); color: #fff; text-decoration: none; font-weight: 600; }
+  .lista-tabela.celular .tabela-carteira tr.linha-grupo td { flex: 1 1 100%; }
+  .lista-tabela.celular .lista-rodape { padding: 4px 2px; }
+  .ficha-lateral { top: auto; left: 0; width: auto; max-height: 82vh; border-left: 0; border-top: 1px solid var(--borda); border-radius: 16px 16px 0 0; box-shadow: 0 -12px 32px rgba(16,24,40,.16); padding: 16px; }
+  .ficha-lateral .ficha-acoes { margin-top: 0; }
+  .ficha-lateral .ficha-acoes .botao { flex: 1 1 auto; text-align: center; }
+}
+.filtros-celular .lista-busca .lupa { display: none; }
+.filtros-celular .lista-busca input { flex: 1 1 100%; width: 100%; }

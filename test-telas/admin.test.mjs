@@ -285,7 +285,20 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   assert.doesNotMatch(await texto(), /sem os sem interesse/);
   const [largExp, janExp] = await pagina.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
   assert.ok(largExp <= janExp, `Explorar mais largo que o celular: ${largExp}`);
+  // níveis no celular: lista com liga/desliga e setas (sem arrastar)
+  assert.equal(await pagina.locator('.exp-niveis').isVisible(), false, 'no celular os níveis não são arrastáveis');
+  const antes = await pagina.locator('.exp-niveis-cel .ordem').innerText();
+  await pagina.click('#mudar-niveis');
+  await pagina.click('.exp-niveis-cel-lista li.ligado .setas button[aria-label^="Descer"] >> nth=0');
+  await pagina.waitForFunction((a) => document.querySelector('.exp-niveis-cel .ordem')?.textContent !== a, antes);
   await foto('10d-explorar-celular');
+  // Acompanhamento no celular: a tela do computador em cartões (filtros num painel que abre e fecha)
+  await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
+  await pagina.waitForSelector('details.filtros-celular');
+  await pagina.waitForSelector('.lista-tabela.celular tbody tr, .mensagem');
+  const [largAc, janAc] = await pagina.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
+  assert.ok(largAc <= janAc, `Acompanhamento mais largo que o celular: ${largAc}`);
+  await foto('10e-acompanhamento-celular');
   await pagina.setViewportSize({ width: 1280, height: 900 });
   await pagina.goto(`${base}#/inicio`);
   await pagina.waitForSelector('.painel-web');

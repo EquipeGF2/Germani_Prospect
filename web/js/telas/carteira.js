@@ -3,7 +3,7 @@
 // visões lista, cidade, bairro, onda, status e (só vendedor) rota; busca sem acento.
 import { bancoApp, lerComCache } from '../db.js';
 import { consultaCarteira, precisaFiltro, visoesPermitidas } from '../../shared/carteira.mjs';
-import { h, montar, mensagem, formatar, numeros } from '../ui.js';
+import { h, montar, mensagem, formatar } from '../ui.js';
 import { endereco, gravarLote, lerEstado, lerLote, opcoesDosFiltros, papelDoAgente, seloStatus } from './_carteira.js';
 import { renderComputador } from './_lista.js';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
@@ -43,6 +43,8 @@ export async function render(conteudo, ctx) {
   mq.addEventListener('change', troca);
   // computador: lista sempre em tabela, filtros em grupos, ficha ao lado (_lista.js); daqui para baixo é o celular
   if (!ehCelular()) return renderComputador(conteudo, ctx);
+  // Acompanhamento no celular: a mesma tela do computador (filtros, Buscar, situação), em cartões
+  if (e.aba === 'acompanhamento') return renderComputador(conteudo, ctx, { celular: true });
 
   // Na aba Acompanhamento a lista mostra a carteira fora da lista principal (por status)
   const filtros = { ...e.filtros, foraDaLista: e.aba === 'acompanhamento' && !e.filtros.status };
@@ -189,9 +191,7 @@ function blocoGrupos(e, linhas, { rotaEmNiveis = false } = {}) {
   }[e.visao]);
   // rota em 2 níveis: o 1º clique abre as subrotas da rota (continua na visão rota); o 2º abre a lista
   const proximaVisao = rotaEmNiveis && e.visao === 'rota' && !e.filtros.rota ? 'rota' : 'lista';
-  const total = linhas.reduce((s, g) => s + Number(g.prospects), 0);
   return h('div', {},
-    numeros([['grupos', linhas.length], ['prospects', total], ['pendentes hoje', linhas.reduce((s, g) => s + Number(g.pendentes_hoje ?? 0), 0), 'alerta']]),
     h('div', { class: 'lista-grupos' }, linhas.map((g) => {
       const f = filtroDo(g);
       const semChave = Object.values(f).every((v) => v == null);

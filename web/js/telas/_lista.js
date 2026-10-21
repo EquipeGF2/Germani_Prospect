@@ -2,7 +2,8 @@
 // Equipe (supervisor / representante) · Local (UF / cidade / bairro, este só com a cidade) · Carteira (onda / segmento)
 // · Período (só no Acompanhamento). Os filtros só valem no botão Buscar (nada é lido antes); a gestão escolhe a equipe e
 // o Acompanhamento exige o período. Situação com contagem, "Agrupar por" (só na Lista), ficha ao lado e "Carregar mais".
-// O celular segue em carteira.js.
+// No celular, a Lista principal segue em carteira.js; o Acompanhamento usa esta mesma tela (`celular`): filtros num
+// painel que abre e fecha, situação em faixa, cada prospect num cartão e a ficha subindo por baixo — as mesmas leituras.
 import { bancoApp, lerComCache } from '../db.js';
 import {
   AGRUPAMENTOS, agrupamentosPossiveis, consultaBairros, consultaCarteira, consultaLinhaTempo, datasDoPeriodo, faltaParaLista,
@@ -18,7 +19,7 @@ import { endereco, gravarLote, lerEstado, lerLote, papelDoAgente, seloStatus } f
 
 const LIMITE = 5000;   // uma carteira (representante) cabe com folga; acima disso pede para refinar os filtros
 
-export async function renderComputador(conteudo, { usuario, parametros }) {
+export async function renderComputador(conteudo, { usuario, parametros }, { celular = false } = {}) {
   const db = await bancoApp();
   const e = lerEstado(parametros);
   e.visao = 'lista';   // no computador a lista é sempre lista; agrupar substitui as antigas visões
@@ -130,6 +131,12 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
         h('a', { href: endereco({ aba: e.aba, filtros: {} }), class: 'limpar' }, 'Limpar filtros')));
   }
   await desenharFiltros();
+  // no celular os filtros ficam num painel que abre e fecha (aberto enquanto a lista não foi lida)
+  const filtrosNaTela = () => (celular
+    ? h('details', { class: 'filtros-celular', open: !ler },
+      h('summary', {}, 'Filtros', h('span', { class: 'ajuda' }, ` · ${[PERIODOS_LISTA[e.periodo] ?? (e.periodo ? 'Período' : ''), e.busca && `"${e.busca}"`].filter(Boolean).join(' · ') || 'escolha e clique em Buscar'}`)),
+      painelFiltros)
+    : painelFiltros);
 
   const titulo = acomp ? 'Acompanhamento' : 'Lista principal';
   const cabecalho = h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo),
@@ -140,7 +147,7 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
       : falta.includes('representante') ? 'Escolha o supervisor e o representante e clique em Buscar'
       : falta.includes('equipe') && falta.includes('periodo') ? 'Escolha a equipe e o período e clique em Buscar'
         : falta.includes('equipe') ? 'Escolha a equipe e clique em Buscar' : 'Escolha o período e clique em Buscar';
-    return montar(conteudo, cabecalho, painelFiltros,
+    return montar(conteudo, cabecalho, filtrosNaTela(),
       h('div', { class: 'lista-vazia', id: 'lista-falta' }, h('b', {}, texto),
         h('span', {}, falta.includes('representante') ? 'Supervisor e representante. ' : falta.includes('equipe') ? 'Equipe: supervisor (com toda a equipe) ou representante. ' : '',
           falta.includes('periodo') ? 'Período: pela data do último registro. ' : '', 'A lista só é lida depois disso — nunca a base inteira.')));
@@ -246,6 +253,8 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
         : [h('td', { class: 'num' }, String(p.tentativas ?? 0)), h('td', {}, formatar.data(p.dt_ultimo_contato) || '—')]),
       h('td', { class: 'num' }, p.dias_corridos != null ? `${p.dias_corridos} d` : '—'),
       podeRegistrar ? h('td', {}, registrarPermitido(p) ? h('a', { href: `#/registrar?id=${p.id}`, class: 'registrar' }, 'Registrar') : null) : null);
+    // no celular a linha vira cartão: cada célula leva o nome da coluna como rótulo
+    if (celular) [...tr.children].forEach((td, i) => { td.dataset.r = colunas[i]?.t ?? ''; });
     return tr;
   }
 
@@ -267,6 +276,10 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
     cor ? h('span', { class: 'ponto', style: `background:${cor}` }) : null, texto, ' ', h('b', {}, formatar.numero(n)));
     montar(situacao, h('span', { class: 'lista-grupo-tit' }, 'Situação'), chip('', 'Todos', linhas.length),
       statusDaAba.map((c) => chip(c, c === 'em_prospeccao' ? 'Em prospecção (contato da planilha)' : nomeStatus[c][0], contagem.get(c), nomeStatus[c][1])),
+      // no celular não há títulos de coluna: a ordem é escolhida numa lista
+      celular ? h('select', { id: 'ordem-celular', 'aria-label': 'Ordenar', onchange: (ev) => { const [o, d] = ev.target.value.split('|'); Object.assign(vista, { ordem: o, desc: d === 'desc' }); desenharTabela(); } },
+        h('option', { value: '|' }, 'Ordem: pendências primeiro'),
+        colunas.filter((c) => c.o).flatMap((c) => [['', c.t], ['desc', `${c.t} (decrescente)`]].map(([d, t]) => h('option', { value: `${c.o}|${d}`, selected: vista.ordem === c.o && vista.desc === (d === 'desc') }, `Ordem: ${t}`)))) : null,
       h('span', { class: 'lista-situacao-acoes' }, h('button', { type: 'button', class: 'secundario pequeno', id: 'imprimir-lista', onclick: imprimir }, 'Gerar PDF')));
     // rótulo = ordenação: 1º clique crescente, 2º decrescente, 3º volta à ordem de trabalho (tudo no navegador)
     montar(cab, h('tr', {}, colunas.map((c) => h('th', { class: c.classe ?? '', 'aria-sort': c.o && vista.ordem === c.o ? (vista.desc ? 'descending' : 'ascending') : null },
@@ -326,7 +339,7 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
   if (comLote) atualizarLote();
   desenharTabela();
   const tabela = linhas.length
-    ? h('section', { class: 'cartao lista-tabela' }, h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela-carteira' }, cab, corpo)), rodape)
+    ? h('section', { class: `cartao lista-tabela${celular ? ' celular' : ''}` }, h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela-carteira' }, cab, corpo)), rodape)
     : mensagem(e.busca ? `Nada encontrado para "${e.busca}".` : 'Nenhum prospect com esses filtros.', 'info');
-  montar(conteudo, cabecalho, painelFiltros, linhas.length ? situacao : null, tabela, comLote ? barraLote : null, painel);
+  montar(conteudo, cabecalho, filtrosNaTela(), linhas.length ? situacao : null, tabela, comLote ? barraLote : null, painel);
 }
