@@ -208,9 +208,13 @@ movimentação conta sempre nos indicadores.
     **Situação, ordem (clique no título da coluna) e agrupamento mudam no navegador**, sem voltar ao banco.
   - **Agrupar por** (só na Lista principal, na linha dos filtros): cidade, bairro (só com cidade), onda, segmento, rota
     (vendedor) — sem representante, que já é obrigatório. Os grupos vêm **recolhidos**, com a contagem; um clique abre.
-  - **Imprimir / PDF**: relatório da lista como está na tela (situação, ordem e grupos) para enviar ao representante —
-    A4 paisagem, todas as colunas numa página (prospect, fantasia, CNPJ, endereço, bairro, cidade, telefone, onda,
-    segmento, status, tentativas/contato ou último registro/próxima ação, dias) e os **rótulos repetidos em cada página**.
+  - **Gerar PDF** (Lista principal e Acompanhamento): relatório da lista **exatamente como está na tela** (filtros
+    aplicados, situação, ordem e grupos) para enviar ao representante — `web/js/relatorio.js`, jsPDF + AutoTable
+    carregados só ao gerar. A4 paisagem; logotipo à esquerda, título e subtítulo (representante e supervisor)
+    centralizados, emissão à direita; resumo numa linha (prospects e cada status) e os filtros; colunas Razão social,
+    Fantasia, CNPJ, Endereço, Bairro, Cidade/UF, Telefone, Onda, Segmento, Status (situação atual), Tent., 1º registro
+    em e Dias (as numéricas centralizadas); rótulos centralizados e **repetidos em cada página**; um prospect nunca
+    se divide entre páginas; rodapé "uso interno" e **Página X de N**.
   - Colunas: prospect (CNPJ), cidade · bairro, onda, segmento, rota (só vendedor), representante (gestão, com o código),
     status; na Lista: tentativas, contato da planilha e dias; no Acompanhamento: último registro, próxima ação (retorno)
     e dias; e Registrar. Uma linha por prospect (textos longos cortados). O **rótulo da coluna ordena** (▲, ▼, volta à

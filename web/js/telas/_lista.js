@@ -10,7 +10,8 @@ import {
 } from '../../shared/carteira.mjs';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
-import { h, montar, mensagem, formatar } from '../ui.js';
+import { h, montar, mensagem, formatar, comEspera } from '../ui.js';
+import { gerarPdfLista } from '../relatorio.js';
 import { icone } from '../menu.js';
 import { consultaResumo, opcoesEmCascata } from '../../shared/explorar.mjs';
 import { endereco, gravarLote, lerEstado, lerLote, papelDoAgente, seloStatus } from './_carteira.js';
@@ -266,7 +267,7 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
     cor ? h('span', { class: 'ponto', style: `background:${cor}` }) : null, texto, ' ', h('b', {}, formatar.numero(n)));
     montar(situacao, h('span', { class: 'lista-grupo-tit' }, 'Situação'), chip('', 'Todos', linhas.length),
       statusDaAba.map((c) => chip(c, c === 'em_prospeccao' ? 'Em prospecção (contato da planilha)' : nomeStatus[c][0], contagem.get(c), nomeStatus[c][1])),
-      h('span', { class: 'lista-situacao-acoes' }, h('button', { type: 'button', class: 'secundario pequeno', id: 'imprimir-lista', onclick: imprimir }, 'Imprimir / PDF')));
+      h('span', { class: 'lista-situacao-acoes' }, h('button', { type: 'button', class: 'secundario pequeno', id: 'imprimir-lista', onclick: imprimir }, 'Gerar PDF')));
     // rótulo = ordenação: 1º clique crescente, 2º decrescente, 3º volta à ordem de trabalho (tudo no navegador)
     montar(cab, h('tr', {}, colunas.map((c) => h('th', { class: c.classe ?? '', 'aria-sort': c.o && vista.ordem === c.o ? (vista.desc ? 'descending' : 'ascending') : null },
       c.o ? h('button', { type: 'button', class: `ordenar ${vista.ordem === c.o ? 'ativa' : ''}`, dados: { ordem: c.o }, title: 'Ordenar',
@@ -292,35 +293,34 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
     excedeu ? h('span', { class: 'alerta-txt' }, `Mostrando os primeiros ${formatar.numero(LIMITE)}: refine os filtros.`) : null);
   }
 
-  // Relatório para o representante: todas as colunas numa página (paisagem), rótulos repetidos em cada página.
-  function imprimir() {
+  // Relatório em PDF para o representante: exatamente o que está na tela (filtros aplicados, situação, ordem e grupos).
+  async function imprimir(ev) {
+    const botao = ev.currentTarget;
     const rep = resumo.find((l) => Number(l.vendedor_id) === Number(e.filtros.vendedorId));
-    const quem = rep ? `${rep.vendedor_nome}${rep.vendedor_codigo ? ' · cód. ' + rep.vendedor_codigo : ''}` : usuario.perfil === 'vendedor' ? usuario.nome : 'Equipe';
-    const filtrosTxt = [e.filtros.uf && `UF ${e.filtros.uf}`, e.filtros.cidadeBusca && `Cidade: ${e.filtros.cidadeBusca}`, e.filtros.bairroBusca && `Bairro: ${e.filtros.bairroBusca}`,
-      e.filtros.onda && `Onda ${e.filtros.onda}`, e.filtros.segmento && `Segmento: ${e.filtros.segmento}`, vista.status && `Situação: ${nomeStatus[vista.status]?.[0]}`,
-      e.busca && `Busca: ${e.busca}`].filter(Boolean).join(' · ');
-    const cols = ['Prospect', 'Fantasia', 'CNPJ', 'Endereço', 'Bairro', 'Cidade/UF', 'Telefone', 'Onda', 'Segmento', 'Status',
-      ...(acomp ? ['Último registro', 'Próxima ação'] : ['Tentativas', 'Contato da planilha']), 'Dias'];
-    const celulas = (p) => [p.razao_social, p.nome_fantasia && p.nome_fantasia !== p.razao_social ? p.nome_fantasia : '', formatar.cnpj(p.cnpj), p.endereco ?? '', p.bairro ?? '',
-      p.cidade ? `${p.cidade}/${p.uf ?? ''}` : '', p.telefone ?? '', p.onda ?? '', p.tipologia_gtm ?? '', p.status_nome ?? '',
-      ...(acomp ? [formatar.data(p.dt_ultimo_contato) || '', formatar.data(p.data_proxima_acao) || ''] : [String(p.tentativas ?? 0), formatar.data(p.dt_ultimo_contato) || '']),
-      p.dias_corridos != null ? String(p.dias_corridos) : ''];
-    const corpoImp = [];
-    let nImp = 0;
-    for (const b of visiveis()) {
-      nImp += b.linhas.length;
-      if (b.grupo != null) corpoImp.push(h('tr', { class: 'imp-grupo' }, h('td', { colspan: String(cols.length) }, `${b.grupo} · ${b.linhas.length}`)));
-      for (const p of b.linhas) corpoImp.push(h('tr', {}, celulas(p).map((c) => h('td', {}, c))));
-    }
-    const doc = h('div', { id: 'impressao' },
-      h('h1', {}, `${titulo} — ${quem}`),
-      h('p', {}, `Emitida em ${formatar.data(hojeSaoPaulo())} · ${formatar.numero(nImp)} prospect(s)${filtrosTxt ? ' · ' + filtrosTxt : ''}`),
-      h('table', {}, h('thead', {}, h('tr', {}, cols.map((c) => h('th', {}, c)))), h('tbody', {}, corpoImp)));
-    document.getElementById('impressao')?.remove();
-    document.body.append(doc);
-    const limpar = () => { doc.remove(); window.removeEventListener('afterprint', limpar); };
-    window.addEventListener('afterprint', limpar);
-    window.print();
+    const sup = resumo.find((l) => Number(l.supervisor_id) === Number(e.filtros.supervisorId ?? rep?.supervisor_id));
+    const representante = rep ? `Representante ${rep.vendedor_nome}${rep.vendedor_codigo ? ' · cód. ' + rep.vendedor_codigo : ''}`
+      : usuario.perfil === 'vendedor' ? usuario.nome : sup ? `Equipe de ${sup.supervisor_nome}` : 'Equipe';
+    const supervisor = sup && rep ? `Supervisor ${sup.supervisor_nome}` : '';
+    const cidade = e.filtros.cidadeBusca ? resumo.find((l) => l.cidade_busca === e.filtros.cidadeBusca)?.cidade ?? e.filtros.cidadeBusca : null;
+    const filtros = [
+      `UF: ${e.filtros.uf ?? 'todas'}`, `Cidade: ${cidade ?? 'todas'}`, e.filtros.bairroBusca ? `Bairro: ${e.filtros.bairroBusca}` : null,
+      `Onda: ${e.filtros.onda ?? 'todas'}`, `Segmento: ${e.filtros.segmento ?? 'todos'}`,
+      acomp ? `Período: ${formatar.data(e.filtros.dataDe) || '…'} a ${formatar.data(e.filtros.dataAte) || '…'}` : null,
+      vista.status ? `Situação: ${nomeStatus[vista.status]?.[0]}` : null, e.busca ? `Busca: "${e.busca}"` : null,
+      vista.agrupar ? `Agrupado por ${AGRUPAMENTOS[vista.agrupar].nome.toLowerCase()}` : null,
+    ].filter(Boolean).join(' · ');
+    const blocos = visiveis();
+    const n = blocos.reduce((t, b) => t + b.linhas.length, 0);
+    const porStatus = new Map();
+    for (const b of blocos) for (const p of b.linhas) porStatus.set(p.status_atual, (porStatus.get(p.status_atual) ?? 0) + 1);
+    const resumoPdf = [['Prospects', n], ...STATUS_ORDEM.filter((c) => porStatus.get(c)).map((c) => [nomeStatus[c][0], porStatus.get(c)])];
+    const linhaPdf = (p) => [p.razao_social ?? '', p.nome_fantasia && p.nome_fantasia !== p.razao_social ? p.nome_fantasia : '', formatar.cnpj(p.cnpj),
+      p.endereco ?? '', p.bairro ?? '', p.cidade ? `${p.cidade}/${p.uf ?? ''}` : '', p.telefone ?? '', p.onda ?? '', p.tipologia_gtm ?? '',
+      p.status_nome ?? '', String(p.tentativas ?? 0), formatar.data(p.dt_primeiro_contato) || '—', p.dias_corridos != null ? String(p.dias_corridos) : '—'];
+    const hoje = hojeSaoPaulo();
+    const arquivo = `lista-${(rep?.vendedor_codigo ?? rep?.vendedor_nome ?? 'equipe').toString().toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${hoje}.pdf`;
+    await comEspera(botao, () => gerarPdfLista({ titulo, representante, supervisor, emissao: formatar.data(hoje), resumo: resumoPdf, filtros,
+      blocos: blocos.map((b) => ({ grupo: b.grupo, linhas: b.linhas.map(linhaPdf) })), nomeArquivo: arquivo }));
   }
 
   if (comLote) atualizarLote();
