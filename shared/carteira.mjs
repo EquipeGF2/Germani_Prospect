@@ -50,6 +50,7 @@ export const ORDENACOES = Object.freeze({
   status: (d) => `(SELECT CASE s.codigo WHEN 'sem_interesse' THEN 100 WHEN 'invalido' THEN 101 ELSE s.ordem END FROM status s WHERE s.codigo = status_atual) ${d}`,
   dias: (d) => `dias_corridos IS NULL, dias_corridos ${d}`,
   ultimo: (d) => `dt_ultimo_contato IS NULL, dt_ultimo_contato ${d}`,
+  primeiro: (d) => `dt_primeiro_contato IS NULL, dt_primeiro_contato ${d}`,
 });
 
 /**

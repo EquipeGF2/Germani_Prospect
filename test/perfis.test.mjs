@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe } from './auxiliar.mjs';
-import { carregarAcesso, definirPerfilUsuario, listarPerfis, opcoesDePerfil, perfisPossiveis, salvarPerfil, telasDoUsuario, telasPadrao, TELAS } from '../shared/perfis.mjs';
+import { carregarAcesso, definirPerfilUsuario, minhaEquipe, listarPerfis, opcoesDePerfil, perfisPossiveis, salvarPerfil, telasDoUsuario, telasPadrao, TELAS } from '../shared/perfis.mjs';
 import { criarUsuarioEquipe, criarUsuarioSistema } from '../shared/usuarios.mjs';
 
 test('perfis do sistema: um por tipo-base, com as telas de hoje (financeiro só crédito; administrador todas)', async () => {
@@ -115,4 +115,12 @@ test('supervisor que vê todas as equipes (migração 0009): lê tudo, registra 
   // registrar fora da equipe: o banco recusa (a leitura ampliada não muda a regra de gravação)
   await assert.rejects(rc(db, { prospectId: 1, usuarioId: 5, resultado: 'atendido', data: '2026-10-01' }));
   await rc(db, { prospectId: deOutra, usuarioId: 5, resultado: 'atendido', data: '2026-10-01' });
+});
+
+test('minhaEquipe: só o supervisor que vê todas as equipes abre na própria equipe', () => {
+  assert.equal(minhaEquipe({ id: 7, perfil: 'supervisor', ve_todos: true }), 7);
+  assert.equal(minhaEquipe({ id: 7, perfil: 'supervisor', ve_todos: false }), null, 'supervisor comum já vê só a dele');
+  assert.equal(minhaEquipe({ id: 1, perfil: 'gerente' }), null, 'gerente comercial não tem equipe');
+  assert.equal(minhaEquipe({ id: 1, perfil: 'administrador' }), null);
+  assert.equal(minhaEquipe({ id: 2, perfil: 'vendedor', ve_todos: true }), null);
 });

@@ -9,7 +9,7 @@ import {
   AGRUPAMENTOS, agrupamentosPossiveis, consultaBairros, consultaCarteira, consultaLinhaTempo, datasDoPeriodo, faltaParaLista,
   PERIODOS_LISTA, visoesPermitidas,
 } from '../../shared/carteira.mjs';
-import { veTodasEquipes } from '../../shared/perfis.mjs';
+import { minhaEquipe, veTodasEquipes } from '../../shared/perfis.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, formatar, comEspera } from '../ui.js';
 import { gerarPdfLista } from '../relatorio.js';
@@ -37,6 +37,8 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     if (e.periodo && e.periodo !== 'periodo') Object.assign(e.filtros, datasDoPeriodo(e.periodo, { hoje: hojeSaoPaulo() }));
   }
   if (!e.filtros.cidadeBusca) delete e.filtros.bairroBusca;
+  // supervisor que vê todas as equipes entra com a equipe dele já escolhida (só o filtro; nada é lido antes do Buscar)
+  if (!e.ver && minhaEquipe(usuario) && !e.filtros.supervisorId && !e.filtros.vendedorId) e.filtros.supervisorId = minhaEquipe(usuario);
   // a lista vem inteira numa leitura só; situação, ordem e agrupamento mudam no navegador, sem voltar ao banco.
   // Na Lista o representante é obrigatório, então não se agrupa por ele.
   const agrupaveis = acomp ? [] : agrupamentosPossiveis(usuario, e.filtros).filter((k) => k !== 'representante');
@@ -166,6 +168,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     status: (a, b) => STATUS_ORDEM.indexOf(a.status_atual) - STATUS_ORDEM.indexOf(b.status_atual),
     dias: (a, b) => (a.dias_corridos ?? -1) - (b.dias_corridos ?? -1),
     ultimo: (a, b) => natural(a.dt_ultimo_contato, b.dt_ultimo_contato),
+    primeiro: (a, b) => natural(a.dt_primeiro_contato, b.dt_primeiro_contato),
   };
   const posicao = new Map(linhas.map((p, i) => [p.id, i]));   // ordem de trabalho do banco (pendências primeiro)
   const contagem = new Map();
@@ -177,11 +180,12 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   const comLote = podeRegistrar && !acomp;
   const lote = new Set(lerLote());
   const colunas = [
-    comLote ? { t: '', classe: 'marca' } : null,
+    comLote ? { t: '', classe: 'sel-lote' } : null,
     { t: 'Prospect', o: 'prospect' }, { t: 'Cidade · bairro', o: 'cidade' }, { t: 'Onda', o: 'onda', classe: 'num' }, { t: 'Segmento' },
-    colunaRota ? { t: 'Rota', o: 'rota' } : null, gestao && acomp ? { t: 'Representante' } : null, { t: 'Status', o: 'status' },
-    ...(acomp ? [{ t: 'Último registro', o: 'ultimo' }, { t: 'Próxima ação' }] : [{ t: 'Tentativas', classe: 'num' }, { t: 'Contato da planilha', o: 'ultimo' }]),
-    { t: 'Dias', o: 'dias', classe: 'num' }, podeRegistrar ? { t: '' } : null,
+    colunaRota ? { t: 'Rota', o: 'rota' } : null, gestao && acomp ? { t: 'Representante' } : null, { t: 'Status', o: 'status', classe: 'centro' },
+    ...(acomp ? [{ t: 'Último registro', o: 'ultimo', classe: 'centro' }, { t: 'Próxima ação', classe: 'centro' }]
+      : [{ t: 'Tentativas', classe: 'centro' }, { t: '1º registro em', o: 'primeiro', classe: 'centro' }]),
+    { t: 'Dias', o: 'dias', classe: 'centro' }, podeRegistrar ? { t: '' } : null,
   ].filter(Boolean);
   const cab = h('thead', {});
   const corpo = h('tbody', {});
@@ -217,7 +221,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
         item('Status', p.status_descricao || p.status_nome), item('Representante', `${p.vendedor_nome ?? '—'}${codigoDe.get(Number(p.vendedor_id)) ? ' · ' + codigoDe.get(Number(p.vendedor_id)) : ''}`),
         item('Onda · Segmento', [p.onda && `Onda ${p.onda}`, p.tipologia_gtm].filter(Boolean).join(' · ') || '—'),
         item(acomp ? 'Próxima ação' : 'Tentativas', acomp ? (formatar.data(p.data_proxima_acao) || '—') : String(p.tentativas ?? 0)),
-        item(acomp ? 'Último registro' : 'Contato da planilha', formatar.data(p.dt_ultimo_contato) || '—'),
+        item(acomp ? 'Último registro' : '1º registro em', formatar.data(acomp ? p.dt_ultimo_contato : p.dt_primeiro_contato) || '—'),
         item('Dias desde o 1º contato', p.dias_corridos != null ? String(p.dias_corridos) : '—'),
         p.telefone ? item('Telefone', p.telefone) : null, p.endereco ? item('Endereço', p.endereco) : null),
       h('div', {}, h('span', { class: 'lista-grupo-tit' }, 'Histórico'), historico),
@@ -237,7 +241,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     const cod = codigoDe.get(Number(p.vendedor_id));
     const tr = h('tr', { dados: { id: p.id, grupo: grupo ?? '' }, hidden: grupo != null && !abertos.has(grupo),
       onclick: (ev) => { if (!ev.target.closest('a, input, button, label')) abrirFicha(p, tr); } },
-      comLote ? h('td', { class: 'marca' }, Number(p.na_lista) ? h('input', { type: 'checkbox', 'aria-label': `Selecionar ${p.razao_social}`, checked: lote.has(Number(p.id)), dados: { lote: p.id },
+      comLote ? h('td', { class: 'sel-lote' }, Number(p.na_lista) ? h('input', { type: 'checkbox', 'aria-label': `Selecionar ${p.razao_social}`, checked: lote.has(Number(p.id)), dados: { lote: p.id },
         onchange: (ev) => { if (ev.target.checked) lote.add(Number(p.id)); else lote.delete(Number(p.id)); gravarLote([...lote]); atualizarLote(); } }) : null) : null,
       h('td', {}, h('a', { href: `#/ficha?id=${p.id}`, class: 'nome', title: p.razao_social }, p.razao_social),
         h('small', {}, formatar.cnpj(p.cnpj))),
@@ -246,12 +250,12 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
       h('td', {}, h('span', { class: 'corta' }, p.tipologia_gtm ?? '')),
       colunaRota ? h('td', {}, p.rota ? `${p.rota}${p.subrota ? ' / ' + p.subrota : ''}` : '') : null,
       gestao && acomp ? h('td', {}, h('span', { class: 'corta', title: p.vendedor_nome ?? '' }, p.vendedor_nome ?? '—'), cod ? h('small', {}, `cód. ${cod}`) : null) : null,
-      h('td', {}, seloStatus(p), Number(p.prazo_cadastro_vencido) ? h('small', { class: 'alerta-txt' }, 'prazo de cadastro vencido') : null),
+      h('td', { class: 'centro' }, seloStatus(p), Number(p.prazo_cadastro_vencido) ? h('small', { class: 'alerta-txt' }, 'prazo de cadastro vencido') : null),
       ...(acomp
-        ? [h('td', {}, formatar.data(p.dt_ultimo_contato) || '—'),
-          h('td', { class: Number(p.retorno_pendente) ? 'alerta-txt' : '' }, p.data_proxima_acao ? `Retorno ${formatar.data(p.data_proxima_acao)}` : '—')]
-        : [h('td', { class: 'num' }, String(p.tentativas ?? 0)), h('td', {}, formatar.data(p.dt_ultimo_contato) || '—')]),
-      h('td', { class: 'num' }, p.dias_corridos != null ? `${p.dias_corridos} d` : '—'),
+        ? [h('td', { class: 'centro' }, formatar.data(p.dt_ultimo_contato) || '—'),
+          h('td', { class: `centro${Number(p.retorno_pendente) ? ' alerta-txt' : ''}` }, p.data_proxima_acao ? `Retorno ${formatar.data(p.data_proxima_acao)}` : '—')]
+        : [h('td', { class: 'centro' }, String(p.tentativas ?? 0)), h('td', { class: 'centro' }, formatar.data(p.dt_primeiro_contato) || '—')]),
+      h('td', { class: 'centro' }, p.dias_corridos != null ? `${p.dias_corridos} d` : '—'),
       podeRegistrar ? h('td', {}, registrarPermitido(p) ? h('a', { href: `#/registrar?id=${p.id}`, class: 'registrar' }, 'Registrar') : null) : null);
     // no celular a linha vira cartão: cada célula leva o nome da coluna como rótulo
     if (celular) [...tr.children].forEach((td, i) => { td.dataset.r = colunas[i]?.t ?? ''; });

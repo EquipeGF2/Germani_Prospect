@@ -424,7 +424,7 @@ td.pct { min-width: 96px; }
 .barra-carteira .exibicao a { padding: 6px 10px; }
 @media (max-width: 1300px) { .barra-carteira { flex-wrap: wrap; } }
 .tabela-carteira td { vertical-align: middle; }
-.tabela-carteira td.marca { width: 36px; } .tabela-carteira td.marca input { width: 18px; height: 18px; min-height: 0; accent-color: var(--destaque); }
+.tabela-carteira td.sel-lote { width: 36px; } .tabela-carteira td.sel-lote input { width: 18px; height: 18px; min-height: 0; accent-color: var(--destaque); }
 .tabela-carteira .nome { font-weight: 600; color: var(--texto); text-decoration: none; } .tabela-carteira .nome:hover { color: var(--destaque); text-decoration: underline; }
 .tabela-carteira small { display: block; color: var(--suave); font-size: 12px; margin-top: 2px; }
 .tabela-carteira .alerta-txt { color: var(--erro); }
@@ -474,8 +474,8 @@ td.pct { min-width: 96px; }
 .exp-quadros { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
 .exp-arvore { padding: 0; overflow: hidden; }
 .exp-arvore .rolagem { overflow-x: auto; }
-.exp-linha { display: grid; grid-template-columns: minmax(200px, 1fr) repeat(8, 72px) 100px 100px; gap: 0 10px; align-items: center; padding: 4px 16px; border-bottom: 1px solid #F3F4F6; font-size: 14px; min-width: 1080px; }
-.exp-linha.cab { padding: 10px 16px; border-bottom-color: var(--borda); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--suave); line-height: 1.25; align-items: end; }
+.exp-linha { display: grid; grid-template-columns: minmax(170px, 240px) repeat(3, minmax(84px, 1fr)) repeat(5, minmax(66px, 1fr)) repeat(2, minmax(96px, 1fr)); gap: 0 8px; align-items: center; padding: 4px 16px; border-bottom: 1px solid #F3F4F6; font-size: 14px; min-width: 960px; }
+.exp-linha.cab { padding: 10px 16px; border-bottom-color: var(--borda); font-size: 10.5px; font-weight: 600; letter-spacing: .01em; text-transform: uppercase; color: var(--suave); line-height: 1.25; align-items: end; }
 .exp-linha.raiz { background: #F9FAFB; } .exp-linha.raiz .nome { font-weight: 700; }
 /* linha sob o mouse fica preenchida: dá para seguir os números até a coluna sem perder a linha */
 .exp-linha:not(.cab) { cursor: pointer; }
@@ -501,8 +501,9 @@ td.pct { min-width: 96px; }
   .exp-niveis-cel-lista .setas { display: flex; gap: 6px; }
   .exp-niveis-cel-lista .setas button { width: 40px; min-height: 40px; padding: 0; font-size: 16px; }
 }
-.exp-linha .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.exp-linha .num { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .exp-linha.cab .num { white-space: normal; }
+.exp-linha.cab > span { text-align: center; }
 .exp-linha .ramo { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .exp-linha .abre { border: 1px solid var(--borda); background: #fff; border-radius: 6px; cursor: pointer; width: 26px; height: 26px; min-height: 0; padding: 0; font-size: 11px; color: #374151; flex: none; }
 .exp-linha .abre.vazio { border: 0; background: transparent; cursor: default; }
@@ -541,6 +542,8 @@ td.pct { min-width: 96px; }
 .lista-tabela tbody tr { cursor: pointer; }
 /* uma linha por prospect: nada quebra; nome e textos longos são cortados (o nome inteiro fica no title) */
 .lista-tabela td, .lista-tabela th { white-space: nowrap; padding-top: 7px; padding-bottom: 7px; }
+/* rótulos das colunas centralizados; status, tentativas, datas e dias também no corpo */
+.lista-tabela th, .lista-tabela td.centro { text-align: center; vertical-align: middle; }
 .lista-tabela td .nome, .lista-tabela td small, .lista-tabela td .corta { display: block; max-width: 250px; overflow: hidden; text-overflow: ellipsis; }
 .lista-tabela td .corta { max-width: 150px; }
 .lista-tabela tbody tr.aberta td { background: var(--destaque-claro); }
