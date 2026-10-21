@@ -28,7 +28,8 @@ export function lerEstado(parametros) {
   const e = { aba: parametros.get('aba') === 'acompanhamento' ? 'acompanhamento' : 'principal', visao: parametros.get('visao') ?? '',
     busca: parametros.get('busca') ?? '', pagina: Math.max(0, Number(parametros.get('pagina')) || 0), filtros: {},
     ordem: ORDENACOES[parametros.get('ordem')] ? parametros.get('ordem') : '', desc: parametros.get('dir') === 'desc',
-    agrupar: parametros.get('agrupar') ?? '', periodo: parametros.get('periodo') ?? '', ver: parametros.get('ver') === '1' };
+    agrupar: parametros.get('agrupar') ?? '', periodo: parametros.get('periodo') ?? '', ver: parametros.get('ver') === '1',
+    de: parametros.get('de') === 'explorar' ? 'explorar' : '' };
   for (const f of FILTROS) if (parametros.get(f)) e.filtros[f] = parametros.get(f);
   if (e.filtros.vendedorId) e.filtros.vendedorId = Number(e.filtros.vendedorId);
   if (e.filtros.supervisorId) e.filtros.supervisorId = Number(e.filtros.supervisorId);
@@ -46,6 +47,7 @@ export function endereco(e, muda = {}) {
   if (n.agrupar) q.set('agrupar', n.agrupar);
   if (n.periodo) q.set('periodo', n.periodo);
   if (n.ver) q.set('ver', '1');
+  if (n.de) q.set('de', n.de);   // veio do Explorar: o ramo dispensa supervisor e representante (faltaParaLista)
   for (const [k, v] of Object.entries(n.filtros)) if (v != null && v !== '' && v !== false) q.set(k, v === true ? '1' : v);
   if (n.ordem) { q.set('ordem', n.ordem); if (n.desc) q.set('dir', 'desc'); }
   if (n.pagina) q.set('pagina', n.pagina);

@@ -301,14 +301,16 @@ export function datasDoPeriodo(chave, { hoje, de = null, ate = null }) {
  * representante; uma busca também basta); o Acompanhamento exige também o PERÍODO do último registro.
  * A Lista principal não tem período: não contactados não têm data nenhuma.
  */
-export function faltaParaLista(usuario, { aba = 'principal', filtros = {}, busca = '' } = {}) {
+export function faltaParaLista(usuario, { aba = 'principal', filtros = {}, busca = '', doExplorar = false } = {}) {
   const falta = [];
+  // aberta pelo Explorar ("Abrir na Lista principal" de um ramo): o filtro do ramo já estreita a lista e dispensa a equipe
+  const ramo = doExplorar && FILTROS_RESTRITIVOS.some((f) => filtros[f] != null && filtros[f] !== '' && filtros[f] !== false);
   // quem vê todas as equipes (gestão, financeiro, supervisor que também é gerente) escolhe uma; supervisor e vendedor já
   // têm a sua. Uma busca (CNPJ, nome, representante…) já é estreita o bastante e dispensa a equipe — nunca o período.
   // Lista principal: supervisor E representante obrigatórios para a gestão e o supervisor (o vendedor já é o representante);
   // a lista sai inteira, para o representante. No Acompanhamento basta a equipe (uma busca também), mais o período.
   if (aba !== 'acompanhamento') {
-    if (usuario.perfil !== 'vendedor' && !filtros.vendedorId) falta.push('representante');
+    if (usuario.perfil !== 'vendedor' && !filtros.vendedorId && !ramo) falta.push('representante');
   } else if (veTodasEquipes(usuario) && !filtros.supervisorId && !filtros.vendedorId && !normalizarBusca(busca)) falta.push('equipe');
   if (aba === 'acompanhamento' && !filtros.dataDe && !filtros.dataAte) falta.push('periodo');
   return falta;

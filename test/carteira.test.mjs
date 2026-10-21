@@ -294,3 +294,11 @@ test('lista do celular: o representante escolhe uma cidade (ou outro filtro) ou 
   assert.equal(precisaFiltro(REP, { celular: true, visao: 'cidade' }), false, 'as visões agrupadas são o resumo');
   assert.equal(precisaFiltro(SUP, { celular: true, filtros: { vendedorId: 2 } }), false, 'para a gestão a equipe já estreita');
 });
+
+test('lista aberta pelo Explorar: o filtro do ramo dispensa supervisor e representante', () => {
+  const ADM = { id: 4, perfil: 'administrador' };
+  assert.deepEqual(faltaParaLista(ADM, { filtros: { cidadeBusca: 'LAJEADO', uf: 'RS' } }), ['representante'], 'pela própria Lista continua obrigatório');
+  assert.deepEqual(faltaParaLista(ADM, { filtros: { cidadeBusca: 'LAJEADO', uf: 'RS' }, doExplorar: true }), []);
+  assert.deepEqual(faltaParaLista(SUP, { filtros: { segmento: 'PADARIA' }, doExplorar: true }), []);
+  assert.deepEqual(faltaParaLista(ADM, { doExplorar: true }), ['representante'], 'sem ramo (raiz) continua obrigatório');
+});

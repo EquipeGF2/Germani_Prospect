@@ -227,8 +227,11 @@ movimentação conta sempre nos indicadores.
   - **Obrigatórios** (`faltaParaLista`): na **Lista principal**, **supervisor e representante** (o vendedor já é o seu) —
     a lista é a carteira de um representante. No Acompanhamento, quem vê todas as equipes escolhe a **equipe**
     (supervisor ou representante; uma busca também basta); supervisor e vendedor já têm a sua. O **Acompanhamento** exige o
-    **período** do último registro: Este mês, Último mês ou Período (de · até) — `datasDoPeriodo`; o representante já
-    entra no mês atual. A **Lista principal não tem período** (não contactados não têm data nenhuma). Até escolher,
+    **período** do último registro: Este mês, Último mês ou Período (de · até) — `datasDoPeriodo`; **todos entram no mês
+    atual** e trocam quando quiserem.
+  - **Aberta pelo Explorar** ("Abrir na Lista principal" de um ramo, `de=explorar`): o filtro do ramo (cidade, segmento,
+    onda, rota, supervisor ou representante) já estreita a lista e **dispensa supervisor e representante** — a lista abre
+    lida, com o filtro do ramo. Pela própria Lista, continuam obrigatórios. A **Lista principal não tem período** (não contactados não têm data nenhuma). Até escolher,
     a tela pede a escolha e **não lê a lista**.
   - **Situação**: atalhos com contagem por status da aba (Lista: Não contactado, Em prospecção; Acompanhamento: os
     demais, na ordem do processo), da mesma consulta por status com os filtros escolhidos — e o total da lista.

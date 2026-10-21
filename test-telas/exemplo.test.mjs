@@ -183,9 +183,11 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.click('#abrir-lista');
   await pagina.waitForFunction(() => location.hash.includes('cidadeBusca='));
   await telaPronta();
-  // o ramo foi só a cidade: a lista abre com ela escolhida e pede a equipe (obrigatória para a gestão)
+  // o ramo foi só a cidade: a lista abre com ela escolhida e já lida — vinda do Explorar, o ramo dispensa a equipe
   assert.notEqual(await pagina.locator('#filtro-cidade').inputValue(), '', 'a lista abre com a cidade do ramo');
-  await pagina.waitForSelector('#lista-falta');
+  assert.match(await pagina.evaluate(() => location.hash), /de=explorar/);
+  await pagina.waitForSelector('.lista-tabela tbody tr');
+  assert.equal(await pagina.locator('#lista-falta').count(), 0);
   assert.ok(Number(total.replace(/\./g, '')) > 0);
   // Acompanhamento: equipe e período obrigatórios; situações na ordem do processo
   await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
@@ -198,7 +200,8 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
   await telaPronta();
-  await pagina.waitForSelector('#lista-falta');                            // ainda falta o período
+  assert.equal(await pagina.locator('#filtro-periodo').inputValue(), 'mes', 'o período já vem em Este mês');
+  await pagina.waitForSelector('.lista-tabela tbody tr, .mensagem');     // equipe escolhida + mês atual: já lê
   await pagina.selectOption('#filtro-periodo', 'periodo');
   await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('periodo=periodo'));
