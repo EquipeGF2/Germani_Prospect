@@ -90,8 +90,14 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 - **Os arquivos do ERP prevalecem sobre o status do app:** cadastro leva a **Análise financeira** e pedido leva a
   **Venda realizada** para qualquer cliente da base — inclusive **Sem interesse** e **Não contactado**. A mudança
   fica no histórico de movimentação (ex.: Sem interesse → Análise financeira).
-- Cadastro/pedido de prospect **sem nenhum "atendido" nem "pedido identificado" registrado** → `convertido_sem_registro = 1`
-  (alerta para o supervisor: alguém vendeu sem lançar).
+- **Atendimento automático** (migração 0013): cadastro/pedido de prospect **sem nenhum "atendido" nem "pedido
+  identificado" registrado** vira o atendimento — "atendido em" e o **1º registro** passam a ser a data do cadastro (ou do
+  pedido), os dias corridos contam dela, e o histórico ganha o movimento "atendido" (origem ERP, sem usuário: "atendimento
+  automático pelo cadastro do ERP"). Fica `convertido_sem_registro = 1` (alerta para o supervisor: atendimento não lançado).
+- **As duas possibilidades convivem:** o representante/vendedor continua registrando o atendimento no app.
+  - Registrou **antes** do cadastro: fluxo normal (Aguardando cadastro → Análise financeira), vale a data dele, sem alerta.
+  - Registrou **depois** do automático: a fase não muda (só registra); vale a data **mais antiga** entre a informada e a do
+    cadastro (o 1º registro recua junto) e o alerta "convertido sem registro" sai — ele informou.
 - Cadastro posterior a um pedido não rebaixa a venda.
 - Reimportar o mesmo arquivo não duplica eventos (índice único por prospect + tipo + documento). O valor entra junto
   com o pedido e não é alterado depois (eventos são só de inclusão).

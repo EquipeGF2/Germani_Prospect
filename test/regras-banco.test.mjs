@@ -340,3 +340,51 @@ test('arquivos do ERP prevalecem: cadastro ou pedido de cliente "Sem interesse" 
   const mv = (await db.execute({ sql: "SELECT status_anterior, status_novo FROM movimentacoes WHERE prospect_id = ? AND tipo = 'cadastro'", args: [a] })).rows[0];
   assert.deepEqual([mv.status_anterior, mv.status_novo], ['sem_interesse', 'analise_financeira']); // fica no histórico
 });
+
+test('sem atendimento registrado, o cadastro do ERP vira o atendimento (data, 1º registro e histórico)', async () => {
+  const id = await criarProspect(db, { n: 1 });
+  await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-05', documento: 'C1' });
+  const p = await prospect(db, id);
+  assert.equal(p.status_atual, 'analise_financeira');
+  assert.equal(p.dt_atendido, '2026-10-05', 'atendido em = data do cadastro');
+  assert.equal(p.dt_primeiro_contato, '2026-10-05', 'dias corridos contam do cadastro');
+  assert.equal(p.convertido_sem_registro, 1, 'o alerta marca que foi automático');
+  const m = (await db.execute({ sql: 'SELECT tipo, status_anterior, status_novo, origem, usuario_id, detalhe FROM movimentacoes WHERE prospect_id = ? ORDER BY id', args: [id] })).rows;
+  assert.deepEqual(m.slice(1).map((x) => [x.tipo, x.status_anterior, x.status_novo, x.origem]), [
+    ['atendido', 'nao_contactado', 'nao_contactado', 'erp'],
+    ['cadastro', 'nao_contactado', 'analise_financeira', 'erp'],
+  ]);
+  assert.equal(m[1].usuario_id, null);
+  assert.equal(m[1].detalhe, 'atendimento automático pelo cadastro do ERP (C1)');
+  // pedido sem cadastro e sem atendimento: o pedido vira o atendimento
+  const v = await criarProspect(db, { n: 2 });
+  await evento(db, { prospectId: v, tipo: 'pedido', data: '2026-10-07', documento: 'P1' });
+  assert.equal((await prospect(db, v)).dt_atendido, '2026-10-07');
+  // com atendimento já registrado, nada muda: vale a data do representante
+  const r = await criarProspect(db, { n: 3 });
+  await registrarContato(db, { prospectId: r, resultado: 'atendido', data: '2026-10-01' });
+  await evento(db, { prospectId: r, tipo: 'cadastro', data: '2026-10-05', documento: 'C3' });
+  const pr = await prospect(db, r);
+  assert.equal(pr.dt_atendido, '2026-10-01');
+  assert.equal(pr.convertido_sem_registro, 0);
+  assert.equal((await db.execute({ sql: "SELECT COUNT(*) AS n FROM movimentacoes WHERE prospect_id = ? AND tipo = 'atendido'", args: [r] })).rows[0].n, 1);
+});
+
+test('atendimento informado depois do automático: vale a data informada (se anterior) e o alerta sai', async () => {
+  const id = await criarProspect(db, { n: 1 });
+  await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-05', documento: 'C1' });
+  await registrarContato(db, { prospectId: id, resultado: 'atendido', data: '2026-10-02' });
+  let p = await prospect(db, id);
+  assert.equal(p.status_atual, 'analise_financeira', 'o registro não muda a fase');
+  assert.equal(p.dt_atendido, '2026-10-02', 'o atendimento real, anterior ao cadastro');
+  assert.equal(p.dt_primeiro_contato, '2026-10-02');
+  assert.equal(p.convertido_sem_registro, 0, 'o representante informou');
+  // informado depois do cadastro: a data do cadastro (anterior) continua
+  const b = await criarProspect(db, { n: 2 });
+  await evento(db, { prospectId: b, tipo: 'cadastro', data: '2026-10-05', documento: 'C2' });
+  await registrarContato(db, { prospectId: b, resultado: 'atendido', data: '2026-10-08' });
+  p = await prospect(db, b);
+  assert.equal(p.dt_atendido, '2026-10-05');
+  assert.equal(p.dt_primeiro_contato, '2026-10-05');
+  assert.equal(p.convertido_sem_registro, 0);
+});
