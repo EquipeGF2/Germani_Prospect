@@ -89,6 +89,7 @@ const CASOS = [
   ['Visão onda (grupos)', consultaCarteira({ usuario: ADM, visao: 'onda', ...pag })],
   ['Ondas do filtro', consultaOndas()],
   ['Lista do computador: supervisor escolhido', consultaCarteira({ usuario: ADM, filtros: { supervisorId: 3 }, ...pag })],
+  ['Lista inteira de um representante', consultaCarteira({ usuario: ADM, filtros: { vendedorId: 20 }, limite: 5001, ordemNatural: true })],
   ['Lista: agrupar por cidade (supervisor)', consultaCarteira({ usuario: ADM, filtros: { supervisorId: 3 }, agrupar: 'cidade', ...pag })],
   ['Situação (contagem por status, supervisor)', consultaCarteira({ usuario: ADM, visao: 'status', filtros: { supervisorId: 3 } })],
   ['Acompanhamento: supervisor + mês', consultaCarteira({ usuario: ADM, filtros: { supervisorId: 3, foraDaLista: true, dataDe: '2026-05-01', dataAte: '2026-05-31' }, ...pag })],

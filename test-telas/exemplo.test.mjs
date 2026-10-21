@@ -93,32 +93,51 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
   await telaPronta();
+  await pagina.waitForSelector('#lista-falta');                            // Lista: o representante também é obrigatório
+  assert.equal(await pagina.locator('.lista-tabela').count(), 0);
+  assert.equal(await pagina.locator('#agrupar option[value=representante]').count(), 0, 'sem agrupar por representante');
+  await pagina.selectOption('#filtro-vendedor', { index: 1 });
+  await pagina.click('#aplicar-filtros');
+  await pagina.waitForFunction(() => location.hash.includes('vendedorId='));
+  await telaPronta();
   await pagina.waitForSelector('.lista-tabela tbody tr');
   const situacoes = await pagina.locator('.chip-situacao').evaluateAll((els) => els.map((el) => el.dataset.status));
   assert.equal(situacoes[0], 'todos');
   assert.ok(situacoes.slice(1).every((x) => ['nao_contactado', 'em_prospeccao'].includes(x)), `situações: ${situacoes}`);
-  // rótulo da coluna ordena: Prospect crescente, depois decrescente
-  await pagina.click('.lista-tabela th a[data-ordem="prospect"]');
-  await pagina.waitForFunction(() => location.hash.includes('ordem=prospect') && !location.hash.includes('dir=desc'));
-  await telaPronta();
+  assert.equal(await pagina.locator('#carregar-mais').count(), 0, 'a lista vem inteira (sem páginas de 50)');
+  // situação, ordem e grupos mudam no navegador, sem nova leitura (o endereço não muda)
+  const enderecoAntes = await pagina.evaluate(() => location.hash);
+  const totalLinhas = await pagina.locator('.lista-tabela tbody tr').count();
+  await pagina.click('.chip-situacao[data-status="nao_contactado"]');
+  assert.ok((await pagina.locator('.lista-tabela tbody tr').count()) <= totalLinhas);
+  await pagina.click('.chip-situacao[data-status="todos"]');
+  await pagina.click('.lista-tabela th button[data-ordem="prospect"]');
   const nomesAsc = await pagina.locator('.lista-tabela tbody a.nome').allInnerTexts();
-  assert.deepEqual(nomesAsc, [...nomesAsc].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)));
-  await pagina.click('.lista-tabela th a[data-ordem="prospect"]');
-  await pagina.waitForFunction(() => location.hash.includes('dir=desc'));
-  await telaPronta();
-  assert.match(await pagina.locator('.lista-tabela th a.ativa').innerText(), /▼/);
-  // filtro por onda (coluna 4: marca, prospect, cidade, onda)
-  await pagina.selectOption('#filtro-onda', '2');
-  await pagina.click('#aplicar-filtros');
-  await pagina.waitForFunction(() => location.hash.includes('onda=2'));
-  await telaPronta();
-  assert.ok((await pagina.locator('.lista-tabela tbody tr:not(.linha-grupo) td:nth-child(4)').allInnerTexts()).every((t) => t === '2'));
-  // agrupar por cidade: cabeçalho a cada cidade, cidades em ordem
+  assert.deepEqual(nomesAsc, [...nomesAsc].sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })));
+  await pagina.click('.lista-tabela th button[data-ordem="prospect"]');
+  assert.match(await pagina.locator('.lista-tabela th button.ativa').innerText(), /▼/);
+  // agrupar por cidade (na linha dos filtros): grupos recolhidos, um clique abre
   await pagina.selectOption('#agrupar', 'cidade');
-  await pagina.waitForFunction(() => location.hash.includes('agrupar=cidade'));
-  await telaPronta();
   const gruposCidade = await pagina.locator('.lista-tabela .linha-grupo').allInnerTexts();
   assert.ok(gruposCidade.length >= 1 && new Set(gruposCidade).size === gruposCidade.length, `grupos: ${gruposCidade}`);
+  assert.equal(await pagina.locator('.lista-tabela tbody tr:not(.linha-grupo)').count(), 0, 'grupos começam recolhidos');
+  await pagina.click('.lista-tabela .abre-grupo >> nth=0');
+  assert.ok(await pagina.locator('.lista-tabela tbody tr:not(.linha-grupo)').count() > 0, 'o clique abre o grupo');
+  assert.equal(await pagina.evaluate(() => location.hash), enderecoAntes, 'nada disso voltou ao banco');
+  // relatório para imprimir/PDF: todas as colunas e rótulos que se repetem (thead)
+  await pagina.evaluate(() => { window.print = () => { window.__imprimiu = document.querySelectorAll('#impressao thead th').length; }; });
+  await pagina.click('#imprimir-lista');
+  assert.equal(await pagina.evaluate(() => window.__imprimiu), 13);
+  assert.ok(await pagina.locator('#impressao tbody tr').count() > 0);
+  await pagina.evaluate(() => document.getElementById('impressao')?.remove());
+  // filtro por onda (coluna 4: marca, prospect, cidade, onda)
+  await pagina.selectOption('#agrupar', '');
+  await pagina.selectOption('#filtro-onda', { index: 1 });
+  await pagina.click('#aplicar-filtros');
+  await pagina.waitForFunction(() => location.hash.includes('onda='));
+  await telaPronta();
+  const onda = (await pagina.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('onda')));
+  assert.ok((await pagina.locator('.lista-tabela tbody tr:not(.linha-grupo) td:nth-child(4)').allInnerTexts()).every((t) => t === onda));
   assert.equal(await pagina.locator('#agrupar option[value=bairro]').count(), 0, 'agrupar por bairro só com a cidade');
   await pagina.selectOption('#filtro-cidade', { index: 1 });
   await pagina.click('#aplicar-filtros');

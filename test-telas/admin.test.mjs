@@ -226,7 +226,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
   await telaPronta();
-  await pagina.waitForFunction(() => document.querySelector('#filtro-vendedor')?.options[0]?.text === 'Toda a equipe');
+  await pagina.waitForSelector('#lista-falta');                            // Lista: falta o representante
+  await pagina.waitForFunction(() => document.querySelector('#filtro-vendedor')?.options[0]?.text === 'Escolha…');
   const agentesDoSup = (await pagina.locator('#filtro-vendedor option').allInnerTexts()).slice(1);
   assert.ok(agentesDoSup.length >= 1 && agentesDoSup.every((t) => / · (Vendedor|Representante|Supervisor)/.test(t)));
   const nomeAgente = agentesDoSup[0].split(' · ')[0];
@@ -236,7 +237,10 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await telaPronta();
   await pagina.waitForSelector('.lista-tabela tbody tr, .mensagem');
   const cartoes = await pagina.locator('.lista-tabela tbody tr').allInnerTexts();
-  assert.ok(cartoes.every((t) => t.includes(nomeAgente)), 'só a carteira escolhida');
+  // a coluna Representante sai da Lista (ele é obrigatório): a ficha ao lado mostra de quem é a carteira
+  await pagina.click('.lista-tabela tbody tr td:nth-child(5) >> nth=0');
+  await pagina.waitForSelector('.ficha-lateral:not([hidden])');
+  assert.match(await pagina.locator('.ficha-lateral').innerText(), new RegExp(nomeAgente), 'só a carteira escolhida');
   assert.ok(cartoes.length > 0, 'filtro em cascata: só aparece representante com prospects na lista');
   await foto('09d-lista-filtros-gestao');
 
@@ -326,9 +330,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('#menu a[title="Acompanhamento"]');
   await pagina.waitForSelector('.chip-situacao');                         // representante já entra no mês atual
   await foto('15-acompanhamento');
-  await pagina.click('.chip-situacao:has-text("Sem interesse")');
-  await pagina.waitForFunction(() => location.hash.includes('status=sem_interesse'));
-  await telaPronta();
+  await pagina.click('.chip-situacao[data-status="sem_interesse"]');      // filtra no navegador, sem nova leitura
   assert.equal(await pagina.locator('.lista-tabela tbody tr').count(), 2);
   await pagina.click('.lista-tabela a.nome >> nth=0');
   await pagina.waitForSelector('text=Histórico de movimentação');

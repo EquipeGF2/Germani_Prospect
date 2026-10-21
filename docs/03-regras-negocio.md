@@ -196,19 +196,25 @@ movimentação conta sempre nos indicadores.
     própria carteira. Links do Início (agente) e do Explorar já chegam aplicados.
   - As opções de equipe, local e carteira valem para a carteira toda, nas duas abas (o Acompanhamento começa quase vazio
     e não pode ficar sem opções); só um status escolhido as restringe.
-  - **Obrigatórios** (`faltaParaLista`): quem vê todas as equipes escolhe a **equipe** (supervisor, com toda a equipe, ou
-    direto o representante; uma busca também basta); supervisor e vendedor já têm a sua. O **Acompanhamento** exige o
+  - **Obrigatórios** (`faltaParaLista`): na **Lista principal**, **supervisor e representante** (o vendedor já é o seu) —
+    a lista é a carteira de um representante. No Acompanhamento, quem vê todas as equipes escolhe a **equipe**
+    (supervisor ou representante; uma busca também basta); supervisor e vendedor já têm a sua. O **Acompanhamento** exige o
     **período** do último registro: Este mês, Último mês ou Período (de · até) — `datasDoPeriodo`; o representante já
     entra no mês atual. A **Lista principal não tem período** (não contactados não têm data nenhuma). Até escolher,
     a tela pede a escolha e **não lê a lista**.
   - **Situação**: atalhos com contagem por status da aba (Lista: Não contactado, Em prospecção; Acompanhamento: os
     demais, na ordem do processo), da mesma consulta por status com os filtros escolhidos — e o total da lista.
-  - **Agrupar por** (só na Lista principal; no lugar das antigas visões): cidade, bairro (só com cidade), onda, segmento, representante (gestão),
-    rota (vendedor) — a lista sai ordenada pelo grupo, com um cabeçalho a cada troca (`agrupar` em `consultaCarteira`).
+  - **A lista vem inteira numa leitura só** (sem páginas; limite de segurança de 5.000 — acima disso pede para refinar).
+    **Situação, ordem (clique no título da coluna) e agrupamento mudam no navegador**, sem voltar ao banco.
+  - **Agrupar por** (só na Lista principal, na linha dos filtros): cidade, bairro (só com cidade), onda, segmento, rota
+    (vendedor) — sem representante, que já é obrigatório. Os grupos vêm **recolhidos**, com a contagem; um clique abre.
+  - **Imprimir / PDF**: relatório da lista como está na tela (situação, ordem e grupos) para enviar ao representante —
+    A4 paisagem, todas as colunas numa página (prospect, fantasia, CNPJ, endereço, bairro, cidade, telefone, onda,
+    segmento, status, tentativas/contato ou último registro/próxima ação, dias) e os **rótulos repetidos em cada página**.
   - Colunas: prospect (CNPJ), cidade · bairro, onda, segmento, rota (só vendedor), representante (gestão, com o código),
     status; na Lista: tentativas, contato da planilha e dias; no Acompanhamento: último registro, próxima ação (retorno)
     e dias; e Registrar. Uma linha por prospect (textos longos cortados). O **rótulo da coluna ordena** (▲, ▼, volta à
-    ordem de trabalho), no banco. "**Carregar mais 50**" acrescenta à lista sem reler o que já veio.
+    ordem de trabalho). Na Lista não há coluna Representante (ele é o filtro); no Acompanhamento há.
   - **Clicar na linha abre a ficha ao lado** (dados, últimos 5 movimentos, Registrar e Abrir ficha completa) sem sair
     da lista. Marcar prospects (Lista principal) mostra a barra flutuante "Sem interesse em lote".
 - **Ficha** (`#/ficha`): situação (status, dias corridos, registros, datas, prazos, motivo, cadastro e pedido do
