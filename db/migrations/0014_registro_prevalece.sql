@@ -4,8 +4,9 @@
 --   * Com registro do representante (ex.: "sem interesse"), o cadastro só leva à próxima etapa (Análise financeira; pedido
 --     → Venda realizada): as datas dele ficam como estão e nenhum atendimento automático é criado.
 --   * Todo movimento do ERP diz no histórico que veio da importação ("via importação do cadastro (C123)").
---   * Se o representante registrar o atendimento depois do automático, vale o registro dele: "atendido em" passa a ser a
---     data que ele informou, o 1º registro volta a ser o 1º registro dele e o alerta "convertido sem registro" sai.
+--   * Se o representante registrar o atendimento depois do automático, vale sempre a PRIMEIRA data: a dele, quando for
+--     anterior à importação; a da importação, quando ele informar uma data posterior — e o histórico registra que ele
+--     informou data posterior. O alerta "convertido sem registro" sai (ele informou).
 -- Os triggers são recriados aqui (0013 já aplicada não se edita).
 
 DROP TRIGGER trg_eventos_erp_aplicar;
@@ -79,29 +80,27 @@ BEGIN
          CASE WHEN NEW.origem = 'app' THEN NEW.usuario_id END, p.vendedor_id,
          TRIM(COALESCE((SELECT m.descricao FROM motivos_sem_interesse m WHERE m.id = NEW.motivo_id) || ' — ', '')
               || COALESCE(NEW.observacao, '')
-              || COALESCE(' · pedido de ' || strftime('%d/%m/%Y', NEW.data_pedido_informado), ''), ' —')
+              || COALESCE(' · pedido de ' || strftime('%d/%m/%Y', NEW.data_pedido_informado), '')
+              -- atendimento informado com data posterior ao automático da importação: fica registrado no histórico
+              || CASE WHEN NEW.resultado IN ('atendido','pedido_informado') AND p.convertido_sem_registro = 1
+                        AND p.dt_atendido IS NOT NULL AND NEW.data_contato > p.dt_atendido
+                        AND EXISTS (SELECT 1 FROM movimentacoes a WHERE a.prospect_id = p.id AND a.origem = 'erp' AND a.tipo = 'atendido')
+                      THEN ' · representante informou data posterior à importação (atendimento considerado em '
+                           || strftime('%d/%m/%Y', p.dt_atendido) || ')'
+                      ELSE '' END, ' —·')
     FROM prospects p WHERE p.id = NEW.prospect_id;
 
   UPDATE prospects SET
     status_atual = (SELECT status_novo FROM movimentacoes WHERE origem = 'contato' AND referencia = NEW.id),
     tentativas = NEW.numero_tentativa,
-    -- 1º registro: o mais antigo dos registros (app e planilha); só o atendimento automático do ERP fica de fora — o
-    -- registro do representante prevalece sobre ele
-    dt_primeiro_contato = CASE
-      WHEN dt_atendido IS NOT NULL AND convertido_sem_registro = 1 AND NEW.origem = 'app'
-           AND NEW.resultado IN ('atendido','pedido_informado')
-           AND NOT EXISTS (SELECT 1 FROM contatos c WHERE c.prospect_id = NEW.prospect_id AND c.origem = 'app' AND c.id <> NEW.id)
-        THEN (SELECT MIN(c.data_contato) FROM contatos c WHERE c.prospect_id = NEW.prospect_id)
-      ELSE COALESCE(dt_primeiro_contato, NEW.data_contato) END,
+    -- 1º registro: sempre a primeira data (do representante, da planilha ou do atendimento automático da importação)
+    dt_primeiro_contato = COALESCE(MIN(dt_primeiro_contato, NEW.data_contato), NEW.data_contato),
     dt_segundo_contato  = CASE WHEN NEW.numero_tentativa = 2 THEN NEW.data_contato ELSE dt_segundo_contato END,
     dt_ultimo_contato   = NEW.data_contato,
-    -- 1º atendido do representante: vale a data dele, inclusive sobre o atendimento automático do ERP
+    -- "atendido em": o 1º atendido; sobre o automático da importação, vale a primeira data (a dele, se anterior)
     dt_atendido = CASE
       WHEN NEW.resultado IN ('atendido','pedido_informado') AND dt_atendido IS NULL THEN NEW.data_contato
-      WHEN NEW.resultado IN ('atendido','pedido_informado') AND NEW.origem = 'app' AND convertido_sem_registro = 1
-           AND NOT EXISTS (SELECT 1 FROM contatos c WHERE c.prospect_id = NEW.prospect_id AND c.origem = 'app' AND c.id <> NEW.id
-                             AND c.resultado IN ('atendido','pedido_informado'))
-        THEN NEW.data_contato
+      WHEN NEW.resultado IN ('atendido','pedido_informado') AND convertido_sem_registro = 1 THEN MIN(dt_atendido, NEW.data_contato)
       ELSE dt_atendido END,
     -- quem registra o atendimento tira o alerta "convertido sem registro"
     convertido_sem_registro = CASE

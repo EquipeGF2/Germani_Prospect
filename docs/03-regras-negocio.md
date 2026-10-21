@@ -104,8 +104,13 @@ Do sistema (não aparece no app): Não informado (importação inicial).
   (alerta para o supervisor). A ficha diz se foi atendimento automático ou só avanço de etapa.
 - **O representante continua registrando:**
   - Registrou o atendimento **antes** do cadastro: fluxo normal (Aguardando cadastro → Análise financeira), sem alerta.
-  - Registrou **depois** do automático: a fase não muda (só registra); **vale a data dele** ("atendido em" e o 1º registro
-    passam a ser os dele, mesmo que depois do cadastro) e o alerta "convertido sem registro" sai.
+  - Registrou **depois** do automático: a fase não muda (só registra) e vale **sempre a primeira data** — a dele, se for
+    anterior à importação; a da importação, se ele informar data **posterior**, e então o histórico registra
+    "representante informou data posterior à importação (atendimento considerado em dd/mm/aaaa)". O alerta "convertido sem
+    registro" sai (ele informou).
+- **Nenhum registro é substituído — sempre incluído.** O atendimento automático da importação e cada registro do
+  representante ficam no histórico, um por linha (contatos, eventos e movimentações só aceitam inclusão). O que muda é só a
+  posição do cliente ("atendido em", 1º registro), que segue a primeira data.
 - Cadastro posterior a um pedido não rebaixa a venda.
 - Reimportar o mesmo arquivo não duplica eventos (índice único por prospect + tipo + documento). O valor entra junto
   com o pedido e não é alterado depois (eventos são só de inclusão).
