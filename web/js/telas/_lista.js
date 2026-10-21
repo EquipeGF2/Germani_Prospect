@@ -15,8 +15,7 @@ import { icone } from '../menu.js';
 import { consultaResumo, opcoesEmCascata } from '../../shared/explorar.mjs';
 import { endereco, gravarLote, lerEstado, lerLote, papelDoAgente, seloStatus } from './_carteira.js';
 
-const POR_VEZ = 50;
-const NA_LISTA = ['nao_contactado', 'em_prospeccao'];
+const LIMITE = 5000;   // uma carteira (representante) cabe com folga; acima disso pede para refinar os filtros
 
 export async function renderComputador(conteudo, { usuario, parametros }) {
   const db = await bancoApp();
@@ -36,24 +35,23 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
     if (e.periodo && e.periodo !== 'periodo') Object.assign(e.filtros, datasDoPeriodo(e.periodo, { hoje: hojeSaoPaulo() }));
   }
   if (!e.filtros.cidadeBusca) delete e.filtros.bairroBusca;
-  const agrupaveis = agrupamentosPossiveis(usuario, e.filtros);
-  if (acomp || !agrupaveis.includes(e.agrupar)) e.agrupar = '';
+  // a lista vem inteira numa leitura só; situação, ordem e agrupamento mudam no navegador, sem voltar ao banco.
+  // Na Lista o representante é obrigatório, então não se agrupa por ele.
+  const agrupaveis = acomp ? [] : agrupamentosPossiveis(usuario, e.filtros).filter((k) => k !== 'representante');
+  const vista = { agrupar: agrupaveis.includes(e.agrupar) ? e.agrupar : '', ordem: e.ordem, desc: e.desc, status: e.filtros.status ?? '' };
+  delete e.filtros.status;
   const falta = faltaParaLista(usuario, { aba: e.aba, filtros: e.filtros, busca: e.busca });
-  const ir = (muda) => { location.hash = endereco(e, muda); };
 
-  const filtrosLista = { ...e.filtros, foraDaLista: acomp && !e.filtros.status };
-  const pedir = (deslocamento) => consultaCarteira({ usuario, visao: 'lista', filtros: filtrosLista, busca: e.busca, limite: POR_VEZ + 1, deslocamento,
-    ordemNatural: true, ordenar: e.ordem ? { campo: e.ordem, desc: e.desc } : null, agrupar: e.agrupar || null });
   let consulta;
-  try { consulta = pedir(0); } catch (erro) { return montar(conteudo, mensagem(erro.message, 'erro')); }
-  const contagem = consultaCarteira({ usuario, visao: 'status', filtros: { ...e.filtros, status: null, foraDaLista: acomp }, busca: e.busca });
+  try {
+    consulta = consultaCarteira({ usuario, visao: 'lista', filtros: { ...e.filtros, foraDaLista: acomp }, busca: e.busca, limite: LIMITE + 1, ordemNatural: true });
+  } catch (erro) { return montar(conteudo, mensagem(erro.message, 'erro')); }
 
   // nada é lido da lista enquanto os filtros não forem aplicados no botão Buscar (?ver=1); o representante já entra com a
   // própria carteira. As opções dos filtros saem do resumo pronto (em cache) e mudam no navegador, sem ir ao banco.
   const ler = (e.ver || usuario.perfil === 'vendedor') && !falta.length;
-  const [linhas, porStatus, resumo] = await Promise.all([
+  const [lidas, resumo] = await Promise.all([
     ler ? db.execute(consulta).then((r) => r.rows) : [],
-    ler ? db.execute(contagem).then((r) => r.rows) : [],
     lerComCache(db, consultaResumo({ usuario }), 300).then((r) => r.rows),
   ]);
   const codigoDe = new Map(resumo.map((l) => [Number(l.vendedor_id), l.vendedor_codigo]));
@@ -68,7 +66,7 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
     const f = { ...rascunho.filtros };
     if (rascunho.periodo !== 'periodo') { delete f.dataDe; delete f.dataAte; }
     // a situação e a ordem continuam; filtros, período e busca passam a ser os do painel
-    location.hash = endereco({ aba: e.aba, ordem: e.ordem, desc: e.desc, agrupar: e.agrupar, filtros: {} },
+    location.hash = endereco({ aba: e.aba, ordem: vista.ordem, desc: vista.desc, agrupar: vista.agrupar, filtros: {} },
       { filtros: f, periodo: rascunho.periodo, busca: campoBusca.value.trim(), ver: true });
   }
   const mudar = (muda, extra = {}) => { Object.assign(rascunho.filtros, muda); Object.assign(rascunho, extra); desenharFiltros(); };
@@ -89,11 +87,12 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
     if (gestao) {
       // quem vê todas as equipes escolhe supervisor (ou direto o representante); o supervisor só escolhe na própria equipe
       const todas = veTodasEquipes(usuario);
-      grupos.push(grupo('Equipe', todas ? 'equipe' : null,
+      // Lista: supervisor e representante obrigatórios; Acompanhamento: a equipe (supervisor ou representante) para quem vê todas
+      grupos.push(grupo('Equipe', !acomp ? 'representante' : todas ? 'equipe' : null,
         todas ? selecao('filtro-supervisor', 'Supervisor', f.supervisorId, opcoes.supervisores.map((s) => [s.id, `${s.nome}${s.codigo_erp ? ' · ' + s.codigo_erp : ''}`]),
           (v) => mudar({ supervisorId: v ? Number(v) : null, vendedorId: null }), { vazio: 'Escolha…' }) : null,
         selecao('filtro-vendedor', 'Representante', f.vendedorId, opcoes.vendedores.map((v) => [v.id, `${v.nome} · ${papelDoAgente(v)}${v.codigo_erp ? ' · ' + v.codigo_erp : ''}`]),
-          (v) => mudar({ vendedorId: v ? Number(v) : null }), { vazio: f.supervisorId || !todas ? 'Toda a equipe' : 'Escolha…' })));
+          (v) => mudar({ vendedorId: v ? Number(v) : null }), { vazio: !acomp ? 'Escolha…' : f.supervisorId || !todas ? 'Toda a equipe' : 'Escolha…' })));
     }
     const cidadeAtual = f.cidadeBusca ? `${f.cidadeBusca}|${f.uf ?? ''}` : '';
     const repetida = new Set(opcoes.cidades.filter((c, i) => opcoes.cidades.findIndex((x) => x.cidade_busca === c.cidade_busca) !== i).map((c) => c.cidade_busca));
@@ -118,6 +117,10 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
         rascunho.periodo === 'periodo' ? h('div', { class: 'filtro' }, h('label', { for: 'filtro-data-de' }, 'De · até'),
           h('div', { class: 'datas' }, data('filtro-data-de', 'Último registro de', 'dataDe'), data('filtro-data-ate', 'Último registro até', 'dataAte'))) : null));
     }
+    if (agrupaveis.length) {
+      grupos.push(grupo('Exibição', null, selecao('agrupar', 'Agrupar por', vista.agrupar, agrupaveis.map((k) => [k, AGRUPAMENTOS[k].nome]),
+        (v) => { vista.agrupar = v; if (ler) desenharTabela(); }, { vazio: 'Nenhum' })));
+    }
     montar(painelFiltros,
       h('div', { class: `lista-filtros-grupos g${grupos.length}` }, grupos),
       h('div', { class: 'lista-busca' },
@@ -127,55 +130,56 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
   }
   await desenharFiltros();
 
-  // agrupar só na Lista principal (no Acompanhamento a situação já separa)
-  const agrupar = acomp ? null : h('div', { class: 'filtro' }, h('label', { for: 'agrupar' }, 'Agrupar por'),
-    h('select', { id: 'agrupar', onchange: (ev) => ir({ agrupar: ev.target.value }) },
-      h('option', { value: '' }, 'Nenhum'), agrupaveis.map((k) => h('option', { value: k, selected: k === e.agrupar }, AGRUPAMENTOS[k].nome))));
-
   const titulo = acomp ? 'Acompanhamento' : 'Lista principal';
-  const ajuda = acomp
-    ? 'Quem já saiu da lista principal: aguardando cadastro, análise financeira, aguardando pedido, venda, sem interesse e inválidos.'
-    : 'Não contactados e em prospecção. Registrou atendido ou sem interesse, o cliente passa para o Acompanhamento.';
-  const cabecalho = h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo), h('p', {}, ajuda)), agrupar ? h('div', { class: 'cabecalho-controles' }, agrupar) : null);
+  const cabecalho = h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo),
+    acomp ? h('p', {}, 'Quem já saiu da lista principal: aguardando cadastro, análise financeira, aguardando pedido, venda, sem interesse e inválidos.') : null));
 
   if (!ler) {
     const texto = !e.ver ? 'Defina os filtros e clique em Buscar'
+      : falta.includes('representante') ? 'Escolha o supervisor e o representante e clique em Buscar'
       : falta.includes('equipe') && falta.includes('periodo') ? 'Escolha a equipe e o período e clique em Buscar'
         : falta.includes('equipe') ? 'Escolha a equipe e clique em Buscar' : 'Escolha o período e clique em Buscar';
     return montar(conteudo, cabecalho, painelFiltros,
       h('div', { class: 'lista-vazia', id: 'lista-falta' }, h('b', {}, texto),
-        h('span', {}, falta.includes('equipe') ? 'Equipe: supervisor (com toda a equipe) ou representante. ' : '',
+        h('span', {}, falta.includes('representante') ? 'Supervisor e representante. ' : falta.includes('equipe') ? 'Equipe: supervisor (com toda a equipe) ou representante. ' : '',
           falta.includes('periodo') ? 'Período: pela data do último registro. ' : '', 'A lista só é lida depois disso — nunca a base inteira.')));
   }
 
-  // ---------- situação (atalhos com contagem, das mesmas linhas de status) ----------
-  const daAba = porStatus.filter((s) => (acomp ? !NA_LISTA.includes(s.status_atual) : NA_LISTA.includes(s.status_atual)) && Number(s.prospects) > 0);
-  const total = daAba.reduce((t, s) => t + Number(s.prospects), 0);
-  const chip = (codigo, texto, n, cor) => h('a', { class: `chip-situacao${(e.filtros.status ?? '') === codigo ? ' ativa' : ''}`, href: endereco(e, { filtros: { status: codigo || null } }), dados: { status: codigo || 'todos' } },
-    cor ? h('span', { class: 'ponto', style: `background:${cor}` }) : null, texto, ' ', h('b', {}, formatar.numero(n)));
-  const situacao = h('div', { class: 'lista-situacao', role: 'group', 'aria-label': 'Situação' },
-    h('span', { class: 'lista-grupo-tit' }, 'Situação'), chip('', 'Todos', total),
-    daAba.map((s) => chip(s.status_atual, s.status_atual === 'em_prospeccao' ? 'Em prospecção (contato da planilha)' : s.rotulo, Number(s.prospects), s.status_cor)));
+  // ---------- lista inteira já lida: situação, ordem e grupos no navegador ----------
+  const excedeu = lidas.length > LIMITE;
+  const linhas = lidas.slice(0, LIMITE);
+  const STATUS_ORDEM = ['nao_contactado', 'em_prospeccao', 'aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse', 'invalido'];
+  const natural = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'pt-BR', { numeric: true });
+  const ORDENS = {
+    prospect: (a, b) => natural(a.razao_social, b.razao_social),
+    cidade: (a, b) => natural(a.cidade, b.cidade) || natural(a.bairro, b.bairro),
+    onda: (a, b) => (a.onda == null) - (b.onda == null) || natural(a.onda, b.onda),
+    rota: (a, b) => natural(a.rota, b.rota) || natural(a.subrota, b.subrota),
+    status: (a, b) => STATUS_ORDEM.indexOf(a.status_atual) - STATUS_ORDEM.indexOf(b.status_atual),
+    dias: (a, b) => (a.dias_corridos ?? -1) - (b.dias_corridos ?? -1),
+    ultimo: (a, b) => natural(a.dt_ultimo_contato, b.dt_ultimo_contato),
+  };
+  const posicao = new Map(linhas.map((p, i) => [p.id, i]));   // ordem de trabalho do banco (pendências primeiro)
+  const contagem = new Map();
+  for (const p of linhas) contagem.set(p.status_atual, (contagem.get(p.status_atual) ?? 0) + 1);
+  const statusDaAba = STATUS_ORDEM.filter((c) => contagem.get(c));
+  const nomeStatus = Object.fromEntries(linhas.map((p) => [p.status_atual, [p.status_nome, p.status_cor]]));
 
-  // ---------- tabela ----------
   const podeRegistrar = usuario.perfil !== 'financeiro';
   const comLote = podeRegistrar && !acomp;
   const lote = new Set(lerLote());
   const colunas = [
     comLote ? { t: '', classe: 'marca' } : null,
     { t: 'Prospect', o: 'prospect' }, { t: 'Cidade · bairro', o: 'cidade' }, { t: 'Onda', o: 'onda', classe: 'num' }, { t: 'Segmento' },
-    colunaRota ? { t: 'Rota', o: 'rota' } : null, gestao ? { t: 'Representante', o: 'carteira' } : null, { t: 'Status', o: 'status' },
+    colunaRota ? { t: 'Rota', o: 'rota' } : null, gestao && acomp ? { t: 'Representante' } : null, { t: 'Status', o: 'status' },
     ...(acomp ? [{ t: 'Último registro', o: 'ultimo' }, { t: 'Próxima ação' }] : [{ t: 'Tentativas', classe: 'num' }, { t: 'Contato da planilha', o: 'ultimo' }]),
     { t: 'Dias', o: 'dias', classe: 'num' }, podeRegistrar ? { t: '' } : null,
   ].filter(Boolean);
-  const cab = h('tr', {}, colunas.map((c) => h('th', { class: c.classe ?? '', 'aria-sort': c.o && e.ordem === c.o ? (e.desc ? 'descending' : 'ascending') : null },
-    // rótulo = ordenação: 1º clique crescente, 2º decrescente, 3º volta à ordem de trabalho
-    c.o ? h('a', { class: `ordenar ${e.ordem === c.o ? 'ativa' : ''}`, dados: { ordem: c.o }, title: 'Ordenar',
-      href: endereco(e, e.ordem !== c.o ? { ordem: c.o, desc: false } : !e.desc ? { desc: true } : { ordem: '', desc: false }) },
-    c.t, e.ordem === c.o ? (e.desc ? ' ▼' : ' ▲') : '') : c.t)));
+  const cab = h('thead', {});
   const corpo = h('tbody', {});
-  let ultimoGrupo = null;
-  let carregados = 0;
+  const situacao = h('div', { class: 'lista-situacao', role: 'group', 'aria-label': 'Situação' });
+  const rodape = h('div', { class: 'lista-rodape' });
+  const abertos = new Set();   // grupos expandidos (começam recolhidos)
   let aberta = null;
   const painel = h('aside', { class: 'ficha-lateral', hidden: true, 'aria-label': 'Ficha do prospect' });
 
@@ -221,9 +225,10 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
   }
   function fecharFicha() { painel.hidden = true; aberta?.classList.remove('aberta'); aberta = null; }
 
-  function linha(p) {
+  function linha(p, grupo) {
     const cod = codigoDe.get(Number(p.vendedor_id));
-    const tr = h('tr', { dados: { id: p.id }, onclick: (ev) => { if (!ev.target.closest('a, input, button, label')) abrirFicha(p, tr); } },
+    const tr = h('tr', { dados: { id: p.id, grupo: grupo ?? '' }, hidden: grupo != null && !abertos.has(grupo),
+      onclick: (ev) => { if (!ev.target.closest('a, input, button, label')) abrirFicha(p, tr); } },
       comLote ? h('td', { class: 'marca' }, Number(p.na_lista) ? h('input', { type: 'checkbox', 'aria-label': `Selecionar ${p.razao_social}`, checked: lote.has(Number(p.id)), dados: { lote: p.id },
         onchange: (ev) => { if (ev.target.checked) lote.add(Number(p.id)); else lote.delete(Number(p.id)); gravarLote([...lote]); atualizarLote(); } }) : null) : null,
       h('td', {}, h('a', { href: `#/ficha?id=${p.id}`, class: 'nome', title: p.razao_social }, p.razao_social),
@@ -232,7 +237,7 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
       h('td', { class: 'num' }, p.onda ?? ''),
       h('td', {}, h('span', { class: 'corta' }, p.tipologia_gtm ?? '')),
       colunaRota ? h('td', {}, p.rota ? `${p.rota}${p.subrota ? ' / ' + p.subrota : ''}` : '') : null,
-      gestao ? h('td', {}, h('span', { class: 'corta', title: p.vendedor_nome ?? '' }, p.vendedor_nome ?? '—'), cod ? h('small', {}, `cód. ${cod}`) : null) : null,
+      gestao && acomp ? h('td', {}, h('span', { class: 'corta', title: p.vendedor_nome ?? '' }, p.vendedor_nome ?? '—'), cod ? h('small', {}, `cód. ${cod}`) : null) : null,
       h('td', {}, seloStatus(p), Number(p.prazo_cadastro_vencido) ? h('small', { class: 'alerta-txt' }, 'prazo de cadastro vencido') : null),
       ...(acomp
         ? [h('td', {}, formatar.data(p.dt_ultimo_contato) || '—'),
@@ -242,36 +247,86 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
       podeRegistrar ? h('td', {}, registrarPermitido(p) ? h('a', { href: `#/registrar?id=${p.id}`, class: 'registrar' }, 'Registrar') : null) : null);
     return tr;
   }
-  function acrescentar(rows) {
-    for (const p of rows) {
-      if (e.agrupar) {
-        const g = AGRUPAMENTOS[e.agrupar].rotulo(p);
-        if (g !== ultimoGrupo) { corpo.append(h('tr', { class: 'linha-grupo' }, h('td', { colspan: String(colunas.length) }, g))); ultimoGrupo = g; }
-      }
-      corpo.append(linha(p));
-    }
-    carregados += rows.length;
+
+  /** Linhas visíveis (situação), na ordem escolhida e agrupadas: [{ grupo, rotulo, linhas }]. */
+  function visiveis() {
+    const ordem = ORDENS[vista.ordem];
+    const lista = linhas.filter((p) => !vista.status || p.status_atual === vista.status)
+      .sort((a, b) => (ordem ? (vista.desc ? -1 : 1) * ordem(a, b) : 0) || posicao.get(a.id) - posicao.get(b.id));
+    if (!vista.agrupar) return [{ grupo: null, linhas: lista }];
+    const def = AGRUPAMENTOS[vista.agrupar];
+    const grupos = new Map();
+    for (const p of lista) { const g = def.rotulo(p); if (!grupos.has(g)) grupos.set(g, []); grupos.get(g).push(p); }
+    return [...grupos.entries()].sort((a, b) => natural(a[0], b[0])).map(([g, ls]) => ({ grupo: g, linhas: ls }));
   }
 
-  const temMais = () => linhas.length > POR_VEZ;
-  acrescentar(linhas.slice(0, POR_VEZ));
-  const rodape = h('div', { class: 'lista-rodape' });
-  let ha = temMais();
-  const desenharRodape = () => montar(rodape,
-    h('span', {}, `Mostrando ${formatar.numero(carregados)} de ${formatar.numero(e.filtros.status ? Number(daAba.find((s) => s.status_atual === e.filtros.status)?.prospects ?? carregados) : total)}`,
-      e.ordem || e.agrupar ? '' : ' · ordem: pendências primeiro (clique no título da coluna para ordenar)'),
-    ha ? h('button', { type: 'button', class: 'secundario pequeno', id: 'carregar-mais', onclick: async (ev) => {
-      ev.target.disabled = true;
-      const mais = (await db.execute(pedir(carregados))).rows;
-      ha = mais.length > POR_VEZ;
-      acrescentar(mais.slice(0, POR_VEZ));
-      desenharRodape();
-    } }, `Carregar mais ${POR_VEZ}`) : null);
-  desenharRodape();
-  if (comLote) atualizarLote();
+  function desenharTabela() {
+    const chip = (codigo, texto, n, cor) => h('button', { type: 'button', class: `chip-situacao${vista.status === codigo ? ' ativa' : ''}`, dados: { status: codigo || 'todos' },
+      onclick: () => { vista.status = codigo; desenharTabela(); } },
+    cor ? h('span', { class: 'ponto', style: `background:${cor}` }) : null, texto, ' ', h('b', {}, formatar.numero(n)));
+    montar(situacao, h('span', { class: 'lista-grupo-tit' }, 'Situação'), chip('', 'Todos', linhas.length),
+      statusDaAba.map((c) => chip(c, c === 'em_prospeccao' ? 'Em prospecção (contato da planilha)' : nomeStatus[c][0], contagem.get(c), nomeStatus[c][1])),
+      h('span', { class: 'lista-situacao-acoes' }, h('button', { type: 'button', class: 'secundario pequeno', id: 'imprimir-lista', onclick: imprimir }, 'Imprimir / PDF')));
+    // rótulo = ordenação: 1º clique crescente, 2º decrescente, 3º volta à ordem de trabalho (tudo no navegador)
+    montar(cab, h('tr', {}, colunas.map((c) => h('th', { class: c.classe ?? '', 'aria-sort': c.o && vista.ordem === c.o ? (vista.desc ? 'descending' : 'ascending') : null },
+      c.o ? h('button', { type: 'button', class: `ordenar ${vista.ordem === c.o ? 'ativa' : ''}`, dados: { ordem: c.o }, title: 'Ordenar',
+        onclick: () => { if (vista.ordem !== c.o) Object.assign(vista, { ordem: c.o, desc: false }); else if (!vista.desc) vista.desc = true; else Object.assign(vista, { ordem: '', desc: false }); desenharTabela(); } },
+      c.t, vista.ordem === c.o ? (vista.desc ? ' ▼' : ' ▲') : '') : c.t))));
+    const blocos = visiveis();
+    const linhasTr = [];
+    for (const b of blocos) {
+      if (b.grupo != null) {
+        const aberto = abertos.has(b.grupo);
+        linhasTr.push(h('tr', { class: 'linha-grupo', dados: { grupo: b.grupo } },
+          h('td', { colspan: String(colunas.length) }, h('button', { type: 'button', class: 'abre-grupo', 'aria-expanded': aberto ? 'true' : 'false',
+            onclick: () => { if (abertos.has(b.grupo)) abertos.delete(b.grupo); else abertos.add(b.grupo); desenharTabela(); } },
+          aberto ? '▼ ' : '▶ ', b.grupo, h('span', { class: 'conta' }, ` · ${formatar.numero(b.linhas.length)} prospect(s)`)))));
+        if (!aberto) continue;
+      }
+      for (const p of b.linhas) linhasTr.push(linha(p, b.grupo));
+    }
+    montar(corpo, linhasTr);
+    const n = blocos.reduce((t, b) => t + b.linhas.length, 0);
+    montar(rodape, h('span', {}, `${formatar.numero(n)} prospect(s)`, vista.agrupar ? ` em ${blocos.length} grupo(s) — clique no grupo para abrir` : '',
+      vista.ordem || vista.agrupar ? '' : ' · ordem: pendências primeiro (clique no título da coluna para ordenar)'),
+    excedeu ? h('span', { class: 'alerta-txt' }, `Mostrando os primeiros ${formatar.numero(LIMITE)}: refine os filtros.`) : null);
+  }
 
+  // Relatório para o representante: todas as colunas numa página (paisagem), rótulos repetidos em cada página.
+  function imprimir() {
+    const rep = resumo.find((l) => Number(l.vendedor_id) === Number(e.filtros.vendedorId));
+    const quem = rep ? `${rep.vendedor_nome}${rep.vendedor_codigo ? ' · cód. ' + rep.vendedor_codigo : ''}` : usuario.perfil === 'vendedor' ? usuario.nome : 'Equipe';
+    const filtrosTxt = [e.filtros.uf && `UF ${e.filtros.uf}`, e.filtros.cidadeBusca && `Cidade: ${e.filtros.cidadeBusca}`, e.filtros.bairroBusca && `Bairro: ${e.filtros.bairroBusca}`,
+      e.filtros.onda && `Onda ${e.filtros.onda}`, e.filtros.segmento && `Segmento: ${e.filtros.segmento}`, vista.status && `Situação: ${nomeStatus[vista.status]?.[0]}`,
+      e.busca && `Busca: ${e.busca}`].filter(Boolean).join(' · ');
+    const cols = ['Prospect', 'Fantasia', 'CNPJ', 'Endereço', 'Bairro', 'Cidade/UF', 'Telefone', 'Onda', 'Segmento', 'Status',
+      ...(acomp ? ['Último registro', 'Próxima ação'] : ['Tentativas', 'Contato da planilha']), 'Dias'];
+    const celulas = (p) => [p.razao_social, p.nome_fantasia && p.nome_fantasia !== p.razao_social ? p.nome_fantasia : '', formatar.cnpj(p.cnpj), p.endereco ?? '', p.bairro ?? '',
+      p.cidade ? `${p.cidade}/${p.uf ?? ''}` : '', p.telefone ?? '', p.onda ?? '', p.tipologia_gtm ?? '', p.status_nome ?? '',
+      ...(acomp ? [formatar.data(p.dt_ultimo_contato) || '', formatar.data(p.data_proxima_acao) || ''] : [String(p.tentativas ?? 0), formatar.data(p.dt_ultimo_contato) || '']),
+      p.dias_corridos != null ? String(p.dias_corridos) : ''];
+    const corpoImp = [];
+    let nImp = 0;
+    for (const b of visiveis()) {
+      nImp += b.linhas.length;
+      if (b.grupo != null) corpoImp.push(h('tr', { class: 'imp-grupo' }, h('td', { colspan: String(cols.length) }, `${b.grupo} · ${b.linhas.length}`)));
+      for (const p of b.linhas) corpoImp.push(h('tr', {}, celulas(p).map((c) => h('td', {}, c))));
+    }
+    const doc = h('div', { id: 'impressao' },
+      h('h1', {}, `${titulo} — ${quem}`),
+      h('p', {}, `Emitida em ${formatar.data(hojeSaoPaulo())} · ${formatar.numero(nImp)} prospect(s)${filtrosTxt ? ' · ' + filtrosTxt : ''}`),
+      h('table', {}, h('thead', {}, h('tr', {}, cols.map((c) => h('th', {}, c)))), h('tbody', {}, corpoImp)));
+    document.getElementById('impressao')?.remove();
+    document.body.append(doc);
+    const limpar = () => { doc.remove(); window.removeEventListener('afterprint', limpar); };
+    window.addEventListener('afterprint', limpar);
+    window.print();
+  }
+
+  if (comLote) atualizarLote();
+  desenharTabela();
   const tabela = linhas.length
-    ? h('section', { class: 'cartao lista-tabela' }, h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela-carteira' }, h('thead', {}, cab), corpo)), rodape)
+    ? h('section', { class: 'cartao lista-tabela' }, h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela-carteira' }, cab, corpo)), rodape)
     : mensagem(e.busca ? `Nada encontrado para "${e.busca}".` : 'Nenhum prospect com esses filtros.', 'info');
-  montar(conteudo, cabecalho, painelFiltros, situacao, tabela, comLote ? barraLote : null, painel);
+  montar(conteudo, cabecalho, painelFiltros, linhas.length ? situacao : null, tabela, comLote ? barraLote : null, painel);
 }
