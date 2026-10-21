@@ -372,8 +372,8 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
   **Mudar** abre a lista de todos os níveis possíveis: marcar liga/desliga, ↑ ↓ mudam a ordem. Tudo no navegador.
 - **Celular**: os dois gráficos ocupam a largura do cartão (etapas com a barra abaixo do nome; Valor dos pedidos, Potencial
   e Conversão um por linha, valor à direita) e a grade vira **um cartão por ramo**: nome e prospects na 1ª linha;
-  Contactados, Cobertura, Vendas e Pedidos (R$) rotulados na 2ª — sem rolagem para o lado. As etapas e o potencial de cada
-  ramo aparecem nos gráficos ao escolher o ramo.
+  abaixo, uma grade 4 × 2 rotulada — Ag. cadastro, Ag. financeiro, Ag. pedido, Pedidos / Sem interesse, Inativos,
+  Cobertura, Valor dos pedidos — sem rolagem para o lado. O potencial de cada ramo aparece no gráfico ao escolher o ramo.
 - Escopo: gestão vê tudo (supervisor com "vê todas as equipes" também); **supervisor só a própria equipe, sem o nível
   Supervisor**; vendedor só a própria carteira (sem Supervisor nem Representante).
 - **Abrir na Lista principal** só com um ramo escolhido (nunca a base inteira): a lista abre com os filtros do caminho.
