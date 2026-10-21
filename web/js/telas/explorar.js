@@ -2,7 +2,7 @@
 // Lê o resumo e os pedidos uma vez (com cache curto) e redesenha só no navegador: arrastar níveis, abrir ramos, escolher
 // representante × vendedor não voltam ao banco. A Lista principal abre só com um ramo escolhido (nunca a base inteira).
 import { bancoApp, lerComCache, leitorComCache } from '../db.js';
-import { consultaPedidosResumo, consultaResumo, montarArvore, NIVEIS, niveisPossiveis, STATUS_ORDEM } from '../../shared/explorar.mjs';
+import { consultaPedidosResumo, consultaResumo, montarArvore, NIVEIS, niveisPossiveis } from '../../shared/explorar.mjs';
 import { lerParametrosPainel } from '../../shared/painel.mjs';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { h, montar, mensagem, formatar } from '../ui.js';
@@ -97,34 +97,45 @@ export async function render(conteudo, { usuario }) {
       h('div', { class: 'zona livres', ondragover: (ev) => ev.preventDefault(), ondrop: soltarFora },
         h('span', { class: 'tit' }, 'Disponíveis'), possiveis.filter((n) => !estado.niveis.includes(n)).map(cartaoDisponivel)));
 
-    const kpi = (rotulo, valor, detalhe) => h('div', { class: 'exp-kpi' }, h('div', { class: 'rotulo' }, rotulo), h('div', { class: 'valor' }, valor), h('div', { class: 'detalhe', title: detalhe }, detalhe));
-    const kpis = h('section', { class: 'exp-kpis', 'aria-label': 'Números do ramo' },
-      kpi('Prospects', n0(ind.qtd), `${n0(ind.status.invalido)} inválidos`),
-      kpi('Cobertura', pct(ind.cobertura), `${n0(ind.contactados)} contactados`),
-      kpi('Em andamento', n0(ind.emAndamento), 'cadastro + análise'),
-      kpi('Aguardando pedido', n0(ind.aguardandoPedido), 'crédito liberado'),
-      kpi('Sem interesse', n0(ind.semInteresse), `${pct(ind.contactados ? (ind.semInteresse / ind.contactados) * 100 : null)} dos contactados`),
-      kpi('Vendas', n0(ind.vendas), `${n0(ind.qtdPedidos)} pedido(s)`),
-      kpi('Valor dos pedidos', reais(ind.valorPedidos), 'pedidos importados do ERP'),
-      kpi('Potencial', reais(ind.potencial), `em aberto × ${parametros.percentual_pipeline ?? 0}%`));
+    // Da totalidade: uma barra de 100% em 4 partes que somam todos os prospects do ramo
+    const contSemSI = ind.contactados - ind.semInteresse;   // contactados que seguem no processo (sem os sem interesse)
+    const partes = [
+      ['contactados', 'Contactados', contSemSI, '#1D4ED8', 'atendidos; sem os sem interesse'],
+      ['sem_interesse', 'Sem interesse', ind.semInteresse, '#3F3F46', ''],
+      ['nao_contactados', 'Não contactados', ind.status.nao_contactado, '#9CA3AF', ''],
+      ['inativos', 'Inativos (inválidos / baixados)', ind.status.invalido, '#E5E7EB', ''],
+    ];
+    const totalidade = h('section', { class: 'cartao exp-grafico', id: 'grafico-totalidade' },
+      h('div', { class: 'exp-grafico-topo' }, h('div', {}, h('span', { class: 'tit' }, 'Da totalidade'), h('h2', {}, escolhido.rotulo)),
+        h('div', { class: 'exp-total' }, h('b', {}, n0(ind.qtd)), h('span', {}, 'prospects'))),
+      h('div', { class: 'exp-barra100', role: 'img', 'aria-label': partes.map(([, nome, q]) => `${nome}: ${n0(q)}`).join(', ') },
+        partes.filter(([, , q]) => q > 0).map(([chave, nome, q, cor]) => h('span', { dados: { parte: chave }, title: `${nome}: ${n0(q)}`, style: `flex:${q} 1 0;background:${cor}` }))),
+      partes.map(([chave, nome, q, cor, nota]) => h('div', { class: 'exp-legenda', dados: { parte: chave } },
+        h('span', { class: `ponto${chave === 'inativos' ? ' claro' : ''}`, style: `background:${cor}` }), h('span', {}, nome, nota ? h('small', {}, ` (${nota})`) : null),
+        h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(ind.qtd ? (q / ind.qtd) * 100 : null)))),
+      h('p', { class: 'exp-rodape' }, h('b', {}, `Cobertura ${pct(ind.cobertura)}`),
+        ` = contactados com sem interesse (${n0(ind.contactados)}) ÷ base válida (${n0(ind.base)}, sem inativos)`));
 
-    const maior = Math.max(1, ...STATUS_ORDEM.map((s) => ind.status[s] ?? 0));
-    const quadroStatus = h('section', { class: 'cartao exp-quadro' }, h('h2', {}, 'Clientes por status'), h('p', { class: 'ajuda' }, escolhido.rotulo),
-      STATUS_ORDEM.map((s) => { const q = ind.status[s] ?? 0; const cor = status[s]?.cor ?? '#9CA3AF';
-        return h('div', { class: 'exp-status' }, h('span', { class: 'nome' }, h('span', { class: 'ponto', style: `background:${cor}` }), status[s]?.nome ?? s),
-          h('span', { class: 'trilho', 'aria-hidden': 'true' }, h('span', { style: `width:${q ? Math.max(1.5, (q / maior) * 100) : 0}%;background:${cor}` })),
-          h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(ind.qtd ? (q / ind.qtd) * 100 : null))); }));
-    const funil = [['Base de prospects', ind.base], ['Contactados', ind.contactados], ['Atendidos', ind.atendidos], ['Cadastrados no ERP', ind.cadastrados],
-      ['Crédito liberado', ind.credito], ['Venda realizada', ind.vendas]];
-    const quadroFunil = h('section', { class: 'cartao exp-quadro' }, h('h2', {}, 'Funil'), h('p', { class: 'ajuda' }, '% sobre a base do ramo'),
-      funil.map(([nome, q], i) => h('div', { class: 'exp-funil' }, h('span', { class: 'nome' }, nome),
-        h('span', { class: 'trilho', 'aria-hidden': 'true' }, h('span', { class: `e${i}`, style: `width:${ind.base ? Math.max(1, (q / ind.base) * 100) : 0}%` })),
-        h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(ind.base ? (q / ind.base) * 100 : null)))),
+    // Dos contactados: onde estão os que seguem no processo (% sobre os contactados sem os sem interesse)
+    const etapasProcesso = [['Aguardando cadastro', ind.status.aguardando_cadastro, status.aguardando_cadastro?.cor ?? '#6D28D9'],
+      ['Aguardando financeiro', ind.status.analise_financeira, status.analise_financeira?.cor ?? '#C2410C'],
+      ['Aguardando pedido', ind.status.aguardando_pedido, status.aguardando_pedido?.cor ?? '#0F766E'],
+      ['Pedido realizado', ind.vendas, status.venda_realizada?.cor ?? '#1D4ED8']];
+    const doProcesso = h('section', { class: 'cartao exp-grafico', id: 'grafico-contactados' },
+      h('div', { class: 'exp-grafico-topo' }, h('div', {}, h('span', { class: 'tit' }, 'Dos contactados'),
+        h('h2', {}, `Onde estão os ${n0(contSemSI)} que seguem no processo`)), h('span', { class: 'ajuda' }, '% sobre os contactados sem os sem interesse')),
+      etapasProcesso.map(([nome, q, cor]) => h('div', { class: 'exp-etapa' }, h('span', {}, nome),
+        h('span', { class: 'trilho', 'aria-hidden': 'true' }, h('span', { style: `width:${q && contSemSI ? Math.max(1.5, (q / contSemSI) * 100) : 0}%;background:${cor}` })),
+        h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(contSemSI ? (q / contSemSI) * 100 : null)))),
+      h('div', { class: 'exp-mini' },
+        h('div', {}, h('span', { class: 'tit' }, 'Valor dos pedidos'), h('b', {}, reais(ind.valorPedidos))),
+        h('div', {}, h('span', { class: 'tit' }, 'Potencial'), h('b', {}, reais(ind.potencial)), h('small', {}, `em aberto × ${parametros.percentual_pipeline ?? 0}%`)),
+        h('div', {}, h('span', { class: 'tit' }, 'Conversão'), h('b', {}, pct(ind.conversao)), h('small', {}, 'vendas ÷ contactados'))),
       escolhido.profundidade
         ? h('a', { class: 'botao pequeno', id: 'abrir-lista', href: enderecoLista(escolhido.filtros) }, `Abrir na Lista principal · ${n0(ind.qtd)} prospects`)
-        : h('p', { class: 'ajuda', style: 'margin-top:12px' }, 'Escolha um ramo na árvore para abrir a lista dele.'));
+        : h('p', { class: 'ajuda', style: 'margin:0' }, 'Escolha um ramo na árvore para abrir a lista dele.'));
 
-    const cab = h('div', { class: 'exp-linha cab' }, ['Ramo', 'Prospects', 'Cobertura', 'Em andamento', 'Aguard. pedido', 'Sem interesse', 'Vendas', 'Pedidos (R$)', 'Potencial (R$)']
+    const cab = h('div', { class: 'exp-linha cab' }, ['Ramo', 'Prospects', 'Contactados', 'Cobertura', 'Sem interesse', 'Ag. cadastro', 'Ag. financeiro', 'Ag. pedido', 'Pedido realizado', 'Pedidos (R$)', 'Potencial (R$)']
       .map((t, i) => h('span', { class: i ? 'num' : '' }, t)));
     // clicar em qualquer parte da linha escolhe o ramo e abre (de novo na linha já escolhida e aberta: fecha); a seta só abre/fecha
     const clicarLinha = (n) => {
@@ -137,16 +148,17 @@ export async function render(conteudo, { usuario }) {
       h('span', { class: 'ramo', style: `padding-left:${n.profundidade * 24}px` },
         n.temFilhos ? h('button', { type: 'button', class: 'abre', 'aria-expanded': n.aberto ? 'true' : 'false', 'aria-label': `${n.aberto ? 'Fechar' : 'Abrir'} ${n.rotulo}`,
           onclick: (ev) => { ev.stopPropagation(); if (n.aberto) estado.abertos.delete(n.caminho); else estado.abertos.add(n.caminho); desenhar(); } }, n.aberto ? '▼' : '▶') : h('span', { class: 'abre vazio' }),
-        h('button', { type: 'button', class: 'nome' }, n.rotulo)),
-      h('b', { class: 'num' }, n0(n.ind.qtd)), h('span', { class: 'num' }, pct(n.ind.cobertura)), h('span', { class: 'num' }, n0(n.ind.emAndamento)),
-      h('span', { class: 'num' }, n0(n.ind.aguardandoPedido)), h('span', { class: 'num' }, n0(n.ind.semInteresse)), h('b', { class: 'num' }, n0(n.ind.vendas)),
+        h('button', { type: 'button', class: 'nome', title: n.rotulo }, n.rotulo)),
+      h('b', { class: 'num' }, n0(n.ind.qtd)), h('span', { class: 'num' }, n0(n.ind.contactados)), h('span', { class: 'num' }, pct(n.ind.cobertura)),
+      h('span', { class: 'num' }, n0(n.ind.semInteresse)), h('span', { class: 'num' }, n0(n.ind.status.aguardando_cadastro)),
+      h('span', { class: 'num' }, n0(n.ind.status.analise_financeira)), h('span', { class: 'num' }, n0(n.ind.aguardandoPedido)), h('b', { class: 'num' }, n0(n.ind.vendas)),
       h('span', { class: 'num' }, reais(n.ind.valorPedidos)), h('span', { class: 'num' }, reais(n.ind.potencial))));
 
     return [
       h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar carteira'), tipos),
       h('p', { class: 'ajuda exp-sub' }, 'Do total até o cliente: arraste os níveis, abra os ramos; os números de cima seguem o ramo escolhido.'),
-      niveis, migalhas, kpis,
-      h('div', { class: 'exp-quadros' }, quadroStatus, quadroFunil),
+      niveis, migalhas,
+      h('div', { class: 'exp-quadros' }, totalidade, doProcesso),
       h('section', { class: 'cartao exp-arvore', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas)),
       h('p', { class: 'ajuda' }, 'Números do resumo pronto no banco (atualizado a cada registro e importação) — a tela não lê a carteira inteira.'),
     ];

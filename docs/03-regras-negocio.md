@@ -337,9 +337,16 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 - Árvore **do total até o cliente** com níveis livres, em qualquer ordem: Supervisor, Representante, Cidade, Segmento
   (TIPOLOGIA GTM), Onda, Rota, Subrota. Os níveis são cartões **arrastáveis** (ordenar, incluir, tirar); a ordem fica
   guardada no navegador. Cada nível aberto mostra **todos** os itens, do maior para o menor.
-- Por ramo: Prospects, Cobertura (% contactado sobre a base válida), **Em andamento** (Aguardando cadastro + Análise
-  financeira), **Aguardando pedido**, Sem interesse, Vendas, Valor dos pedidos (ERP) e Potencial (em aberto × % do
-  pipeline × valor médio — parâmetros do Início). O ramo escolhido mostra também clientes por status e o funil.
+- O ramo escolhido mostra dois gráficos (no lugar dos cards, de "Clientes por status" e do funil):
+  - **Da totalidade**: barra de 100% em 4 partes que somam os prospects do ramo — Contactados (sem os sem interesse),
+    Sem interesse, Não contactados e Inativos (inválidos/baixados) — e a **Cobertura** = contactados (com os sem
+    interesse) ÷ base válida (sem inativos), com os números.
+  - **Dos contactados**: onde estão os que seguem no processo (contactados sem os sem interesse) — Aguardando cadastro,
+    Aguardando financeiro, Aguardando pedido e Pedido realizado, cada um com % — e Valor dos pedidos, Potencial (em
+    aberto × % do pipeline × valor médio) e Conversão (vendas ÷ contactados). "Em prospecção" (contato da planilha,
+    sem resultado) não é etapa do processo: só conta entre os contactados da totalidade.
+- Grade por ramo: Prospects, **Contactados**, Cobertura, Sem interesse, Ag. cadastro, Ag. financeiro, Ag. pedido,
+  Pedido realizado, Pedidos (R$) e Potencial (R$).
 - Filtro **Todos / Representantes / Vendedores** (tipo de atuação de quem é dono da carteira).
 - Escopo: gestão vê tudo (supervisor com "vê todas as equipes" também); **supervisor só a própria equipe, sem o nível
   Supervisor**; vendedor só a própria carteira (sem Supervisor nem Representante).
