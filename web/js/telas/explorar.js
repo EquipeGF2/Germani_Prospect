@@ -29,7 +29,8 @@ function guardarNiveis(n) { try { localStorage.setItem(CHAVE_NIVEIS, JSON.string
 function enderecoLista(filtros) {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(filtros)) if (v != null && v !== '') q.set(k, v);
-  q.set('ver', '1');   // já aplicado: a lista lê direto (se a equipe estiver no caminho)
+  q.set('ver', '1');   // já aplicado: a lista lê direto, com o filtro do ramo
+  q.set('de', 'explorar');   // o ramo basta: não exige supervisor e representante
   return `#/carteira?${q.toString()}`;
 }
 

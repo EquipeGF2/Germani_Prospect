@@ -30,10 +30,11 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   // coluna Rota só para o vendedor (é quem monta rota); a gestão agrupa por rota quando quiser
   const colunaRota = comRota && usuario.perfil === 'vendedor';
 
-  // período (só Acompanhamento): este mês / último mês / período de · até. Representante já entra no mês atual.
+  // período (só Acompanhamento): este mês / último mês / período de · até. Todos entram no mês atual.
   if (!acomp) { delete e.filtros.dataDe; delete e.filtros.dataAte; e.periodo = ''; }
   else {
-    if (!PERIODOS_LISTA[e.periodo]) e.periodo = e.filtros.dataDe || e.filtros.dataAte ? 'periodo' : usuario.perfil === 'vendedor' ? 'mes' : '';
+    // sem período escolhido: sempre o mês atual (para todos); o usuário troca para Último mês ou Período
+    if (!PERIODOS_LISTA[e.periodo]) e.periodo = e.filtros.dataDe || e.filtros.dataAte ? 'periodo' : 'mes';
     if (e.periodo && e.periodo !== 'periodo') Object.assign(e.filtros, datasDoPeriodo(e.periodo, { hoje: hojeSaoPaulo() }));
   }
   if (!e.filtros.cidadeBusca) delete e.filtros.bairroBusca;
@@ -44,7 +45,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   const agrupaveis = acomp ? [] : agrupamentosPossiveis(usuario, e.filtros).filter((k) => k !== 'representante');
   const vista = { agrupar: agrupaveis.includes(e.agrupar) ? e.agrupar : '', ordem: e.ordem, desc: e.desc, status: e.filtros.status ?? '' };
   delete e.filtros.status;
-  const falta = faltaParaLista(usuario, { aba: e.aba, filtros: e.filtros, busca: e.busca });
+  const falta = faltaParaLista(usuario, { aba: e.aba, filtros: e.filtros, busca: e.busca, doExplorar: e.de === 'explorar' });
 
   let consulta;
   try {
@@ -70,7 +71,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     const f = { ...rascunho.filtros };
     if (rascunho.periodo !== 'periodo') { delete f.dataDe; delete f.dataAte; }
     // a situação e a ordem continuam; filtros, período e busca passam a ser os do painel
-    location.hash = endereco({ aba: e.aba, ordem: vista.ordem, desc: vista.desc, agrupar: vista.agrupar, filtros: {} },
+    location.hash = endereco({ aba: e.aba, ordem: vista.ordem, desc: vista.desc, agrupar: vista.agrupar, de: e.de, filtros: {} },
       { filtros: f, periodo: rascunho.periodo, busca: campoBusca.value.trim(), ver: true });
   }
   const mudar = (muda, extra = {}) => { Object.assign(rascunho.filtros, muda); Object.assign(rascunho, extra); desenharFiltros(); };
