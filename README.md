@@ -6,6 +6,8 @@ baixados entram por arquivos do ERP Senior; o supervisor acompanha cobertura e c
 
 **Sistema:** GERMANI · **Estado:** ativo · **Fase atual:** F1 partes 1 a 5a prontas (administração; lista principal, acompanhamento e ficha; registro individual e em lote; console de crédito; Início com o dashboard de acompanhamento; gerente comercial; feriados), com menu lateral.
 
+**Endereço:** https://vendas.svoltagf2.com.br (GitHub Pages com domínio próprio; o antigo `equipegf2.github.io/Germani_Prospect` redireciona).
+
 Stack: **Turso (libSQL)** + **GitHub** (Actions, Secrets, Pages). Sem servidor — ver
 [ADR-0001](docs/adr/0001-turso-direto-github-pages.md).
 
