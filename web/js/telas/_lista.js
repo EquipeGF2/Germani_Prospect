@@ -15,7 +15,8 @@ import { h, montar, mensagem, formatar, comEspera } from '../ui.js';
 import { gerarPdfLista } from '../relatorio.js';
 import { icone } from '../menu.js';
 import { consultaResumo, opcoesEmCascata } from '../../shared/explorar.mjs';
-import { endereco, gravarLote, lerEstado, lerLote, papelDoAgente, seloStatus } from './_carteira.js';
+import { endereco, gravarLote, lerEstado, lerLote, nomeStatus as nomeDoStatus, papelDoAgente, seloStatus } from './_carteira.js';
+import { ORIGENS_SEM_INTERESSE } from '../../shared/status.mjs';
 
 const LIMITE = 5000;   // uma carteira (representante) cabe com folga; acima disso pede para refinar os filtros
 
@@ -172,10 +173,16 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     primeiro: (a, b) => natural(a.dt_primeiro_contato, b.dt_primeiro_contato),
   };
   const posicao = new Map(linhas.map((p, i) => [p.id, i]));   // ordem de trabalho do banco (pendências primeiro)
+  // situação = status, com "sem interesse" separado em do cliente / do representante (origem do motivo)
+  const sit = (p) => (p.status_atual === 'sem_interesse' ? `sem_interesse:${p.sem_interesse_origem ?? 'cliente'}` : p.status_atual);
+  const SITUACOES = STATUS_ORDEM.flatMap((c) => (c === 'sem_interesse' ? Object.keys(ORIGENS_SEM_INTERESSE).map((o) => `${c}:${o}`) : [c]));
   const contagem = new Map();
-  for (const p of linhas) contagem.set(p.status_atual, (contagem.get(p.status_atual) ?? 0) + 1);
-  const statusDaAba = STATUS_ORDEM.filter((c) => contagem.get(c));
-  const nomeStatus = Object.fromEntries(linhas.map((p) => [p.status_atual, [p.status_nome, p.status_cor]]));
+  for (const p of linhas) contagem.set(sit(p), (contagem.get(sit(p)) ?? 0) + 1);
+  const statusDaAba = SITUACOES.filter((c) => contagem.get(c));
+  const nomeStatus = Object.fromEntries(linhas.map((p) => [sit(p), [p.status_atual === 'sem_interesse'
+    ? ORIGENS_SEM_INTERESSE[p.sem_interesse_origem ?? 'cliente'].rotulo : p.status_nome, p.status_cor]]));
+  nomeStatus.sem_interesse ??= ['Sem interesse', null];   // filtro vindo do endereço (?status=sem_interesse): as duas origens
+  const naSituacao = (p) => !vista.status || sit(p) === vista.status || p.status_atual === vista.status;
 
   const podeRegistrar = usuario.perfil !== 'financeiro';
   const comLote = podeRegistrar && !acomp;
@@ -266,7 +273,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   /** Linhas visíveis (situação), na ordem escolhida e agrupadas: [{ grupo, rotulo, linhas }]. */
   function visiveis() {
     const ordem = ORDENS[vista.ordem];
-    const lista = linhas.filter((p) => !vista.status || p.status_atual === vista.status)
+    const lista = linhas.filter(naSituacao)
       .sort((a, b) => (ordem ? (vista.desc ? -1 : 1) * ordem(a, b) : 0) || posicao.get(a.id) - posicao.get(b.id));
     if (!vista.agrupar) return [{ grupo: null, linhas: lista }];
     const def = AGRUPAMENTOS[vista.agrupar];
@@ -330,11 +337,11 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     const blocos = visiveis();
     const n = blocos.reduce((t, b) => t + b.linhas.length, 0);
     const porStatus = new Map();
-    for (const b of blocos) for (const p of b.linhas) porStatus.set(p.status_atual, (porStatus.get(p.status_atual) ?? 0) + 1);
-    const resumoPdf = [['Prospects', n], ...STATUS_ORDEM.filter((c) => porStatus.get(c)).map((c) => [nomeStatus[c][0], porStatus.get(c)])];
+    for (const b of blocos) for (const p of b.linhas) porStatus.set(sit(p), (porStatus.get(sit(p)) ?? 0) + 1);
+    const resumoPdf = [['Prospects', n], ...SITUACOES.filter((c) => porStatus.get(c)).map((c) => [nomeStatus[c][0], porStatus.get(c)])];
     const linhaPdf = (p) => [p.razao_social ?? '', p.nome_fantasia && p.nome_fantasia !== p.razao_social ? p.nome_fantasia : '', formatar.cnpj(p.cnpj),
       p.endereco ?? '', p.bairro ?? '', p.cidade ? `${p.cidade}/${p.uf ?? ''}` : '', p.telefone ?? '', p.onda ?? '', p.tipologia_gtm ?? '',
-      p.status_nome ?? '', String(p.tentativas ?? 0), formatar.data(p.dt_primeiro_contato) || '—', p.dias_corridos != null ? String(p.dias_corridos) : '—'];
+      nomeDoStatus(p) ?? '', String(p.tentativas ?? 0), formatar.data(p.dt_primeiro_contato) || '—', p.dias_corridos != null ? String(p.dias_corridos) : '—'];
     const hoje = hojeSaoPaulo();
     const arquivo = `lista-${(rep?.vendedor_codigo ?? rep?.vendedor_nome ?? 'equipe').toString().toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${hoje}.pdf`;
     await comEspera(botao, () => gerarPdfLista({ titulo, representante, supervisor, emissao: formatar.data(hoje), resumo: resumoPdf, filtros,

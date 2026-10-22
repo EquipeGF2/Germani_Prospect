@@ -31,6 +31,17 @@ export const ROTULOS_RESULTADO = Object.freeze({
   pedido_informado: 'Reabrir: pedido identificado',
 });
 
+/**
+ * "Sem interesse" tem duas origens (migração 0015): do CLIENTE (recusou) e do REPRESENTANTE (não vai trabalhar o cliente).
+ * O status é um só; a origem vem do motivo escolhido (motivos_sem_interesse.origem).
+ */
+export const ORIGENS_SEM_INTERESSE = Object.freeze({
+  cliente: { rotulo: 'Sem interesse do cliente', curto: 'cliente', ajuda: 'O cliente recusou a proposta' },
+  representante: { rotulo: 'Sem interesse do representante', curto: 'representante', ajuda: 'O representante não vai trabalhar este cliente' },
+});
+/** Motivos de uma origem (a lista vem de listarMotivos, com a coluna origem). */
+export const motivosDaOrigem = (motivos, origem) => motivos.filter((m) => (m.origem ?? 'cliente') === origem);
+
 /** Validação do formulário "Registrar contato" — mesmas regras dos CHECKs/triggers do banco. */
 export function validarContato({ canal, resultado, motivoId, motivoExigeObservacao, observacao, dataContato, dataRetorno, dataPedido }) {
   const erros = [];

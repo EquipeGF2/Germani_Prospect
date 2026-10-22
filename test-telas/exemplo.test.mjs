@@ -159,13 +159,13 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.ok(supervisores >= 2, `supervisores: ${supervisores}`);
   await pagina.click('.exp-linha:not(.raiz):not(.cab) b.num >> nth=0');         // clicar em qualquer parte da linha escolhe e abre
   assert.ok(await pagina.locator('.exp-linha:not(.raiz):not(.cab)').count() > supervisores, 'abriu os representantes');
-  // da totalidade: 4 partes que somam o total do ramo; dos contactados: as 4 etapas do processo
+  // da totalidade: 5 partes (sem interesse do cliente e do representante separados) que somam o total do ramo; dos contactados: as 4 etapas do processo
   const partesTotal = await pagina.locator('#grafico-totalidade .exp-legenda b').allInnerTexts();
   const totalRamo = Number((await pagina.locator('#grafico-totalidade .exp-total b').innerText()).replace(/\./g, ''));
-  assert.equal(partesTotal.length, 4);
-  assert.equal(partesTotal.reduce((t, x) => t + Number(x.replace(/\./g, '')), 0), totalRamo, 'as 4 partes somam o total');
+  assert.equal(partesTotal.length, 5);
+  assert.equal(partesTotal.reduce((t, x) => t + Number(x.replace(/\./g, '')), 0), totalRamo, 'as 5 partes somam o total');
   assert.equal(await pagina.locator('#grafico-contactados .exp-etapa').count(), 4);
-  assert.equal(await pagina.locator('.exp-linha.cab span').count(), 11, 'colunas: ramo, prospects, contactados, cobertura, sem interesse, 3 etapas, pedido realizado, R$');
+  assert.equal(await pagina.locator('.exp-linha.cab span').count(), 12, 'colunas: ramo, prospects, contactados, cobertura, sem interesse do cliente e do representante, 3 etapas, pedido realizado, R$');
   await pagina.locator('.exp-nivel[data-nivel="cidade"]').dragTo(pagina.locator('.exp-nivel[data-nivel="supervisor"]'));
   assert.match(await pagina.locator('.exp-niveis .exp-nivel >> nth=0').innerText(), /Cidade/, 'arrastou Cidade para o 1º nível');
   await pagina.click('.exp-linha:not(.raiz):not(.cab) .nome >> nth=0');
@@ -213,7 +213,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await telaPronta();
   await pagina.waitForSelector('.lista-tabela tbody tr');
   const ordem = await pagina.locator('.chip-situacao').evaluateAll((els) => els.slice(1).map((el) => el.dataset.status));
-  const processo = ['aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse', 'invalido'];
+  const processo = ['aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse:cliente', 'sem_interesse:representante', 'invalido'];
   assert.ok(ordem.length >= 2 && ordem.every((x, i) => i === 0 || processo.indexOf(x) > processo.indexOf(ordem[i - 1])), `ordem: ${ordem}`);
   // filtros em cascata: escolher a cidade deixa só os representantes dela
   const opcoesDe = (id) => pagina.locator(`#${id} option`).evaluateAll((os) => os.slice(1).map((o) => o.value));

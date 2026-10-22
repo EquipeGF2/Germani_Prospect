@@ -131,7 +131,8 @@ export async function render(conteudo, { usuario }) {
     const contSemSI = ind.contactados - ind.semInteresse;   // contactados que seguem no processo (sem os sem interesse)
     const partes = [
       ['contactados', 'Contactados', contSemSI, '#1D4ED8'],
-      ['sem_interesse', 'Sem interesse', ind.semInteresse, '#3F3F46'],
+      ['si_cliente', 'Sem interesse do cliente', ind.siCliente, '#3F3F46'],
+      ['si_representante', 'Sem interesse do representante', ind.siRepresentante, '#B45309'],
       ['nao_contactados', 'Não contactados', ind.status.nao_contactado, '#9CA3AF'],
       ['inativos', 'Inativos (inválidos / baixados)', ind.status.invalido, '#E5E7EB'],
     ];
@@ -165,7 +166,7 @@ export async function render(conteudo, { usuario }) {
         ? h('a', { class: 'botao pequeno', id: 'abrir-lista', href: enderecoLista(escolhido.filtros) }, `Abrir na Lista principal · ${n0(ind.qtd)} prospects`)
         : h('p', { class: 'ajuda', style: 'margin:0' }, 'Escolha um ramo na árvore para abrir a lista dele.'));
 
-    const cab = h('div', { class: 'exp-linha cab' }, ['Ramo', 'Prospects', 'Contactados', 'Cobertura', 'Sem interesse', 'Ag. cadastro', 'Ag. financeiro', 'Ag. pedido', 'Pedido realizado', 'Pedidos (R$)', 'Potencial (R$)']
+    const cab = h('div', { class: 'exp-linha cab' }, ['Ramo', 'Prospects', 'Contactados', 'Cobertura', 'S. int. cliente', 'S. int. repr.', 'Ag. cadastro', 'Ag. financeiro', 'Ag. pedido', 'Pedido realizado', 'Pedidos (R$)', 'Potencial (R$)']
       .map((t, i) => h('span', { class: i ? 'num' : '' }, t)));
     // clicar em qualquer parte da linha escolhe o ramo e abre (de novo na linha já escolhida e aberta: fecha); a seta só abre/fecha
     const clicarLinha = (n) => {
@@ -182,14 +183,15 @@ export async function render(conteudo, { usuario }) {
       // `dados.r` = rótulo do número no cartão do celular; `cel` = ordem nele (grade 4 × 2); inativos só aparecem no celular
       h('b', { class: 'num qtd' }, n0(n.ind.qtd)), h('span', { class: 'quebra', 'aria-hidden': 'true' }),
       h('span', { class: 'num contact' }, n0(n.ind.contactados)),
-      h('span', { class: 'num', dados: { r: 'Cobert.', cel: 7 } }, pct(n.ind.cobertura)),
-      h('span', { class: 'num', dados: { r: 'S. int.', cel: 5 } }, n0(n.ind.semInteresse)),
+      h('span', { class: 'num cobertura', dados: { r: 'Cobert.', cel: 9 } }, pct(n.ind.cobertura)),
+      h('span', { class: 'num', dados: { r: 'S.I. cli.', cel: 5 } }, n0(n.ind.siCliente)),
+      h('span', { class: 'num', dados: { r: 'S.I. rep.', cel: 6 } }, n0(n.ind.siRepresentante)),
       h('span', { class: 'num', dados: { r: 'Ag. cad.', cel: 1 } }, n0(n.ind.status.aguardando_cadastro)),
       h('span', { class: 'num', dados: { r: 'Ag. fin.', cel: 2 } }, n0(n.ind.status.analise_financeira)),
       h('span', { class: 'num', dados: { r: 'Ag. ped.', cel: 3 } }, n0(n.ind.aguardandoPedido)),
       h('b', { class: 'num', dados: { r: 'Pedidos', cel: 4 } }, n0(n.ind.vendas)),
       h('span', { class: 'num', dados: { r: 'Valor', cel: 8 } }, reais(n.ind.valorPedidos)), h('span', { class: 'num potencial' }, reais(n.ind.potencial)),
-      h('span', { class: 'num so-celular', dados: { r: 'Inativos', cel: 6 } }, n0(n.ind.status.invalido))));
+      h('span', { class: 'num so-celular', dados: { r: 'Inativos', cel: 7 } }, n0(n.ind.status.invalido))));
 
     return [
       h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar carteira'), tipos),

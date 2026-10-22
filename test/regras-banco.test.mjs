@@ -422,3 +422,26 @@ test('representante registrou "sem interesse" e o cadastro chega: próxima etapa
     ['cadastro', 'sem_interesse', 'analise_financeira', 'erp', 'via importação do cadastro (C1)'],
   ]);
 });
+
+test('sem interesse do cliente × do representante: a origem vem do motivo; o resumo separa os do representante', async () => {
+  const motivos = (await db.execute("SELECT codigo, origem FROM motivos_sem_interesse WHERE uso_app = 1")).rows;
+  assert.ok(motivos.some((m) => m.origem === 'cliente') && motivos.some((m) => m.origem === 'representante'));
+  assert.equal(motivos.find((m) => m.codigo === 'PRECO').origem, 'cliente', 'os motivos antigos são do cliente');
+  const siRep = async () => Number((await db.execute("SELECT COALESCE(SUM(si_representante), 0) AS n FROM resumo_carteira")).rows[0].n);
+  const id = await criarProspect(db, { n: 1 });
+  await registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'REP_FORA_ROTA', data: '2026-10-01' });
+  let p = await prospect(db, id);
+  assert.equal(p.status_atual, 'sem_interesse', 'um status só');
+  assert.equal(p.sem_interesse_origem, 'representante');
+  assert.equal(p.status_descricao, 'Sem interesse · representante');
+  assert.equal(await siRep(), 1);
+  // novo registro (nunca substitui): agora o cliente recusou — vale o último motivo
+  await registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-05' });
+  p = await prospect(db, id);
+  assert.equal(p.sem_interesse_origem, 'cliente');
+  assert.equal(p.status_descricao, 'Sem interesse · cliente');
+  assert.equal(await siRep(), 0);
+  assert.equal(Number((await db.execute({ sql: "SELECT COUNT(*) AS n FROM contatos WHERE prospect_id = ?", args: [id] })).rows[0].n), 2);
+  // "Outro" do representante também exige observação
+  await assert.rejects(registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'REP_OUTRO', data: '2026-10-06' }), /exige observação/);
+});

@@ -21,7 +21,7 @@ const COLUNAS_LISTA = ['id', 'cnpj', 'razao_social', 'nome_fantasia', 'endereco'
   'latitude', 'longitude', 'telefone', 'tipologia_gtm', 'onda', 'status_atual', 'status_nome', 'status_descricao', 'status_cor',
   'tentativas', 'dt_primeiro_contato', 'dt_segundo_contato', 'dt_ultimo_contato', 'dt_atendido', 'data_proxima_acao',
   'dias_corridos', 'pendente_hoje', 'retorno_pendente', 'na_lista', 'atendido', 'prazo_cadastro_vencido',
-  'motivo_sem_interesse', 'dt_cadastro_erp', 'dt_pedido', 'numero_pedido', 'dt_baixa', 'vendedor_id', 'vendedor_nome', 'supervisor_id'];
+  'motivo_sem_interesse', 'sem_interesse_origem', 'dt_cadastro_erp', 'dt_pedido', 'numero_pedido', 'dt_baixa', 'vendedor_id', 'vendedor_nome', 'supervisor_id'];
 // rota/subrota só existem para prospects de vendedor (nunca de representante), mesmo na visão de gestão
 const COLUNAS_ROTA = [
   "CASE WHEN vendedor_tipo_atuacao = 'vendedor' THEN rota END AS rota",

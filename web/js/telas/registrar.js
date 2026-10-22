@@ -1,9 +1,9 @@
-// Registro no app: Atendido · Sem interesse (motivo) · Reabrir com pedido identificado. docs/03 §2
+// Registro no app: Atendido · Sem interesse do cliente / do representante (motivo de cada um) · Reabrir com pedido. docs/03 §2
 // "Não atendido" não gera registro. A data é a do aparelho; o banco confere tudo de novo (triggers).
 import { bancoApp } from '../db.js';
 import { ajustarFicha, consultaFicha } from '../../shared/carteira.mjs';
 import { comandoRegistrarContato, listarMotivos } from '../../shared/registro.mjs';
-import { CANAIS, ROTULOS_RESULTADO, validarContato } from '../../shared/status.mjs';
+import { CANAIS, motivosDaOrigem, ORIGENS_SEM_INTERESSE, ROTULOS_RESULTADO, validarContato } from '../../shared/status.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { mensagemErro } from '../../shared/gravacao.mjs';
 import { h, montar, mensagem, aviso, comEspera, formatar } from '../ui.js';
@@ -29,21 +29,32 @@ export async function render(conteudo, ctx) {
   }
   const motivos = await listarMotivos(db);
   const hoje = hojeSaoPaulo();
-  // reabrir com pedido só faz sentido para quem está "sem interesse"
-  const resultados = ['atendido', 'sem_interesse', ...(p.status_atual === 'sem_interesse' ? ['pedido_informado'] : [])];
+  // "sem interesse" em duas opções (do cliente / do representante), cada uma com os seus motivos; o registro é o mesmo
+  // (resultado sem_interesse) e a origem vem do motivo. Reabrir com pedido só para quem está "sem interesse".
+  const escolhas = [['atendido', ROTULOS_RESULTADO.atendido, 'Segue para Aguardando cadastro'],
+    ...Object.entries(ORIGENS_SEM_INTERESSE).map(([o, d]) => [`sem_interesse:${o}`, d.rotulo, d.ajuda]),
+    ...(p.status_atual === 'sem_interesse' ? [['pedido_informado', ROTULOS_RESULTADO.pedido_informado, '']] : [])];
   let resultado = '';
+  let origem = '';
 
-  const opcoes = h('div', { class: 'opcoes-resultado', role: 'radiogroup' }, resultados.map((r) => h('label', { class: `opcao ${r}` },
-    h('input', { type: 'radio', name: 'resultado', value: r, onchange: () => { resultado = r; atualizar(); } }),
-    h('span', {}, ROTULOS_RESULTADO[r]))));
+  const opcoes = h('div', { class: 'opcoes-resultado', role: 'radiogroup' }, escolhas.map(([v, rotulo, ajuda]) => h('label', { class: `opcao ${v.split(':')[0]}`, dados: { escolha: v } },
+    h('input', { type: 'radio', name: 'resultado', value: v, onchange: () => { [resultado, origem = ''] = v.split(':'); trocarMotivos(); atualizar(); } }),
+    h('span', {}, rotulo, ajuda ? h('small', { class: 'ajuda', style: 'display:block;margin:0' }, ajuda) : null))));
   const canal = h('select', { id: 'canal', 'aria-label': 'Canal' }, CANAIS.map((c) => h('option', { value: c }, NOMES_CANAL[c])));
   const data = h('input', { type: 'date', id: 'data-contato', value: hoje, max: hoje, min: p.dt_ultimo_contato ?? null });
-  const motivo = campoMotivo(motivos);
+  const motivo = campoMotivo([]);
+  const rotuloMotivo = h('label', { for: 'motivo' }, 'Motivo *');
+  // a lista de motivos é a da origem escolhida
+  function trocarMotivos() {
+    montar(motivo, h('option', { value: '' }, 'Selecione o motivo'),
+      motivosDaOrigem(motivos, origem || 'cliente').map((m) => h('option', { value: m.id }, m.descricao)));
+    rotuloMotivo.textContent = origem ? `Motivo do ${ORIGENS_SEM_INTERESSE[origem].curto} *` : 'Motivo *';
+  }
   const observacao = h('textarea', { id: 'observacao', rows: 3, maxlength: 500, placeholder: 'Opcional' });
   const rotuloObs = h('label', { for: 'observacao' }, 'Observação');
   const retorno = h('input', { type: 'date', id: 'data-retorno', min: hoje });
   const dataPedido = h('input', { type: 'date', id: 'data-pedido', max: hoje });
-  const blocoMotivo = h('div', { class: 'campo oculto' }, h('label', { for: 'motivo' }, 'Motivo *'), motivo);
+  const blocoMotivo = h('div', { class: 'campo oculto' }, rotuloMotivo, motivo);
   const blocoPedido = h('div', { class: 'campo oculto' }, h('label', { for: 'data-pedido' }, 'Data de entrada do pedido *'), dataPedido);
   const blocoRetorno = h('div', { class: 'campo oculto' }, h('label', { for: 'data-retorno' }, 'Retornar em (opcional)'), retorno);
   const erros = h('div');
@@ -80,7 +91,7 @@ export async function render(conteudo, ctx) {
       catch (e) { throw new Error(mensagemErro(e)); }
       return true;
     });
-    if (ok) { aviso(`${ROTULOS_RESULTADO[resultado]} registrado.`); irPara(`/ficha?id=${id}`); }
+    if (ok) { aviso(`${origem ? ORIGENS_SEM_INTERESSE[origem].rotulo : ROTULOS_RESULTADO[resultado]} registrado.`); irPara(`/ficha?id=${id}`); }
   }
 
   montar(conteudo,

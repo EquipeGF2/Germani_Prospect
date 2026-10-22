@@ -474,7 +474,7 @@ td.pct { min-width: 96px; }
 .exp-quadros { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
 .exp-arvore { padding: 0; overflow: hidden; }
 .exp-arvore .rolagem { overflow-x: auto; }
-.exp-linha { display: grid; grid-template-columns: minmax(170px, 240px) repeat(3, minmax(84px, 1fr)) repeat(5, minmax(66px, 1fr)) repeat(2, minmax(96px, 1fr)); gap: 0 8px; align-items: center; padding: 4px 16px; border-bottom: 1px solid #F3F4F6; font-size: 14px; min-width: 960px; }
+.exp-linha { display: grid; grid-template-columns: minmax(170px, 240px) repeat(3, minmax(84px, 1fr)) repeat(6, minmax(66px, 1fr)) repeat(2, minmax(96px, 1fr)); gap: 0 8px; align-items: center; padding: 4px 16px; border-bottom: 1px solid #F3F4F6; font-size: 14px; min-width: 1030px; }
 .exp-linha.cab { padding: 10px 16px; border-bottom-color: var(--borda); font-size: 10.5px; font-weight: 600; letter-spacing: .01em; text-transform: uppercase; color: var(--suave); line-height: 1.25; align-items: end; }
 .exp-linha.raiz { background: #F9FAFB; } .exp-linha.raiz .nome { font-weight: 700; }
 /* linha sob o mouse fica preenchida: dá para seguir os números até a coluna sem perder a linha */
@@ -599,11 +599,11 @@ td.pct { min-width: 96px; }
   .exp-grafico .botao { align-self: stretch; text-align: center; }
   .exp-linha.cab { display: none; }
   /* cartão por ramo: nome e prospects; abaixo, grade 4 × 2 — Ag. cad. · Ag. fin. · Ag. ped. · Pedidos /
-     S. int. · Inativos · Cobert. · Valor */
+     S.I. cliente · S.I. representante · Inativos · Valor (a cobertura fica no gráfico do ramo escolhido) */
   .exp-linha { min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.35fr); gap: 6px 8px; padding: 10px 12px 10px calc(12px + var(--prof, 0) * 14px); font-size: 13px; }
   .exp-linha .ramo { grid-column: 1 / 4; padding-left: 0 !important; }
   .exp-linha .qtd { grid-column: 4; justify-self: end; align-self: center; font-size: 16px; }
-  .exp-linha .contact, .exp-linha .potencial, .exp-linha .quebra { display: none; }
+  .exp-linha .contact, .exp-linha .potencial, .exp-linha .quebra, .exp-linha .cobertura { display: none; }
   .exp-linha .num[data-r] { text-align: left; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #F9FAFB; border-radius: 6px; padding: 3px 6px; }
   .exp-linha.escolhida .num[data-r] { background: rgba(255,255,255,.7); }
   .exp-linha .num[data-r]::before { content: attr(data-r); display: block; color: var(--suave); font-weight: 400; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0; }
