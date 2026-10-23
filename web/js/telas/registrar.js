@@ -37,7 +37,7 @@ export async function render(conteudo, ctx) {
   let resultado = '';
   let origem = '';
 
-  const opcoes = h('div', { class: 'opcoes-resultado', role: 'radiogroup' }, escolhas.map(([v, rotulo, ajuda]) => h('label', { class: `opcao ${v.split(':')[0]}`, dados: { escolha: v } },
+  const opcoes = h('div', { class: 'opcoes-resultado em-linha', role: 'radiogroup' }, escolhas.map(([v, rotulo, ajuda]) => h('label', { class: `opcao ${v.split(':')[0]}`, dados: { escolha: v } },
     h('input', { type: 'radio', name: 'resultado', value: v, onchange: () => { [resultado, origem = ''] = v.split(':'); trocarMotivos(); atualizar(); } }),
     h('span', {}, rotulo, ajuda ? h('small', { class: 'ajuda', style: 'display:block;margin:0' }, ajuda) : null))));
   const canal = h('select', { id: 'canal', 'aria-label': 'Canal' }, CANAIS.map((c) => h('option', { value: c }, NOMES_CANAL[c])));
