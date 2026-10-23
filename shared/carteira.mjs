@@ -275,7 +275,7 @@ export function consultaLinhaTempo({ prospectId, limite = null }) {
 
 /** Ficha: dados do ERP da última liberação (condição e forma como vieram, prazo médio, sem limite). */
 export function consultaCreditoErp({ prospectId }) {
-  return { sql: `SELECT cond_pgto_codigo, cond_pgto_descricao, forma_pgto_codigo, forma_pgto_descricao, prazo_medio_dias, sem_limite, limite_cnpj, limite_grupo
+  return { sql: `SELECT cond_pgto_codigo, cond_pgto_descricao, forma_pgto_codigo, forma_pgto_descricao, prazo_medio_dias, prazo_parcelas, sem_limite, limite_cnpj, limite_grupo
                    FROM liberacoes_credito WHERE prospect_id = ? ORDER BY id DESC LIMIT 1`, args: [prospectId] };
 }
 

@@ -173,10 +173,10 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('button:text("Confirmar e gravar")');
   await pagina.waitForSelector('text=passaram para Aguardando pedido');
   await foto('08b-credito');
-  // ficha do 1º cadastrado: condição e forma como vieram do ERP, com o prazo médio
+  // ficha do 1º cadastrado: condição e forma como vieram do ERP; prazo limpo da descrição e médio do código
   await pagina.evaluate(() => { location.hash = '#/ficha?id=1'; });
   await telaPronta();
-  assert.match(await texto(), /Cadastro e crédito no ERP[\s\S]*28B · 21\/28\/35 DD BOLETO · prazo médio 28 dias[\s\S]*Boleto \(filtro: Boleto\)/);
+  assert.match(await texto(), /Cadastro e crédito no ERP[\s\S]*28B · 21\/28\/35 DD BOLETO[\s\S]*Boleto \(filtro: Boleto\)[\s\S]*21\/28\/35 dias · médio 28/);
   await foto('08c-ficha-credito-erp');
 
   // 5. parâmetros

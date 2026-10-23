@@ -5,9 +5,10 @@
 // Regras:
 //   * limite efetivo = Créd. Cliente; se estiver vazio, vale o Créd. Grupo — o mesmo valor para todas as empresas da
 //     mesma raiz de CNPJ (limite global do grupo, não somado);
-//   * 9.999.999 = sem limite · 0 = sem crédito (só à vista ou antecipado);
-//   * condição e forma de pagamento ficam gravadas como vieram do ERP; o prazo médio sai da descrição da condição
-//     ("21/28/35 DD BOLETO" → 28); forma_pagamento (antecipado · à vista · boleto) é só o filtro rápido;
+//   * 9.999.999 = sem limite · 0 = sem crédito (a forma continua a do ERP; boleto com 0 é avisado);
+//   * condição e forma de pagamento ficam gravadas como vieram do ERP. A FORMA vem só da Forma Pgto; o PRAZO sai da
+//     descrição da condição, limpo ("14/21/28 DD BOLETO" → "14/21/28"; à vista/antecipado → prazo 1) e o código da
+//     condição é o prazo médio ("21B" → 21); forma_pagamento (antecipado · à vista · boleto) é só o filtro rápido;
 //   * CPF (pessoa física) e CNPJ fora da base são ignorados — o relatório não cadastra prospects novos;
 //   * cliente ainda sem cadastro (não contactado, em prospecção, aguardando cadastro, sem interesse): o relatório
 //     registra também o CADASTRO (Dt. Cadastro + código do cliente) e em seguida a liberação de crédito;
@@ -45,12 +46,23 @@ export const FORMAS_PADRAO = Object.freeze({
 /** Valor do ERP a partir do qual o crédito é "sem limite". */
 export const SEM_LIMITE = 9999999;
 
-/** Prazo médio (dias) da descrição da condição: "21/28/35 DD BOLETO" → 28 · "A VISTA" → 0. */
-export function prazoDaCondicao(descricao) {
-  const m = /^\s*(\d+(?:\s*\/\s*\d+)*)/.exec(String(descricao ?? ''));
-  if (!m) return 0;
-  const dias = m[1].split('/').map(Number);
-  return Math.round(dias.reduce((a, b) => a + b, 0) / dias.length);
+/**
+ * Prazo da condição de pagamento do ERP. O prazo sai da DESCRIÇÃO, limpo ("14/21/28 DD BOLETO" → "14/21/28";
+ * "A VISTA" → "A VISTA" e "ANTECIPADO" → "ANTECIPADO", ambos prazo 1); o CÓDIGO traz o prazo médio ("21B" → 21).
+ * Sem número no código, o médio é a média dos dias da descrição. A forma de pagamento nunca sai daqui.
+ * @returns {{ parcelas: string|null, medio: number }}
+ */
+export function analisarCondicao(codigo, descricao) {
+  const desc = normalizarBusca(descricao ?? '');
+  const m = /^\s*(\d+(?:\s*\/\s*\d+)*)/.exec(desc);
+  if (!m) {
+    const parcelas = /\bVISTA\b/.test(desc) ? 'A VISTA' : /\bANTECIPAD/.test(desc) ? 'ANTECIPADO' : null;
+    if (parcelas) return { parcelas, medio: 1 };
+  }
+  const dias = m ? m[1].split('/').map(Number) : [];
+  const doCodigo = /^\s*(\d+)/.exec(String(codigo ?? ''));
+  const medio = doCodigo ? Number(doCodigo[1]) : dias.length ? Math.round(dias.reduce((a, b) => a + b, 0) / dias.length) : 0;
+  return { parcelas: dias.length ? dias.join('/') : null, medio };
 }
 
 /**
@@ -145,8 +157,8 @@ export async function importarCredito(db, { linhas, colunas = {}, mapaFormas = n
     if (!formaBase) return rejeitar(`forma de pagamento não mapeada: "${valor}"`);
     if (indices.cond !== undefined && !condCodigo) r.avisos.push('sem condição de pagamento no ERP');
 
-    let prazoMedio;
-    if (condDesc || condCodigo) prazoMedio = prazoDaCondicao(condDesc ?? condCodigo);
+    let prazoMedio; let parcelas = null;
+    if (condDesc || condCodigo) ({ parcelas, medio: prazoMedio } = analisarCondicao(condCodigo, condDesc));
     else {
       const textoPrazo = texto(linha, indices.prazo);
       prazoMedio = textoPrazo === null ? 0 : Number(String(textoPrazo).replace(/\D+$/, '').replace(',', '.'));
@@ -167,16 +179,10 @@ export async function importarCredito(db, { linhas, colunas = {}, mapaFormas = n
     else { limite = 0; origem = 'informado'; r.avisos.push('sem crédito informado (cliente e grupo vazios) — limite 0'); }
     const semLimite = limite >= SEM_LIMITE ? 1 : 0;
 
-    // filtro rápido: antecipado fica antecipado; sem crédito (0) ou sem prazo → à vista; senão a forma mapeada
-    let forma = formaBase;
-    if (formaBase !== 'antecipado' && limite === 0) {
-      forma = 'a_vista';
-      if (formaBase !== 'a_vista') r.avisos.push('sem crédito no ERP (limite 0) — só à vista ou antecipado');
-    } else if (formaBase === 'boleto' && prazoMedio === 0) {
-      forma = 'a_vista';
-      r.avisos.push('condição sem prazo — tratada como à vista');
-    }
-    const prazo = forma === 'boleto' ? prazoMedio : 0;
+    // a forma vem só da Forma Pgto do ERP (o crédito e a condição não a mudam)
+    const forma = formaBase;
+    const prazo = prazoMedio;
+    if (limite === 0 && forma === 'boleto') r.avisos.push('boleto sem crédito no ERP (limite 0)');
 
     const d = analisarData(linha[indices.data_cadastro]);
     if (d.erro || !d.data) return rejeitar(`data de cadastro: ${d.erro ?? 'vazia'}`);
@@ -196,10 +202,8 @@ export async function importarCredito(db, { linhas, colunas = {}, mapaFormas = n
     if (inicioCampanha && d.data < inicioCampanha) { r.antesCampanha = true; r.avisos.push(`cadastro anterior ao início da campanha (${d.data}) — já era cliente`); }
     const registraCadastro = STATUS_SEM_CADASTRO.includes(p.status_atual);
     if (registraCadastro) r.avisos.push(`cadastro registrado pelo relatório (${NOME_STATUS[p.status_atual]} → Análise financeira)`);
-    const erp = [condCodigo || condDesc ? `cond. ${[condCodigo, condDesc].filter(Boolean).join(' ')}` : null,
-      formaCodigo || formaDesc ? `forma ${[formaCodigo, formaDesc].filter(Boolean).join(' ')}` : null].filter(Boolean).join(' · ');
-    r.credito = { prospectId: Number(p.id), forma, prazo, prazoMedio, limCnpj, limGrupo, limite, origem, semLimite, dataCadastro: d.data, codigo, registraCadastro,
-      condCodigo, condDesc, formaCodigo, formaDesc, observacao: condCodigo || condDesc || formaDesc ? `ERP: ${erp}` : null,
+    r.credito = { prospectId: Number(p.id), forma, prazo, prazoMedio, parcelas, limCnpj, limGrupo, limite, origem, semLimite, dataCadastro: d.data, codigo, registraCadastro,
+      condCodigo, condDesc, formaCodigo, formaDesc, observacao: condCodigo || condDesc ? `ERP: cond. ${[condCodigo, condDesc].filter(Boolean).join(' ')}` : null,
       dataLiberacao: p.dt_cadastro_erp && p.dt_cadastro_erp > hoje ? p.dt_cadastro_erp : hoje };
   });
 
@@ -251,10 +255,10 @@ export async function importarCredito(db, { linhas, colunas = {}, mapaFormas = n
       stmts.push({
         sql: `INSERT INTO liberacoes_credito (prospect_id, origem, importacao_id, data_liberacao, forma_pagamento, prazo_pagamento_dias,
                                               limite_cnpj, limite_grupo, limite_credito, limite_origem, observacao,
-                                              cond_pgto_codigo, cond_pgto_descricao, forma_pgto_codigo, forma_pgto_descricao, prazo_medio_dias, sem_limite)
-              VALUES (?, 'importacao', ?, max(?, COALESCE((SELECT dt_cadastro_erp FROM prospects WHERE id = ?), ?)), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                              cond_pgto_codigo, cond_pgto_descricao, forma_pgto_codigo, forma_pgto_descricao, prazo_medio_dias, sem_limite, prazo_parcelas)
+              VALUES (?, 'importacao', ?, max(?, COALESCE((SELECT dt_cadastro_erp FROM prospects WHERE id = ?), ?)), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [c.prospectId, importacaoId, c.dataLiberacao, c.prospectId, c.dataLiberacao, c.forma, c.prazo, c.limCnpj, c.limGrupo, c.limite, c.origem, c.observacao,
-          c.condCodigo, c.condDesc, c.formaCodigo, c.formaDesc, c.prazoMedio, c.semLimite],
+          c.condCodigo, c.condDesc, c.formaCodigo, c.formaDesc, c.prazoMedio, c.semLimite, c.parcelas],
       });
       return stmts;
     });

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, cnpjTeste, evento, prospect, registrarContato } from './auxiliar.mjs';
-import { contarFormas, importarCredito, mapearColunasCredito, prazoDaCondicao } from '../shared/importar-credito.mjs';
+import { contarFormas, importarCredito, mapearColunasCredito, analisarCondicao } from '../shared/importar-credito.mjs';
 import { consultaCreditoErp, consultaGrupoCnpj } from '../shared/carteira.mjs';
 import { comandoLiberarCredito, validarLiberacao } from '../shared/financeiro.mjs';
 import { normalizarBusca } from '../shared/texto.mjs';
@@ -39,7 +39,7 @@ test('relatório de crédito: limite CNPJ prevalece, grupo só quando CNPJ vazio
     [cnpjTeste(2), '102', 'Empresa 2', 'Antecipado', '', '', '30000', '05/10/2026'],             // CNPJ vazio → grupo 30.000
     [cnpjTeste(3), '103', 'Outra Razão', 'À vista', '0', '', '', '16/10/2026'],                 // sem interesse → cadastro + liberação, limite 0
     [cnpjTeste(4), '104', 'Empresa 4', 'Cheque', '30', '1000', '', '16/10/2026'],               // forma não mapeada
-    [cnpjTeste(5), '105', 'Empresa 5', 'BOLETO', '30', '', '', '16/10/2026'],                   // boleto sem limite → sem crédito: à vista
+    [cnpjTeste(5), '105', 'Empresa 5', 'BOLETO', '30', '', '', '16/10/2026'],                   // boleto sem limite → sem crédito: a forma continua boleto (aviso)
     [cnpjTeste(6), '106', 'Empresa 6', 'Boleto', '30', '1000', '', '16/10/2026'],               // venda realizada → ignorada
     [cnpjTeste(7), '107', 'Empresa 7', 'Boleto', '30', '1000', '', '16/10/2026'],               // baixado → rejeitada
     [cnpjTeste(99), '199', 'Fora', 'Boleto', '30', '1000', '', '16/10/2026'],                   // fora da base → ignorada
@@ -53,8 +53,8 @@ test('relatório de crédito: limite CNPJ prevalece, grupo só quando CNPJ vazio
   const r = await importarCredito(db, { ...base, linhas });
   const msg = (n) => r.resultados.find((x) => x.numeroLinha === n).erros.concat(r.resultados.find((x) => x.numeroLinha === n).avisos).join(' ');
   assert.match(msg(5), /não mapeada: "Cheque"/);
-  assert.match(msg(6), /sem crédito no ERP \(limite 0\)/);
-  assert.equal((await prospect(db, p[5])).forma_pagamento, 'a_vista');
+  assert.match(msg(6), /boleto sem crédito no ERP \(limite 0\)/);
+  assert.equal((await prospect(db, p[5])).forma_pagamento, 'boleto');
   assert.match(msg(7), /venda já realizada/);
   assert.match(msg(8), /baixado/);
   assert.match(msg(10), /futuro/);
@@ -119,12 +119,16 @@ test('relatório de cadastro do ERP: colunas pela posição, prazo médio da con
   assert.deepEqual(m.faltando, []);
   assert.deepEqual([m.indices.codigo, m.indices.cnpj, m.indices.cond, m.indices.cond_desc, m.indices.forma, m.indices.forma_desc, m.indices.limite_cnpj, m.indices.limite_grupo, m.indices.data_cadastro],
     [0, 1, 3, 4, 5, 6, 8, 9, 10]);
-  assert.deepEqual(['21/28/35 DD BOLETO', '28 DD BOLETO', '07/23 ALIMENTAR/PRATO FEITO', '30/40/60 DD BOLETO', 'A VISTA', 'ANTECIPADO', null].map(prazoDaCondicao), [28, 28, 15, 43, 0, 0, 0]);
+  // prazo limpo da descrição; o código é o prazo médio; à vista e antecipado = prazo 1
+  assert.deepEqual([['21B', '14/21/28 DD BOLETO'], ['28A', '28 DD BOLETO'], ['15B', '07/23 ALIMENTAR/PRATO FEITO'], ['28F', '28 DD DEPOSITO'],
+    ['00A', 'A VISTA'], ['00B', 'ANTECIPADO'], ['00E', 'CONFISSAO DE DIVIDAS'], ['ECO', 'Ecommerce'], [null, '21/35 DD BOLETO']].map(([c, d]) => analisarCondicao(c, d)),
+  [{ parcelas: '14/21/28', medio: 21 }, { parcelas: '28', medio: 28 }, { parcelas: '7/23', medio: 15 }, { parcelas: '28', medio: 28 },
+    { parcelas: 'A VISTA', medio: 1 }, { parcelas: 'ANTECIPADO', medio: 1 }, { parcelas: null, medio: 0 }, { parcelas: null, medio: 0 }, { parcelas: '21/35', medio: 28 }]);
 
   const { db, p } = await cenario();
   const linhas = [CAB_ERP,
     [101, cnpjTeste(1), 'Empresa 1', '28B', '21/28/35 DD BOLETO', 1, 'Boleto', null, 15000, null, 46310],        // serial Excel = 2026-10-15
-    [102, cnpjTeste(2), 'Empresa 2', '28A', '28 DD BOLETO', 1, 'Boleto', null, 0, null, '05/10/2026'],           // sem crédito → à vista
+    [102, cnpjTeste(2), 'Empresa 2', '28F', '28 DD DEPOSITO', 2, 'Deposito e Pix', null, 0, null, '05/10/2026'], // forma só da Forma Pgto
     [103, cnpjTeste(3), 'Empresa 3', '00A', 'A VISTA', 4, 'A vista', null, 9999999, null, '16/10/2026'],        // sem limite
     [104, 12345678901, 'Pessoa física', '00A', 'A VISTA', 4, 'A vista', null, 0, null, '16/10/2026'],            // CPF
     [105, '1234567890', 'CPF sem zero', '00A', 'A VISTA', 4, 'A vista', null, 0, null, '16/10/2026'],             // CPF (zero perdido)
@@ -136,16 +140,18 @@ test('relatório de cadastro do ERP: colunas pela posição, prazo médio da con
   let x = await prospect(db, p[1]);
   assert.deepEqual([x.forma_pagamento, x.prazo_pagamento_dias, x.limite_credito, x.codigo_cliente_erp, x.dt_cadastro_erp], ['boleto', 28, 15000, '101', '2026-10-15']);
   x = await prospect(db, p[2]);
-  assert.deepEqual([x.forma_pagamento, x.prazo_pagamento_dias, x.limite_credito], ['a_vista', 0, 0]);
+  assert.deepEqual([x.forma_pagamento, x.prazo_pagamento_dias, x.limite_credito], ['boleto', 28, 0]);
   const lib = (await db.execute({ sql: 'SELECT * FROM liberacoes_credito WHERE prospect_id = ?', args: [p[1]] })).rows[0];
-  assert.deepEqual([lib.cond_pgto_codigo, lib.cond_pgto_descricao, lib.forma_pgto_codigo, lib.forma_pgto_descricao, Number(lib.prazo_medio_dias), Number(lib.sem_limite)],
-    ['28B', '21/28/35 DD BOLETO', '1', 'Boleto', 28, 0]);
+  assert.deepEqual([lib.cond_pgto_codigo, lib.cond_pgto_descricao, lib.forma_pgto_codigo, lib.forma_pgto_descricao, Number(lib.prazo_medio_dias), lib.prazo_parcelas, Number(lib.sem_limite)],
+    ['28B', '21/28/35 DD BOLETO', '1', 'Boleto', 28, '21/28/35', 0]);
   const det = async (id) => (await db.execute({ sql: "SELECT detalhe FROM movimentacoes WHERE prospect_id = ? AND tipo = 'liberacao_credito'", args: [id] })).rows[0].detalhe;
-  assert.equal(await det(p[1]), 'boleto 28 dias · limite R$ 15000.00 (CNPJ) · relatório de crédito — ERP: cond. 28B 21/28/35 DD BOLETO · forma 1 Boleto');
-  assert.match(await det(p[3]), /^à vista · sem limite \(CNPJ\)/);
+  assert.equal(await det(p[1]), 'Boleto 21/28/35 dias (médio 28) · limite R$ 15000.00 (CNPJ) · relatório de crédito — ERP: cond. 28B 21/28/35 DD BOLETO');
+  assert.match(await det(p[2]), /^Deposito e Pix 28 dias · limite R\$ 0\.00/);
+  assert.match(await det(p[3]), /^A vista · sem limite \(CNPJ\)/);
   // ficha: dados do ERP da última liberação
   const erp = (await db.execute(consultaCreditoErp({ prospectId: p[3] }))).rows[0];
-  assert.deepEqual([erp.cond_pgto_descricao, Number(erp.sem_limite)], ['A VISTA', 1]);
+  assert.deepEqual([erp.cond_pgto_descricao, erp.prazo_parcelas, Number(erp.sem_limite)], ['A VISTA', 'A VISTA', 1]);
+  assert.equal(Number((await prospect(db, p[3])).prazo_pagamento_dias), 1);
 });
 
 test('Créd. Grupo: vale quando o do cliente está vazio, o mesmo valor (não somado) em todas as empresas da raiz', async () => {
