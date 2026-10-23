@@ -400,7 +400,7 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 ## 12. Explorar carteira (migração 0012 · `shared/explorar.mjs`)
 
 - **É a página inicial do app** (depois do login e no endereço vazio); sem o Explorar no perfil, abre a primeira tela
-  permitida (Início, Lista, Console de crédito…). O Início continua no menu.
+  permitida (Início, Lista, Console de crédito…). O Início **saiu do menu** (os números estão no Explorar; evita leitura à toa) — continua só pelo endereço `#/inicio` (no modo demonstração, o botão "Carregar dados de exemplo" fica lá).
 - Abre **já filtrado** em quem entrou: representante/vendedor na própria carteira; supervisor na sua equipe — inclusive
   quem vê todas as equipes (ex.: Julio), com Supervisor como 1º nível; gerente e administrador na base toda.
 - Árvore **do total até o cliente** com níveis livres, em qualquer ordem: Supervisor, Representante, Cidade, Segmento
