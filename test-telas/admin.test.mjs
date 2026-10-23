@@ -2,7 +2,7 @@
 // Usa o Chromium instalado (PLAYWRIGHT_BROWSERS_PATH ou CHROMIUM_PATH). Não roda no CI padrão.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
@@ -174,7 +174,11 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   assert.ok(await pagina.isDisabled('button:text("Baixar rejeitadas (0) · CSV")'));
   const download = pagina.waitForEvent('download');
   await pagina.click('button:text("Baixar aceitas (2) · CSV")');
-  assert.match((await download).suggestedFilename(), /^simulacao-credito-.*-aceitas\.csv$/);
+  const baixado = await download;
+  assert.match(baixado.suggestedFilename(), /^simulacao-credito-.*-aceitas\.csv$/);
+  const csv = await readFile(await baixado.path(), 'utf8');
+  assert.match(csv, /Linha;Resultado;CNPJ;Data de cadastro;Mensagens/);
+  assert.match(csv, /15\/10\/2026/);
   assert.match(await texto(), /1 linha\(s\) ignorada\(s\) não entram nos relatórios/);
   await foto('08a-credito-simulacao');
   await pagina.click('button:text("Confirmar e gravar")');

@@ -1,7 +1,9 @@
 // Bloco de resultado de importação (simulação ou gravação), comum às três telas.
 import { h, numeros, tabela, baixarCsv, selo, formatar } from '../ui.js';
 
-/** resultados: [{ numeroLinha, resultado: aceita|rejeitada|ignorada, cnpj, mensagens: string[] }] */
+/** resultados: [{ numeroLinha, resultado: aceita|rejeitada|ignorada, cnpj, dataCadastro?, mensagens: string[] }] */
+const dataDoArquivo = (d) => (d == null ? '' : /^\d{4}-\d{2}-\d{2}$/.test(d) ? formatar.data(d) : String(d));
+
 export function blocoResultado({ titulo, resumo, resultados, nomeRelatorio }) {
   // relatório em partes: aceitas e rejeitadas; as ignoradas (fora da base, CPF, já registradas) só entram na contagem
   const aceitas = resultados.filter((r) => r.resultado === 'aceita');
@@ -12,6 +14,9 @@ export function blocoResultado({ titulo, resumo, resultados, nomeRelatorio }) {
     { titulo: 'Linha', campo: 'numeroLinha', classe: 'num', texto: (r) => r.numeroLinha },
     { titulo: 'Resultado', valor: (r) => selo(r.resultado, r.resultado), texto: (r) => r.resultado },
     { titulo: 'CNPJ', valor: (r) => (r.cnpj && String(r.cnpj).length === 14 ? formatar.cnpj(r.cnpj) : r.cnpj ?? ''), texto: (r) => r.cnpj ?? '' },
+    // data de cadastro do arquivo (relatório de cadastro e crédito): ISO vira dd/mm/aaaa; inválida aparece como veio
+    ...(resultados.some((r) => 'dataCadastro' in r) ? [{ titulo: 'Data de cadastro', classe: 'num',
+      valor: (r) => dataDoArquivo(r.dataCadastro), texto: (r) => dataDoArquivo(r.dataCadastro) }] : []),
     { titulo: 'Mensagens', valor: (r) => r.mensagens.join(' | '), texto: (r) => r.mensagens.join(' | ') },
   ];
   const nomeParte = (parte) => nomeRelatorio.replace(/\.csv$/i, `-${parte}.csv`);

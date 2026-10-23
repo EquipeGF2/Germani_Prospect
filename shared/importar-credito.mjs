@@ -133,6 +133,9 @@ export async function importarCredito(db, { linhas, colunas = {}, mapaFormas = n
     const numeroLinha = i + 2;
     const bruto = Object.fromEntries(titulos.map((t, j) => [t, linha[j] ?? null]));
     const r = { numeroLinha, bruto, erros: [], avisos: [], resultado: 'aceita' };
+    // data de cadastro como veio no arquivo (vai para o relatório de aceitas/rejeitadas; inválida fica como texto)
+    const dc = analisarData(linha[indices.data_cadastro]);
+    r.dataCadastro = dc.data ?? (limparTexto(linha[indices.data_cadastro]) || null);
     resultados.push(r);
     const rejeitar = (m) => { r.erros.push(m); r.resultado = 'rejeitada'; };
     const ignorar = (m) => { r.erros.push(m); r.resultado = 'ignorada'; };
@@ -185,7 +188,7 @@ export async function importarCredito(db, { linhas, colunas = {}, mapaFormas = n
     const prazo = prazoMedio;
     if (limite === 0 && forma === 'boleto') r.avisos.push('boleto sem crédito no ERP (limite 0)');
 
-    const d = analisarData(linha[indices.data_cadastro]);
+    const d = dc;
     if (d.erro || !d.data) return rejeitar(`data de cadastro: ${d.erro ?? 'vazia'}`);
     if (d.data > hoje) return rejeitar(`data de cadastro no futuro: ${d.data}`);
     const codigo = texto(linha, indices.codigo);
