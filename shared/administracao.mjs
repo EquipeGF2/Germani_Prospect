@@ -44,3 +44,15 @@ export async function linhasDaImportacao(db, { importacaoId, resultado = null })
     args: [importacaoId, resultado, resultado],
   })).rows.map((l) => ({ ...l, mensagens: JSON.parse(l.mensagens).join(' | ') }));
 }
+
+/** Erros do app (0019) dos últimos `dias`: lista (mais recentes primeiro) e os mais frequentes por mensagem. */
+export async function listarErrosApp(db, { dias = 7, limite = 300 } = {}) {
+  const desde = `-${Number(dias)} days`;
+  const [lista, frequentes] = await Promise.all([
+    db.execute({ sql: `SELECT id, registrado_em, login, tela, versao, tipo, mensagem, detalhe, navegador, online FROM erros_app
+                        WHERE registrado_em >= strftime('%Y-%m-%dT%H:%M:%fZ','now', ?) ORDER BY registrado_em DESC LIMIT ?`, args: [desde, limite] }),
+    db.execute({ sql: `SELECT mensagem, COUNT(*) AS vezes, COUNT(DISTINCT login) AS usuarios, MAX(registrado_em) AS ultimo FROM erros_app
+                        WHERE registrado_em >= strftime('%Y-%m-%dT%H:%M:%fZ','now', ?) GROUP BY mensagem ORDER BY vezes DESC LIMIT 20`, args: [desde] }),
+  ]);
+  return { lista: lista.rows, frequentes: frequentes.rows };
+}

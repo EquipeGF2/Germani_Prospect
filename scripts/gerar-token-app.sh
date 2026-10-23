@@ -52,7 +52,7 @@ fi
 TOKEN="$(turso db tokens create "$BANCO" --expiration 90d \
   -p all:data_read -p contatos:data_add -p transferencias:data_add \
   -p rotas:data_add,data_update -p rota_paradas:data_add,data_update,data_delete -p liberacoes_credito:data_add \
-  -p prospects:data_update -p movimentacoes:data_add -p resumo_carteira:data_add,data_update | tr -d '[:space:]')"
+  -p prospects:data_update -p movimentacoes:data_add -p resumo_carteira:data_add,data_update -p erros_app:data_add | tr -d '[:space:]')"
 conferir "$TOKEN"
 echo "::add-mask::$TOKEN"
 echo "TURSO_APP_TOKEN_GERADO=$TOKEN" >> "$GITHUB_ENV"

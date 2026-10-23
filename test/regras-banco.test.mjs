@@ -492,3 +492,14 @@ test('0018: depósito e Pix no filtro (forma_filtro); forma_pagamento de prospec
   assert.equal(det, 'Deposito e Pix 28 dias · limite R$ 500.00 (CNPJ) · relatório de crédito');
   await assert.rejects(db.execute({ sql: "UPDATE prospects SET forma_filtro = 'cheque' WHERE id = ?", args: [id] }), /CHECK/);
 });
+
+test('0019: erros do app — somente inclusão; listagem dos frequentes por mensagem', async () => {
+  const { listarErrosApp } = await import('../shared/administracao.mjs');
+  const ins = (msg, login) => db.execute({ sql: "INSERT INTO erros_app (login, tela, versao, tipo, mensagem, detalhe) VALUES (?, '#/ficha?id=9', 'abc1234', 'TypeError', ?, 'código do erro: E-2310-1200-ABCD')", args: [login, msg] });
+  await ins('falha A', 'ana'); await ins('falha A', 'bruno'); await ins('falha B', 'ana');
+  const { lista, frequentes } = await listarErrosApp(db, { dias: 1 });
+  assert.equal(lista.length, 3);
+  assert.deepEqual(frequentes.map((f) => [f.mensagem, Number(f.vezes), Number(f.usuarios)]), [['falha A', 2, 2], ['falha B', 1, 1]]);
+  await assert.rejects(db.execute("UPDATE erros_app SET mensagem = 'x'"), /somente inclusão/);
+  await assert.rejects(ins('x'.repeat(1001), 'ana'), /CHECK/);
+});

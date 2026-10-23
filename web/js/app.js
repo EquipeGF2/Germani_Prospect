@@ -1,7 +1,8 @@
 // Roteador por hash (#/caminho). Cada tela exporta render(container, contexto).
 import { modoDemonstracao, temTokenAdmin } from './db.js';
 import { sair, usuarioAtual } from './sessao.js';
-import { h, montar, mensagem } from './ui.js';
+import { h, montar, mensagem, definirAoErrar } from './ui.js';
+import { capturarErrosGlobais, painelErro, recarregarSeVersaoAntiga, registrarErro, telaAbriuSemErro } from './erros.js';
 import { atualizarCasca, iniciarCasca } from './menu.js';
 import { podeTela } from '../shared/perfis.mjs';
 
@@ -26,6 +27,7 @@ const ROTAS = [
   { caminho: '/admin/perfis', tela: () => import('./telas/admin-perfis.js'), telas: ['admin_usuarios'] },
   { caminho: '/admin/parametros', tela: () => import('./telas/admin-parametros.js'), telas: ['admin_parametros'] },
   { caminho: '/admin/feriados', tela: () => import('./telas/admin-feriados.js'), telas: ['admin_feriados'] },
+  { caminho: '/admin/erros', tela: () => import('./telas/admin-erros.js'), telas: ['admin_parametros'] },
 ];
 // primeira tela permitida (destino quando o perfil não tem o Início)
 const ENTRADAS = [['inicio', '/inicio'], ['lista', '/carteira'], ['acompanhamento', '/carteira?aba=acompanhamento'], ['credito', '/financeiro'],
@@ -74,15 +76,19 @@ async function navegar() {
   try {
     const modulo = await rota.tela();
     await modulo.render(conteudo, { usuario, parametros: new URLSearchParams(consulta), irPara });
+    telaAbriuSemErro();
   } catch (e) {
-    console.error(e);
-    montar(conteudo, mensagem(`Erro ao abrir a tela: ${e.message}`, 'erro'));
+    // site republicado com a página aberta: recarrega uma vez para pegar a versão nova inteira
+    if (recarregarSeVersaoAntiga(e)) return;
+    montar(conteudo, painelErro(e, { aoTentar: () => navegar() }));
   }
   if (area.firstChild !== conteudo) return;   // o usuário já foi para outra tela
   area.dataset.pronto = alvo;   // tela desenhada para este endereço (os testes de tela esperam por isso)
   window.scrollTo(0, 0);
 }
 
+definirAoErrar(registrarErro);
+capturarErrosGlobais();
 if (modoDemonstracao()) document.getElementById('faixa-demo').hidden = false;
 iniciarCasca();
 addEventListener('hashchange', navegar);

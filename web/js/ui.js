@@ -91,10 +91,18 @@ export function baixarCsv(nomeArquivo, colunas, linhas) {
 }
 
 /** Executa uma ação de botão mostrando "aguarde" e tratando erro. */
+// quem registra os erros dos botões (app.js liga em erros.js; sem isso, só aparece o aviso)
+let aoErrar = (e) => console.error(e);
+export function definirAoErrar(fn) { aoErrar = fn; }
+
 export async function comEspera(botao, fn) {
   const texto = botao?.textContent;
   if (botao) { botao.disabled = true; botao.textContent = 'Aguarde…'; }
   try { return await fn(); }
-  catch (e) { console.error(e); aviso(e.message ?? String(e), 'erro'); return undefined; }
+  catch (e) {
+    const r = aoErrar(e);
+    aviso(`${e.message ?? String(e)}${r?.codigo ? ` (código ${r.codigo})` : ''}`, 'erro');
+    return undefined;
+  }
   finally { if (botao) { botao.disabled = false; botao.textContent = texto; } }
 }

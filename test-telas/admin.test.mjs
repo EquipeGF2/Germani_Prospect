@@ -189,6 +189,9 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await telaPronta();
   assert.match(await texto(), /Cadastro e crédito no ERP[\s\S]*28B · 21\/28\/35 DD BOLETO[\s\S]*Boleto \(filtro: Boleto\)[\s\S]*21\/28\/35 dias · médio 28/);
   await foto('08c-ficha-credito-erp');
+  // erros do app: tela do administrador abre (lista vazia no banco de demonstração)
+  await pagina.click('#menu a[title="Erros do app"]');
+  await pagina.waitForSelector('text=Mais frequentes');
 
   // 5. parâmetros
   await pagina.click('#menu a[title="Parâmetros"]');
