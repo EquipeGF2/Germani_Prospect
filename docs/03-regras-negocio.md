@@ -78,6 +78,11 @@ Implementação: [`shared/lote.mjs`](../shared/lote.mjs) · testes: [`test/lote.
   O registro é o mesmo (resultado `sem_interesse` + motivo); vale o motivo do **último** sem interesse. Nenhum registro é
   alterado: os sem interesse anteriores à 0015 usam motivos do cliente.
 - **Do cliente** — o cliente recusou a proposta. **Do representante** — o representante não vai trabalhar o cliente.
+- **E-commerce (0020)**: todo cliente marcado **sem interesse do representante** (qualquer motivo dessa origem, também em
+  lote) vai **na hora** para a carteira do representante E-commerce — o usuário escolhido em Parâmetros
+  (`vendedor_ecommerce_id`; 0 = desligado). Chega como está ("Sem interesse · representante"); o E-commerce registra um
+  atendimento quando for trabalhar. A ida fica em `transferencias` e no histórico ("X → E-commerce: sem interesse do
+  representante (motivo)"). Sem interesse **do cliente** não transfere; o próprio E-commerce marcando não transfere de novo.
 - Onde aparece: selo/status "Sem interesse · cliente" / "· representante" (ficha, listas, PDF); filtro de situação da
   Lista/Acompanhamento com as duas opções; Explorar com as duas fatias em "Da totalidade" e as colunas S. int. cliente /
   S. int. repr. (resumo: `resumo_carteira.si_representante`); no lote, escolhe-se a origem e os motivos dela.
