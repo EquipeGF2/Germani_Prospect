@@ -23,7 +23,7 @@ export function consultaResumo({ usuario }) {
   const e = escopo(usuario);
   return {
     sql: `SELECT x.vendedor_id, x.cidade_busca, x.uf, x.cidade, x.tipologia_gtm, x.onda, x.rota, x.subrota, x.status_atual,
-                 x.qtd, x.atendidos, x.cadastrados, x.credito, ${colunasUsuario}
+                 x.qtd, x.atendidos, x.cadastrados, x.credito, x.si_representante, ${colunasUsuario}
             FROM resumo_carteira x ${juntaUsuario}
            WHERE x.qtd > 0 ${e.where}`,
     args: e.args,
@@ -72,11 +72,12 @@ export const STATUS_ORDEM = ['nao_contactado', 'em_prospeccao', 'aguardando_cada
 /** Soma linhas do resumo (e os pedidos) num bloco de indicadores. `parametros`: percentual_pipeline, valor_medio_cliente. */
 export function somarResumo(linhas, pedidos = [], parametros = {}) {
   const st = Object.fromEntries(STATUS_ORDEM.map((s) => [s, 0]));
-  let qtd = 0; let atendidos = 0; let cadastrados = 0; let credito = 0;
+  let qtd = 0; let atendidos = 0; let cadastrados = 0; let credito = 0; let siRepresentante = 0;
   for (const l of linhas) {
     const n = Number(l.qtd);
     qtd += n; st[l.status_atual] = (st[l.status_atual] ?? 0) + n;
     atendidos += Number(l.atendidos); cadastrados += Number(l.cadastrados); credito += Number(l.credito);
+    siRepresentante += Number(l.si_representante ?? 0);   // migração 0015: dos sem interesse, os do representante
   }
   let qtdPedidos = 0; let valorPedidos = 0;
   for (const p of pedidos) { if (p.status_atual === 'invalido') continue; qtdPedidos += Number(p.qtd); valorPedidos += Number(p.valor); }
@@ -87,6 +88,7 @@ export function somarResumo(linhas, pedidos = [], parametros = {}) {
   const valorMedio = Number(parametros.valor_medio_cliente ?? 0);
   return {
     qtd, base, status: st, contactados, atendidos, cadastrados, credito, vendas: st.venda_realizada, semInteresse: st.sem_interesse,
+    siRepresentante, siCliente: st.sem_interesse - siRepresentante,
     emAndamento: st.aguardando_cadastro + st.analise_financeira, aguardandoPedido: st.aguardando_pedido,
     qtdPedidos, valorPedidos, emAberto, potencial: (emAberto * pct * valorMedio) / 100,
     cobertura: base ? (contactados / base) * 100 : null, conversao: contactados ? (st.venda_realizada / contactados) * 100 : null,

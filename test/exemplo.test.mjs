@@ -54,14 +54,17 @@ test('resumo da carteira (migração 0012) acompanha a base em todo o processo: 
     SELECT ${chave} AS k, COUNT(*) AS qtd,
            SUM(dt_atendido IS NOT NULL OR dt_cadastro_erp IS NOT NULL OR dt_liberacao_credito IS NOT NULL OR status_atual = 'venda_realizada') AS atendidos,
            SUM(dt_cadastro_erp IS NOT NULL OR dt_liberacao_credito IS NOT NULL OR status_atual = 'venda_realizada') AS cadastrados,
-           SUM(dt_liberacao_credito IS NOT NULL OR status_atual = 'venda_realizada') AS credito
-      FROM (SELECT vendedor_id, COALESCE(cidade_busca,'') cidade_busca, COALESCE(uf,'') uf, COALESCE(tipologia_gtm,'') tipologia_gtm, COALESCE(onda,'') onda,
-                   COALESCE(rota,'') rota, COALESCE(subrota,'') subrota, status_atual, dt_atendido, dt_cadastro_erp, dt_liberacao_credito FROM prospects)
-     GROUP BY k ORDER BY k`)).rows.map((r) => [r.k, Number(r.qtd), Number(r.atendidos), Number(r.cadastrados), Number(r.credito)]);
-  const resumo = async () => (await db.execute(`SELECT ${chave} AS k, qtd, atendidos, cadastrados, credito FROM resumo_carteira WHERE qtd > 0 ORDER BY k`))
-    .rows.map((r) => [r.k, Number(r.qtd), Number(r.atendidos), Number(r.cadastrados), Number(r.credito)]);
+           SUM(dt_liberacao_credito IS NOT NULL OR status_atual = 'venda_realizada') AS credito,
+           SUM(status_atual = 'sem_interesse' AND origem = 'representante') AS si_rep
+      FROM (SELECT p.vendedor_id, COALESCE(p.cidade_busca,'') cidade_busca, COALESCE(p.uf,'') uf, COALESCE(p.tipologia_gtm,'') tipologia_gtm, COALESCE(p.onda,'') onda,
+                   COALESCE(p.rota,'') rota, COALESCE(p.subrota,'') subrota, p.status_atual, p.dt_atendido, p.dt_cadastro_erp, p.dt_liberacao_credito, m.origem
+              FROM prospects p LEFT JOIN motivos_sem_interesse m ON m.id = p.motivo_sem_interesse_id)
+     GROUP BY k ORDER BY k`)).rows.map((r) => [r.k, Number(r.qtd), Number(r.atendidos), Number(r.cadastrados), Number(r.credito), Number(r.si_rep)]);
+  const resumo = async () => (await db.execute(`SELECT ${chave} AS k, qtd, atendidos, cadastrados, credito, si_representante FROM resumo_carteira WHERE qtd > 0 ORDER BY k`))
+    .rows.map((r) => [r.k, Number(r.qtd), Number(r.atendidos), Number(r.cadastrados), Number(r.credito), Number(r.si_representante)]);
   const antes = await direto();
   assert.ok(antes.length > 5);
+  assert.ok(antes.some((l) => l[5] > 0), 'há sem interesse do representante nos dados de exemplo');
   assert.deepEqual(await resumo(), antes, 'depois dos dados de exemplo');
   // transferência de carteira (o resumo muda de vendedor) e reimportação da base (dados cadastrais)
   const p = (await db.execute("SELECT p.id, p.vendedor_id, v.supervisor_id FROM prospects p JOIN usuarios v ON v.id = p.vendedor_id WHERE p.status_atual = 'nao_contactado' LIMIT 1")).rows[0];

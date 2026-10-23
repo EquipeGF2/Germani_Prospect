@@ -31,7 +31,8 @@ representante e vendedor. **Só existem três registros**: Atendido, Sem interes
 | Resultado | Campo obrigatório | Efeito |
 |---|---|---|
 | **Atendido** | — (data de retorno opcional) | → **Aguardando cadastro** (sai da lista principal); "atendido em" = data do 1º atendimento; o CNPJ passa a ser procurado nos arquivos de **cadastro** e **pedido** do ERP; abre o **prazo de cadastro** = data + `prazo_cadastro_dias` (15) |
-| **Sem interesse** | justificativa: motivo (lista) + observação ("Outro" exige observação) | → **Sem interesse** na hora (sai da lista principal) |
+| **Sem interesse do cliente** | motivo **do cliente** (lista) + observação ("Outro" exige observação) | → **Sem interesse** na hora (sai da lista principal) — "Sem interesse · cliente" |
+| **Sem interesse do representante** | motivo **do representante** (lista) + observação ("Outro" exige observação) | → **Sem interesse** na hora (sai da lista principal) — "Sem interesse · representante" |
 | **Reabrir: pedido identificado** | **data de entrada do pedido** (≤ data do registro) | → **Aguardando cadastro · pedido informado em dd/mm** (acompanhamento) até o arquivo de pedidos do ERP confirmar a **Venda realizada** |
 
 Regras:
@@ -71,11 +72,28 @@ Implementação: [`shared/lote.mjs`](../shared/lote.mjs) · testes: [`test/lote.
   gravados × recusados (com o motivo); os recusados continuam selecionados. Atendido em lote existe em
   `shared/lote.mjs`, mas a tela oferece só sem interesse.
 
-### Motivos de recusa (lista inicial, editável)
+### Sem interesse: do cliente × do representante (migração 0015)
+
+- **Um status só** (Sem interesse); **a origem vem do motivo** (`motivos_sem_interesse.origem` = cliente | representante).
+  O registro é o mesmo (resultado `sem_interesse` + motivo); vale o motivo do **último** sem interesse. Nenhum registro é
+  alterado: os sem interesse anteriores à 0015 usam motivos do cliente.
+- **Do cliente** — o cliente recusou a proposta. **Do representante** — o representante não vai trabalhar o cliente.
+- Onde aparece: selo/status "Sem interesse · cliente" / "· representante" (ficha, listas, PDF); filtro de situação da
+  Lista/Acompanhamento com as duas opções; Explorar com as duas fatias em "Da totalidade" e as colunas S. int. cliente /
+  S. int. repr. (resumo: `resumo_carteira.si_representante`); no lote, escolhe-se a origem e os motivos dela.
+- Cobertura e conversão contam os dois como contactados (como antes).
+
+### Motivos do cliente (lista inicial, editável)
 
 Preço acima do praticado · Já tem fornecedor/contrato · Mix não atende · Pedido mínimo alto ·
 Prazo/condição de pagamento · Frequência ou dia de entrega · Não vende a categoria/baixo giro ·
-Sem espaço na gôndola · Compra centralizada (rede/matriz) · Outro (observação obrigatória). Na tela, o campo Observação só aparece como obrigatório ("Observação *") quando o resultado é Sem interesse e o motivo é "Outro"; nos demais casos é opcional.
+Sem espaço na gôndola · Compra centralizada (rede/matriz) · Outro (observação obrigatória).
+
+### Motivos do representante
+
+Fora do perfil (porte / tipo de negócio) · Estabelecimento fechado ou não localizado · Fora da rota / acesso difícil ·
+Risco de crédito / histórico de inadimplência · Já atendido por outro canal da Germani · Volume potencial muito baixo ·
+Cadastro duplicado (mesmo dono) · Outro (observação obrigatória). Na tela, o campo Observação só aparece como obrigatório ("Observação *") quando o resultado é Sem interesse e o motivo é "Outro"; nos demais casos é opcional.
 
 Do sistema (não aparece no app): Não informado (importação inicial).
 

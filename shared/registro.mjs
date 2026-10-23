@@ -4,7 +4,7 @@ import { normalizarBusca } from './texto.mjs';
 import { validarContato } from './status.mjs';
 
 export async function listarMotivos(db) {
-  return (await db.execute('SELECT id, codigo, descricao, exige_observacao FROM motivos_sem_interesse WHERE ativo = 1 AND uso_app = 1 ORDER BY ordem')).rows;
+  return (await db.execute('SELECT id, codigo, descricao, exige_observacao, origem FROM motivos_sem_interesse WHERE ativo = 1 AND uso_app = 1 ORDER BY ordem')).rows;
 }
 
 /**

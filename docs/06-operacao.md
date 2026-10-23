@@ -81,7 +81,12 @@ Antes da carga real, conferir os itens "Verificar" do ADR-0001 (escritas feitas 
 
 1. Settings → Pages → **Source: GitHub Actions** (uma vez).
 2. Actions → **Publicar app (GitHub Pages)** → Run workflow (ou automático a cada push na `main`).
-3. Sem `TURSO_APP_TOKEN`, o site sai em **modo demonstração**: banco temporário no navegador, login
+3. **Domínio próprio: https://vendas.svoltagf2.com.br** (2026-10-22). Cloudflare (zona `svoltagf2.com.br`): CNAME
+   `vendas` → `equipegf2.github.io`, **Somente DNS** (nuvem cinza — com proxy o GitHub não emite o certificado).
+   Settings → Pages → Custom domain = `vendas.svoltagf2.com.br`, **Enforce HTTPS** marcado. Publicação por Actions:
+   não há arquivo `CNAME` no repositório. O endereço antigo redireciona; a sessão é por endereço (todos entram de novo
+   uma vez). O banco não depende do domínio.
+4. Sem `TURSO_APP_TOKEN`, o site sai em **modo demonstração**: banco temporário no navegador, login
    `admin` / `demo1234`, planilha fictícia para testar a carga. Com o token, sai em produção.
 
 Local: `npm run site && npm run servir` → http://localhost:8080 (modo demonstração).

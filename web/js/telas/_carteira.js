@@ -8,8 +8,14 @@ const FILTROS = ['cidadeBusca', 'uf', 'bairroBusca', 'onda', 'segmento', 'rota',
 
 const CHAVE_LOTE = 'germani.lote';
 
+/** Nome do status para mostrar: "Sem interesse · cliente" / "Sem interesse · representante" (origem do motivo, migração 0015). */
+export const nomeStatus = (p) => {
+  const nome = p.status_nome ?? p.rotulo ?? p.status_atual;
+  return p.status_atual === 'sem_interesse' && p.sem_interesse_origem ? `${nome} · ${p.sem_interesse_origem}` : nome;
+};
+
 export function seloStatus(p) {
-  const el = selo(p.status_nome ?? p.rotulo ?? p.status_atual, 'status');
+  const el = selo(nomeStatus(p), 'status');
   el.style.background = p.status_cor ?? '#EEE';
   el.style.color = ['nao_contactado', 'invalido'].includes(p.status_atual) ? '#1C1F23' : '#fff';
   return el;

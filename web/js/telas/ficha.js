@@ -52,7 +52,7 @@ export async function render(conteudo, { usuario, parametros }) {
       dado('Próximo retorno', formatar.data(p.data_proxima_acao)),
       dado('Prazo para o cadastro', p.status_atual === 'aguardando_cadastro' ? formatar.data(p.prazo_cadastro_ate) : null),
       dado('Prazo da análise financeira', p.status_atual === 'analise_financeira' ? formatar.data(p.analise_financeira_ate) : null),
-      dado('Motivo (sem interesse)', p.status_atual === 'sem_interesse' ? p.motivo_sem_interesse : null),
+      dado(`Motivo (sem interesse${p.sem_interesse_origem ? ' do ' + p.sem_interesse_origem : ''})`, p.status_atual === 'sem_interesse' ? p.motivo_sem_interesse : null),
       dado('Cadastro no ERP', p.dt_cadastro_erp ? `${formatar.data(p.dt_cadastro_erp)}${p.codigo_cliente_erp ? ' · cód. ' + p.codigo_cliente_erp : ''}` : null),
       dado('Pedido', p.dt_pedido ? `${formatar.data(p.dt_pedido)}${p.numero_pedido ? ' · nº ' + p.numero_pedido : ''}${p.valor_pedidos != null ? ' · ' + formatar.moeda(Number(p.valor_pedidos)) : ''}` : null),
       dado('Baixa do CNPJ', formatar.data(p.dt_baixa))),

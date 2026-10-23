@@ -4,7 +4,7 @@ import { bancoApp } from '../db.js';
 import { ajustarFicha, consultaFicha } from '../../shared/carteira.mjs';
 import { listarMotivos } from '../../shared/registro.mjs';
 import { prepararLote, registrarLote } from '../../shared/lote.mjs';
-import { CANAIS } from '../../shared/status.mjs';
+import { CANAIS, motivosDaOrigem, ORIGENS_SEM_INTERESSE } from '../../shared/status.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, comEspera, formatar, numeros } from '../ui.js';
 import { gravarLote, lerLote } from './_carteira.js';
@@ -27,14 +27,23 @@ export async function render(conteudo, ctx) {
   const porId = Object.fromEntries(motivos.map((m) => [m.id, { exige_observacao: Number(m.exige_observacao) }]));
   const hoje = hojeSaoPaulo();
   const ultimo = prospects.map((p) => p.dt_ultimo_contato).filter(Boolean).sort().pop() ?? null;
-  const motivo = campoMotivo(motivos, { id: 'motivo-lote', vazio: 'Motivo do lote' });
+  // de quem é o sem interesse (vale para o lote todo): cada origem tem os seus motivos
+  const origem = h('select', { id: 'origem-lote', 'aria-label': 'De quem é o sem interesse', onchange: () => trocarOrigem() },
+    Object.entries(ORIGENS_SEM_INTERESSE).map(([o, d]) => h('option', { value: o }, d.rotulo)));
+  const opcoesMotivo = (vazio) => [h('option', { value: '' }, vazio),
+    motivosDaOrigem(motivos, origem.value).map((m) => h('option', { value: m.id }, m.descricao))];
+  const motivo = campoMotivo(motivosDaOrigem(motivos, 'cliente'), { id: 'motivo-lote', vazio: 'Motivo do lote' });
   const observacao = h('input', { id: 'obs-lote', maxlength: 500, placeholder: 'Observação para todos (opcional)' });
   const canal = h('select', { id: 'canal-lote', 'aria-label': 'Canal' }, CANAIS.map((c) => h('option', { value: c }, NOMES_CANAL[c])));
   const data = h('input', { type: 'date', id: 'data-lote', value: hoje, max: hoje, min: ultimo });
   const individuais = new Map(prospects.map((p) => [Number(p.id), {
-    motivo: campoMotivo(motivos, { id: `motivo-${p.id}`, vazio: '(o do lote)' }),
+    motivo: campoMotivo(motivosDaOrigem(motivos, 'cliente'), { id: `motivo-${p.id}`, vazio: '(o do lote)' }),
     observacao: h('input', { maxlength: 500, placeholder: '(a do lote)', 'aria-label': `Observação ${p.razao_social}` }),
   }]));
+  function trocarOrigem() {
+    montar(motivo, opcoesMotivo('Motivo do lote'));
+    for (const c of individuais.values()) montar(c.motivo, opcoesMotivo('(o do lote)'));
+  }
   const resultado = h('div');
   const botao = h('button', { type: 'submit' }, `Gravar ${prospects.length} registro(s)`);
 
@@ -75,6 +84,7 @@ export async function render(conteudo, ctx) {
       h('div', { class: 'cartao' },
         h('p', { class: 'ajuda', style: 'margin-top:0' }, 'O motivo e a observação do lote valem para todos; o que for informado no cliente vale só para ele.'),
         h('div', { class: 'linha-campos' },
+          h('div', { class: 'campo' }, h('label', { for: 'origem-lote' }, 'Sem interesse'), origem),
           h('div', { class: 'campo' }, h('label', { for: 'motivo-lote' }, 'Motivo do lote'), motivo),
           h('div', { class: 'campo' }, h('label', { for: 'canal-lote' }, 'Canal'), canal),
           h('div', { class: 'campo' }, h('label', { for: 'data-lote' }, 'Data do registro'), data)),

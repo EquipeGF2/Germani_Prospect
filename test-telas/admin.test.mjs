@@ -362,7 +362,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('#menu a[title="Acompanhamento"]');
   await pagina.waitForSelector('.chip-situacao');                         // representante já entra no mês atual
   await foto('15-acompanhamento');
-  await pagina.click('.chip-situacao[data-status="sem_interesse"]');      // filtra no navegador, sem nova leitura
+  await pagina.click('.chip-situacao[data-status="sem_interesse:cliente"]');   // filtra no navegador, sem nova leitura (sem interesse do cliente)
   assert.equal(await pagina.locator('.lista-tabela tbody tr').count(), 2);
   await pagina.click('.lista-tabela a.nome >> nth=0');
   await pagina.waitForSelector('text=Histórico de movimentação');
