@@ -456,8 +456,26 @@ test('0016: liberação guarda condição/forma do ERP; "sem limite" no históri
   const p = await prospect(db, id);
   assert.equal(p.status_atual, 'aguardando_pedido');
   const det = (await db.execute({ sql: "SELECT detalhe FROM movimentacoes WHERE prospect_id = ? AND tipo = 'liberacao_credito'", args: [id] })).rows[0].detalhe;
-  assert.equal(det, 'à vista · sem limite (CNPJ) · relatório de crédito');
+  assert.equal(det, 'A vista · sem limite (CNPJ) · relatório de crédito');
   await assert.rejects(db.execute({ sql: 'UPDATE liberacoes_credito SET sem_limite = 0 WHERE prospect_id = ?', args: [id] }), /somente inclusão/);
   await assert.rejects(db.execute({ sql: `INSERT INTO liberacoes_credito (prospect_id, origem, importacao_id, data_liberacao, forma_pagamento, limite_credito, limite_origem, sem_limite)
                                           VALUES (?, 'importacao', ?, '2026-10-07', 'a_vista', 0, 'informado', 2)`, args: [id, imp.rows[0].id] }), /CHECK/);
+});
+
+test('0017: boleto com limite 0 aceito na importação (forma do ERP), recusado no console; dados preservados na recriação', async () => {
+  const id = await criarProspect(db, { n: 71 });
+  await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-05', documento: 'C71' });
+  const imp = await db.execute("INSERT INTO importacoes (tipo, arquivo_nome, arquivo_sha256, executado_por) VALUES ('credito_erp','a','x','t') RETURNING id");
+  await db.execute({ sql: `INSERT INTO liberacoes_credito (prospect_id, origem, importacao_id, data_liberacao, forma_pagamento, prazo_pagamento_dias, limite_cnpj, limite_credito, limite_origem,
+                             cond_pgto_codigo, cond_pgto_descricao, forma_pgto_descricao, prazo_medio_dias, prazo_parcelas)
+                           VALUES (?, 'importacao', ?, '2026-10-06', 'boleto', 21, 0, 0, 'cnpj', '21B', '14/21/28 DD BOLETO', 'Boleto', 21, '14/21/28')`, args: [id, imp.rows[0].id] });
+  const det = (await db.execute({ sql: "SELECT detalhe FROM movimentacoes WHERE prospect_id = ? AND tipo = 'liberacao_credito'", args: [id] })).rows[0].detalhe;
+  assert.equal(det, 'Boleto 14/21/28 dias (médio 21) · limite R$ 0.00 (CNPJ) · relatório de crédito');
+  await db.execute({ sql: "INSERT INTO usuarios (perfil, nome, nome_busca, login) VALUES ('financeiro', 'Fin', 'FIN', 'fin71')", args: [] });
+  const fin = Number((await db.execute("SELECT id FROM usuarios WHERE login = 'fin71'")).rows[0].id);
+  await assert.rejects(db.execute({ sql: `INSERT INTO liberacoes_credito (prospect_id, origem, usuario_id, data_liberacao, forma_pagamento, limite_credito, limite_origem, com_restricao)
+                                          VALUES (?, 'console', ?, '2026-10-07', 'boleto', 0, 'informado', 0)`, args: [id, fin] }), /CHECK/);
+  // índices e triggers recriados
+  const nomes = (await db.execute("SELECT name FROM sqlite_master WHERE tbl_name = 'liberacoes_credito' AND type IN ('index','trigger')")).rows.map((r) => r.name);
+  for (const n of ['ix_liberacoes_prospect', 'ix_liberacoes_data', 'trg_liberacoes_validar', 'trg_liberacoes_aplicar', 'trg_liberacoes_imutavel_upd', 'trg_liberacoes_imutavel_del']) assert.ok(nomes.includes(n), n);
 });

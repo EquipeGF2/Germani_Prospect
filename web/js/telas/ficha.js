@@ -9,6 +9,14 @@ import { seloStatus } from './_carteira.js';
 const NOMES_FORMA = { antecipado: 'Antecipado', a_vista: 'À vista', boleto: 'Boleto' };
 const NOMES_ORIGEM = { contato: 'app', importacao: 'importação da base', erp: 'arquivo do ERP', financeiro: 'financeiro', transferencia: 'transferência' };
 
+/** Prazo do ERP: "14/21/28 dias · médio 21" · "à vista" · "antecipado"; sem dados do ERP, os dias informados. */
+function textoPrazo(erp, p) {
+  const parcelas = erp?.prazo_parcelas;
+  if (parcelas && /^\d/.test(parcelas)) return `${parcelas} dias${parcelas.includes('/') ? ` · médio ${p.prazo_pagamento_dias}` : ''}`;
+  if (parcelas) return parcelas === 'A VISTA' ? 'à vista' : 'antecipado';
+  return p.prazo_pagamento_dias != null ? `${p.prazo_pagamento_dias} dia(s)` : null;
+}
+
 function dado(rotulo, valor) {
   if (valor == null || valor === '') return null;
   return h('div', { class: 'dado' }, h('span', {}, rotulo), h('b', {}, valor));
@@ -73,11 +81,10 @@ export async function render(conteudo, { usuario, parametros }) {
     h('h2', {}, 'Cadastro e crédito no ERP'),
     h('div', { class: 'dados' },
       dado('Liberado em', formatar.data(p.dt_liberacao_credito)),
-      dado('Condição de pagamento', erp?.cond_pgto_descricao || erp?.cond_pgto_codigo
-        ? `${[erp.cond_pgto_codigo, erp.cond_pgto_descricao].filter(Boolean).join(' · ')}${Number(erp.prazo_medio_dias) > 0 ? ` · prazo médio ${erp.prazo_medio_dias} dias` : ''}` : null),
+      dado('Condição de pagamento', erp?.cond_pgto_descricao || erp?.cond_pgto_codigo ? [erp.cond_pgto_codigo, erp.cond_pgto_descricao].filter(Boolean).join(' · ') : null),
       dado('Forma de pagamento', erp?.forma_pgto_descricao || erp?.forma_pgto_codigo
         ? `${erp.forma_pgto_descricao ?? erp.forma_pgto_codigo} (filtro: ${NOMES_FORMA[p.forma_pagamento] ?? p.forma_pagamento})` : NOMES_FORMA[p.forma_pagamento] ?? p.forma_pagamento),
-      dado('Prazo', !erp?.cond_pgto_codigo && p.prazo_pagamento_dias != null ? `${p.prazo_pagamento_dias} dia(s)` : null),
+      dado('Prazo', textoPrazo(erp, p)),
       dado('Limite', limite == null ? null : `${limite}${p.limite_credito_origem === 'grupo' ? ' (limite do grupo — Créd. Cliente vazio)' : ''}`),
       dado('Restrição de crédito', Number(p.com_restricao_credito) ? 'com restrição' : null))) : null;
 
