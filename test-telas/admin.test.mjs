@@ -39,9 +39,10 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('.aviso.erro');
   await pagina.fill('#senha', 'demo1234');
   await pagina.click('button[type=submit]');
-  // página inicial = Explorar carteira; o Início (painel) continua no menu
+  // página inicial = Explorar carteira; o Início saiu do menu (só pelo endereço)
   await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
-  await pagina.click('#menu a[title="Início"]');
+  assert.equal(await pagina.locator('#menu a[title="Início"]').count(), 0, 'Início fora do menu (os números estão no Explorar)');
+  await pagina.evaluate(() => { location.hash = '#/inicio'; });
   await pagina.waitForSelector('.painel-web');
   assert.equal(await pagina.locator('#menu a[title="Visão geral"]').count(), 0);
   await foto('02-inicio-vazio');
@@ -222,7 +223,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   assert.equal(await pagina.locator('td:has-text("Santa Cruz do Sul/RS")').count(), 0);
 
   // 5c. Início no computador (visão Executivo): 120 prospects; Arrojado mostra 2 com crédito liberado; seletor de supervisor
-  await pagina.click('#menu a[title="Início"]');
+  await pagina.evaluate(() => { location.hash = '#/inicio'; });
   await pagina.waitForSelector('.vis-executivo');
   assert.match(await texto(), /de 120 contactados/);
   await pagina.selectOption('#painel-visao', 'arrojado');
@@ -288,7 +289,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('button:text("Entrar")');
   await pagina.waitForSelector('.explorar');           // abre no Explorar, já na carteira dele
   assert.match(await pagina.locator('.exp-caminho').innerText(), /Minha carteira/, 'representante abre já na própria carteira');
-  await pagina.click('#menu a[title="Início"]');
+  await pagina.evaluate(() => { location.hash = '#/inicio'; });
   await pagina.waitForSelector('h1:text("Sua carteira")');
   assert.equal(await pagina.locator('#painel-supervisor').count(), 0, 'vendedor não escolhe supervisor');
   await foto('10a-inicio-vendedor');
@@ -459,7 +460,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.fill('#senha', senhaGerente);
   await pagina.click('button:text("Entrar")');
   await pagina.waitForSelector('.explorar');
-  await pagina.click('#menu a[title="Início"]');
+  await pagina.evaluate(() => { location.hash = '#/inicio'; });
   await pagina.waitForSelector('#painel-supervisor');
   assert.match(await pagina.locator('#usuario-lateral').innerText(), /Gerente comercial/);
   assert.equal(await pagina.locator('#menu a[title="Console de crédito"]').count(), 0);

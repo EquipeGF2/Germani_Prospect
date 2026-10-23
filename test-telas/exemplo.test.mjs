@@ -21,10 +21,10 @@ after(async () => { await navegador?.close(); srv?.close(); });
 
 const foto = async (nome) => { if (FOTOS) await pagina.screenshot({ path: path.join(FOTOS, `${nome}.png`), fullPage: true }); };
 const telaPronta = () => pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === location.hash);
-// a página inicial é o Explorar carteira; os testes do Início entram nele pelo menu
+// a página inicial é o Explorar carteira; o Início saiu do menu — os testes abrem pelo endereço
 const irAoInicio = async () => {
   await pagina.waitForFunction(() => ['#/explorar', '#/inicio'].includes(document.getElementById('conteudo').dataset.pronto));
-  if (await pagina.evaluate(() => location.hash) === '#/explorar') await pagina.click('#menu a[title="Início"]');
+  if (await pagina.evaluate(() => location.hash) === '#/explorar') await pagina.evaluate(() => { location.hash = '#/inicio'; });
 };
 const entrar = async (login) => {
   await pagina.fill('#login', login);
@@ -37,7 +37,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForSelector('#login');
   await entrar('admin');
   await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');   // página inicial
-  await pagina.click('#menu a[title="Início"]');
+  await pagina.evaluate(() => { location.hash = '#/inicio'; });
   await pagina.waitForSelector('#carregar-exemplo');
   assert.equal(await pagina.locator('script[src*="exceljs"]').count(), 0, 'a biblioteca de planilha não carrega na abertura do site');
   await pagina.click('#carregar-exemplo');
