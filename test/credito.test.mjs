@@ -137,6 +137,8 @@ test('relatório de cadastro do ERP: colunas pela posição, prazo médio da con
   ];
   const r = await importarCredito(db, { ...base, linhas });
   assert.deepEqual([r.resumo.aceitas, r.resumo.ignoradas, r.resumo.rejeitadas, r.resumo.cpf, r.resumo.naBase, r.resumo.semLimite, r.resumo.semCredito], [3, 3, 1, 2, 4, 1, 1]);
+  // data de cadastro do arquivo vai para o relatório (inválida, como veio)
+  assert.deepEqual(r.resultados.map((x) => x.dataCadastro), ['2026-10-15', '2026-10-05', '2026-10-16', '2026-10-16', '2026-10-16', '2026-10-16', '00/00/0000']);
   let x = await prospect(db, p[1]);
   assert.deepEqual([x.forma_pagamento, x.prazo_pagamento_dias, x.limite_credito, x.codigo_cliente_erp, x.dt_cadastro_erp], ['boleto', 28, 15000, '101', '2026-10-15']);
   x = await prospect(db, p[2]);

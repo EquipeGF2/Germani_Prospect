@@ -66,7 +66,7 @@ export async function render(conteudo, ctx) {
     Object.values(seletores).forEach((s) => s.addEventListener('change', desenharFormas));
     const parametros = () => ({ linhas: planilha.linhas, colunas: colunas(), mapaFormas: Object.fromEntries(Object.entries(mapa).filter(([, v]) => v)),
       hoje: hojeSaoPaulo(), arquivoNome: planilha.nome, arquivoSha256: planilha.sha256, executadoPor: ctx.usuario.login });
-    const paraTela = (rs) => rs.map((r) => ({ numeroLinha: r.numeroLinha, resultado: r.resultado, cnpj: r.cnpj, mensagens: r.resultado === 'aceita' ? r.avisos : r.erros }));
+    const paraTela = (rs) => rs.map((r) => ({ numeroLinha: r.numeroLinha, resultado: r.resultado, cnpj: r.cnpj, dataCadastro: r.dataCadastro ?? null, mensagens: r.resultado === 'aceita' ? r.avisos : r.erros }));
     const bSim = h('button', { onclick: async () => {
       const r = await comEspera(bSim, () => importarCredito(db, { ...parametros(), simular: true }));
       if (!r) return;
