@@ -140,7 +140,10 @@ test('relatório de cadastro do ERP: colunas pela posição, prazo médio da con
   let x = await prospect(db, p[1]);
   assert.deepEqual([x.forma_pagamento, x.prazo_pagamento_dias, x.limite_credito, x.codigo_cliente_erp, x.dt_cadastro_erp], ['boleto', 28, 15000, '101', '2026-10-15']);
   x = await prospect(db, p[2]);
-  assert.deepEqual([x.forma_pagamento, x.prazo_pagamento_dias, x.limite_credito], ['boleto', 28, 0]);
+  // Depósito e Pix: opção própria no filtro (forma_filtro); forma_pagamento antiga fica "a prazo" (boleto)
+  assert.deepEqual([x.forma_filtro, x.forma_pagamento, x.prazo_pagamento_dias, x.limite_credito], ['deposito', 'boleto', 28, 0]);
+  assert.equal((await db.execute({ sql: 'SELECT forma_pagamento FROM liberacoes_credito WHERE prospect_id = ?', args: [p[2]] })).rows[0].forma_pagamento, 'deposito');
+  assert.equal((await db.execute({ sql: 'SELECT forma_filtro FROM vw_prospects WHERE id = ?', args: [p[1]] })).rows[0].forma_filtro, 'boleto');
   const lib = (await db.execute({ sql: 'SELECT * FROM liberacoes_credito WHERE prospect_id = ?', args: [p[1]] })).rows[0];
   assert.deepEqual([lib.cond_pgto_codigo, lib.cond_pgto_descricao, lib.forma_pgto_codigo, lib.forma_pgto_descricao, Number(lib.prazo_medio_dias), lib.prazo_parcelas, Number(lib.sem_limite)],
     ['28B', '21/28/35 DD BOLETO', '1', 'Boleto', 28, '21/28/35', 0]);

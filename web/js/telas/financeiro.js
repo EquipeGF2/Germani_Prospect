@@ -9,8 +9,9 @@ import { h, montar, mensagem, formatar, cartoesFiltro, tabela, selo } from '../u
 const ABAS = ['analise', 'vencidos', 'liberados'];
 
 export function descreverCredito(p) {
-  if (!p.forma_pagamento) return '';
-  const partes = [FORMAS_PAGAMENTO[p.forma_pagamento] ?? p.forma_pagamento];
+  const forma = p.forma_filtro ?? p.forma_pagamento;
+  if (!forma) return '';
+  const partes = [FORMAS_PAGAMENTO[forma] ?? forma];
   if (Number(p.prazo_pagamento_dias)) partes.push(`${p.prazo_pagamento_dias} dias`);
   if (p.limite_credito != null) partes.push(`${formatar.moeda(p.limite_credito)}${p.limite_credito_origem === 'grupo' ? ' (grupo)' : ''}`);
   if (Number(p.com_restricao_credito)) partes.push('com restrição');
