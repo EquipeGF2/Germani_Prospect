@@ -224,7 +224,8 @@ a.grupo:hover { border-color: var(--destaque); }
 .linha-tempo-data { font-variant-numeric: tabular-nums; color: var(--suave); font-size: 13px; }
 .opcoes-resultado { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin-bottom: 14px; }
 /* forma de pagamento: as três opções ocupam a linha inteira, sem quebrar o texto (computador) */
-@media (min-width: 901px) { .opcoes-resultado.em-linha { grid-template-columns: repeat(3, minmax(0, 1fr)); } .opcoes-resultado.em-linha .opcao span, .opcoes-resultado.em-linha small { white-space: nowrap; } }
+/* computador: as opções dividem a largura numa linha só (3 ou 4), textos sem quebra */
+@media (min-width: 901px) { .opcoes-resultado.em-linha { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); } .opcoes-resultado.em-linha .opcao span, .opcoes-resultado.em-linha small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; } }
 .opcao { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 0 14px; border: 2px solid var(--borda); border-radius: var(--raio-p); background: #fff; cursor: pointer; font-size: 15px; margin: 0; }
 .opcao input { width: 20px; height: 20px; min-height: 0; margin: 0; accent-color: var(--destaque); }
 .opcao:has(input:checked) { border-color: var(--destaque); background: var(--destaque-claro); }
