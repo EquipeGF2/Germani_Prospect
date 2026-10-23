@@ -479,3 +479,16 @@ test('0017: boleto com limite 0 aceito na importação (forma do ERP), recusado 
   const nomes = (await db.execute("SELECT name FROM sqlite_master WHERE tbl_name = 'liberacoes_credito' AND type IN ('index','trigger')")).rows.map((r) => r.name);
   for (const n of ['ix_liberacoes_prospect', 'ix_liberacoes_data', 'trg_liberacoes_validar', 'trg_liberacoes_aplicar', 'trg_liberacoes_imutavel_upd', 'trg_liberacoes_imutavel_del']) assert.ok(nomes.includes(n), n);
 });
+
+test('0018: depósito e Pix no filtro (forma_filtro); forma_pagamento de prospects segue com as 3 opções', async () => {
+  const id = await criarProspect(db, { n: 72 });
+  await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-05', documento: 'C72' });
+  const imp = await db.execute("INSERT INTO importacoes (tipo, arquivo_nome, arquivo_sha256, executado_por) VALUES ('credito_erp','a','x','t') RETURNING id");
+  await db.execute({ sql: `INSERT INTO liberacoes_credito (prospect_id, origem, importacao_id, data_liberacao, forma_pagamento, prazo_pagamento_dias, limite_cnpj, limite_credito, limite_origem, forma_pgto_descricao, prazo_parcelas)
+                           VALUES (?, 'importacao', ?, '2026-10-06', 'deposito', 28, 500, 500, 'cnpj', 'Deposito e Pix', '28')`, args: [id, imp.rows[0].id] });
+  const p = await prospect(db, id);
+  assert.deepEqual([p.forma_filtro, p.forma_pagamento], ['deposito', 'boleto']);
+  const det = (await db.execute({ sql: "SELECT detalhe FROM movimentacoes WHERE prospect_id = ? AND tipo = 'liberacao_credito'", args: [id] })).rows[0].detalhe;
+  assert.equal(det, 'Deposito e Pix 28 dias · limite R$ 500.00 (CNPJ) · relatório de crédito');
+  await assert.rejects(db.execute({ sql: "UPDATE prospects SET forma_filtro = 'cheque' WHERE id = ?", args: [id] }), /CHECK/);
+});

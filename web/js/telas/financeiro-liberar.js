@@ -9,7 +9,7 @@ import { h, montar, mensagem, aviso, comEspera, formatar } from '../ui.js';
 import { seloStatus } from './_carteira.js';
 import { descreverCredito } from './financeiro.js';
 
-const AJUDA_FORMA = { antecipado: 'pagamento antes do faturamento', a_vista: 'pagamento na entrega', boleto: 'a prazo — exige limite' };
+const AJUDA_FORMA = { antecipado: 'pagamento antes do faturamento', a_vista: 'pagamento na entrega', boleto: 'a prazo — exige limite', deposito: 'depósito bancário ou Pix' };
 
 function opcoes(nome, itens, aoMudar, classe = '') {
   return h('div', { class: `opcoes-resultado ${classe}`, role: 'radiogroup' }, itens.map(([valor, rotulo, detalhe]) => h('label', { class: 'opcao' },

@@ -6,7 +6,7 @@ import { somenteDigitos } from '../../shared/texto.mjs';
 import { h, montar, mensagem, formatar, tabela } from '../ui.js';
 import { seloStatus } from './_carteira.js';
 
-const NOMES_FORMA = { antecipado: 'Antecipado', a_vista: 'À vista', boleto: 'Boleto' };
+const NOMES_FORMA = { antecipado: 'Antecipado', a_vista: 'À vista', boleto: 'Boleto', deposito: 'Depósito e Pix' };
 const NOMES_ORIGEM = { contato: 'app', importacao: 'importação da base', erp: 'arquivo do ERP', financeiro: 'financeiro', transferencia: 'transferência' };
 
 /** Prazo do ERP: "14/21/28 dias · médio 21" · "à vista" · "antecipado"; sem dados do ERP, os dias informados. */
@@ -73,6 +73,7 @@ export async function render(conteudo, { usuario, parametros }) {
         : 'Avançou de etapa via importação do ERP sem atendimento registrado pelo representante.', 'info') : null,
       Number(p.parado) ? mensagem(`Sem movimento há ${p.dias_sem_movimento} dias.`, 'info') : null]);
 
+  const forma = p.forma_filtro ?? p.forma_pagamento;
   const semLimite = Number(erp?.sem_limite) === 1;
   const limite = p.limite_credito == null ? null
     : semLimite ? 'sem limite' : Number(p.limite_credito) === 0 ? 'sem crédito (só à vista ou antecipado)' : formatar.moeda(p.limite_credito);
@@ -83,7 +84,7 @@ export async function render(conteudo, { usuario, parametros }) {
       dado('Liberado em', formatar.data(p.dt_liberacao_credito)),
       dado('Condição de pagamento', erp?.cond_pgto_descricao || erp?.cond_pgto_codigo ? [erp.cond_pgto_codigo, erp.cond_pgto_descricao].filter(Boolean).join(' · ') : null),
       dado('Forma de pagamento', erp?.forma_pgto_descricao || erp?.forma_pgto_codigo
-        ? `${erp.forma_pgto_descricao ?? erp.forma_pgto_codigo} (filtro: ${NOMES_FORMA[p.forma_pagamento] ?? p.forma_pagamento})` : NOMES_FORMA[p.forma_pagamento] ?? p.forma_pagamento),
+        ? `${erp.forma_pgto_descricao ?? erp.forma_pgto_codigo} (filtro: ${NOMES_FORMA[forma] ?? forma})` : NOMES_FORMA[forma] ?? forma),
       dado('Prazo', textoPrazo(erp, p)),
       dado('Limite', limite == null ? null : `${limite}${p.limite_credito_origem === 'grupo' ? ' (limite do grupo — Créd. Cliente vazio)' : ''}`),
       dado('Restrição de crédito', Number(p.com_restricao_credito) ? 'com restrição' : null))) : null;

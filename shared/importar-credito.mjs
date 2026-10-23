@@ -8,7 +8,7 @@
 //   * 9.999.999 = sem limite · 0 = sem crédito (a forma continua a do ERP; boleto com 0 é avisado);
 //   * condição e forma de pagamento ficam gravadas como vieram do ERP. A FORMA vem só da Forma Pgto; o PRAZO sai da
 //     descrição da condição, limpo ("14/21/28 DD BOLETO" → "14/21/28"; à vista/antecipado → prazo 1) e o código da
-//     condição é o prazo médio ("21B" → 21); forma_pagamento (antecipado · à vista · boleto) é só o filtro rápido;
+//     condição é o prazo médio ("21B" → 21); forma_pagamento (antecipado · à vista · boleto · depósito e Pix) é só o filtro rápido;
 //   * CPF (pessoa física) e CNPJ fora da base são ignorados — o relatório não cadastra prospects novos;
 //   * cliente ainda sem cadastro (não contactado, em prospecção, aguardando cadastro, sem interesse): o relatório
 //     registra também o CADASTRO (Dt. Cadastro + código do cliente) e em seguida a liberação de crédito;
@@ -26,10 +26,10 @@ export const COLUNAS_CREDITO = Object.freeze([
   { campo: 'codigo', cabecalho: 'Cód interno', alternativas: ['Cliente', 'Código interno', 'Cod. interno', 'Código', 'Cód cliente'] },
   { campo: 'razao', cabecalho: 'Razão social' },
   { campo: 'cond', cabecalho: 'Cond. Pgto', alternativas: ['Condição de pagamento', 'Cond Pgto', 'Condição'] },
-  { campo: 'cond_desc', cabecalho: 'Descrição da condição', apos: 'cond' },
+  { campo: 'cond_desc', cabecalho: 'Descrição da condição (o prazo sai daqui)', apos: 'cond' },
   { campo: 'forma', cabecalho: 'Forma de pagamento', alternativas: ['Forma Pgto', 'Forma'], obrigatoria: true },
   { campo: 'forma_desc', cabecalho: 'Descrição da forma', apos: 'forma' },
-  { campo: 'prazo', cabecalho: 'Prazo de pagamento', alternativas: ['Prazo'] },
+  { campo: 'prazo', cabecalho: 'Prazo em dias (só arquivo sem Cond. Pgto)', alternativas: ['Prazo de pagamento', 'Prazo'] },
   { campo: 'limite_cnpj', cabecalho: 'Limite de crédito CNPJ', alternativas: ['Créd. Cliente', 'Crédito cliente', 'Limite CNPJ'] },
   { campo: 'limite_grupo', cabecalho: 'Limite de crédito grupo', alternativas: ['Créd. Grupo', 'Crédito grupo', 'Limite grupo'] },
   { campo: 'data_cadastro', cabecalho: 'Data de cadastro', alternativas: ['Dt. Cadastro', 'Data cadastro', 'Dt cadastro'], obrigatoria: true },
@@ -40,7 +40,8 @@ export const FORMAS_PADRAO = Object.freeze({
   ANTECIPADO: 'antecipado', ANTECIPADA: 'antecipado', 'PAGAMENTO ANTECIPADO': 'antecipado', 'DEPOSITO ANTECIPADO': 'antecipado',
   'A VISTA': 'a_vista', AVISTA: 'a_vista', 'A-VISTA': 'a_vista', 'E-COMMERCE': 'a_vista', ECOMMERCE: 'a_vista',
   BONIFICACAO: 'a_vista', 'CONFISSAO DIVIDA FUNCIONARIOS': 'a_vista',
-  BOLETO: 'boleto', 'BOLETO BANCARIO': 'boleto', BOLETOS: 'boleto', 'DEPOSITO E PIX': 'boleto', 'CONVENIO ALIMENTACAO': 'boleto',
+  BOLETO: 'boleto', 'BOLETO BANCARIO': 'boleto', BOLETOS: 'boleto', 'CONVENIO ALIMENTACAO': 'boleto',
+  'DEPOSITO E PIX': 'deposito', DEPOSITO: 'deposito', PIX: 'deposito', 'DEPOSITO BANCARIO': 'deposito',
 });
 
 /** Valor do ERP a partir do qual o crédito é "sem limite". */

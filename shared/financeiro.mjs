@@ -4,7 +4,7 @@
 //   * RELATÓRIO DE CRÉDITO do ERP: shared/importar-credito.mjs.
 // A liberação sempre ocorre. O banco confere tudo de novo (trg_liberacoes_validar).
 
-export const FORMAS_PAGAMENTO = Object.freeze({ antecipado: 'Antecipado', a_vista: 'À vista', boleto: 'Boleto' });
+export const FORMAS_PAGAMENTO = Object.freeze({ antecipado: 'Antecipado', a_vista: 'À vista', boleto: 'Boleto', deposito: 'Depósito e Pix' });
 
 /** "15.000,00" | "15000.5" | 15000 → número; vazio → null; inválido → NaN */
 export function lerValor(v) {
@@ -31,7 +31,7 @@ export function consultaFilaAnalise({ usuario, filtros = {}, incluirLiberados = 
     sql: `SELECT id, cnpj, razao_social, nome_fantasia, cidade, uf, telefone, vendedor_nome, supervisor_nome,
                  codigo_cliente_erp, dt_cadastro_erp, analise_financeira_ate, analise_financeira_vencida,
                  CAST(julianday(date('now','-3 hours')) - julianday(dt_cadastro_erp) AS INTEGER) AS dias_em_analise,
-                 status_atual, status_nome, forma_pagamento, prazo_pagamento_dias, limite_credito, limite_credito_origem,
+                 status_atual, status_nome, forma_pagamento, forma_filtro, prazo_pagamento_dias, limite_credito, limite_credito_origem,
                  com_restricao_credito, dt_liberacao_credito, dias_corridos
             FROM vw_prospects WHERE ${where.join(' AND ')}
            ORDER BY status_atual = 'aguardando_pedido', dt_cadastro_erp, razao_social`,
@@ -44,7 +44,7 @@ export function validarLiberacao({ formaPagamento, prazoDias, comRestricao, limi
   const erros = [];
   const limite = lerValor(limiteCredito);
   const prazo = prazoDias == null || String(prazoDias).trim() === '' ? 0 : Number(prazoDias);
-  if (!FORMAS_PAGAMENTO[formaPagamento]) erros.push('informe a forma de pagamento: antecipado, à vista ou boleto');
+  if (!FORMAS_PAGAMENTO[formaPagamento]) erros.push('informe a forma de pagamento: antecipado, à vista, boleto ou depósito e Pix');
   if (!Number.isInteger(prazo) || prazo < 0) erros.push('prazo de pagamento: quantidade de dias (inteiro ≥ 0)');
   if (typeof comRestricao !== 'boolean') erros.push('informe se a liberação tem restrição de crédito');
   if (limite === null || Number.isNaN(limite) || limite < 0) erros.push('informe o limite de crédito (R$)');
