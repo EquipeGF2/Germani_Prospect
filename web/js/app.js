@@ -22,6 +22,7 @@ const ROTAS = [
   { caminho: '/admin/importar/tipos', tela: () => import('./telas/admin-importar-tipos.js'), telas: ['admin_tipos'] },
   { caminho: '/admin/importar/erp', tela: () => import('./telas/admin-importar-erp.js'), telas: ['admin_erp'] },
   { caminho: '/admin/importar/credito', tela: () => import('./telas/admin-importar-credito.js'), telas: ['admin_credito'] },
+  { caminho: '/admin/grupos', tela: () => import('./telas/admin-grupos.js'), telas: ['admin_grupos'] },
   { caminho: '/admin/importacoes', tela: () => import('./telas/admin-importacoes.js'), telas: ['admin_importacoes'] },
   { caminho: '/admin/usuarios', tela: () => import('./telas/admin-usuarios.js'), telas: ['admin_usuarios'] },
   { caminho: '/admin/perfis', tela: () => import('./telas/admin-perfis.js'), telas: ['admin_usuarios'] },

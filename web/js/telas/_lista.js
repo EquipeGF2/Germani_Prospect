@@ -158,7 +158,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   // ---------- lista inteira já lida: situação, ordem e grupos no navegador ----------
   const excedeu = lidas.length > LIMITE;
   const linhas = lidas.slice(0, LIMITE);
-  const STATUS_ORDEM = ['nao_contactado', 'em_prospeccao', 'aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse', 'invalido'];
+  const STATUS_ORDEM = ['nao_contactado', 'em_prospeccao', 'aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse', 'invalido', 'expurgado'];
   const natural = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'pt-BR', { numeric: true });
   const ORDENS = {
     prospect: (a, b) => natural(a.razao_social, b.razao_social),
@@ -208,7 +208,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
       h('button', { type: 'button', class: 'pequeno secundario', onclick: () => { lote.clear(); gravarLote([]); corpo.querySelectorAll('input[data-lote]').forEach((c) => { c.checked = false; }); atualizarLote(); } }, 'Limpar seleção')] : []);
   };
 
-  const registrarPermitido = (p) => podeRegistrar && !['venda_realizada', 'invalido'].includes(p.status_atual)
+  const registrarPermitido = (p) => podeRegistrar && !['venda_realizada', 'invalido', 'expurgado'].includes(p.status_atual)
     && (usuario.perfil !== 'supervisor' || !usuario.ve_todos || Number(p.supervisor_id) === usuario.id || Number(p.vendedor_id) === usuario.id);
 
   async function abrirFicha(p, tr) {

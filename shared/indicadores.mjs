@@ -124,7 +124,7 @@ SELECT ${g.chave} AS chave, MIN(${g.rotulo}) AS rotulo,
 }
 
 export const TIPOS_MOVIMENTO = Object.freeze(['entrada_base', 'contato_planilha', 'atendido', 'sem_interesse', 'pedido_informado',
-  'cadastro', 'liberacao_credito', 'pedido', 'baixa', 'transferencia']);
+  'cadastro', 'liberacao_credito', 'pedido', 'baixa', 'transferencia', 'expurgo', 'expurgo_desfeito']);
 
 /**
  * Lista do histórico de movimentação com filtros (relatório / consulta).

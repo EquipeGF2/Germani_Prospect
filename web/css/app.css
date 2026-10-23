@@ -671,3 +671,17 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 }
 .filtros-celular .lista-busca .lupa { display: none; }
 .filtros-celular .lista-busca input { flex: 1 1 100%; width: 100%; }
+
+/* Grupos de CNPJ (base × arquivo do ERP) */
+.tabela-grupos th, .tabela-grupos td.centro { text-align: center; }
+.tabela-grupos tr.grupo-raiz td { background: #FDF2F2; border-top: 1px solid #F3E1E2; }
+.selo.sugestao-expurgar { background: #FDE8E8; color: #8A1A20; }
+.selo.sugestao-manter { background: #E7F6EC; color: #05603A; }
+.selo.sugestao-decidir { background: #FEF3C7; color: #78350F; }
+.selo.sugestao-expurgado { background: #E7E5E4; color: #44403C; }
+.filtros-grupos { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.filtros-grupos select, .filtros-grupos input { width: auto; flex: 0 1 auto; margin: 0; }
+.filtros-grupos input { min-width: 240px; }
+.tabela-grupos select { width: auto; min-width: 150px; margin: 0; }
+.tabela-grupos td:nth-child(1) { white-space: nowrap; }
+.confirmar-expurgo { border: 2px solid var(--vinho, #9F1D24); }

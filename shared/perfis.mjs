@@ -20,6 +20,7 @@ export const TELAS = Object.freeze([
   { codigo: 'admin_tipos', rotulo: 'Representantes / vendedores', grupo: 'Administração', bases: ['administrador'] },
   { codigo: 'admin_erp', rotulo: 'Pedidos · Baixados (ERP)', grupo: 'Administração', bases: ['administrador'] },
   { codigo: 'admin_credito', rotulo: 'Cadastro e crédito (ERP)', grupo: 'Administração', bases: ['administrador'] },
+  { codigo: 'admin_grupos', rotulo: 'Grupos de CNPJ (base × ERP)', grupo: 'Administração', bases: ['administrador'] },
   { codigo: 'admin_importacoes', rotulo: 'Importações', grupo: 'Administração', bases: ['administrador'] },
   { codigo: 'admin_usuarios', rotulo: 'Usuários e perfis', grupo: 'Administração', bases: ['administrador'] },
   { codigo: 'admin_parametros', rotulo: 'Parâmetros', grupo: 'Administração', bases: ['administrador'] },
