@@ -9,7 +9,7 @@ import {
   AGRUPAMENTOS, agrupamentosPossiveis, consultaBairros, consultaCarteira, consultaLinhaTempo, datasDoPeriodo, faltaParaLista,
   PERIODOS_LISTA, visoesPermitidas,
 } from '../../shared/carteira.mjs';
-import { minhaEquipe, veTodasEquipes } from '../../shared/perfis.mjs';
+import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, formatar, comEspera } from '../ui.js';
 import { gerarPdfLista } from '../relatorio.js';
@@ -39,8 +39,6 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     if (e.periodo && e.periodo !== 'periodo') Object.assign(e.filtros, datasDoPeriodo(e.periodo, { hoje: hojeSaoPaulo() }));
   }
   if (!e.filtros.cidadeBusca) delete e.filtros.bairroBusca;
-  // supervisor que vê todas as equipes entra com a equipe dele já escolhida (só o filtro; nada é lido antes do Buscar)
-  if (!e.ver && minhaEquipe(usuario) && !e.filtros.supervisorId && !e.filtros.vendedorId) e.filtros.supervisorId = minhaEquipe(usuario);
   // a lista vem inteira numa leitura só; situação, ordem e agrupamento mudam no navegador, sem voltar ao banco.
   // Na Lista o representante é obrigatório, então não se agrupa por ele.
   const agrupaveis = acomp ? [] : agrupamentosPossiveis(usuario, e.filtros).filter((k) => k !== 'representante');

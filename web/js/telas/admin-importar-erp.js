@@ -77,6 +77,6 @@ export async function render(conteudo, ctx) {
     h('label', {}, 'Tipo de arquivo'), cards,
     h('div', { class: 'campo' }, h('label', { for: 'arquivo-erp' }, 'Arquivo (.xlsx ou .csv — o .xlsx malformado do Senior é corrigido automaticamente)'), arquivo),
     bLer));
-  montar(conteudo, h('h1', {}, 'Cadastro · Pedidos · Baixados'),
+  montar(conteudo, h('h1', {}, 'Pedidos · Baixados (ERP)'),
     h('p', { class: 'ajuda' }, 'Os arquivos do ERP prevalecem: valem para qualquer cliente da base, inclusive Sem interesse. Tudo entra no histórico de movimentação.'), area);
 }

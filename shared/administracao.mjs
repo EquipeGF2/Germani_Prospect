@@ -18,6 +18,11 @@ export async function alterarParametro(db, { chave, valor, executadoPor }) {
   if (!r.rows.length) throw new Error(`parâmetro inexistente: ${chave}`);
 }
 
+/** Quem pode ser o representante E-commerce (parâmetro vendedor_ecommerce_id, 0020): vendedores e supervisores ativos. */
+export async function listarCarteirasAtivas(db) {
+  return (await db.execute("SELECT id, nome, codigo_erp FROM usuarios WHERE ativo = 1 AND perfil IN ('vendedor','supervisor') ORDER BY nome")).rows;
+}
+
 export const NOMES_IMPORTACAO = Object.freeze({
   base_prospects: 'Base de prospects',
   tipo_atuacao: 'Representantes / vendedores',

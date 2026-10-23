@@ -49,10 +49,11 @@ const GRUPOS = [
     { caminho: '/financeiro', rotulo: 'Console de crédito', icone: 'financeiro', tela: 'credito' },
   ] },
   { titulo: 'Administração', itens: [
+    // importações na ordem do processo: base → cadastro e crédito → pedidos. Representantes e vendedores são
+    // cadastrados em Usuários (a importação por arquivo segue em #/admin/importar/tipos, fora do menu)
     { caminho: '/admin/importar/base', rotulo: 'Base de prospects', icone: 'base', tela: 'admin_base' },
-    { caminho: '/admin/importar/tipos', rotulo: 'Representantes / vendedores', icone: 'tipos', tela: 'admin_tipos' },
-    { caminho: '/admin/importar/erp', rotulo: 'Cadastro · Pedidos · Baixados', icone: 'erp', tela: 'admin_erp' },
     { caminho: '/admin/importar/credito', rotulo: 'Cadastro e crédito (ERP)', icone: 'credito', tela: 'admin_credito' },
+    { caminho: '/admin/importar/erp', rotulo: 'Pedidos · Baixados (ERP)', icone: 'erp', tela: 'admin_erp' },
     { caminho: '/admin/importacoes', rotulo: 'Importações', icone: 'importacoes', tela: 'admin_importacoes' },
     { caminho: '/admin/usuarios', rotulo: 'Usuários', icone: 'usuarios', tela: 'admin_usuarios' },
     { caminho: '/admin/parametros', rotulo: 'Parâmetros', icone: 'parametros', tela: 'admin_parametros' },
