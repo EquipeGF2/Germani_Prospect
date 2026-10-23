@@ -68,7 +68,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   // 2. representantes / vendedores
   const tipos = path.join(tmp, 'tipos.csv');
   await writeFile(tipos, 'COD;NOME;TIPO\n1101;Bruno;Representante\n1102;Carla;REP\n1201;Érica;Vendedor\n1202;Fábio;vendedor interno\n9999;Ninguém;Vendedor\n');
-  await pagina.click('#menu a[title="Representantes / vendedores"]');
+  assert.equal(await pagina.locator('#menu a[title="Representantes / vendedores"]').count(), 0, 'cadastro de representantes é em Usuários');
+  await pagina.evaluate(() => { location.hash = '#/admin/importar/tipos'; });
   await pagina.setInputFiles('#arquivo-tipos', tipos);
   await pagina.click('button:text("Ler arquivo")');
   await pagina.click('button:text("Simular")');
@@ -141,7 +142,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const cnpjs = linhas.slice(1, 3).map((l) => analisarCnpj(l[0]).cnpj);
   const cadastro = path.join(tmp, 'cadastro.csv');
   await writeFile(cadastro, `CNPJ;Data Cadastro;Codigo\n${cnpjs[0]};15/10/2026;C1\n${cnpjs[1]};16/10/2026;C2\n11222333000181;16/10/2026;C3\n`);
-  await pagina.click('#menu a[title="Cadastro · Pedidos · Baixados"]');
+  await pagina.click('#menu a[title="Pedidos · Baixados (ERP)"]');
   await pagina.click('label.card-tipo[data-tipo="pedido"]');
   await pagina.click('label.card-tipo[data-tipo="cadastro"]');             // escolha por cards
   assert.ok(await pagina.isChecked('input[name="tipo-erp"][value="cadastro"]'));

@@ -108,10 +108,9 @@ export async function render(conteudo, ctx) {
     if (!r) return;
     aviso('Importação gravada.');
     montar(area, passos(ETAPAS, 4),
-      mensagem(`Importação nº ${r.importacaoId} concluída. Representante ou vendedor veio da coluna TIPO; confira em Usuários e libere o acesso da equipe.`, 'ok'),
+      mensagem(`Importação nº ${r.importacaoId} concluída. Representante ou vendedor veio da coluna TIPO; confira e ajuste em Usuários e libere o acesso da equipe.`, 'ok'),
       blocoResultado({ titulo: `Importação nº ${r.importacaoId}`, resumo: r.resumo, resultados: paraTela(r.resultados), nomeRelatorio: `importacao-${r.importacaoId}-base.csv` }),
-      h('div', { class: 'acoes' }, h('a', { class: 'botao', href: '#/admin/importar/tipos' }, 'Representantes / vendedores'),
-        h('a', { class: 'botao secundario', href: '#/admin/usuarios' }, 'Usuários e senhas')));
+      h('div', { class: 'acoes' }, h('a', { class: 'botao', href: '#/admin/usuarios' }, 'Usuários e senhas')));
   }
 
   montar(area, passos(ETAPAS, 0), h('div', { class: 'cartao' },

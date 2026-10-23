@@ -401,8 +401,8 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 
 - **É a página inicial do app** (depois do login e no endereço vazio); sem o Explorar no perfil, abre a primeira tela
   permitida (Início, Lista, Console de crédito…). O Início **saiu do menu** (os números estão no Explorar; evita leitura à toa) — continua só pelo endereço `#/inicio` (no modo demonstração, o botão "Carregar dados de exemplo" fica lá).
-- Abre **já filtrado** em quem entrou: representante/vendedor na própria carteira; supervisor na sua equipe — inclusive
-  quem vê todas as equipes (ex.: Julio), com Supervisor como 1º nível; gerente e administrador na base toda.
+- Abre **no escopo** de quem entrou: representante/vendedor na própria carteira; supervisor na sua equipe; supervisor que
+  vê todas as equipes (ex.: Julio), gerente e administrador na base toda.
 - Árvore **do total até o cliente** com níveis livres, em qualquer ordem: Supervisor, Representante, Cidade, Segmento
   (TIPOLOGIA GTM), Onda, Rota, Subrota. Os níveis são cartões **arrastáveis** (ordenar, incluir, tirar); a ordem fica
   guardada no navegador. Cada nível aberto mostra **todos** os itens, do maior para o menor.
@@ -451,10 +451,9 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 | Analista financeiro | só a análise de crédito | Console de crédito (+ Início, Lista, Acompanhamento, se marcados) |
 
 - **Supervisor que também é gerente** (ex.: Julio): tipo-base **Supervisor** (mantém a equipe dele) com um perfil marcado
-  **"vê todas as equipes"**. Ele vê todas as equipes e registra só na dele. As telas **abrem na equipe dele**
-  (`minhaEquipe`): Início com o supervisor dele escolhido, Lista/Acompanhamento com o filtro Supervisor já nele (nada é
-  lido antes do Buscar) e Explorar com o ramo dele aberto. Ele troca para as outras equipes quando quiser. Os demais
-  supervisores não mudam (já veem só a própria equipe).
+  **"vê todas as equipes"** e as telas do gerente. Ele **abre como o gerente** (base toda, todas as equipes) e vê a
+  equipe dele separada escolhendo-se no filtro/nível Supervisor; registra só na equipe dele. Os demais supervisores não
+  mudam (já veem só a própria equipe).
 - Os **5 perfis do sistema** vêm prontos com as telas de hoje (financeiro: só o Console de crédito). O administrador cria
   outros em **Usuários → Perfis e telas de acesso** (ex.: "Supervisor regional" sem Acompanhamento) e escolhe o perfil de
   cada usuário na coluna Perfil da lista de usuários.

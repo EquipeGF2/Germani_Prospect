@@ -4,7 +4,7 @@
 import { bancoApp, lerComCache, leitorComCache } from '../db.js';
 import { consultaPedidosResumo, consultaResumo, montarArvore, NIVEIS, niveisPossiveis } from '../../shared/explorar.mjs';
 import { lerParametrosPainel } from '../../shared/painel.mjs';
-import { minhaEquipe, veTodasEquipes } from '../../shared/perfis.mjs';
+import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { h, montar, mensagem, formatar } from '../ui.js';
 
 const CHAVE_NIVEIS = 'germani.explorarNiveis';
@@ -50,22 +50,9 @@ export async function render(conteudo, { usuario }) {
   const tudo = veTodasEquipes(usuario);
   const raiz = tudo ? 'Toda a base' : usuario.perfil === 'supervisor' ? 'Minha equipe' : 'Minha carteira';
   const estado = { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cidade', 'segmento']), abertos: new Set(['']), sel: '', tipo: '', editarNiveis: false };
-  // Explorar é a página inicial: abre já no ramo de quem entrou — supervisor na equipe dele (inclusive quem vê todas
-  // as equipes, como gerente e supervisor); representante/vendedor na própria carteira. Sem ler o banco de novo.
-  const meuSupervisor = usuario.perfil === 'supervisor' ? (minhaEquipe(usuario) ?? Number(usuario.id))
-    : usuario.perfil === 'vendedor' ? Number(resumo.find((l) => Number(l.vendedor_id) === Number(usuario.id))?.supervisor_id ?? 0) || null : null;
-  const minhaCarteira = usuario.perfil === 'vendedor' ? Number(usuario.id) : null;
-  const pre = { supervisor: meuSupervisor, representante: minhaCarteira };
-  let caminho = '';
-  for (const nivel of estado.niveis) {
-    if (!pre[nivel]) break;
-    const proximo = `${caminho}/${nivel}=${pre[nivel]}`;
-    const existe = resumo.some((l) => (nivel === 'supervisor' ? Number(l.supervisor_id) : Number(l.vendedor_id)) === pre[nivel]);
-    if (!existe) break;
-    caminho = proximo;
-    estado.abertos.add(caminho);
-  }
-  if (caminho) estado.sel = caminho;
+  // Explorar é a página inicial e já abre no escopo de quem entrou (a raiz é a carteira do representante, a equipe do
+  // supervisor ou a base toda). Supervisor que vê todas as equipes (ex.: Julio) abre como o gerente: a base toda,
+  // e escolhe a equipe dele no 1º nível (Supervisor) quando quiser.
 
   const area = h('div', { class: 'explorar' });
   montar(conteudo, area);

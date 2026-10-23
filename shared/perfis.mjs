@@ -18,8 +18,8 @@ export const TELAS = Object.freeze([
   { codigo: 'credito', rotulo: 'Console de crédito', grupo: 'Financeiro', bases: ['administrador', 'financeiro'] },
   { codigo: 'admin_base', rotulo: 'Base de prospects', grupo: 'Administração', bases: ['administrador'] },
   { codigo: 'admin_tipos', rotulo: 'Representantes / vendedores', grupo: 'Administração', bases: ['administrador'] },
-  { codigo: 'admin_erp', rotulo: 'Cadastro · Pedidos · Baixados', grupo: 'Administração', bases: ['administrador'] },
-  { codigo: 'admin_credito', rotulo: 'Relatório de crédito', grupo: 'Administração', bases: ['administrador'] },
+  { codigo: 'admin_erp', rotulo: 'Pedidos · Baixados (ERP)', grupo: 'Administração', bases: ['administrador'] },
+  { codigo: 'admin_credito', rotulo: 'Cadastro e crédito (ERP)', grupo: 'Administração', bases: ['administrador'] },
   { codigo: 'admin_importacoes', rotulo: 'Importações', grupo: 'Administração', bases: ['administrador'] },
   { codigo: 'admin_usuarios', rotulo: 'Usuários e perfis', grupo: 'Administração', bases: ['administrador'] },
   { codigo: 'admin_parametros', rotulo: 'Parâmetros', grupo: 'Administração', bases: ['administrador'] },
@@ -58,13 +58,6 @@ export function veTodasEquipes(usuario) {
   return ['administrador', 'gerente', 'financeiro'].includes(usuario?.perfil) || (usuario?.perfil === 'supervisor' && Boolean(usuario?.ve_todos));
 }
 
-/**
- * Supervisor que também vê todas as equipes (ex.: o gerente que tem equipe própria): as telas abrem na equipe DELE
- * (Início, Lista/Acompanhamento, Explorar) e ele troca para as outras quando quiser. Devolve o id dele; os demais, null.
- */
-export function minhaEquipe(usuario) {
-  return usuario?.perfil === 'supervisor' && Boolean(usuario?.ve_todos) && usuario?.id ? Number(usuario.id) : null;
-}
 
 export async function carregarAcesso(db, { usuarioId }) {
   // sem a migração 0009 aplicada (site publicado antes de migrar), lê sem ve_todos em vez de perder o perfil
