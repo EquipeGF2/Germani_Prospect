@@ -155,18 +155,29 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   // 4b. relatório de crédito: o 1º cadastrado (análise financeira) + o 3º da base (sem cadastro ainda)
   const cnpj3 = analisarCnpj(linhas[3][0]).cnpj;
   const credito = path.join(tmp, 'credito.csv');
-  await writeFile(credito, `CNPJ;Cód interno;Razão social;Forma de pagamento;Prazo de pagamento;Limite de crédito CNPJ;Limite de crédito grupo;Data de cadastro\n${cnpjs[0]};C1;X;BOLETO;28;15.000,00;50.000,00;15/10/2026\n${cnpj3};C9;Y;Pix;0;;;16/10/2026\n`);
-  await pagina.click('#menu a[title="Relatório de crédito"]');
+  // layout real do ERP: "Descrição" repetida, coluna sem título, CPF (ignorado), crédito 0 = sem crédito
+  await writeFile(credito, `Cliente;CPF / CNPJ;Razão Social;Cond. Pgto;Descrição;Forma Pgto;Descrição;;Créd. Cliente;Créd. Grupo;Dt. Cadastro\n`
+    + `C1;${cnpjs[0]};X;28B;21/28/35 DD BOLETO;1;Boleto;;15.000,00;;15/10/2026\n`
+    + `C9;${cnpj3};Y;00A;A VISTA;9;Pix;;0;;16/10/2026\n`
+    + `C5;12345678901;Z;00A;A VISTA;4;A vista;;0;;16/10/2026\n`);
+  await pagina.click('#menu a[title="Cadastro e crédito (ERP)"]');
   await pagina.setInputFiles('#arquivo-credito', credito);
   await pagina.click('button:text("Ler arquivo")');
-  await pagina.waitForSelector('text=Como tratar cada forma de pagamento');
+  await pagina.waitForSelector('text=Forma de pagamento do ERP → filtro rápido');
   await pagina.selectOption('select[aria-label="forma Pix"]', 'a_vista');
   await pagina.click('button:text("Simular")');
   await pagina.waitForSelector('text=Resultado da simulação');
   assert.match(await texto(), /2 liberação\(ões\) de crédito, 1 com cadastro registrado pelo relatório/);
+  assert.match(await texto(), /O que o arquivo traz[\s\S]*CPF \(ignoradas\)\s*1/);
+  await foto('08a-credito-simulacao');
   await pagina.click('button:text("Confirmar e gravar")');
   await pagina.waitForSelector('text=passaram para Aguardando pedido');
   await foto('08b-credito');
+  // ficha do 1º cadastrado: condição e forma como vieram do ERP, com o prazo médio
+  await pagina.evaluate(() => { location.hash = '#/ficha?id=1'; });
+  await telaPronta();
+  assert.match(await texto(), /Cadastro e crédito no ERP[\s\S]*28B · 21\/28\/35 DD BOLETO · prazo médio 28 dias[\s\S]*Boleto \(filtro: Boleto\)/);
+  await foto('08c-ficha-credito-erp');
 
   // 5. parâmetros
   await pagina.click('#menu a[title="Parâmetros"]');

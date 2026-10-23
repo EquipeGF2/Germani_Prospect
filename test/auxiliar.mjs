@@ -11,8 +11,8 @@ export async function bancoTeste() {
   return db;
 }
 
-export const cnpjTeste = (n) => {
-  const base = String(n).padStart(8, '0') + '0001';
+export const cnpjTeste = (n, filial = 1) => {
+  const base = String(n).padStart(8, '0') + String(filial).padStart(4, '0');
   return base + calcularDv(base);
 };
 
@@ -31,8 +31,7 @@ export async function criarEquipe(db) {
   ], 'write');
 }
 
-export async function criarProspect(db, { n, vendedorId = 2, cidade = 'Santa Cruz do Sul', bairro = null, rota = null, subrota = null, onda = null, razao = `Empresa ${n}` }) {
-  const cnpj = cnpjTeste(n);
+export async function criarProspect(db, { n, vendedorId = 2, cidade = 'Santa Cruz do Sul', bairro = null, rota = null, subrota = null, onda = null, razao = `Empresa ${n}`, cnpj = cnpjTeste(n) }) {
   const r = await db.execute({
     sql: `INSERT INTO prospects (cnpj, cnpj_raiz, razao_social, cidade, cidade_busca, bairro, bairro_busca, rota, subrota, onda, uf, busca, vendedor_id, dt_entrada_base)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RS', ?, ?, '2026-01-01') RETURNING id`,

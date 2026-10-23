@@ -273,6 +273,19 @@ export function consultaLinhaTempo({ prospectId, limite = null }) {
     args: limite ? [prospectId, limite] : [prospectId] };
 }
 
+/** Ficha: dados do ERP da última liberação (condição e forma como vieram, prazo médio, sem limite). */
+export function consultaCreditoErp({ prospectId }) {
+  return { sql: `SELECT cond_pgto_codigo, cond_pgto_descricao, forma_pgto_codigo, forma_pgto_descricao, prazo_medio_dias, sem_limite, limite_cnpj, limite_grupo
+                   FROM liberacoes_credito WHERE prospect_id = ? ORDER BY id DESC LIMIT 1`, args: [prospectId] };
+}
+
+/** Ficha: empresas da base com a mesma raiz de CNPJ — o Créd. Grupo é um limite só, igual para todas (não somado). */
+export function consultaGrupoCnpj({ prospectId }) {
+  return { sql: `SELECT g.id, g.cnpj, g.status_atual, s.nome AS status_nome, s.cor AS status_cor, g.dt_cadastro_erp, g.limite_credito, g.limite_credito_origem
+                   FROM prospects p JOIN prospects g ON g.cnpj_raiz = p.cnpj_raiz JOIN status s ON s.codigo = g.status_atual
+                  WHERE p.id = ? ORDER BY g.cnpj LIMIT 100`, args: [prospectId] };
+}
+
 /** Bairros da cidade escolhida (filtro Bairro, que só aparece com a cidade), no escopo do usuário. */
 export function consultaBairros({ usuario, cidadeBusca, uf = null }) {
   const { where, args } = escopo(usuario);
