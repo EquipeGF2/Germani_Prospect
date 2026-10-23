@@ -39,15 +39,30 @@ async function lerXlsx(bytes, ExcelJS) {
   return { linhas, aba: ws.name };
 }
 
-/** Reempacota um .xlsx malformado: "\" → "/" nos caminhos e styles.xml mínimo. Devolve Uint8Array. */
+/**
+ * Reempacota um .xlsx malformado: "\" → "/" nos caminhos, styles.xml mínimo e abas fora de xl/worksheets/ (o relatório de
+ * cadastro do Senior grava xl/sheet1.xml) movidas para xl/worksheets/, com as referências corrigidas. Devolve Uint8Array.
+ */
 export async function reempacotarXlsx(bytes, JSZip) {
   const zip = await JSZip.loadAsync(bytes);
   const novo = new JSZip();
-  for (const [nome, arq] of Object.entries(zip.files)) {
-    if (arq.dir) continue;
-    const corrigido = nome.replace(/\\/g, '/');
-    const conteudo = /(^|\/)styles\.xml$/i.test(corrigido) ? STYLES_MINIMO : await arq.async('uint8array');
-    novo.file(corrigido, conteudo);
+  const arquivos = Object.entries(zip.files).filter(([, a]) => !a.dir).map(([nome, arq]) => [nome.replace(/\\/g, '/'), arq]);
+  // aba solta em xl/ (xl/sheet1.xml) → xl/worksheets/sheet1.xml
+  const soltas = new Set(arquivos.map(([n]) => n).filter((n) => /^xl\/sheet\d+\.xml$/i.test(n)));
+  const destino = (n) => (soltas.has(n) ? n.replace(/^xl\//i, 'xl/worksheets/') : n);
+  for (const [nome, arq] of arquivos) {
+    let conteudo;
+    if (/(^|\/)styles\.xml$/i.test(nome)) conteudo = STYLES_MINIMO;
+    else if (soltas.size && /^xl\/_rels\/workbook\.xml\.rels$/i.test(nome)) {
+      conteudo = (await arq.async('string')).replace(/Target="(sheet\d+\.xml)"/gi, 'Target="worksheets/$1"');
+    } else if (soltas.size && /^\[Content_Types\]\.xml$/i.test(nome)) {
+      conteudo = (await arq.async('string')).replace(/PartName="\/xl\/(sheet\d+\.xml)"/gi, 'PartName="/xl/worksheets/$1"');
+    } else if (/^xl\/(worksheets\/)?sheet\d+\.xml$/i.test(nome)) {
+      // texto em <![CDATA[...]]> (o leitor ignora): vira texto comum, escapado
+      const xml = await arq.async('string');
+      conteudo = xml.includes('<![CDATA[') ? xml.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, (_, t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')) : xml;
+    } else conteudo = await arq.async('uint8array');
+    novo.file(destino(nome), conteudo);
   }
   return novo.generateAsync({ type: 'uint8array' });
 }
