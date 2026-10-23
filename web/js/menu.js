@@ -53,7 +53,7 @@ const GRUPOS = [
     { caminho: '/admin/importar/base', rotulo: 'Base de prospects', icone: 'base', tela: 'admin_base' },
     { caminho: '/admin/importar/tipos', rotulo: 'Representantes / vendedores', icone: 'tipos', tela: 'admin_tipos' },
     { caminho: '/admin/importar/erp', rotulo: 'Cadastro · Pedidos · Baixados', icone: 'erp', tela: 'admin_erp' },
-    { caminho: '/admin/importar/credito', rotulo: 'Relatório de crédito', icone: 'credito', tela: 'admin_credito' },
+    { caminho: '/admin/importar/credito', rotulo: 'Cadastro e crédito (ERP)', icone: 'credito', tela: 'admin_credito' },
     { caminho: '/admin/importacoes', rotulo: 'Importações', icone: 'importacoes', tela: 'admin_importacoes' },
     { caminho: '/admin/usuarios', rotulo: 'Usuários', icone: 'usuarios', tela: 'admin_usuarios' },
     { caminho: '/admin/parametros', rotulo: 'Parâmetros', icone: 'parametros', tela: 'admin_parametros' },

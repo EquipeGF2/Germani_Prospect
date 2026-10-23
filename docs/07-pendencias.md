@@ -19,7 +19,7 @@ Atualizado em 2026-10-19. Cada item diz o que já está implementado como padrã
 | 15 | "Front mais amplo" do vendedor | **resolvido:** montagem de rotas (docs/03 §7) + visão por rota/subrota, na própria carteira | — |
 | 16 | Registros do app | **resolvido:** atendido · sem interesse (também em lote) · reabrir com pedido identificado; "não atendido" não gera registro | — |
 | 19 | Operação pelo app | **decidido:** nada direto no banco; carga e administração por telas. Token de administração digitado na tela (ADR-0001) | definir com a F1 |
-| 20 | Relatório de crédito | **implementado:** layout informado (CNPJ, cód. interno, razão, forma, prazo, limite CNPJ, limite grupo, data de cadastro) | enviar uma amostra real para conferir nomes de coluna e valores de forma de pagamento |
+| 20 | Relatório de cadastro e crédito | **implementado com o layout real do ERP** (2026-10-23): Cliente, CPF / CNPJ, Razão Social, Cond. Pgto + Descrição, Forma Pgto + Descrição, Créd. Cliente, Créd. Grupo, Dt. Cadastro | próximo passo: importação de pedidos somando os pedidos do grupo (raiz) contra o limite do grupo |
 | 21 | Ações em lote | tela faz só **sem interesse** em lote (atendido em lote existe no backend) | confirmar se precisa de atendido em lote na tela |
 | 22 | Telefone da base | Ligar / WhatsApp só aparecem com DDD (10+ dígitos); assume Brasil (+55) | conferir o formato do telefone na planilha real |
 | 23 | DT 1o / DT 2o da planilha base | **implementado:** opção na tela (e `--com-datas`/`--sem-datas`) de considerar ou ignorar; padrão = ignorar quando vazias (planilha atual) | — |

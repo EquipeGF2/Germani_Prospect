@@ -300,18 +300,24 @@ A importação do arquivo de **cadastro** coloca o cliente em **Análise finance
 A análise termina, e o cliente vai para **Aguardando pedido**, de uma destas formas — ambas gravam em
 `liberacoes_credito` e no histórico de movimentação. **A liberação sempre ocorre.**
 
-### 8.1 Relatório de crédito do ERP (rotina) — `shared/importar-credito.mjs`
-Colunas: **CNPJ · Cód interno · Razão social · Forma de pagamento · Prazo de pagamento · Limite de crédito CNPJ ·
-Limite de crédito grupo · Data de cadastro**.
+### 8.1 Relatório de cadastro e crédito do ERP (rotina) — `shared/importar-credito.mjs`
+Um relatório só traz o **cadastro** e o **crédito liberado**. Layout real do ERP: **Cliente · CPF / CNPJ · Razão Social ·
+Cond. Pgto · Descrição · Forma Pgto · Descrição · (coluna vazia) · Créd. Cliente · Créd. Grupo · Dt. Cadastro**
+("Descrição" repetida: vale a da coluna seguinte à condição/forma). O layout antigo (CNPJ · Cód interno · … · Limite de
+crédito CNPJ/grupo · Data de cadastro) continua aceito.
 
 | Regra | Como funciona |
 |---|---|
-| Limite | **Limite do CNPJ preenchido → vale o do CNPJ** (o do grupo é ignorado). **CNPJ vazio → vale o do grupo.** Os dois vazios: limite 0 (aviso); boleto sem limite é rejeitado. A origem do limite (CNPJ / grupo) fica registrada. |
-| Forma de pagamento | **antecipado · à vista · boleto**. Os valores do arquivo são mapeados na tela (sugestões automáticas para "ANTECIPADO", "A VISTA", "BOLETO"…); valor não mapeado = linha rejeitada. |
-| Prazo | só a **quantidade de dias** (ex.: 28). Vazio = 0. |
-| Cliente ainda sem cadastro | (Não contactado, Em prospecção, Aguardando cadastro, Sem interesse) o relatório registra **também o cadastro** (data de cadastro + cód. interno) e em seguida a liberação. |
-| Já em Aguardando pedido | crédito diferente = nova liberação (correção); igual = ignorado. |
-| Venda realizada | ignorado (o status não muda). · CNPJ baixado: rejeitado. · Fora da base: ignorado. |
+| Quem recebe os dados | **só os CNPJs da base de prospects.** CPF (pessoa física, ≤ 11 dígitos — inclusive sem os zeros à esquerda) e CNPJ fora da base são **ignorados**: o relatório não cadastra prospects novos. |
+| Limite | **Créd. Cliente preenchido → vale ele** (mesmo 0). **Vazio → vale o Créd. Grupo**, que é o **limite global de todas as empresas da mesma raiz de CNPJ** (8 primeiros dígitos): o mesmo valor aparece em cada empresa e **não é somado** (ex.: duas filiais com R$ 2.000 = limite do grupo R$ 2.000). Na importação de pedidos, os pedidos do grupo serão somados e comparados com esse limite. A origem (cliente / grupo) fica registrada. |
+| 9.999.999 · 0 | **9.999.999 = sem limite** (`sem_limite = 1`; o histórico diz "sem limite"). **0 = sem crédito**: só à vista ou antecipado. |
+| Condição e forma | gravadas **como vieram do ERP** (código + descrição). O **prazo médio** sai da descrição da condição ("21/28/35 DD BOLETO" → 28; "A VISTA" → 0). |
+| Filtro rápido (`forma_pagamento`) | **antecipado · à vista · boleto/a prazo**, só para filtrar: a forma do ERP é mapeada na tela (sugestões: Boleto, Depósito e Pix, Convênio → boleto; A vista, E-Commerce, Bonificação, Confissão de dívida → à vista; Antecipado → antecipado). **Sem crédito (0) → à vista** (salvo antecipado); boleto sem prazo → à vista. Valor não mapeado = linha rejeitada. |
+| Grupo com valores diferentes | Créd. Grupo diferente entre empresas da mesma raiz: **aviso** em todas as linhas do grupo (confira no ERP); cada empresa grava o valor que veio. |
+| Já era cliente | Dt. Cadastro anterior ao início da campanha: aviso "já era cliente" (contado na prévia). |
+| Cliente ainda sem cadastro | (Não contactado, Em prospecção, Aguardando cadastro, Sem interesse) o relatório registra **também o cadastro** (Dt. Cadastro + código do cliente; regra 0014 do atendimento automático) e em seguida a liberação. |
+| Já em Aguardando pedido | crédito diferente (inclusive condição/forma do ERP) = nova liberação (correção); igual = ignorado. |
+| Venda realizada | ignorado (o status não muda). · CNPJ baixado: rejeitado. · Sem Dt. Cadastro ("00/00/0000"): rejeitado. |
 | Data da liberação | dia da importação (nunca antes do cadastro). |
 
 ### 8.2 Console do analista (casos pontuais) — `shared/financeiro.mjs`

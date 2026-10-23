@@ -112,23 +112,26 @@ npm run importar:eventos -- --tipo baixa    baixados.csv --col-cnpj "CNPJ" --dat
 
 Quando o layout real chegar, os nomes de coluna viram padrão no script (ver 07-pendencias).
 
-## 3. Relatório de crédito (rotina)
+## 3. Relatório de cadastro e crédito (rotina)
 
-Tela **Administração → Relatório de crédito** (contingência: `npm run importar:credito -- arquivo.xlsx`).
+Tela **Administração → Cadastro e crédito (ERP)** (contingência: `npm run importar:credito -- arquivo.xlsx`).
+O .xlsx do ERP vem fora do padrão (caminhos com "\\", aba solta, textos em CDATA): o leitor corrige na leitura.
 
-| Coluna | Uso |
+| Coluna (relatório do ERP) | Uso |
 |---|---|
-| CNPJ * | localiza o prospect |
-| Cód interno | código do cliente no ERP (registrado no cadastro, se o cliente ainda não tinha) |
-| Razão social | conferência (diferente da base = aviso) |
-| Forma de pagamento * | antecipado · à vista · boleto (mapeado na tela) |
-| Prazo de pagamento | quantidade de dias |
-| Limite de crédito CNPJ | prevalece quando preenchido |
-| Limite de crédito grupo | usado só quando o do CNPJ está vazio |
-| Data de cadastro * | data do cadastro no ERP |
+| Cliente | código do cliente no ERP (registrado no cadastro, se o cliente ainda não tinha) |
+| CPF / CNPJ * | localiza o prospect; CPF e fora da base = ignorados |
+| Razão Social | conferência (diferente da base = aviso) |
+| Cond. Pgto + Descrição | condição de pagamento (gravada como veio; prazo médio calculado da descrição) |
+| Forma Pgto * + Descrição | forma de pagamento (gravada como veio; mapeada para o filtro rápido na tela) |
+| Créd. Cliente | limite do cliente — prevalece quando preenchido (9.999.999 = sem limite; 0 = sem crédito) |
+| Créd. Grupo | limite global da raiz do CNPJ — usado quando o Créd. Cliente está vazio |
+| Dt. Cadastro * | data em que o cadastro entrou na empresa |
 
-Efeito: Análise financeira → **Aguardando pedido** (regras em docs/03 §8.1). As colunas são reconhecidas pelo
-nome (com variações) e podem ser escolhidas na tela.
+Efeito: Análise financeira → **Aguardando pedido** (regras em docs/03 §8.1). A simulação mostra antes de gravar:
+linhas na base × fora da base × CPF, grupos (raiz com 2+ empresas), limite considerado (cliente · grupo · sem limite ·
+sem crédito) e os pontos para conferir (grupos com Créd. Grupo diferente, grupos mistos, cadastros anteriores à campanha).
+As colunas são reconhecidas pelo nome (a "Descrição" pela posição) e podem ser escolhidas na tela pela letra da coluna.
 
 ## 4. Lista de representantes e vendedores (forma de trabalho)
 

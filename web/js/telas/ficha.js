@@ -1,9 +1,9 @@
 // Ficha do cliente: dados, situação, crédito e a linha do tempo (histórico de movimentação). docs/08
 import { bancoApp } from '../db.js';
-import { ajustarFicha, consultaFicha, consultaLinhaTempo } from '../../shared/carteira.mjs';
+import { ajustarFicha, consultaCreditoErp, consultaFicha, consultaGrupoCnpj, consultaLinhaTempo } from '../../shared/carteira.mjs';
 import { linkMapa } from '../../shared/rotas.mjs';
 import { somenteDigitos } from '../../shared/texto.mjs';
-import { h, montar, mensagem, formatar } from '../ui.js';
+import { h, montar, mensagem, formatar, tabela } from '../ui.js';
 import { seloStatus } from './_carteira.js';
 
 const NOMES_FORMA = { antecipado: 'Antecipado', a_vista: 'À vista', boleto: 'Boleto' };
@@ -33,7 +33,8 @@ export async function render(conteudo, { usuario, parametros }) {
   const linha = id ? (await db.execute(consultaFicha({ usuario, prospectId: id }))).rows[0] : null;
   if (!linha) return montar(conteudo, mensagem('Prospect não encontrado ou fora da sua carteira.', 'erro'));
   const p = ajustarFicha(usuario, linha);
-  const movimentos = (await db.execute(consultaLinhaTempo({ prospectId: id }))).rows;
+  const [movimentos, [erp], grupo] = (await Promise.all([consultaLinhaTempo({ prospectId: id }), consultaCreditoErp({ prospectId: id }), consultaGrupoCnpj({ prospectId: id })]
+    .map((c) => db.execute(c)))).map((r) => r.rows);
   // supervisor que vê todas as equipes registra só na própria equipe (regra do banco)
   const daEquipe = usuario.perfil !== 'supervisor' || !usuario.ve_todos || Number(p.supervisor_id) === usuario.id || Number(p.vendedor_id) === usuario.id;
   const podeRegistrar = usuario.perfil !== 'financeiro' && Number(p.aceita_contato) === 1 && daEquipe;
@@ -64,14 +65,32 @@ export async function render(conteudo, { usuario, parametros }) {
         : 'Avançou de etapa via importação do ERP sem atendimento registrado pelo representante.', 'info') : null,
       Number(p.parado) ? mensagem(`Sem movimento há ${p.dias_sem_movimento} dias.`, 'info') : null]);
 
+  const semLimite = Number(erp?.sem_limite) === 1;
+  const limite = p.limite_credito == null ? null
+    : semLimite ? 'sem limite' : Number(p.limite_credito) === 0 ? 'sem crédito (só à vista ou antecipado)' : formatar.moeda(p.limite_credito);
+  const comGrupo = grupo.length > 1;
   const credito = p.dt_liberacao_credito ? h('div', { class: 'cartao' },
-    h('h2', {}, 'Crédito'),
+    h('h2', {}, 'Cadastro e crédito no ERP'),
     h('div', { class: 'dados' },
       dado('Liberado em', formatar.data(p.dt_liberacao_credito)),
-      dado('Forma de pagamento', NOMES_FORMA[p.forma_pagamento] ?? p.forma_pagamento),
-      dado('Prazo', p.prazo_pagamento_dias != null ? `${p.prazo_pagamento_dias} dia(s)` : null),
-      dado('Limite', p.limite_credito != null ? `${formatar.moeda(p.limite_credito)}${p.limite_credito_origem === 'grupo' ? ' (limite do grupo)' : ''}` : null),
+      dado('Condição de pagamento', erp?.cond_pgto_descricao || erp?.cond_pgto_codigo
+        ? `${[erp.cond_pgto_codigo, erp.cond_pgto_descricao].filter(Boolean).join(' · ')}${Number(erp.prazo_medio_dias) > 0 ? ` · prazo médio ${erp.prazo_medio_dias} dias` : ''}` : null),
+      dado('Forma de pagamento', erp?.forma_pgto_descricao || erp?.forma_pgto_codigo
+        ? `${erp.forma_pgto_descricao ?? erp.forma_pgto_codigo} (filtro: ${NOMES_FORMA[p.forma_pagamento] ?? p.forma_pagamento})` : NOMES_FORMA[p.forma_pagamento] ?? p.forma_pagamento),
+      dado('Prazo', !erp?.cond_pgto_codigo && p.prazo_pagamento_dias != null ? `${p.prazo_pagamento_dias} dia(s)` : null),
+      dado('Limite', limite == null ? null : `${limite}${p.limite_credito_origem === 'grupo' ? ' (limite do grupo — Créd. Cliente vazio)' : ''}`),
       dado('Restrição de crédito', Number(p.com_restricao_credito) ? 'com restrição' : null))) : null;
+
+  // grupo econômico: empresas da base com a mesma raiz de CNPJ (sem a razão social de carteiras alheias: só filial e situação)
+  const blocoGrupo = comGrupo ? h('div', { class: 'cartao' },
+    h('h2', {}, `Grupo · raiz ${formatar.cnpj(p.cnpj).slice(0, 10)}`),
+    h('p', { class: 'ajuda' }, `${grupo.length} empresas da base com a mesma raiz de CNPJ. O crédito do grupo é um limite só para todas (não é somado).`),
+    tabela([
+      { titulo: 'Empresa', valor: (g) => `${formatar.cnpj(g.cnpj)}${Number(g.id) === id ? ' (esta)' : ''}` },
+      { titulo: 'Situação', valor: (g) => seloStatus(g) },
+      { titulo: 'Cadastro no ERP', valor: (g) => formatar.data(g.dt_cadastro_erp) || '—' },
+      { titulo: 'Limite', valor: (g) => (g.limite_credito == null ? '—' : `${formatar.moeda(g.limite_credito)}${g.limite_credito_origem === 'grupo' ? ' (grupo)' : ''}`), classe: 'num' },
+    ], grupo)) : null;
 
   const cadastro = h('div', { class: 'cartao' },
     h('h2', {}, 'Cadastro'),
@@ -104,5 +123,5 @@ export async function render(conteudo, { usuario, parametros }) {
     h('a', { href: voltar, class: 'voltar' }, '‹ Voltar à lista'),
     h('h1', { style: 'margin-top:8px' }, p.razao_social),
     podeRegistrar ? h('div', { class: 'acoes', style: 'margin:0 0 16px' }, h('a', { class: 'botao', href: `#/registrar?id=${p.id}` }, 'Registrar atendimento')) : null,
-    situacao, credito, linhaTempo, cadastro);
+    situacao, credito, blocoGrupo, linhaTempo, cadastro);
 }

@@ -445,3 +445,19 @@ test('sem interesse do cliente × do representante: a origem vem do motivo; o re
   // "Outro" do representante também exige observação
   await assert.rejects(registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'REP_OUTRO', data: '2026-10-06' }), /exige observação/);
 });
+
+test('0016: liberação guarda condição/forma do ERP; "sem limite" no histórico; liberação continua só inclusão', async () => {
+  const id = await criarProspect(db, { n: 70 });
+  await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-05', documento: 'C70' });
+  const imp = await db.execute("INSERT INTO importacoes (tipo, arquivo_nome, arquivo_sha256, executado_por) VALUES ('credito_erp','a','x','t') RETURNING id");
+  await db.execute({ sql: `INSERT INTO liberacoes_credito (prospect_id, origem, importacao_id, data_liberacao, forma_pagamento, limite_cnpj, limite_credito, limite_origem,
+                             cond_pgto_codigo, cond_pgto_descricao, forma_pgto_codigo, forma_pgto_descricao, prazo_medio_dias, sem_limite)
+                           VALUES (?, 'importacao', ?, '2026-10-06', 'a_vista', 9999999, 9999999, 'cnpj', '00A', 'A VISTA', '4', 'A vista', 0, 1)`, args: [id, imp.rows[0].id] });
+  const p = await prospect(db, id);
+  assert.equal(p.status_atual, 'aguardando_pedido');
+  const det = (await db.execute({ sql: "SELECT detalhe FROM movimentacoes WHERE prospect_id = ? AND tipo = 'liberacao_credito'", args: [id] })).rows[0].detalhe;
+  assert.equal(det, 'à vista · sem limite (CNPJ) · relatório de crédito');
+  await assert.rejects(db.execute({ sql: 'UPDATE liberacoes_credito SET sem_limite = 0 WHERE prospect_id = ?', args: [id] }), /somente inclusão/);
+  await assert.rejects(db.execute({ sql: `INSERT INTO liberacoes_credito (prospect_id, origem, importacao_id, data_liberacao, forma_pagamento, limite_credito, limite_origem, sem_limite)
+                                          VALUES (?, 'importacao', ?, '2026-10-07', 'a_vista', 0, 'informado', 2)`, args: [id, imp.rows[0].id] }), /CHECK/);
+});
