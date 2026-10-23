@@ -6,7 +6,7 @@ import { h, montar, mensagem, formatar, tabela } from '../ui.js';
 import { seloStatus } from './_carteira.js';
 
 const NOMES_FORMA = { antecipado: 'Antecipado', a_vista: 'À vista', boleto: 'Boleto', deposito: 'Depósito e Pix' };
-const NOMES_ORIGEM = { contato: 'app', importacao: 'importação da base', erp: 'arquivo do ERP', financeiro: 'financeiro', transferencia: 'transferência' };
+const NOMES_ORIGEM = { contato: 'app', importacao: 'importação da base', erp: 'arquivo do ERP', financeiro: 'financeiro', transferencia: 'transferência', administracao: 'administração (Grupos de CNPJ)' };
 
 /** Prazo do ERP: "14/21/28 dias · médio 21" · "à vista" · "antecipado"; sem dados do ERP, os dias informados. */
 function textoPrazo(erp, p) {

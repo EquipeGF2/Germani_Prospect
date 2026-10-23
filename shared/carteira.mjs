@@ -47,7 +47,7 @@ export const ORDENACOES = Object.freeze({
   onda: (d) => `onda IS NULL, length(onda) ${d}, onda ${d}`,
   rota: (d) => `rota IS NULL, length(rota) ${d}, rota ${d}, subrota ${d}`,
   carteira: (d) => `vendedor_nome ${d}`,
-  status: (d) => `(SELECT CASE s.codigo WHEN 'sem_interesse' THEN 100 WHEN 'invalido' THEN 101 ELSE s.ordem END FROM status s WHERE s.codigo = status_atual) ${d}`,
+  status: (d) => `(SELECT CASE s.codigo WHEN 'sem_interesse' THEN 100 WHEN 'invalido' THEN 101 WHEN 'expurgado' THEN 102 ELSE s.ordem END FROM status s WHERE s.codigo = status_atual) ${d}`,
   dias: (d) => `dias_corridos IS NULL, dias_corridos ${d}`,
   ultimo: (d) => `dt_ultimo_contato IS NULL, dt_ultimo_contato ${d}`,
   primeiro: (d) => `dt_primeiro_contato IS NULL, dt_primeiro_contato ${d}`,
@@ -182,7 +182,7 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
               FROM status s
               LEFT JOIN (SELECT * FROM vw_prospects ${filtro}) p ON p.status_atual = s.codigo
              GROUP BY s.codigo
-             ORDER BY CASE s.codigo WHEN 'sem_interesse' THEN 100 WHEN 'invalido' THEN 101 ELSE s.ordem END`,   // na ordem do processo; encerrados por último
+             ORDER BY CASE s.codigo WHEN 'sem_interesse' THEN 100 WHEN 'invalido' THEN 101 WHEN 'expurgado' THEN 102 ELSE s.ordem END`,   // na ordem do processo; encerrados por último
       args,
     };
   }

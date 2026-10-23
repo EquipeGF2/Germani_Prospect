@@ -194,6 +194,38 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await telaPronta();
   assert.match(await texto(), /Cadastro e crédito no ERP[\s\S]*28B · 21\/28\/35 DD BOLETO[\s\S]*Boleto \(filtro: Boleto\)[\s\S]*21\/28\/35 dias · médio 28/);
   await foto('08c-ficha-credito-erp');
+  // grupos de CNPJ: arquivo do ERP com CNPJs da base (antigos clientes) → sugestão, expurgo e desfazer
+  const grupos = path.join(tmp, 'grupos.csv');
+  const doGrupo = linhas.slice(10, 20).map((l) => analisarCnpj(l[0]).cnpj).filter(Boolean);
+  await writeFile(grupos, 'Cliente;CPF / CNPJ;Razão Social;Dt. Cadastro\n' + doGrupo.map((c, i) => `${500 + i};${c};GRUPO ${i};14/03/2019`).join('\n') + '\n');
+  await pagina.click('#menu a[title="Grupos de CNPJ"]');
+  await pagina.setInputFiles('#arquivo-grupos', grupos);
+  await pagina.click('button:text("Ler arquivo")');
+  await pagina.waitForSelector('text=raízes em comum');
+  const aplicar = pagina.locator('button', { hasText: /^Aplicar \(/ });
+  const qtdExpurgo = Number(/\((\d+) expurgar/.exec(await aplicar.innerText())[1]);
+  assert.ok(qtdExpurgo > 0, 'há sugestões de expurgo');
+  await foto('08d-grupos-cnpj');
+  await aplicar.click();
+  await pagina.waitForSelector('[aria-label="Confirmar expurgo"]');
+  await pagina.click(`button:text("Expurgar ${qtdExpurgo}")`);
+  await pagina.waitForSelector(`text=Pronto: ${qtdExpurgo} expurgado(s)`);
+  await pagina.waitForSelector('text=já expurgados');
+  await pagina.click('[data-sugestao="expurgado"]');
+  assert.equal(await pagina.locator('.tabela-grupos tbody tr:not(.grupo-raiz)').count(), qtdExpurgo);
+  // desfazer um
+  await pagina.locator('.tabela-grupos select').first().selectOption('desfazer');
+  await aplicar.click();
+  await pagina.locator('button', { hasText: /desfazer 1$/ }).click();
+  await pagina.waitForSelector('text=1 desfeito(s)');
+  // desfaz o resto (os passos seguintes contam a carteira inteira)
+  for (const sel of await pagina.locator('.tabela-grupos select').all()) {
+    await sel.selectOption((await sel.locator('option[value="desfazer"]').count()) ? 'desfazer' : 'manter');
+  }
+  await aplicar.click();
+  await pagina.locator('button', { hasText: new RegExp(`^Expurgar 0 · desfazer ${qtdExpurgo - 1}$`) }).click();
+  await pagina.waitForSelector(`text=${qtdExpurgo - 1} desfeito(s)`);
+
   // erros do app: tela do administrador abre (lista vazia no banco de demonstração)
   await pagina.click('#menu a[title="Erros do app"]');
   await pagina.waitForSelector('text=Mais frequentes');

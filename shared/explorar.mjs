@@ -67,7 +67,7 @@ export function niveisPossiveis(usuario) {
   return todos.filter((n) => n !== 'supervisor' && n !== 'representante');
 }
 
-export const STATUS_ORDEM = ['nao_contactado', 'em_prospeccao', 'aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse', 'invalido'];
+export const STATUS_ORDEM = ['nao_contactado', 'em_prospeccao', 'aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse', 'invalido', 'expurgado'];
 
 /** Soma linhas do resumo (e os pedidos) num bloco de indicadores. `parametros`: percentual_pipeline, valor_medio_cliente. */
 export function somarResumo(linhas, pedidos = [], parametros = {}) {
@@ -80,14 +80,15 @@ export function somarResumo(linhas, pedidos = [], parametros = {}) {
     siRepresentante += Number(l.si_representante ?? 0);   // migração 0015: dos sem interesse, os do representante
   }
   let qtdPedidos = 0; let valorPedidos = 0;
-  for (const p of pedidos) { if (p.status_atual === 'invalido') continue; qtdPedidos += Number(p.qtd); valorPedidos += Number(p.valor); }
-  const base = qtd - st.invalido;                                     // carteira válida (inválidos fora, como no Início)
+  for (const p of pedidos) { if (p.status_atual === 'invalido' || p.status_atual === 'expurgado') continue; qtdPedidos += Number(p.qtd); valorPedidos += Number(p.valor); }
+  const inativos = st.invalido + st.expurgado;                        // baixados e expurgados (já clientes, 0021)
+  const base = qtd - inativos;                                        // carteira válida (inativos fora, como no Início)
   const contactados = base - st.nao_contactado;
   const emAberto = st.nao_contactado + st.em_prospeccao;
   const pct = Number(parametros.percentual_pipeline ?? 0);
   const valorMedio = Number(parametros.valor_medio_cliente ?? 0);
   return {
-    qtd, base, status: st, contactados, atendidos, cadastrados, credito, vendas: st.venda_realizada, semInteresse: st.sem_interesse,
+    qtd, base, inativos, status: st, contactados, atendidos, cadastrados, credito, vendas: st.venda_realizada, semInteresse: st.sem_interesse,
     siRepresentante, siCliente: st.sem_interesse - siRepresentante,
     emAndamento: st.aguardando_cadastro + st.analise_financeira, aguardandoPedido: st.aguardando_pedido,
     qtdPedidos, valorPedidos, emAberto, potencial: (emAberto * pct * valorMedio) / 100,

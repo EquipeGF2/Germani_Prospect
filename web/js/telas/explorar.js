@@ -131,7 +131,7 @@ export async function render(conteudo, { usuario }) {
       ['si_cliente', 'Sem interesse do cliente', ind.siCliente, '#3F3F46'],
       ['si_representante', 'Sem interesse do representante', ind.siRepresentante, '#B45309'],
       ['nao_contactados', 'Não contactados', ind.status.nao_contactado, '#9CA3AF'],
-      ['inativos', 'Inativos (inválidos / baixados)', ind.status.invalido, '#E5E7EB'],
+      ['inativos', 'Inativos (baixados / expurgados)', ind.inativos, '#E5E7EB'],
     ];
     const totalidade = h('section', { class: 'cartao exp-grafico', id: 'grafico-totalidade' },
       h('div', { class: 'exp-grafico-topo' }, h('div', {}, h('span', { class: 'tit' }, 'Da totalidade'), h('h2', {}, escolhido.rotulo)),
@@ -188,7 +188,7 @@ export async function render(conteudo, { usuario }) {
       h('span', { class: 'num', dados: { r: 'Ag. ped.', cel: 3 } }, n0(n.ind.aguardandoPedido)),
       h('b', { class: 'num', dados: { r: 'Pedidos', cel: 4 } }, n0(n.ind.vendas)),
       h('span', { class: 'num', dados: { r: 'Valor', cel: 8 } }, reais(n.ind.valorPedidos)), h('span', { class: 'num potencial' }, reais(n.ind.potencial)),
-      h('span', { class: 'num so-celular', dados: { r: 'Inativos', cel: 7 } }, n0(n.ind.status.invalido))));
+      h('span', { class: 'num so-celular', dados: { r: 'Inativos', cel: 7 } }, n0(n.ind.inativos))));
 
     return [
       h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar carteira'), tipos),

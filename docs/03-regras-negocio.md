@@ -484,3 +484,21 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 - Telas de administração só servem ao tipo-base Administrador (gravam com a chave do cofre — ADR-0006). Alterar perfis
   exige a chave de administração com as permissões `perfis` e `perfil_telas` (docs/06 §3).
 
+
+## 13. Grupos de CNPJ e expurgo (migração 0021 · `shared/grupos.mjs`)
+
+- Tela **Administração → Grupos de CNPJ** (só administrador): carrega um arquivo do ERP com a coluna **CPF / CNPJ** (o
+  relatório de cadastro serve) e cruza com a base **só pela raiz do CNPJ** (8 primeiros dígitos). CPF e CNPJ inválido do
+  arquivo ficam fora. O arquivo é lido no navegador; nada é gravado até aplicar.
+- Para cada grupo do arquivo que também está na base: as empresas da base (CNPJ, situação, carteira) e, de cada uma, se o
+  **mesmo CNPJ** está no arquivo (código e data de cadastro) ou se é **filial nova** do grupo. Relatório completo em CSV.
+- **Sugestão** por empresa (o administrador decide):
+  - **Expurgar** — mesmo CNPJ no arquivo, cadastro anterior ao início da campanha (ou sem data) e ainda não trabalhado
+    (Não contactado / Em prospecção, sem atendimento): já era cliente, não é prospect;
+  - **Manter** — cadastro feito na campanha (conversão) ou prospect já trabalhado (atendido, cadastro, crédito, pedido,
+    sem interesse…);
+  - **Decidir** — filial nova de grupo que já é cliente, ainda sem atendimento.
+- **Expurgo**: nada é apagado. O prospect passa à situação **Expurgado (já cliente)** — fora da carteira válida e das contas
+  (como o inválido: `conta_carteira = 0`; no Explorar entra em "Inativos"), sem aceitar registro. Fica em `expurgos`
+  (somente inclusão) com quem, quando e o motivo, e aparece no histórico da ficha. **Desfazer** (na mesma tela) devolve a
+  situação anterior. O banco só aceita expurgar quem não foi trabalhado e só pelo administrador.
