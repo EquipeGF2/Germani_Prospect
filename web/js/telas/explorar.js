@@ -50,12 +50,22 @@ export async function render(conteudo, { usuario }) {
   const tudo = veTodasEquipes(usuario);
   const raiz = tudo ? 'Toda a base' : usuario.perfil === 'supervisor' ? 'Minha equipe' : 'Minha carteira';
   const estado = { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cidade', 'segmento']), abertos: new Set(['']), sel: '', tipo: '', editarNiveis: false };
-  // supervisor que vê todas as equipes: abre já no ramo da equipe dele (com Supervisor como 1º nível)
-  const meu = minhaEquipe(usuario);
-  if (meu && estado.niveis[0] === 'supervisor' && resumo.some((l) => Number(l.supervisor_id) === meu)) {
-    estado.sel = `/supervisor=${meu}`;
-    estado.abertos.add(estado.sel);
+  // Explorar é a página inicial: abre já no ramo de quem entrou — supervisor na equipe dele (inclusive quem vê todas
+  // as equipes, como gerente e supervisor); representante/vendedor na própria carteira. Sem ler o banco de novo.
+  const meuSupervisor = usuario.perfil === 'supervisor' ? (minhaEquipe(usuario) ?? Number(usuario.id))
+    : usuario.perfil === 'vendedor' ? Number(resumo.find((l) => Number(l.vendedor_id) === Number(usuario.id))?.supervisor_id ?? 0) || null : null;
+  const minhaCarteira = usuario.perfil === 'vendedor' ? Number(usuario.id) : null;
+  const pre = { supervisor: meuSupervisor, representante: minhaCarteira };
+  let caminho = '';
+  for (const nivel of estado.niveis) {
+    if (!pre[nivel]) break;
+    const proximo = `${caminho}/${nivel}=${pre[nivel]}`;
+    const existe = resumo.some((l) => (nivel === 'supervisor' ? Number(l.supervisor_id) : Number(l.vendedor_id)) === pre[nivel]);
+    if (!existe) break;
+    caminho = proximo;
+    estado.abertos.add(caminho);
   }
+  if (caminho) estado.sel = caminho;
 
   const area = h('div', { class: 'explorar' });
   montar(conteudo, area);

@@ -2,7 +2,7 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, evento, registrarContato } from './auxiliar.mjs';
-import { comandoCriarRota, comandoEncerrarRota, comandosSalvarParadas, consultaParadas, linkMapa, sugerirOrdem } from '../shared/rotas.mjs';
+import { comandoCriarRota, comandoEncerrarRota, comandosSalvarParadas, consultaParadas, linkMapa, sugerirOrdem, telefoneParaLink } from '../shared/rotas.mjs';
 import { consultaExecucaoRotas } from '../shared/indicadores.mjs';
 import { consultaCarteira } from '../shared/carteira.mjs';
 
@@ -81,4 +81,10 @@ test('rota concluída fica travada; rota não é apagada', async () => {
 test('link do mapa usa a coordenada, nunca dado pessoal', () => {
   assert.equal(linkMapa({ latitude: -29.4669, longitude: -51.9614 }), 'https://www.google.com/maps/search/?api=1&query=-29.466900,-51.961400');
   assert.equal(linkMapa({ latitude: null, longitude: -51 }), null);
+});
+
+test('telefone para Ligar/WhatsApp: sem telefone não quebra a ficha', () => {
+  // cliente sem telefone na base (o banco guarda null) derrubava a ficha: somenteDigitos('') é null
+  assert.deepEqual([null, undefined, '', '-', '3000-0000', '(51) 3000-0000', '5551999990000', 5130000000].map(telefoneParaLink),
+    [null, null, null, null, null, '555130000000', '5551999990000', '555130000000']);
 });

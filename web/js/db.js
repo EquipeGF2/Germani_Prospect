@@ -57,11 +57,23 @@ export async function lerComCache(db, consulta, segundos = 120) {
 export function leitorComCache(db, segundos = 600) {
   return { execute: (c) => lerComCache(db, c, segundos) };
 }
+// Falha momentânea de rede/servidor (internet do celular, Turso ocupado): leitura tenta de novo uma vez. Gravação não
+// (poderia duplicar) — o erro vai para a tela com o código, e o usuário decide tentar de novo.
+const falhaDeRede = (e) => /Failed to fetch|NetworkError|Load failed|network|timed? ?out|ECONNRESET|fetch failed|\b50[234]\b|STREAM_EXPIRED/i
+  .test(`${e?.message ?? ''} ${e?.cause?.message ?? ''} ${e?.code ?? ''}`);
 function comLimpezaDeCache(db) {
   const leitura = (c) => /^\s*(SELECT|WITH|PRAGMA)\b/i.test(typeof c === 'string' ? c : c?.sql ?? '');
   const execute = db.execute.bind(db);
   const batch = db.batch.bind(db);
-  db.execute = (c, ...r) => { if (!leitura(c)) limparCache(); return execute(c, ...r); };
+  const lerDeNovo = async (c, r) => {
+    try { return await execute(c, ...r); }
+    catch (e) {
+      if (!falhaDeRede(e)) throw e;
+      await new Promise((ok) => setTimeout(ok, 800));
+      return execute(c, ...r);
+    }
+  };
+  db.execute = (c, ...r) => { if (!leitura(c)) { limparCache(); return execute(c, ...r); } return lerDeNovo(c, r); };
   db.batch = (...r) => { limparCache(); return batch(...r); };
   return db;
 }

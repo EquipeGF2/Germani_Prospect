@@ -399,6 +399,10 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 
 ## 12. Explorar carteira (migração 0012 · `shared/explorar.mjs`)
 
+- **É a página inicial do app** (depois do login e no endereço vazio); sem o Explorar no perfil, abre a primeira tela
+  permitida (Início, Lista, Console de crédito…). O Início continua no menu.
+- Abre **já filtrado** em quem entrou: representante/vendedor na própria carteira; supervisor na sua equipe — inclusive
+  quem vê todas as equipes (ex.: Julio), com Supervisor como 1º nível; gerente e administrador na base toda.
 - Árvore **do total até o cliente** com níveis livres, em qualquer ordem: Supervisor, Representante, Cidade, Segmento
   (TIPOLOGIA GTM), Onda, Rota, Subrota. Os níveis são cartões **arrastáveis** (ordenar, incluir, tirar); a ordem fica
   guardada no navegador. Cada nível aberto mostra **todos** os itens, do maior para o menor.

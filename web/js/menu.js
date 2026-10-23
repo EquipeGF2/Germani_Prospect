@@ -58,6 +58,7 @@ const GRUPOS = [
     { caminho: '/admin/usuarios', rotulo: 'Usuários', icone: 'usuarios', tela: 'admin_usuarios' },
     { caminho: '/admin/parametros', rotulo: 'Parâmetros', icone: 'parametros', tela: 'admin_parametros' },
     { caminho: '/admin/feriados', rotulo: 'Feriados', icone: 'feriados', tela: 'admin_feriados' },
+    { caminho: '/admin/erros', rotulo: 'Erros do app', icone: 'importacoes', tela: 'admin_parametros' },
   ] },
 ];
 
