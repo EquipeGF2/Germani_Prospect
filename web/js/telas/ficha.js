@@ -1,8 +1,7 @@
 // Ficha do cliente: dados, situação, crédito e a linha do tempo (histórico de movimentação). docs/08
 import { bancoApp } from '../db.js';
 import { ajustarFicha, consultaCreditoErp, consultaFicha, consultaGrupoCnpj, consultaLinhaTempo } from '../../shared/carteira.mjs';
-import { linkMapa } from '../../shared/rotas.mjs';
-import { somenteDigitos } from '../../shared/texto.mjs';
+import { linkMapa, telefoneParaLink } from '../../shared/rotas.mjs';
 import { h, montar, mensagem, formatar, tabela } from '../ui.js';
 import { seloStatus } from './_carteira.js';
 
@@ -23,10 +22,9 @@ function dado(rotulo, valor) {
 }
 
 function linksContato(p) {
-  const fone = somenteDigitos(p.telefone ?? '');
+  const nacional = telefoneParaLink(p.telefone);
   const links = [];
-  if (fone.length >= 10) {
-    const nacional = fone.startsWith('55') && fone.length > 11 ? fone : `55${fone}`;
+  if (nacional) {
     links.push(h('a', { class: 'botao secundario', href: `tel:+${nacional}` }, 'Ligar'));
     links.push(h('a', { class: 'botao secundario', href: `https://wa.me/${nacional}`, target: '_blank', rel: 'noopener' }, 'WhatsApp'));
   }

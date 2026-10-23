@@ -5,7 +5,7 @@
 //     agrupa por cidade → bairro → rota/subrota da planilha → endereço; o vendedor ajusta à mão.
 //   * As coordenadas servem só para abrir o mapa do próprio celular.
 import { formaDeTrabalho } from './carteira.mjs';
-import { normalizarBusca } from './texto.mjs';
+import { normalizarBusca, somenteDigitos } from './texto.mjs';
 
 const chave = (v) => (v == null || v === '' ? '￿' : String(v)); // vazios por último
 // usa a forma normalizada gravada; se a linha não a trouxer, normaliza aqui (acento não separa grupos)
@@ -66,6 +66,16 @@ export function consultaParadas({ usuario, rotaId }) {
 }
 
 /** Link para abrir o ponto no mapa do celular (coordenada da planilha, sem dado pessoal). */
+/**
+ * Número para "Ligar" e "WhatsApp" (com o 55 do Brasil), ou null quando o cliente não tem telefone utilizável.
+ * Telefone vazio vem do banco como null (a importação guarda só dígitos) — a ficha não pode quebrar por isso.
+ */
+export function telefoneParaLink(telefone) {
+  const fone = somenteDigitos(telefone) ?? '';
+  if (fone.length < 10) return null;
+  return fone.startsWith('55') && fone.length > 11 ? fone : `55${fone}`;
+}
+
 export function linkMapa({ latitude, longitude }) {
   if (latitude == null || longitude == null) return null;
   return `https://www.google.com/maps/search/?api=1&query=${Number(latitude).toFixed(6)},${Number(longitude).toFixed(6)}`;
