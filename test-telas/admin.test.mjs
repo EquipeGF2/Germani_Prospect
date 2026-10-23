@@ -169,6 +169,13 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('text=Resultado da simulação');
   assert.match(await texto(), /2 liberação\(ões\) de crédito, 1 com cadastro registrado pelo relatório/);
   assert.match(await texto(), /O que o arquivo traz[\s\S]*CPF \(ignoradas\)\s*1/);
+  // relatório em partes: aceitas e rejeitadas (ignoradas só na contagem)
+  assert.ok(await pagina.isVisible('button:text("Baixar aceitas (2) · CSV")'));
+  assert.ok(await pagina.isDisabled('button:text("Baixar rejeitadas (0) · CSV")'));
+  const download = pagina.waitForEvent('download');
+  await pagina.click('button:text("Baixar aceitas (2) · CSV")');
+  assert.match((await download).suggestedFilename(), /^simulacao-credito-.*-aceitas\.csv$/);
+  assert.match(await texto(), /1 linha\(s\) ignorada\(s\) não entram nos relatórios/);
   await foto('08a-credito-simulacao');
   await pagina.click('button:text("Confirmar e gravar")');
   await pagina.waitForSelector('text=passaram para Aguardando pedido');
