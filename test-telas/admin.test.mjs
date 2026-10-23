@@ -39,7 +39,10 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('.aviso.erro');
   await pagina.fill('#senha', 'demo1234');
   await pagina.click('button[type=submit]');
-  await pagina.waitForSelector('.painel-web');   // Início = painel (computador)
+  // página inicial = Explorar carteira; o Início (painel) continua no menu
+  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
+  await pagina.click('#menu a[title="Início"]');
+  await pagina.waitForSelector('.painel-web');
   assert.equal(await pagina.locator('#menu a[title="Visão geral"]').count(), 0);
   await foto('02-inicio-vazio');
 
@@ -283,6 +286,9 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.fill('#login', '1201');
   await pagina.fill('#senha', senhaVendedor);
   await pagina.click('button:text("Entrar")');
+  await pagina.waitForSelector('.explorar');           // abre no Explorar, já na carteira dele
+  assert.match(await pagina.locator('.exp-caminho').innerText(), /Minha carteira/, 'representante abre já na própria carteira');
+  await pagina.click('#menu a[title="Início"]');
   await pagina.waitForSelector('h1:text("Sua carteira")');
   assert.equal(await pagina.locator('#painel-supervisor').count(), 0, 'vendedor não escolhe supervisor');
   await foto('10a-inicio-vendedor');
@@ -452,6 +458,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.fill('#login', 'gerente');
   await pagina.fill('#senha', senhaGerente);
   await pagina.click('button:text("Entrar")');
+  await pagina.waitForSelector('.explorar');
+  await pagina.click('#menu a[title="Início"]');
   await pagina.waitForSelector('#painel-supervisor');
   assert.match(await pagina.locator('#usuario-lateral').innerText(), /Gerente comercial/);
   assert.equal(await pagina.locator('#menu a[title="Console de crédito"]').count(), 0);
@@ -478,6 +486,8 @@ test('telas cabem no celular (sem rolagem horizontal da página)', async () => {
   await cel.fill('#login', 'admin');
   await cel.fill('#senha', 'demo1234');
   await cel.click('button[type=submit]');
+  await cel.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
+  await cel.evaluate(() => { location.hash = '#/inicio'; });
   await cel.waitForSelector('h1:text("Dashboard de acompanhamento")');
   for (const tela of ['#/inicio', '#/admin/usuarios', '#/carteira', '#/carteira?aba=acompanhamento', '#/carteira?visao=cidade']) {
     await cel.goto(`${base}${tela}`);

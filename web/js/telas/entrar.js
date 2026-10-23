@@ -8,7 +8,7 @@ export async function render(conteudo, { irPara }) {
   const form = h('form', { class: 'cartao login', onsubmit: async (ev) => {
     ev.preventDefault();
     const u = await comEspera(botao, () => entrar(login.value, senha.value));
-    if (u) irPara('/inicio');   // sem o Início no perfil, o roteador leva à primeira tela permitida
+    if (u) irPara('/');   // página inicial do perfil (Explorar carteira; sem ela, a primeira tela permitida)
   } },
   h('img', { class: 'logo-entrada', src: 'logo-germani.jpg', alt: 'GERMANI' }),
   h('h1', {}, 'Entrar'),

@@ -5,7 +5,7 @@ import { abrirCofre, versaoDoCofre } from '../../shared/cofre.mjs';
 import { h, montar, comEspera } from '../ui.js';
 
 export async function render(conteudo, { usuario, parametros, irPara }) {
-  const volta = parametros.get('volta') || '/inicio';
+  const volta = parametros.get('volta') || '/';
   if (modoDemonstracao()) return irPara(volta);
   const senha = h('input', { id: 'senha-cofre', type: 'password', autocomplete: 'current-password', required: true });
   const botao = h('button', { type: 'submit' }, 'Continuar');

@@ -29,12 +29,13 @@ const ROTAS = [
   { caminho: '/admin/feriados', tela: () => import('./telas/admin-feriados.js'), telas: ['admin_feriados'] },
   { caminho: '/admin/erros', tela: () => import('./telas/admin-erros.js'), telas: ['admin_parametros'] },
 ];
-// primeira tela permitida (destino quando o perfil não tem o Início)
-const ENTRADAS = [['inicio', '/inicio'], ['lista', '/carteira'], ['acompanhamento', '/carteira?aba=acompanhamento'], ['credito', '/financeiro'],
+// página inicial: Explorar carteira; sem ela no perfil, a primeira tela permitida
+const ENTRADAS = [['explorar', '/explorar'], ['inicio', '/inicio'], ['lista', '/carteira'], ['acompanhamento', '/carteira?aba=acompanhamento'], ['credito', '/financeiro'],
   ['admin_usuarios', '/admin/usuarios'], ['admin_base', '/admin/importar/base']];
 export function telaInicial(usuario) {
   return ENTRADAS.find(([t]) => podeTela(usuario, t))?.[1] ?? '/inicio';
 }
+const ehPaginaInicial = (caminho) => caminho === '' || caminho === '/';
 
 export const NOMES_PERFIL = { administrador: 'Administrador', gerente: 'Gerente comercial', supervisor: 'Supervisor', vendedor: 'Vendedor', financeiro: 'Analista financeiro' };
 
@@ -54,10 +55,12 @@ async function navegar() {
   // ela termina num contêiner que já saiu da página e não sobrescreve a tela atual
   const conteudo = h('div', { class: 'tela' });
   area.replaceChildren(conteudo);
-  const [caminho, consulta = ''] = (location.hash.replace(/^#/, '') || '/inicio').split('?');
+  const [caminho, consulta = ''] = location.hash.replace(/^#/, '').split('?');
   const usuario = usuarioAtual();
   atualizarCasca({ usuario, caminho, consulta, papel: usuario ? papelDe(usuario) : '', aoSair: () => { sair(); irPara('/entrar'); } });
-  const rota = ROTAS.find((r) => r.caminho === caminho) ?? (usuario ? ROTAS.find((r) => r.caminho === '/inicio') : null);
+  // endereço vazio, "/" ou desconhecido: página inicial (Explorar carteira) — ou a entrada, sem login
+  if (!ROTAS.some((r) => r.caminho === caminho) || ehPaginaInicial(caminho)) return irPara(usuario ? telaInicial(usuario) : '/entrar');
+  const rota = ROTAS.find((r) => r.caminho === caminho);
   if (!rota || (!rota.publica && !usuario)) return irPara('/entrar');
   const telasRota = typeof rota.telas === 'function' ? rota.telas(new URLSearchParams(consulta)) : rota.telas;
   const liberada = (!rota.perfis || rota.perfis.includes(usuario?.perfil)) && (!telasRota || telasRota.some((t) => podeTela(usuario, t)));

@@ -21,6 +21,11 @@ after(async () => { await navegador?.close(); srv?.close(); });
 
 const foto = async (nome) => { if (FOTOS) await pagina.screenshot({ path: path.join(FOTOS, `${nome}.png`), fullPage: true }); };
 const telaPronta = () => pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === location.hash);
+// a página inicial é o Explorar carteira; os testes do Início entram nele pelo menu
+const irAoInicio = async () => {
+  await pagina.waitForFunction(() => ['#/explorar', '#/inicio'].includes(document.getElementById('conteudo').dataset.pronto));
+  if (await pagina.evaluate(() => location.hash) === '#/explorar') await pagina.click('#menu a[title="Início"]');
+};
 const entrar = async (login) => {
   await pagina.fill('#login', login);
   await pagina.fill('#senha', 'demo1234');
@@ -31,6 +36,8 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.goto(base);
   await pagina.waitForSelector('#login');
   await entrar('admin');
+  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');   // página inicial
+  await pagina.click('#menu a[title="Início"]');
   await pagina.waitForSelector('#carregar-exemplo');
   assert.equal(await pagina.locator('script[src*="exceljs"]').count(), 0, 'a biblioteca de planilha não carrega na abertura do site');
   await pagina.click('#carregar-exemplo');
@@ -261,6 +268,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await foto('31-usuarios-perfil');
   await pagina.click('.menu-sair');
   await entrar(supPerfil);
+  await irAoInicio();
   await pagina.waitForSelector('h1:text("Sua equipe")');
   const menuSup = await pagina.locator('#menu a').allInnerTexts();
   assert.ok(menuSup.some((t) => t.includes('Lista principal')) && !menuSup.some((t) => t.includes('Acompanhamento')), `menu: ${menuSup}`);
@@ -268,11 +276,13 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForSelector('text=Seu perfil não tem acesso a esta tela.');
   await pagina.click('.menu-sair');
   await entrar('admin');
+  await irAoInicio();
   await pagina.waitForSelector('.painel-web');
 
   // outros perfis com a senha de exemplo
   await pagina.click('.menu-sair');
   await entrar('gerente');
+  await irAoInicio();
   await pagina.waitForSelector('#painel-supervisor');
   await pagina.click('.menu-sair');
   await entrar('financeiro');
@@ -301,6 +311,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
     return (await (await bancoApp()).execute("SELECT login FROM usuarios WHERE perfil = 'supervisor' ORDER BY login LIMIT 1")).rows[0].login;
   });
   await entrar(supervisor);
+  await irAoInicio();
   await pagina.waitForSelector('h1:text("Sua equipe")');
   assert.equal(await pagina.locator('#painel-supervisor').count(), 0);
 });
