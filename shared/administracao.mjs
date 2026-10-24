@@ -61,3 +61,8 @@ export async function listarErrosApp(db, { dias = 7, limite = 300 } = {}) {
   ]);
   return { lista: lista.rows, frequentes: frequentes.rows };
 }
+
+/** Base inteira para exportar (Administração → Base de prospects): CNPJ, razão social, cidade e UF. */
+export function consultaExportarBase() {
+  return { sql: 'SELECT cnpj, razao_social, cidade, uf FROM prospects ORDER BY razao_social, cnpj', args: [] };
+}

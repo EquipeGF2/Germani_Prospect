@@ -3,6 +3,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import ExcelJS from 'exceljs';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
@@ -225,6 +226,18 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await aplicar.click();
   await pagina.locator('button', { hasText: new RegExp(`^Expurgar 0 · desfazer ${qtdExpurgo - 1}$`) }).click();
   await pagina.waitForSelector(`text=${qtdExpurgo - 1} desfeito(s)`);
+
+  // exportar a base inteira em Excel (CNPJ, razão social, cidade, UF)
+  await pagina.click('#menu a[title="Base de prospects"]');
+  const baixandoBase = pagina.waitForEvent('download');
+  await pagina.click('#exportar-base');
+  const baseXlsx = await baixandoBase;
+  assert.match(baseXlsx.suggestedFilename(), /^base-prospects-\d{4}-\d{2}-\d{2}\.xlsx$/);
+  const livro = new ExcelJS.Workbook();
+  await livro.xlsx.readFile(await baseXlsx.path());
+  const folha = livro.worksheets[0];
+  assert.deepEqual(folha.getRow(1).values.slice(1), ['CNPJ', 'Razão social', 'Cidade', 'UF']);
+  assert.ok(folha.rowCount > 100, `linhas: ${folha.rowCount}`);
 
   // erros do app: tela do administrador abre (lista vazia no banco de demonstração)
   await pagina.click('#menu a[title="Erros do app"]');

@@ -5,6 +5,8 @@ import { contarDatasPlanilha, contarStatusPlanilha, localizarCabecalho, mapearCa
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, passos, comEspera, aviso, tabela, formatar } from '../ui.js';
 import { blocoResultado } from './_resultado.js';
+import { baixarXlsx } from '../planilhas.js';
+import { consultaExportarBase } from '../../shared/administracao.mjs';
 
 const OPCOES = [
   ['sem_contato', 'Não contactado (sem datas de contato)'],
@@ -119,7 +121,19 @@ export async function render(conteudo, ctx) {
     bLer,
     h('p', { class: 'ajuda', style: 'margin-top:12px' }, 'Para testar: ', h('a', { href: 'exemplos/base-ficticia.xlsx', download: true }, 'baixe a planilha fictícia'), '.')));
 
+  // exportar a base inteira (CNPJ, razão social, cidade, UF) em Excel — uma leitura só, ao clicar
+  const bExportar = h('button', { class: 'secundario', id: 'exportar-base', onclick: () => comEspera(bExportar, async () => {
+    const linhas = (await db.execute(consultaExportarBase())).rows;
+    await baixarXlsx(`base-prospects-${hojeSaoPaulo()}.xlsx`, [
+      { titulo: 'CNPJ', valor: (l) => formatar.cnpj(l.cnpj), largura: 22 },
+      { titulo: 'Razão social', valor: (l) => l.razao_social, largura: 48 },
+      { titulo: 'Cidade', valor: (l) => l.cidade, largura: 28 },
+      { titulo: 'UF', valor: (l) => l.uf, largura: 6 },
+    ], linhas, { aba: 'Base de prospects' });
+    aviso(`Base exportada: ${formatar.numero(linhas.length)} prospects.`);
+  }) }, 'Exportar base (Excel)');
   montar(conteudo, h('h1', {}, 'Base de prospects'),
     ja ? mensagem(`A base já tem ${formatar.numero(ja)} prospects. Reimportar só atualiza dados cadastrais — status, histórico e vendedor não mudam.`, 'info') : null,
+    ja ? h('div', { class: 'cartao' }, h('p', { style: 'margin-top:0' }, 'Exportar a base inteira em Excel: CNPJ, razão social, cidade e UF.'), bExportar) : null,
     area);
 }
