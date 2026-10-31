@@ -750,3 +750,23 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ped-faixa-alertas > button { background: transparent; border: 0; color: #78350F; font-weight: 700; min-height: 32px; padding: 0; }
 .ped-faixa-alertas > button:hover { background: transparent; color: #78350F; text-decoration: underline; }
 .ped-faixa-alertas .tabela-wrap { margin-top: 8px; }
+
+/* Acompanhamento: o fluxo em cards, a hierarquia e a grid em cascata */
+.acf-topo { flex-wrap: wrap; gap: 10px 16px; }
+.acf-chaves { display: flex; flex-wrap: wrap; gap: 8px; }
+.acf-frase { margin: 0 0 14px; }
+.acf-fluxo { display: flex; gap: 6px; align-items: stretch; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px; }
+.acf-etapa { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 0; flex: 1 1 0; min-width: 172px; box-sizing: border-box; text-align: left; background: #fff; color: var(--texto); border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; white-space: nowrap; font-weight: 400; }
+.acf-etapa:hover { background: #fff; color: var(--texto); border-color: var(--borda-forte); }
+.acf-etapa.ativa, .acf-etapa.ativa:hover { border: 2px solid var(--destaque); background: var(--destaque-claro); padding: 11px 13px; }
+.acf-etapa span { display: block; font-size: 13px; color: var(--suave); }
+.acf-etapa .tit { font-size: 14px; font-weight: 600; color: var(--texto); }
+.acf-etapa b { display: block; font-size: 28px; line-height: 1.2; }
+.acf-etapa .acf-aviso { color: var(--destaque); font-weight: 600; }
+.acf-exp .mensagem.alerta { background: #FEF3C7; color: #78350F; border-color: #FDE68A; margin: 0 0 14px; }
+.acf-seta { align-self: center; flex: none; font-size: 20px; color: var(--suave); }
+.acf-fora { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.acf-nota { margin: 0 0 14px; }
+.ped-exp.acf-exp .exp-linha { grid-template-columns: minmax(300px, 3fr) repeat(5, minmax(96px, 1fr)); min-width: 780px; }
+@media (max-width: 760px) { .ped-exp.acf-exp .exp-arvore .rolagem .exp-linha { grid-template-columns: 200px repeat(5, 96px); width: 680px; min-width: 680px; } }
+

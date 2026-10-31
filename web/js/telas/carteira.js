@@ -1,4 +1,4 @@
-// Lista principal (Não contactado / Em prospecção) e Acompanhamento (demais status). docs/03 §6
+// Lista principal (Não contactado / Em prospecção). O Acompanhamento vai para acompanhamento.js. docs/03 §6
 // Computador: _lista.js (sempre em tabela, filtros em grupos, ficha ao lado). Aqui: o CELULAR, layout de sempre —
 // visões lista, cidade, bairro, onda, status e (só vendedor) rota; busca sem acento.
 import { bancoApp, lerComCache } from '../db.js';
@@ -6,6 +6,7 @@ import { consultaCarteira, precisaFiltro, visoesPermitidas } from '../../shared/
 import { h, montar, mensagem, formatar } from '../ui.js';
 import { endereco, gravarLote, lerEstado, lerLote, opcoesDosFiltros, papelDoAgente, seloStatus } from './_carteira.js';
 import { renderComputador } from './_lista.js';
+import { render as renderAcompanhamento } from './acompanhamento.js';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { consultaResumo } from '../../shared/explorar.mjs';
 
@@ -33,6 +34,7 @@ export async function render(conteudo, ctx) {
   const { usuario, parametros } = ctx;
   const db = await bancoApp();
   const e = lerEstado(parametros);
+  if (e.aba === 'acompanhamento') return renderAcompanhamento(conteudo, ctx);
   const permitidas = visoesPermitidas(usuario);
   if (!permitidas.includes(e.visao)) e.visao = 'lista';
   const podeRegistrar = usuario.perfil !== 'financeiro';
@@ -43,11 +45,8 @@ export async function render(conteudo, ctx) {
   mq.addEventListener('change', troca);
   // computador: lista sempre em tabela, filtros em grupos, ficha ao lado (_lista.js); daqui para baixo é o celular
   if (!ehCelular()) return renderComputador(conteudo, ctx);
-  // Acompanhamento no celular: a mesma tela do computador (filtros, Buscar, situação), em cartões
-  if (e.aba === 'acompanhamento') return renderComputador(conteudo, ctx, { celular: true });
 
-  // Na aba Acompanhamento a lista mostra a carteira fora da lista principal (por status)
-  const filtros = { ...e.filtros, foraDaLista: e.aba === 'acompanhamento' && !e.filtros.status };
+  const filtros = e.filtros;
   let consulta;
   try {
     consulta = consultaCarteira({ usuario, visao: e.visao, filtros, busca: e.busca, limite: POR_PAGINA + 1, deslocamento: e.pagina * POR_PAGINA,
@@ -72,7 +71,7 @@ export async function render(conteudo, ctx) {
   const formBusca = h('form', { class: 'barra-busca', onsubmit: (ev) => { ev.preventDefault(); location.hash = endereco(e, { busca: campoBusca.value.trim(), pagina: 0 }); } },
     campoBusca, h('button', { type: 'submit' }, 'Buscar'));
 
-  const visoesDaAba = permitidas.filter((v) => (e.aba === 'acompanhamento' ? ['status', 'lista', 'cidade', 'bairro', 'onda', 'rota'].includes(v) : v !== 'status'));
+  const visoesDaAba = permitidas.filter((v) => v !== 'status');
   const visoes = h('div', { class: 'visoes', role: 'tablist' }, visoesDaAba
     .map((v) => h('a', { href: endereco(e, { visao: v, pagina: 0 }), class: v === e.visao ? 'ativa' : '' }, NOMES_VISAO[v])));
 
@@ -134,10 +133,8 @@ export async function render(conteudo, ctx) {
     corpo = blocoLista(e, linhas, opcoes);
   } else corpo = blocoGrupos(e, linhas);
 
-  const titulo = e.aba === 'acompanhamento' ? 'Acompanhamento' : 'Lista principal';
-  const ajuda = e.aba === 'acompanhamento'
-    ? 'Clientes que já saíram da lista principal: aguardando cadastro, análise financeira, aguardando pedido, venda realizada, sem interesse e inválidos. Todos continuam nos indicadores.'
-    : 'Não contactados e em prospecção. Registrou atendido ou sem interesse, o cliente passa para o acompanhamento.';
+  const titulo = 'Lista principal';
+  const ajuda = 'Não contactados e em prospecção. Registrou atendido ou sem interesse, o cliente passa para o acompanhamento.';
   montar(conteudo,
     h('h1', {}, titulo),
     h('p', { class: 'ajuda' }, ajuda),
@@ -167,7 +164,7 @@ function blocoEscolherCidade(e, resumo) {
 }
 
 function blocoStatus(e, linhas) {
-  const lista = linhas.filter((s) => (e.aba === 'acompanhamento' ? !Number(s.na_lista) : true));
+  const lista = linhas;
   return h('div', { class: 'grade' }, lista.map((s) => h('a', {
     class: 'atalho status-cartao', href: endereco({ ...e, visao: 'lista' }, { filtros: { status: s.status_atual }, pagina: 0 }),
     style: `border-left: 6px solid ${s.status_cor}`,

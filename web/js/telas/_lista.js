@@ -1,12 +1,10 @@
-// Lista principal e Acompanhamento no COMPUTADOR (docs/03 §6) — sempre em lista (tabela), filtros em grupos:
-// Equipe (supervisor / representante) · Local (UF / cidade / bairro, este só com a cidade) · Carteira (onda / segmento)
-// · Período (só no Acompanhamento, opcional). Os filtros só valem no botão Buscar (nada é lido antes); a gestão escolhe a equipe. Situação com contagem, "Agrupar por" (só na Lista), ficha ao lado e "Carregar mais".
-// No celular, a Lista principal segue em carteira.js; o Acompanhamento usa esta mesma tela (`celular`): filtros num
-// painel que abre e fecha, situação em faixa, cada prospect num cartão e a ficha subindo por baixo — as mesmas leituras.
+// Lista principal no COMPUTADOR (docs/03 §6) — sempre em lista (tabela), filtros em grupos:
+// Equipe (supervisor / representante) · Local (UF / cidade / bairro, este só com a cidade) · Carteira (onda / segmento).
+// Os filtros só valem no botão Buscar (nada é lido antes); a gestão escolhe a equipe. Situação com contagem, "Agrupar por", ficha ao lado e "Carregar mais".
+// No celular, a Lista principal segue em carteira.js.
 import { bancoApp, lerComCache } from '../db.js';
 import {
-  AGRUPAMENTOS, agrupamentosPossiveis, consultaBairros, consultaCarteira, consultaLinhaTempo, datasDoPeriodo, faltaParaLista,
-  PERIODOS_LISTA, visoesPermitidas,
+  AGRUPAMENTOS, agrupamentosPossiveis, consultaBairros, consultaCarteira, consultaLinhaTempo, faltaParaLista, visoesPermitidas,
 } from '../../shared/carteira.mjs';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
@@ -15,42 +13,32 @@ import { gerarPdfLista } from '../relatorio.js';
 import { icone } from '../menu.js';
 import { consultaResumo, opcoesEmCascata } from '../../shared/explorar.mjs';
 import { endereco, gravarLote, lerEstado, lerLote, nomeStatus as nomeDoStatus, papelDoAgente, seloStatus } from './_carteira.js';
-import { ORIGENS_SEM_INTERESSE, STATUS_ENCERRADOS } from '../../shared/status.mjs';
-import { chaveVerPor, lerVerPor } from './_pedidos.js';
-import { agruparPorRaiz } from '../../shared/pedidos.mjs';
+import { ORIGENS_SEM_INTERESSE } from '../../shared/status.mjs';
 
 const LIMITE = 5000;   // uma carteira (representante) cabe com folga; acima disso pede para refinar os filtros
 
-export async function renderComputador(conteudo, { usuario, parametros }, { celular = false } = {}) {
+export async function renderComputador(conteudo, { usuario, parametros }) {
   const db = await bancoApp();
   const e = lerEstado(parametros);
   e.visao = 'lista';   // no computador a lista é sempre lista; agrupar substitui as antigas visões
   e.pagina = 0;
-  const acomp = e.aba === 'acompanhamento';
   const gestao = usuario.perfil !== 'vendedor';
   const comRota = visoesPermitidas(usuario).includes('rota');
   // coluna Rota só para o vendedor (é quem monta rota); a gestão agrupa por rota quando quiser
   const colunaRota = comRota && usuario.perfil === 'vendedor';
 
-  // período (só Acompanhamento) é opcional: quem está em processo desde o mês passado não pode parecer sumido.
-  if (!acomp) { delete e.filtros.dataDe; delete e.filtros.dataAte; e.periodo = ''; }
-  else {
-    if (!PERIODOS_LISTA[e.periodo]) e.periodo = e.filtros.dataDe || e.filtros.dataAte ? 'periodo' : '';
-    if (e.periodo && e.periodo !== 'periodo') Object.assign(e.filtros, datasDoPeriodo(e.periodo, { hoje: hojeSaoPaulo() }));
-  }
+  delete e.filtros.dataDe; delete e.filtros.dataAte; e.periodo = '';
   if (!e.filtros.cidadeBusca) delete e.filtros.bairroBusca;
   // a lista vem inteira numa leitura só; situação, ordem e agrupamento mudam no navegador, sem voltar ao banco.
   // Na Lista o representante é obrigatório, então não se agrupa por ele.
-  const agrupaveis = acomp ? [] : agrupamentosPossiveis(usuario, e.filtros).filter((k) => k !== 'representante');
-  const vista = { agrupar: agrupaveis.includes(e.agrupar) ? e.agrupar : '', ordem: e.ordem, desc: e.desc, status: e.filtros.status ?? '', porGrupo: acomp && lerVerPor() === 'grupo',
-    // Acompanhamento: em andamento × encerrados, no navegador. Link direto para um status encerrado já abre em Encerrados
-    conjunto: !acomp || e.filtros.status === 'venda_realizada' ? '' : STATUS_ENCERRADOS.includes(e.filtros.status) ? 'encerrados' : 'andamento' };
+  const agrupaveis = agrupamentosPossiveis(usuario, e.filtros).filter((k) => k !== 'representante');
+  const vista = { agrupar: agrupaveis.includes(e.agrupar) ? e.agrupar : '', ordem: e.ordem, desc: e.desc, status: e.filtros.status ?? '' };
   delete e.filtros.status;
   const falta = faltaParaLista(usuario, { aba: e.aba, filtros: e.filtros, busca: e.busca, doExplorar: e.de === 'explorar' });
 
   let consulta;
   try {
-    consulta = consultaCarteira({ usuario, visao: 'lista', filtros: { ...e.filtros, foraDaLista: acomp, semVenda: acomp && e.filtros.status !== 'venda_realizada' }, busca: e.busca, limite: LIMITE + 1, ordemNatural: true });
+    consulta = consultaCarteira({ usuario, visao: 'lista', filtros: e.filtros, busca: e.busca, limite: LIMITE + 1, ordemNatural: true });
   } catch (erro) { return montar(conteudo, mensagem(erro.message, 'erro')); }
 
   // nada é lido da lista enquanto os filtros não forem aplicados no botão Buscar (?ver=1); o representante já entra com a
@@ -70,8 +58,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     placeholder: 'Buscar: prospect, CNPJ, representante (nome ou código), cidade ou bairro' });
   function aplicar() {
     const f = { ...rascunho.filtros };
-    if (rascunho.periodo !== 'periodo') { delete f.dataDe; delete f.dataAte; }
-    // a situação e a ordem continuam; filtros, período e busca passam a ser os do painel
+        // a situação e a ordem continuam; filtros, período e busca passam a ser os do painel
     location.hash = endereco({ aba: e.aba, ordem: vista.ordem, desc: vista.desc, agrupar: vista.agrupar, de: e.de, filtros: {} },
       { filtros: f, periodo: rascunho.periodo, busca: campoBusca.value.trim(), ver: true });
   }
@@ -93,12 +80,12 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     if (gestao) {
       // quem vê todas as equipes escolhe supervisor (ou direto o representante); o supervisor só escolhe na própria equipe
       const todas = veTodasEquipes(usuario);
-      // Lista: supervisor e representante obrigatórios; Acompanhamento: a equipe (supervisor ou representante) para quem vê todas
-      grupos.push(grupo('Equipe', !acomp ? 'representante' : todas ? 'equipe' : null,
+      // supervisor e representante obrigatórios
+      grupos.push(grupo('Equipe', 'representante',
         todas ? selecao('filtro-supervisor', 'Supervisor', f.supervisorId, opcoes.supervisores.map((s) => [s.id, `${s.nome}${s.codigo_erp ? ' · ' + s.codigo_erp : ''}`]),
           (v) => mudar({ supervisorId: v ? Number(v) : null, vendedorId: null }), { vazio: 'Escolha…' }) : null,
         selecao('filtro-vendedor', 'Representante', f.vendedorId, opcoes.vendedores.map((v) => [v.id, `${v.nome} · ${papelDoAgente(v)}${v.codigo_erp ? ' · ' + v.codigo_erp : ''}`]),
-          (v) => mudar({ vendedorId: v ? Number(v) : null }), { vazio: !acomp ? 'Escolha…' : f.supervisorId || !todas ? 'Toda a equipe' : 'Escolha…' })));
+          (v) => mudar({ vendedorId: v ? Number(v) : null }), { vazio: 'Escolha…' })));
     }
     const cidadeAtual = f.cidadeBusca ? `${f.cidadeBusca}|${f.uf ?? ''}` : '';
     const repetida = new Set(opcoes.cidades.filter((c, i) => opcoes.cidades.findIndex((x) => x.cidade_busca === c.cidade_busca) !== i).map((c) => c.cidade_busca));
@@ -115,14 +102,6 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     grupos.push(grupo('Carteira', null,
       selecao('filtro-onda', 'Onda', f.onda, opcoes.ondas.map((o) => [o, `Onda ${o}`]), (v) => mudar({ onda: v || null }), { vazio: 'Todas', classe: 'estreito' }),
       selecao('filtro-segmento', 'Segmento', f.segmento, opcoes.segmentos.map((s) => [s, s]), (v) => mudar({ segmento: v || null }))));
-    if (acomp) {
-      const data = (id, rotulo, chave) => h('input', { type: 'date', id, 'aria-label': rotulo, value: f[chave] ?? '',
-        onchange: (ev) => { f[chave] = ev.target.value || null; } });
-      grupos.push(grupo('Período', null,
-        selecao('filtro-periodo', 'Último registro', rascunho.periodo, Object.entries(PERIODOS_LISTA), (v) => mudar({}, { periodo: v }), { vazio: 'Todos' }),
-        rascunho.periodo === 'periodo' ? h('div', { class: 'filtro' }, h('label', { for: 'filtro-data-de' }, 'De · até'),
-          h('div', { class: 'datas' }, data('filtro-data-de', 'Último registro de', 'dataDe'), data('filtro-data-ate', 'Último registro até', 'dataAte'))) : null));
-    }
     if (agrupaveis.length) {
       grupos.push(grupo('Exibição', null, selecao('agrupar', 'Agrupar por', vista.agrupar, agrupaveis.map((k) => [k, AGRUPAMENTOS[k].nome]),
         (v) => { vista.agrupar = v; if (ler) desenharTabela(); }, { vazio: 'Nenhum' })));
@@ -135,23 +114,15 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
         h('a', { href: endereco({ aba: e.aba, filtros: {} }), class: 'limpar' }, 'Limpar filtros')));
   }
   await desenharFiltros();
-  // no celular os filtros ficam num painel que abre e fecha (aberto enquanto a lista não foi lida)
-  const filtrosNaTela = () => (celular
-    ? h('details', { class: 'filtros-celular', open: !ler },
-      h('summary', {}, 'Filtros', h('span', { class: 'ajuda' }, ` · ${[PERIODOS_LISTA[e.periodo] ?? (e.periodo ? 'Período' : ''), e.busca && `"${e.busca}"`].filter(Boolean).join(' · ') || 'escolha e clique em Buscar'}`)),
-      painelFiltros)
-    : painelFiltros);
 
-  const titulo = acomp ? 'Acompanhamento' : 'Lista principal';
-  const cabecalho = h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo),
-    acomp ? h('p', {}, 'O que está em processo: aguardando cadastro, análise financeira, aguardando pedido e aguardando pedido válido. A venda está em Explorar pedidos.') : null),
-    acomp ? chaveVerPor(vista.porGrupo ? 'grupo' : 'empresa', (v) => { vista.porGrupo = v === 'grupo'; abertos.clear(); if (ler) { desenharTabela(); } }) : null);
+  const titulo = 'Lista principal';
+  const cabecalho = h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo)));
 
   if (!ler) {
     const texto = !e.ver ? 'Defina os filtros e clique em Buscar'
       : falta.includes('representante') ? 'Escolha o supervisor e o representante e clique em Buscar'
       : 'Escolha a equipe e clique em Buscar';
-    return montar(conteudo, cabecalho, filtrosNaTela(),
+    return montar(conteudo, cabecalho, painelFiltros,
       h('div', { class: 'lista-vazia', id: 'lista-falta' }, h('b', {}, texto),
         h('span', {}, falta.includes('representante') ? 'Supervisor e representante. ' : falta.includes('equipe') ? 'Equipe: supervisor (com toda a equipe) ou representante. ' : '',
           'A lista só é lida depois disso — nunca a base inteira.')));
@@ -176,23 +147,20 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   // situação = status, com "sem interesse" separado em do cliente / do representante (origem do motivo)
   const sit = (p) => (p.status_atual === 'sem_interesse' ? `sem_interesse:${p.sem_interesse_origem ?? 'cliente'}` : p.status_atual);
   const SITUACOES = STATUS_ORDEM.flatMap((c) => (c === 'sem_interesse' ? Object.keys(ORIGENS_SEM_INTERESSE).map((o) => `${c}:${o}`) : [c]));
-  const conjuntoDe = (p) => (STATUS_ENCERRADOS.includes(p.status_atual) ? 'encerrados' : 'andamento');
-  const noConjunto = (p) => !vista.conjunto || conjuntoDe(p) === vista.conjunto;
-  const contar = () => { const c = new Map(); for (const p of linhas) if (noConjunto(p)) c.set(sit(p), (c.get(sit(p)) ?? 0) + 1); return c; };
+  const contar = () => { const c = new Map(); for (const p of linhas) c.set(sit(p), (c.get(sit(p)) ?? 0) + 1); return c; };
   const nomeStatus = Object.fromEntries(linhas.map((p) => [sit(p), [p.status_atual === 'sem_interesse'
     ? ORIGENS_SEM_INTERESSE[p.sem_interesse_origem ?? 'cliente'].rotulo : p.status_nome, p.status_cor]]));
   nomeStatus.sem_interesse ??= ['Sem interesse', null];   // filtro vindo do endereço (?status=sem_interesse): as duas origens
-  const naSituacao = (p) => noConjunto(p) && (!vista.status || sit(p) === vista.status || p.status_atual === vista.status);
+  const naSituacao = (p) => !vista.status || sit(p) === vista.status || p.status_atual === vista.status;
 
   const podeRegistrar = usuario.perfil !== 'financeiro';
-  const comLote = podeRegistrar && !acomp;
+  const comLote = podeRegistrar;
   const lote = new Set(lerLote());
   const colunas = [
     comLote ? { t: '', classe: 'sel-lote' } : null,
     { t: 'Prospect', o: 'prospect' }, { t: 'Cidade · bairro', o: 'cidade' }, { t: 'Onda', o: 'onda', classe: 'num' }, { t: 'Segmento' },
-    colunaRota ? { t: 'Rota', o: 'rota' } : null, gestao && acomp ? { t: 'Representante' } : null, { t: 'Status', o: 'status', classe: 'centro' },
-    ...(acomp ? [{ t: 'Último registro', o: 'ultimo', classe: 'centro' }, { t: 'Próxima ação', classe: 'centro' }]
-      : [{ t: 'Tentativas', classe: 'centro' }, { t: '1º registro em', o: 'primeiro', classe: 'centro' }]),
+    colunaRota ? { t: 'Rota', o: 'rota' } : null, { t: 'Status', o: 'status', classe: 'centro' },
+    { t: 'Tentativas', classe: 'centro' }, { t: '1º registro em', o: 'primeiro', classe: 'centro' },
     { t: 'Dias', o: 'dias', classe: 'centro' }, podeRegistrar ? { t: '' } : null,
   ].filter(Boolean);
   const cab = h('thead', {});
@@ -228,8 +196,8 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
       h('div', { class: 'ficha-dados' },
         item('Status', p.status_descricao || p.status_nome), item('Representante', `${p.vendedor_nome ?? '—'}${codigoDe.get(Number(p.vendedor_id)) ? ' · ' + codigoDe.get(Number(p.vendedor_id)) : ''}`),
         item('Onda · Segmento', [p.onda && `Onda ${p.onda}`, p.tipologia_gtm].filter(Boolean).join(' · ') || '—'),
-        item(acomp ? 'Próxima ação' : 'Tentativas', acomp ? (formatar.data(p.data_proxima_acao) || '—') : String(p.tentativas ?? 0)),
-        item(acomp ? 'Último registro' : '1º registro em', formatar.data(acomp ? p.dt_ultimo_contato : p.dt_primeiro_contato) || '—'),
+        item('Tentativas', String(p.tentativas ?? 0)),
+        item('1º registro em', formatar.data(p.dt_primeiro_contato) || '—'),
         item('Dias desde o 1º contato', p.dias_corridos != null ? String(p.dias_corridos) : '—'),
         p.telefone ? item('Telefone', p.telefone) : null, p.endereco ? item('Endereço', p.endereco) : null),
       h('div', {}, h('span', { class: 'lista-grupo-tit' }, 'Histórico'), historico),
@@ -246,7 +214,6 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   function fecharFicha() { painel.hidden = true; aberta?.classList.remove('aberta'); aberta = null; }
 
   function linha(p, grupo) {
-    const cod = codigoDe.get(Number(p.vendedor_id));
     const tr = h('tr', { dados: { id: p.id, grupo: grupo ?? '' }, hidden: grupo != null && !abertos.has(grupo),
       onclick: (ev) => { if (!ev.target.closest('a, input, button, label')) abrirFicha(p, tr); } },
       comLote ? h('td', { class: 'sel-lote' }, Number(p.na_lista) ? h('input', { type: 'checkbox', 'aria-label': `Selecionar ${p.razao_social}`, checked: lote.has(Number(p.id)), dados: { lote: p.id },
@@ -257,16 +224,10 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
       h('td', { class: 'num' }, p.onda ?? ''),
       h('td', {}, h('span', { class: 'corta' }, p.tipologia_gtm ?? '')),
       colunaRota ? h('td', {}, p.rota ? `${p.rota}${p.subrota ? ' / ' + p.subrota : ''}` : '') : null,
-      gestao && acomp ? h('td', {}, h('span', { class: 'corta', title: p.vendedor_nome ?? '' }, p.vendedor_nome ?? '—'), cod ? h('small', {}, `cód. ${cod}`) : null) : null,
       h('td', { class: 'centro' }, seloStatus(p), Number(p.prazo_cadastro_vencido) ? h('small', { class: 'alerta-txt' }, 'prazo de cadastro vencido') : null),
-      ...(acomp
-        ? [h('td', { class: 'centro' }, formatar.data(p.dt_ultimo_contato) || '—'),
-          h('td', { class: `centro${Number(p.retorno_pendente) ? ' alerta-txt' : ''}` }, p.data_proxima_acao ? `Retorno ${formatar.data(p.data_proxima_acao)}` : '—')]
-        : [h('td', { class: 'centro' }, String(p.tentativas ?? 0)), h('td', { class: 'centro' }, formatar.data(p.dt_primeiro_contato) || '—')]),
+      h('td', { class: 'centro' }, String(p.tentativas ?? 0)), h('td', { class: 'centro' }, formatar.data(p.dt_primeiro_contato) || '—'),
       h('td', { class: 'centro' }, p.dias_corridos != null ? `${p.dias_corridos} d` : '—'),
       podeRegistrar ? h('td', {}, registrarPermitido(p) ? h('a', { href: `#/registrar?id=${p.id}`, class: 'registrar' }, 'Registrar') : null) : null);
-    // no celular a linha vira cartão: cada célula leva o nome da coluna como rótulo
-    if (celular) [...tr.children].forEach((td, i) => { td.dataset.r = colunas[i]?.t ?? ''; });
     return tr;
   }
 
@@ -275,13 +236,6 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     const ordem = ORDENS[vista.ordem];
     const lista = linhas.filter(naSituacao)
       .sort((a, b) => (ordem ? (vista.desc ? -1 : 1) * ordem(a, b) : 0) || posicao.get(a.id) - posicao.get(b.id));
-    // Ver por Grupo: empresas da mesma raiz de CNPJ numa linha que abre; empresa sem grupo fica solta, depois dos grupos
-    if (vista.porGrupo) {
-      const { grupos, soltas } = agruparPorRaiz(lista, (p) => p.cnpj);
-      const resumoStatus = (ls) => { const m = new Map(); for (const p of ls) { const n = nomeDoStatus(p); m.set(n, (m.get(n) ?? 0) + 1); } return [...m].map(([n, q]) => `${q} ${n.toLowerCase()}`).join(' · '); };
-      return [...grupos.map((g) => ({ grupo: `Grupo ${g.linhas[0].razao_social} · ${g.linhas.length} empresas · ${resumoStatus(g.linhas)}`, linhas: g.linhas, ehGrupoCnpj: true })),
-        ...(soltas.length ? [{ grupo: null, linhas: soltas }] : [])];
-    }
     if (!vista.agrupar) return [{ grupo: null, linhas: lista }];
     const def = AGRUPAMENTOS[vista.agrupar];
     const grupos = new Map();
@@ -295,15 +249,8 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     cor ? h('span', { class: 'ponto', style: `background:${cor}` }) : null, texto, ' ', h('b', {}, formatar.numero(n)));
     const contagem = contar();
     const statusDaAba = SITUACOES.filter((c) => contagem.get(c));
-    const conjuntoBtn = (v, t) => h('button', { type: 'button', class: `chip-situacao${vista.conjunto === v ? ' ativa' : ''}`, dados: { conjunto: v },
-      onclick: () => { vista.conjunto = v; vista.status = ''; abertos.clear(); desenharTabela(); } }, t, ' ', h('b', {}, formatar.numero(linhas.filter((p) => conjuntoDe(p) === v).length)));
-    montar(situacao, acomp && vista.conjunto ? [conjuntoBtn('andamento', 'Em andamento'), conjuntoBtn('encerrados', 'Encerrados'), h('span', { class: 'lista-sep', 'aria-hidden': 'true' }, '|')] : null,
-      h('span', { class: 'lista-grupo-tit' }, 'Situação'), chip('', 'Todos', [...contagem.values()].reduce((t, n) => t + n, 0)),
+    montar(situacao, h('span', { class: 'lista-grupo-tit' }, 'Situação'), chip('', 'Todos', [...contagem.values()].reduce((t, n) => t + n, 0)),
       statusDaAba.map((c) => chip(c, c === 'em_prospeccao' ? 'Em prospecção (contato da planilha)' : nomeStatus[c][0], contagem.get(c), nomeStatus[c][1])),
-      // no celular não há títulos de coluna: a ordem é escolhida numa lista
-      celular ? h('select', { id: 'ordem-celular', 'aria-label': 'Ordenar', onchange: (ev) => { const [o, d] = ev.target.value.split('|'); Object.assign(vista, { ordem: o, desc: d === 'desc' }); desenharTabela(); } },
-        h('option', { value: '|' }, 'Ordem: pendências primeiro'),
-        colunas.filter((c) => c.o).flatMap((c) => [['', c.t], ['desc', `${c.t} (decrescente)`]].map(([d, t]) => h('option', { value: `${c.o}|${d}`, selected: vista.ordem === c.o && vista.desc === (d === 'desc') }, `Ordem: ${t}`)))) : null,
       h('span', { class: 'lista-situacao-acoes' }, h('button', { type: 'button', class: 'secundario pequeno', id: 'imprimir-lista', onclick: imprimir }, 'Gerar PDF')));
     // rótulo = ordenação: 1º clique crescente, 2º decrescente, 3º volta à ordem de trabalho (tudo no navegador)
     montar(cab, h('tr', {}, colunas.map((c) => h('th', { class: c.classe ?? '', 'aria-sort': c.o && vista.ordem === c.o ? (vista.desc ? 'descending' : 'ascending') : null },
@@ -325,10 +272,8 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     }
     montar(corpo, linhasTr);
     const n = blocos.reduce((t, b) => t + b.linhas.length, 0);
-    const nGruposCnpj = blocos.filter((b) => b.ehGrupoCnpj).length;
     montar(rodape, h('span', {}, `${formatar.numero(n)} prospect(s)`, vista.agrupar ? ` em ${blocos.length} grupo(s) — clique no grupo para abrir` : '',
-      vista.porGrupo ? ` · ${formatar.numero(nGruposCnpj)} grupo(s) com mais de uma empresa nesta lista — clique no grupo para abrir` : '',
-      vista.ordem || vista.agrupar || vista.porGrupo ? '' : ' · ordem: pendências primeiro (clique no título da coluna para ordenar)'),
+      vista.ordem || vista.agrupar ? '' : ' · ordem: pendências primeiro (clique no título da coluna para ordenar)'),
     excedeu ? h('span', { class: 'alerta-txt' }, `Mostrando os primeiros ${formatar.numero(LIMITE)}: refine os filtros.`) : null);
   }
 
@@ -344,9 +289,8 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     const filtros = [
       `UF: ${e.filtros.uf ?? 'todas'}`, `Cidade: ${cidade ?? 'todas'}`, e.filtros.bairroBusca ? `Bairro: ${e.filtros.bairroBusca}` : null,
       `Onda: ${e.filtros.onda ?? 'todas'}`, `Segmento: ${e.filtros.segmento ?? 'todos'}`,
-      acomp && (e.filtros.dataDe || e.filtros.dataAte) ? `Período: ${formatar.data(e.filtros.dataDe) || '…'} a ${formatar.data(e.filtros.dataAte) || '…'}` : null,
       vista.status ? `Situação: ${nomeStatus[vista.status]?.[0]}` : null, e.busca ? `Busca: "${e.busca}"` : null,
-      vista.agrupar ? `Agrupado por ${AGRUPAMENTOS[vista.agrupar].nome.toLowerCase()}` : null, vista.porGrupo ? 'Por grupo de CNPJ' : null,
+      vista.agrupar ? `Agrupado por ${AGRUPAMENTOS[vista.agrupar].nome.toLowerCase()}` : null,
     ].filter(Boolean).join(' · ');
     const blocos = visiveis();
     const n = blocos.reduce((t, b) => t + b.linhas.length, 0);
@@ -365,7 +309,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   if (comLote) atualizarLote();
   desenharTabela();
   const tabela = linhas.length
-    ? h('section', { class: `cartao lista-tabela${celular ? ' celular' : ''}` }, h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela-carteira' }, cab, corpo)), rodape)
+    ? h('section', { class: 'cartao lista-tabela' }, h('div', { class: 'tabela-wrap' }, h('table', { class: 'tabela-carteira' }, cab, corpo)), rodape)
     : mensagem(e.busca ? `Nada encontrado para "${e.busca}".` : 'Nenhum prospect com esses filtros.', 'info');
-  montar(conteudo, cabecalho, filtrosNaTela(), linhas.length ? situacao : null, tabela, comLote ? barraLote : null, painel);
+  montar(conteudo, cabecalho, painelFiltros, linhas.length ? situacao : null, tabela, comLote ? barraLote : null, painel);
 }
