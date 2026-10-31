@@ -157,7 +157,9 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   assert.equal(await pagina.locator('#pedidos-do-ramo .ped-grupo').count(), 1, 'um grupo: o cliente A e a loja 2');
   await pagina.click('.ped-grupo .abre-grupo');
   await pagina.waitForSelector('.ped-grupo .abre-grupo[aria-expanded="true"]');
-  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 7, 'o grupo aberto, com os 4 pedidos, e os 2 sem grupo');
+  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 8, 'o grupo aberto, com os 5 pedidos (inclusive o da filial fora da base), e os 2 sem grupo');
+  assert.match(await vendaDe(), /1\.660,00/, 'Ver por Grupo soma a filial fora da base');
+  assert.ok(await pagina.locator('#pedidos-do-ramo .selo', { hasText: 'Filial do grupo' }).count() === 1);
   await foto('p6c-explorar-grupo');
   await pagina.click('#ver-empresa');
   // alertas numa faixa, que abre ao clicar
@@ -166,6 +168,10 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await foto('p9-alertas');
   assert.match(await texto(), /Rep\. sem código/);
   assert.doesNotMatch(await texto(), /Venda fora da lista/, 'venda por outro representante não é alerta');
+
+  // o logo leva à página inicial: Explorar carteira, não o Início antigo
+  await pagina.click('a.marca');
+  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
 
   // Acompanhamento: em andamento e encerrados; a venda não aparece; a chave também vale aqui
   await ir('#/carteira?aba=acompanhamento&periodo=periodo&dataDe=2000-01-01&dataAte=2099-12-31&q=FICT&busca=FICT&ver=1');

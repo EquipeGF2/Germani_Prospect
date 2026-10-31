@@ -35,6 +35,8 @@ const SELO_FASE = { digitado: 'alerta', carteira: '', parcial: 'ok', faturado: '
 export const seloSituacao = (p) => selo(p.situacao_descricao, SELO_FASE[p.fase] ?? '');
 export const RELACAO = { propria: ['Na lista', 'ok'], outra: ['Fora da lista', ''] };
 export const seloRelacao = (r) => selo(...(RELACAO[r] ?? ['—', '']));
+/** Na lista? do pedido: o de filial fora da base não tem lista própria. */
+export const seloDoPedido = (p) => (p.prospect_id === null ? selo('Filial do grupo', 'alerta') : seloRelacao(p.relacao));
 
 /** Tabela: colunas [{ titulo, valor(l) | campo, classe: 'num' | 'cen' }]; `rodape`: células do tfoot. */
 export function tabelaPedidos(colunas, linhas, { vazio = 'Nenhum registro.', rodape = null, fixa = null, id = null } = {}) {

@@ -1,10 +1,10 @@
 // Corpo de Explorar pedidos: filtros em cascata, cards, gráficos, árvore de níveis livres e os pedidos do ramo, como no Explorar carteira.
 // Tudo sobre os pedidos já lidos: filtrar, arrastar níveis e abrir ramos só redesenham no navegador.
-import { agruparPorRaiz, filtrarPedidos, filtrosPedidosPossiveis, montarArvorePedidos, NIVEIS_PEDIDOS, niveisPedidosPossiveis, opcoesPedidosEmCascata, resumirPedidos, rotuloRepresentante } from '../../shared/pedidos.mjs';
+import { agruparPorRaiz, filtrarPedidos, filtrosPedidosPossiveis, montarArvorePedidos, NIVEIS_PEDIDOS, niveisPedidosPossiveis, opcoesPedidosEmCascata, resumirPedidos, rotuloGrupo, rotuloRepresentante } from '../../shared/pedidos.mjs';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { h, montar, formatar, baixarCsv } from '../ui.js';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
-import { cartoes, moeda, valor, razaoSocial, seloSituacao, seloRelacao, tabelaPedidos } from './_pedidos.js';
+import { cartoes, moeda, valor, razaoSocial, seloSituacao, seloDoPedido, tabelaPedidos } from './_pedidos.js';
 
 const CHAVE_NIVEIS = 'germani.pedidosNiveis';
 const LIMITE_RAMO = 100;
@@ -24,7 +24,9 @@ function guardarNiveis(n) { try { localStorage.setItem(CHAVE_NIVEIS, JSON.string
 // os filtros continuam ao trocar a chave Empresa ou Grupo: só a tela é redesenhada
 const memoria = new WeakMap();
 
-export function renderAnalise(destino, { pedidos, usuario, porGrupo = false }) {
+export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrupo = false }) {
+  // Ver por Empresa: só os CNPJs da base. Ver por Grupo: também as filiais fora da base com a raiz de um cliente da base
+  const pedidos = porGrupo ? todosPedidos : todosPedidos.filter((p) => p.prospect_id !== null);
   const possiveis = niveisPedidosPossiveis(usuario);
   const filtraveis = filtrosPedidosPossiveis(usuario);
   const raiz = veTodasEquipes(usuario) ? 'Todos os pedidos' : usuario.perfil === 'supervisor' ? 'Pedidos da minha equipe' : 'Meus pedidos';
@@ -84,7 +86,7 @@ export function renderAnalise(destino, { pedidos, usuario, porGrupo = false }) {
     const colunas = [{ titulo: 'Pedido', campo: 'numero', classe: 'num' }, { titulo: 'Data', valor: (x) => formatar.data(x.data_situacao), classe: 'num' },
       { titulo: 'Razão social', valor: (x) => razaoSocial({ codigo: x.codigo_cliente, razao: x.razao_social, doc: x.cpf_cnpj, prospectId: x.prospect_id }), classe: 'rz' }, { titulo: 'Representante', valor: rotuloRepresentante },
       { titulo: 'Tipo', valor: (x) => NOME_TIPO[x.tipo] ?? x.tipo, classe: 'cen' }, { titulo: 'Situação', valor: seloSituacao, classe: 'cen' }, { titulo: 'Pedido (R$)', valor: (x) => valor(x.valor_pedido), classe: 'num' },
-      { titulo: 'Faturado (R$)', valor: (x) => valor(x.valor_faturado), classe: 'num' }, { titulo: 'Na lista?', valor: (x) => seloRelacao(x.relacao), classe: 'cen' }];
+      { titulo: 'Faturado (R$)', valor: (x) => valor(x.valor_faturado), classe: 'num' }, { titulo: 'Na lista?', valor: seloDoPedido, classe: 'cen' }];
     const csv = [{ titulo: 'Pedido', campo: 'numero' }, { titulo: 'Data', texto: (x) => formatar.data(x.data_situacao) }, { titulo: 'Código', campo: 'codigo_cliente' }, { titulo: 'Razão social', campo: 'razao_social' }, { titulo: 'CPF/CNPJ', campo: 'cpf_cnpj' },
       { titulo: 'Representante', texto: rotuloRepresentante }, { titulo: 'Tipo', texto: (x) => NOME_TIPO[x.tipo] ?? x.tipo }, { titulo: 'Situação', campo: 'situacao_descricao' }, { titulo: 'Pedido', texto: (x) => valor(x.valor_pedido) }, { titulo: 'Faturado', texto: (x) => valor(x.valor_faturado) }];
     // Ver por Grupo: uma linha por grupo, que abre os pedidos das empresas; empresa sem grupo fica solta, depois dos grupos
@@ -95,7 +97,7 @@ export function renderAnalise(destino, { pedidos, usuario, porGrupo = false }) {
       for (const g of grupos.sort((a, b) => String(a.linhas[0].razao_social).localeCompare(String(b.linhas[0].razao_social), 'pt-BR'))) {
         const aberto = estado.gruposAbertos.has(g.raiz);
         exibidos.push({ linhaGrupo: h('button', { type: 'button', class: 'abre-grupo', dados: { raiz: g.raiz }, 'aria-expanded': aberto ? 'true' : 'false', onclick: () => { if (aberto) estado.gruposAbertos.delete(g.raiz); else estado.gruposAbertos.add(g.raiz); desenhar(); } },
-          `${aberto ? '▼' : '▶'} Grupo ${g.linhas[0].razao_social} · ${g.empresas.size} empresas · ${n0(g.linhas.length)} pedidos · venda ${moeda(resumirPedidos(g.linhas).venda.valor)}`) });
+          `${aberto ? '▼' : '▶'} ${rotuloGrupo(g)} · ${n0(g.linhas.length)} pedidos · venda ${moeda(resumirPedidos(g.linhas).venda.valor)}`) });
         if (aberto) exibidos.push(...g.linhas);
       }
       exibidos.push(...soltas);
@@ -162,6 +164,9 @@ export function renderAnalise(destino, { pedidos, usuario, porGrupo = false }) {
     return [filtros(), niveis, niveisCelular, migalhas, numeros, h('div', { class: 'exp-quadros' }, venda, processo),
       h('section', { class: 'cartao exp-arvore', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas)), listaDoRamo(escolhido.pedidos)];
   }
-  if (!pedidos.length) return montar(area, h('p', { class: 'ajuda' }, 'Nenhum pedido importado ainda.'));
+  if (!pedidos.length) {
+    return montar(area, h('p', { class: 'mensagem info', id: 'sem-pedidos' }, todosPedidos.length
+      ? `Nenhum pedido de CNPJ da base. Há ${n0(todosPedidos.length)} pedido(s) de filial de um grupo da base: clique em Ver por Grupo.` : 'Nenhum pedido importado ainda.'));
+  }
   desenhar();
 }

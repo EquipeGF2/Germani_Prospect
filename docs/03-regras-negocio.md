@@ -509,14 +509,14 @@ Importação: docs/05 §6. Tela: **Explorar pedidos** (`#/pedidos`), o que foi v
 **Cada tela responde a uma pergunta.** Explorar carteira: como está a base? · Lista principal: quem procurar? · Acompanhamento: o que está em andamento? · Explorar pedidos: o que foi vendido?
 
 **Ver por Empresa ou Grupo** (chave em Explorar pedidos e no Acompanhamento, guardada no navegador; Explorar carteira e Lista principal não têm): grupo são as empresas da mesma raiz de CNPJ. Por grupo, elas ficam numa linha que abre, e a empresa sem grupo fica solta.
-A chave só muda como se vê e conta clientes: o grupo conta uma vez se ao menos uma empresa comprou. Status, atendimento e crédito continuam de cada empresa, e os valores não mudam. Cada um vê só as empresas do seu escopo.
+A chave muda como se vê e conta clientes: o grupo conta uma vez se ao menos uma empresa comprou. Em Explorar pedidos, Ver por Grupo soma também os pedidos das filiais fora da base; os valores das empresas da base não mudam. Status, atendimento e crédito continuam de cada empresa. Cada um vê só as empresas do seu escopo.
 
 **Só entram os pedidos dos CNPJs da base.** O relatório traz todos os clientes do ERP, mas a campanha olha só a base:
 
 | CPF / CNPJ da linha | O que acontece |
 |---|---|
 | CNPJ na base | Entra: vincula ao cliente, conta em tudo |
-| Outro CNPJ com a raiz de um cliente da base (filial do grupo) | Entra só na **visão do grupo**, na ficha, e na conta do limite do grupo. Não é venda do cliente, não muda status, não entra nos totais nem nas listas |
+| Outro CNPJ com a raiz de um cliente da base (filial do grupo) | Entra só na **visão do grupo**: em Explorar pedidos com **Ver por Grupo**, na ficha e na conta do limite do grupo. Não muda status, não entra no Início, no Explorar carteira nem em Ver por Empresa. A filial fica com o dono da empresa da base naquele grupo |
 | CNPJ fora da base e CPF | **Ignorado**: não é gravado como pedido; fica só na contagem e nas linhas da importação |
 
 Se o CNPJ entrar na base depois, o pedido passa a entrar no próximo arquivo.
