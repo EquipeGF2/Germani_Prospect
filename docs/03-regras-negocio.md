@@ -284,6 +284,28 @@ movimentação conta sempre nos indicadores.
   escolha e não lê a base. Representante/vendedor vê direto a própria carteira. Os números de toda a base ficam nas
   visões Cidade / Bairro / Onda e no Início.
 
+### 6.1 Acompanhamento: o fluxo do cadastro ao pedido faturado (`shared/acompanhamento.mjs`)
+
+Substitui as regras antigas do Acompanhamento descritas acima (filtros, Buscar, em andamento × encerrados). Só **clientes da base**. Filtros no modelo do Explorar carteira: só a **hierarquia de níveis** (Supervisor, Representante, Cliente, Cidade, Segmento, Onda, Grupo, Mês do cadastro), a ordem guardada no navegador; sem filtro de data.
+
+| Etapa | Quem está | Regra |
+|---|---|---|
+| **Cadastros realizados** | Soma das quatro etapas abaixo | Cadastro identificado |
+| **Análise financeira** | Status Análise financeira | Prazo vencido em vermelho |
+| **Aguardando pedido** | Aguardando pedido e Aguardando pedido válido | Selo Sem pedido ou Pedido não válido |
+| **Pedido em carteira** | Venda realizada com o **primeiro pedido** em carteira | |
+| **Pedido faturado** | Venda realizada com o **primeiro pedido** parcial ou faturado | |
+| Fora do fluxo | **Aguardando cadastro**, **Pedido sem cadastro** e **Encerrados** (sem interesse, inválido, expurgado) | Encerrados só são lidos ao clicar |
+
+- **Pedido antes do cadastro** (migração 0023): os pedidos ficam gravados em `pedidos_erp`, e a tela e a simulação do arquivo avisam para importar o relatório de cadastro e crédito. Quando ele entra, o cliente recebe o cadastro e o crédito, o status não muda e o cliente passa para a etapa do primeiro pedido, sem reimportar. Enquanto isso, o pedido já conta como venda no Explorar pedidos, no Início e no Explorar carteira.
+- **Cadastrado não volta para pendentes:** com pedido cancelado, fica em Aguardando pedido válido, ainda no fluxo.
+- **Primeiro pedido** = primeiro pedido de venda válido: o que apareceu antes num arquivo e, no empate, o de menor número. Pedido cancelado não conta. Do segundo em diante, o pedido só alimenta a estatística e não muda a etapa. Sem data de emissão no relatório, o histórico incompleto pode marcar outro pedido como primeiro.
+- **Apenas o primeiro pedido × Todos os pedidos:** a quantidade de clientes não muda; mudam valor e pedidos. É o que separa a meta de valor da meta de clientes.
+- **Ver por Grupo:** o grupo conta uma vez, na etapa mais avançada de suas empresas; cada empresa mantém o próprio status e a etapa no selo. A filial fora da base não entra no fluxo.
+- **Crédito × Pedido:** limite liberado × pedidos em carteira (saldo). Limite do CNPJ compara com o cliente; limite do grupo compara com a raiz inteira e, em Todos os pedidos, soma as filiais fora da base. 9.999.999 ou sem limite informado: **Sem limite**, sem comparação; limite zero com pedido: **Acima do limite**. É uma estimativa: títulos faturados e não pagos consomem limite no ERP e não vêm nos relatórios. Forma e prazo do pedido entram quando o relatório do ERP trouxer esses dados.
+- **Grid em cascata:** segue os níveis da hierarquia, com recolher e reexibir por linha e no botão, e a busca procura só nela. Uma linha por cliente; em carteira e faturado, uma por pedido.
+- **Leitura:** clientes em processo numa consulta só (em cache por 5 minutos); pedidos pela mesma leitura do Explorar pedidos, relidos só com arquivo novo ou apagado.
+
 ## 7. Montagem de rotas (somente vendedor)
 
 Implementação: [`shared/rotas.mjs`](../shared/rotas.mjs) · testes: [`test/rotas.test.mjs`](../test/rotas.test.mjs).
@@ -321,7 +343,7 @@ crédito CNPJ/grupo · Data de cadastro) continua aceito.
 | Já era cliente | Dt. Cadastro anterior ao início da campanha: aviso "já era cliente" (contado na prévia). |
 | Cliente ainda sem cadastro | (Não contactado, Em prospecção, Aguardando cadastro, Sem interesse) o relatório registra **também o cadastro** (Dt. Cadastro + código do cliente; regra 0014 do atendimento automático) e em seguida a liberação. |
 | Já em Aguardando pedido | crédito diferente (inclusive condição/forma do ERP) = nova liberação (correção); igual = ignorado. |
-| Venda realizada | ignorado (o status não muda). · CNPJ baixado: rejeitado. · Sem Dt. Cadastro ("00/00/0000"): rejeitado. |
+| Venda realizada · Aguardando pedido válido | **Sem cadastro ou sem crédito registrado:** registra o que falta, e o status não muda (0023). **Com os dois:** ignorado. · CNPJ baixado: rejeitado. · Sem Dt. Cadastro ("00/00/0000"): rejeitado. |
 | Data da liberação | dia da importação (nunca antes do cadastro). |
 
 ### 8.2 Console do analista (casos pontuais) — `shared/financeiro.mjs`

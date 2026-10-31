@@ -182,20 +182,67 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.click('a.marca');
   await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
 
-  // Acompanhamento: em andamento e encerrados; a venda não aparece; a chave também vale aqui
-  await ir('#/carteira?aba=acompanhamento&periodo=periodo&dataDe=2000-01-01&dataAte=2099-12-31&q=FICT&busca=FICT&ver=1');
-  await pagina.waitForSelector('.lista-situacao');
-  await pagina.waitForFunction(() => document.querySelector('.chip-situacao[data-conjunto="andamento"]'));
-  assert.equal(await pagina.locator('.chip-situacao[data-status="venda_realizada"]').count(), 0, 'venda não está no Acompanhamento');
-  assert.ok(await pagina.locator('.chip-situacao[data-status="aguardando_pedido_valido"]').count() >= 1, 'aguardando pedido válido está');
-  assert.equal(await pagina.locator('.chip-situacao[data-status="invalido"]').count(), 0, 'encerrado fica no outro filtro');
+  // Acompanhamento: o fluxo do cadastro ao faturado, a hierarquia, a cascata e o crédito
+  await ir('#/carteira?aba=acompanhamento');
+  await pagina.waitForSelector('#acf-fluxo');
+  assert.equal(await pagina.locator('#acompanhamento select').count(), 0, 'sem listas de filtro');
+  const nEtapa = async (id) => Number((await pagina.locator(`#etapa-${id} b`).innerText()).replace(/\./g, ''));
+  assert.ok((await nEtapa('faturado')) + (await nEtapa('carteira')) >= 1, 'as vendas aparecem no fluxo');
+  assert.equal(await nEtapa('cadastro'), (await nEtapa('analise')) + (await nEtapa('pedido')) + (await nEtapa('carteira')) + (await nEtapa('faturado')));
+  // cards numa linha, sem quebra
+  const topos = await pagina.locator('#acf-fluxo .acf-etapa').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().top));
+  assert.ok(topos.every((t) => t === topos[0]), 'todos os cards na mesma linha');
+  const cortados = await pagina.locator('#acf-fluxo .acf-etapa').evaluateAll((els) => els.filter((e) => e.scrollWidth > e.clientWidth).map((e) => [e.id, e.scrollWidth, e.clientWidth, e.innerText]));
+  assert.deepEqual(cortados, [], 'card sem texto cortado');
+  // pedido sem registro de cadastro: aviso e etapa própria, com os pedidos guardados
+  if (await pagina.locator('#etapa-sem_cadastro:not([hidden])').count()) {
+    assert.match(await pagina.locator('#aviso-sem-cadastro').innerText(), /sem registro de cadastro.*não precisam ser importados de novo/s);
+    await pagina.click('#etapa-sem_cadastro');
+    await pagina.waitForSelector('#grid-acomp');
+    await foto('p9a-acompanhamento-sem-cadastro');
+  }
+  const etapaVenda = (await nEtapa('faturado')) ? 'faturado' : 'carteira';
+  await pagina.click(`#etapa-${etapaVenda}`);
+  await pagina.waitForSelector('#grid-acomp');
+  const nPrimeiro = await pagina.locator('#grid-acomp tbody tr:not(.ped-grupo)').count();
+  const clientesFaturado = await nEtapa(etapaVenda);
   await foto('p9b-acompanhamento');
-  await pagina.click('.chip-situacao[data-conjunto="encerrados"]');
-  assert.ok(await pagina.locator('.chip-situacao[data-status^="sem_interesse"]').count() >= 1, 'sem interesse em Encerrados');
-  assert.equal(await pagina.locator('.chip-situacao[data-status="aguardando_cadastro"]').count(), 0);
-  await pagina.click('.chip-situacao[data-conjunto="andamento"]');
+  await pagina.click('#todos-pedidos');
+  assert.ok((await pagina.locator('#grid-acomp tbody tr:not(.ped-grupo)').count()) >= nPrimeiro, 'todos os pedidos: mais ou igual');
+  assert.equal(await nEtapa(etapaVenda), clientesFaturado, 'o número de clientes não muda');
+  await pagina.click('#so-primeiro');
+  // recolher e reexibir
+  const cab = pagina.locator('#grid-acomp tr.ped-grupo button').first();
+  await cab.click();
+  assert.ok((await pagina.locator('#grid-acomp tbody tr:not(.ped-grupo)').count()) < nPrimeiro, 'recolheu a cascata');
+  await pagina.locator('#grid-acomp tr.ped-grupo button').first().click();
+  assert.equal(await pagina.locator('#grid-acomp tbody tr:not(.ped-grupo)').count(), nPrimeiro, 'reexibiu');
+  await pagina.click('#recolher-tudo');
+  assert.equal(await pagina.locator('#grid-acomp tbody tr:not(.ped-grupo)').count(), 0);
+  await pagina.click('#reexibir-tudo');
+  assert.equal(await pagina.locator('#grid-acomp tbody tr:not(.ped-grupo)').count(), nPrimeiro);
+  // a hierarquia: abrir e clicar numa linha restringe os cards
+  await pagina.locator('#acompanhamento .exp-linha.raiz').waitFor();
+  const linhasNivel = pagina.locator('#acompanhamento .exp-linha:not(.cab):not(.raiz)');
+  assert.ok((await linhasNivel.count()) >= 1, 'abre o primeiro nível');
+  await linhasNivel.first().locator('.nome').click();
+  await pagina.waitForFunction(() => document.querySelector('#acompanhamento .exp-linha.escolhida:not(.raiz)'));
+  await pagina.locator('#acompanhamento .exp-caminho button').first().click();
+  // encerrados só são lidos ao clicar
+  await pagina.click('#etapa-encerrados');
+  await pagina.waitForFunction(() => document.getElementById('titulo-acomp')?.textContent.startsWith('Encerrados'));
+  await pagina.click('#etapa-pedido');
+  // crédito × pedido: forma e prazo centralizados, sem listas
+  await pagina.click('#visao-credito');
+  await pagina.waitForSelector('#acf-credito');
+  await pagina.click('#todos-pedidos');
+  await foto('p9c-acompanhamento-credito');
+  const nCred = async (id) => Number(await pagina.locator(`#credito-${id} b`).innerText());
+  assert.equal(await nCred('todos'), (await nCred('dentro')) + (await nCred('acima')) + (await nCred('sem_limite')));
+  await pagina.click('#visao-fluxo');
   await pagina.click('#ver-grupo');
-  await foto('p9c-acompanhamento-grupo');
+  await pagina.waitForSelector('#acf-fluxo');
+  await foto('p9d-acompanhamento-grupo');
   await pagina.click('#ver-empresa');
   // a Lista principal não ganhou a chave
   await ir('#/carteira');

@@ -19,6 +19,7 @@ async function cenario() {
   await registrarContato(db, { prospectId: p[2], resultado: 'atendido', data: '2026-10-01' });
   await evento(db, { prospectId: p[2], tipo: 'cadastro', data: '2026-10-05', documento: 'C2' });           // análise financeira
   await registrarContato(db, { prospectId: p[3], resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-01' }); // sem interesse
+  await db.execute({ sql: "UPDATE prospects SET dt_cadastro_erp = '2026-09-01', dt_liberacao_credito = '2026-09-01' WHERE id = ?", args: [p[6]] });   // já tem cadastro e crédito
   await evento(db, { prospectId: p[6], tipo: 'pedido', data: '2026-10-05', documento: 'P6' });            // venda realizada
   await evento(db, { prospectId: p[7], tipo: 'baixa', data: '2026-10-05' });                               // baixado
   return { db, p };
@@ -183,4 +184,27 @@ test('Créd. Grupo: vale quando o do cliente está vazio, o mesmo valor (não so
     [2, cnpjTeste(50, 2), 'G', '28A', '28 DD BOLETO', 1, 'Boleto', null, null, 2500, '10/10/2026']] });
   assert.equal(div.resumo.gruposDivergentes, 1);
   assert.ok(div.resultados.every((x) => x.avisos.some((a) => /Créd\. Grupo diferente.*2500 · 3000/.test(a))));
+});
+
+test('relatório depois do pedido: registra cadastro e crédito, o status não muda e os pedidos não são reimportados', async () => {
+  const db = await bancoTeste(); await criarEquipe(db);
+  const venda = await criarProspect(db, { n: 1, razao: 'Empresa 1' }); const invalido = await criarProspect(db, { n: 2, razao: 'Empresa 2' }); const soCadastro = await criarProspect(db, { n: 3, razao: 'Empresa 3' });
+  await evento(db, { prospectId: venda, tipo: 'pedido', data: '2026-10-05', documento: 'P1' });
+  await evento(db, { prospectId: invalido, tipo: 'pedido', data: '2026-10-05', documento: 'P2' });
+  await db.execute({ sql: "UPDATE prospects SET status_atual = 'aguardando_pedido_valido' WHERE id = ?", args: [invalido] });
+  await evento(db, { prospectId: soCadastro, tipo: 'cadastro', data: '2026-10-01', documento: 'C3' });
+  await evento(db, { prospectId: soCadastro, tipo: 'pedido', data: '2026-10-05', documento: 'P3' });
+  assert.equal((await prospect(db, venda)).dt_cadastro_erp, null);
+  const CAB = ['CNPJ', 'Cód. interno', 'Razão social', 'Forma de pagamento', 'Prazo', 'Limite CNPJ', 'Limite grupo', 'Data de cadastro'];
+  const linha = (n, cod) => [cnpjTeste(n), cod, `Empresa ${n}`, 'Boleto', '30', '1000', '', '01/10/2026'];
+  const importar = () => importarCredito(db, { linhas: [CAB, linha(1, '101'), linha(2, '102'), linha(3, '103')], hoje: '2026-10-20', arquivoNome: 'c.xlsx', arquivoSha256: 'x', executadoPor: 'adm', colunas: undefined });
+  const r = await importar();
+  assert.equal(r.resumo.aceitas, 3, JSON.stringify(r.resultados.map((x) => x.erros)));
+  const v = await prospect(db, venda);
+  assert.deepEqual([v.status_atual, v.dt_cadastro_erp, v.codigo_cliente_erp, Number(v.limite_credito)], ['venda_realizada', '2026-10-01', '101', 1000], 'quem tinha pedido segue com a venda, agora com cadastro e limite');
+  assert.equal((await prospect(db, invalido)).status_atual, 'aguardando_pedido_valido');
+  const c = await prospect(db, soCadastro);
+  assert.deepEqual([c.status_atual, c.dt_cadastro_erp, Number(c.limite_credito)], ['venda_realizada', '2026-10-01', 1000], 'já tinha cadastro: só recebe o crédito');
+  const de2 = await importar();
+  assert.equal(de2.resumo.ignoradas, 3, 'de novo, nada a registrar');
 });

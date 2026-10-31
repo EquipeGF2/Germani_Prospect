@@ -138,7 +138,7 @@ export async function simularPedidos(db, { linhas, dataPadrao, hoje, classificac
   const { resultados, vazias } = lerLinhasPedidos(linhas, { dataPadrao, hoje });
   const mapa = classificacao ?? await lerClassificacao(db);
   const [base, atuais, usuarios, parametros] = await Promise.all([
-    db.execute('SELECT id, cnpj, cnpj_raiz, status_atual, vendedor_id, codigo_cliente_erp FROM prospects'),
+    db.execute('SELECT id, cnpj, cnpj_raiz, status_atual, vendedor_id, codigo_cliente_erp, dt_cadastro_erp FROM prospects'),
     db.execute(`SELECT numero, prospect_id, transacao_codigo, situacao_codigo, rep_codigo, valor_pedido, valor_faturado, tipo, fase, valida FROM vw_pedidos`),
     db.execute("SELECT id, codigo_erp, nome, perfil FROM usuarios WHERE codigo_erp IS NOT NULL AND perfil IN ('vendedor','supervisor') ORDER BY perfil = 'vendedor'"),
     db.execute("SELECT valor FROM parametros WHERE chave = 'alerta_desistencias_cliente'"),
@@ -154,7 +154,7 @@ export async function simularPedidos(db, { linhas, dataPadrao, hoje, classificac
 
   const afetados = new Set();
   const clientes = new Map();
-  const naoEncontrados = new Set();
+  const naoEncontrados = new Set(); const semCadastro = new Set();
   const totais = { venda: { qtd: 0, valor: 0, faturado: 0 }, digitado: { qtd: 0, valor: 0 }, cancelado: { qtd: 0, valor: 0 }, investimento: { qtd: 0, valor: 0 }, ignorado: { qtd: 0, valor: 0 }, grupo: { qtd: 0, valor: 0 }, saldo: 0 };
   const foraDaBase = { linhas: 0, valor: 0, documentos: new Set() };
   const reconhecidos = new Set();
@@ -177,6 +177,7 @@ export async function simularPedidos(db, { linhas, dataPadrao, hoje, classificac
     // destino da linha
     if (r.filial) r.avisos.push('filial de grupo da base, com outro CNPJ: só entra na visão do grupo');
     else if (p.status_atual === 'expurgado') r.avisos.push('cliente expurgado: o pedido só fica registrado');
+    else if (!p.dt_cadastro_erp) { r.avisos.push('cliente sem registro de cadastro: o pedido fica guardado; importe o relatório de cadastro e crédito'); semCadastro.add(r.documento); }
     if (!r.filial && r.rep && !reps.has(r.rep)) { r.avisos.push(`representante ${r.rep} sem código no cadastro`); naoEncontrados.add(r.rep); }
     if (p?.codigo_cliente_erp && r.cliente && String(p.codigo_cliente_erp) !== r.cliente) r.avisos.push(`código do cliente diferente do cadastro (${p.codigo_cliente_erp})`);
     // totais do arquivo: só os clientes da base; a filial fica à parte, na visão do grupo
@@ -228,6 +229,7 @@ export async function simularPedidos(db, { linhas, dataPadrao, hoje, classificac
   const nomeRep = (cod) => reps.get(String(cod))?.nome ?? null;
   const limiteDesistencia = Number(parametros.rows[0]?.valor ?? 5);
   const pontos = {
+    semCadastro: semCadastro.size,
     variosRepresentantes: lista.filter((c) => !c.filial && c.reps.length > 1).length,
     semCodigo: [...naoEncontrados].sort((a, b) => Number(a) - Number(b)),
     soBonificacao: lista.filter((c) => !c.filial && c.investimento > 0 && !c.validos && !c.digitados && !c.desistencias),

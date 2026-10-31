@@ -196,33 +196,18 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForSelector('.lista-tabela tbody tr');
   assert.equal(await pagina.locator('#lista-falta').count(), 0);
   assert.ok(Number(total.replace(/\./g, '')) > 0);
-  // Acompanhamento: equipe obrigatória, período opcional; situações na ordem do processo
+  // Acompanhamento: lê direto, sem listas de filtro; os números do fluxo somam os cadastros
   await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
   await telaPronta();
-  await pagina.waitForSelector('#lista-falta');
-  assert.equal(await pagina.locator('#filtro-periodo').count(), 1);
-  assert.equal(await pagina.locator('#agrupar').count(), 0, 'sem agrupar no Acompanhamento');
-  assert.ok((await pagina.locator('#filtro-supervisor option').count()) > 1, 'equipes para escolher mesmo com o Acompanhamento vazio');
-  await pagina.selectOption('#filtro-supervisor', { index: 1 });
-  await pagina.click('#aplicar-filtros');
-  await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
+  await pagina.waitForSelector('#acf-fluxo');
+  assert.equal(await pagina.locator('#acompanhamento select').count(), 0, 'sem listas de filtro');
+  const fluxo = async (id) => Number((await pagina.locator(`#etapa-${id} b`).innerText()).replace(/\./g, ''));
+  assert.equal(await fluxo('cadastro'), (await fluxo('analise')) + (await fluxo('pedido')) + (await fluxo('carteira')) + (await fluxo('faturado')));
+  await pagina.click('#etapa-pedido');
+  await pagina.waitForFunction(() => document.getElementById('titulo-acomp')?.textContent.startsWith('Aguardando pedido'));
+  // filtros em cascata continuam na Lista principal: escolher a cidade deixa só os representantes dela
+  await pagina.goto(`${base}#/carteira`);
   await telaPronta();
-  assert.equal(await pagina.locator('#filtro-periodo').inputValue(), '', 'o período é opcional: abre em Todos');
-  await pagina.waitForSelector('.lista-tabela tbody tr, .mensagem');     // equipe escolhida + mês atual: já lê
-  await pagina.selectOption('#filtro-periodo', 'periodo');
-  await pagina.click('#aplicar-filtros');
-  await pagina.waitForFunction(() => location.hash.includes('periodo=periodo'));
-  await telaPronta();
-  assert.equal(await pagina.locator('#filtro-data-de').count(), 1, 'período abre as datas');
-  await pagina.selectOption('#filtro-periodo', 'mes');
-  await pagina.click('#aplicar-filtros');
-  await pagina.waitForFunction(() => location.hash.includes('periodo=mes'));
-  await telaPronta();
-  await pagina.waitForSelector('.lista-tabela tbody tr');
-  const ordem = await pagina.locator('.chip-situacao[data-status]').evaluateAll((els) => els.slice(1).map((el) => el.dataset.status));
-  const processo = ['aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'aguardando_pedido_valido', 'venda_realizada', 'sem_interesse:cliente', 'sem_interesse:representante', 'invalido'];
-  assert.ok(ordem.length >= 2 && ordem.every((x, i) => i === 0 || processo.indexOf(x) > processo.indexOf(ordem[i - 1])), `ordem: ${ordem}`);
-  // filtros em cascata: escolher a cidade deixa só os representantes dela
   const opcoesDe = (id) => pagina.locator(`#${id} option`).evaluateAll((os) => os.slice(1).map((o) => o.value));
   const repsTodos = await opcoesDe('filtro-vendedor');
   assert.ok((await opcoesDe('filtro-uf')).length >= 1, 'UF separada da cidade');

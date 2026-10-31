@@ -371,10 +371,10 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('.exp-niveis-cel-lista li.ligado .setas button[aria-label^="Descer"] >> nth=0');
   await pagina.waitForFunction((a) => document.querySelector('.exp-niveis-cel .ordem')?.textContent !== a, antes);
   await foto('10d-explorar-celular');
-  // Acompanhamento no celular: a tela do computador em cartões (filtros num painel que abre e fecha)
+  // Acompanhamento no celular: a mesma tela, e os níveis pelo botão Mudar
   await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
-  await pagina.waitForSelector('details.filtros-celular');
-  await pagina.waitForSelector('.lista-tabela.celular tbody tr, .mensagem');
+  await pagina.waitForSelector('#acf-fluxo');
+  await pagina.waitForSelector('#acompanhamento .exp-niveis-cel');
   const [largAc, janAc] = await pagina.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
   assert.ok(largAc <= janAc, `Acompanhamento mais largo que o celular: ${largAc}`);
   await foto('10e-acompanhamento-celular');
@@ -439,12 +439,12 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
 
   // 10. acompanhamento por status → lista dos sem interesse → ficha com o motivo individual
   await pagina.click('#menu a[title="Acompanhamento"]');
-  await pagina.waitForSelector('.chip-situacao');                         // representante já entra no mês atual
+  await pagina.waitForSelector('#acf-fluxo');                             // lê a própria carteira, sem pedir filtro
   await foto('15-acompanhamento');
-  await pagina.click('.chip-situacao[data-conjunto="encerrados"]');            // sem interesse fica em Encerrados, e pode ser reaberto
-  await pagina.click('.chip-situacao[data-status="sem_interesse:cliente"]');   // filtra no navegador, sem nova leitura (sem interesse do cliente)
-  assert.equal(await pagina.locator('.lista-tabela tbody tr').count(), 2);
-  await pagina.click('.lista-tabela a.nome >> nth=0');
+  await pagina.click('#etapa-encerrados');                                // sem interesse fica em Encerrados, e pode ser reaberto; só é lido ao clicar
+  await pagina.waitForSelector('#grid-acomp');
+  assert.equal(await pagina.locator('#grid-acomp tbody tr:not(.ped-grupo)').count(), 2);
+  await pagina.click('#grid-acomp td.rz a >> nth=0');
   await pagina.waitForSelector('text=Histórico de movimentação');
   assert.match(await texto(), /(Preço acima do praticado|Já tem fornecedor)/);
   assert.ok(await pagina.locator('a:text("Registrar atendimento")').count(), 'sem interesse pode ser reaberto');
@@ -453,7 +453,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
 
   // 11. menu lateral: recolher e expandir (a preferência fica no navegador)
   await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
-  await pagina.waitForSelector('.chip-situacao');
+  await pagina.waitForSelector('#acf-fluxo');
   assert.equal(await pagina.locator('#menu a.ativo').innerText(), 'Acompanhamento');
   await pagina.click('#botao-menu');
   await pagina.waitForSelector('#casca.recolhido');

@@ -165,6 +165,7 @@ export async function render(conteudo, ctx) {
     const pontos = [
       ponto('alerta', 'Conferir', `Data: os pedidos entram com ${formatar.data(dataArquivo.value)}.`),
       ...s.pontos.soBonificacao.map((c) => ponto('alerta', 'Exceção', `${c.razao}: bonificação de ${moeda(c.investimento)} sem venda.`)),
+      ...(s.pontos.semCadastro ? [ponto('alerta', 'Falta cadastro', `${s.pontos.semCadastro} cliente(s) da base sem registro de cadastro. Os pedidos ficam guardados; importe o relatório de cadastro e crédito, sem precisar importar este arquivo de novo.`)] : []),
       ...(s.pontos.semCodigo.length ? [ponto('alerta', 'Conferir', `Representantes sem código no cadastro: ${s.pontos.semCodigo.join(', ')}. Sem o código, não há como trazer o nome.`)] : []),
       ...(s.sumiram ? [ponto('alerta', 'Conferir', `${s.sumiram} pedido(s) em aberto vieram antes e não vieram agora. Não assumo cancelamento: a situação continua a mesma.`)] : []),
       ...s.pontos.muitaDesistencia.map((c) => ponto('alerta', 'Conferir', `${c.razao}: ${c.desistencias} desistências.`)),

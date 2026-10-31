@@ -34,6 +34,39 @@ export function chaveVerPor(atual, aoMudar) {
   return caixa;
 }
 
+/** Níveis da hierarquia, como no Explorar carteira: arrastar no computador e o botão Mudar no celular, onde arrastar não funciona no toque. */
+export function blocoNiveis({ estado, possiveis, nome, mudarNiveis, desenhar }) {
+  const cartaoNivel = (nivel, i) => h('span', { class: 'exp-nivel', draggable: 'true', title: 'Arraste para mudar a ordem', dados: { nivel },
+    ondragstart: (ev) => { ev.dataTransfer.setData('text/plain', nivel); ev.dataTransfer.effectAllowed = 'move'; },
+    ondragover: (ev) => ev.preventDefault(),
+    ondrop: (ev) => { ev.preventDefault(); ev.stopPropagation(); const d = ev.dataTransfer.getData('text/plain'); if (!possiveis.includes(d)) return;
+      const n = estado.niveis.filter((x) => x !== d); n.splice(Math.min(i, n.length), 0, d); mudarNiveis(n); } },
+  h('span', { class: 'pega', 'aria-hidden': 'true' }, '⋮⋮'), `${i + 1}. ${nome(nivel)}`,
+  h('button', { type: 'button', class: 'tirar', 'aria-label': `Tirar ${nome(nivel)}`, onclick: () => mudarNiveis(estado.niveis.filter((x) => x !== nivel)) }, '×'));
+  const cartaoDisponivel = (nivel) => h('span', { class: 'exp-nivel livre', draggable: 'true', title: 'Arraste para os níveis (ou clique)', dados: { livre: nivel },
+    ondragstart: (ev) => { ev.dataTransfer.setData('text/plain', nivel); ev.dataTransfer.effectAllowed = 'move'; },
+    onclick: () => mudarNiveis([...estado.niveis, nivel]) }, h('span', { class: 'pega', 'aria-hidden': 'true' }, '⋮⋮'), nome(nivel));
+  const soltarNoFim = (ev) => { ev.preventDefault(); const d = ev.dataTransfer.getData('text/plain'); if (possiveis.includes(d)) mudarNiveis([...estado.niveis.filter((x) => x !== d), d]); };
+  const soltarFora = (ev) => { ev.preventDefault(); const d = ev.dataTransfer.getData('text/plain'); if (estado.niveis.includes(d)) mudarNiveis(estado.niveis.filter((x) => x !== d)); };
+  const niveis = h('section', { class: 'cartao exp-niveis', 'aria-label': 'Níveis da árvore' },
+    h('div', { class: 'zona', title: 'Arraste para ordenar · solte aqui para incluir no fim', ondragover: (ev) => ev.preventDefault(), ondrop: soltarNoFim }, h('span', { class: 'tit' }, 'Níveis'), estado.niveis.map(cartaoNivel)),
+    h('div', { class: 'zona livres', ondragover: (ev) => ev.preventDefault(), ondrop: soltarFora }, h('span', { class: 'tit' }, 'Disponíveis'), possiveis.filter((n) => !estado.niveis.includes(n)).map(cartaoDisponivel)));
+  const mover = (nivel, d) => { const n = [...estado.niveis]; const i = n.indexOf(nivel); const j = i + d; if (i < 0 || j < 0 || j >= n.length) return; [n[i], n[j]] = [n[j], n[i]]; mudarNiveis(n); };
+  const ordemEdicao = [...estado.niveis, ...possiveis.filter((n) => !estado.niveis.includes(n))];
+  const niveisCelular = h('section', { class: 'cartao exp-niveis-cel', 'aria-label': 'Níveis da árvore' },
+    h('div', { class: 'exp-niveis-cel-topo' }, h('span', { class: 'tit' }, 'Níveis'), h('span', { class: 'ordem' }, estado.niveis.length ? estado.niveis.map(nome).join(' › ') : 'nenhum'),
+      h('button', { type: 'button', class: 'secundario pequeno', 'aria-expanded': estado.editarNiveis ? 'true' : 'false', onclick: () => { estado.editarNiveis = !estado.editarNiveis; desenhar(); } }, estado.editarNiveis ? 'Pronto' : 'Mudar')),
+    estado.editarNiveis ? h('ol', { class: 'exp-niveis-cel-lista' }, ordemEdicao.map((nivel) => {
+      const i = estado.niveis.indexOf(nivel); const ligado = i >= 0;
+      return h('li', { class: ligado ? 'ligado' : '' },
+        h('label', {}, h('input', { type: 'checkbox', checked: ligado, onchange: () => mudarNiveis(ligado ? estado.niveis.filter((x) => x !== nivel) : [...estado.niveis, nivel]) }), ligado ? `${i + 1}. ${nome(nivel)}` : nome(nivel)),
+        ligado ? h('span', { class: 'setas' },
+          h('button', { type: 'button', class: 'secundario pequeno', 'aria-label': `Subir ${nome(nivel)}`, disabled: i === 0, onclick: () => mover(nivel, -1) }, '↑'),
+          h('button', { type: 'button', class: 'secundario pequeno', 'aria-label': `Descer ${nome(nivel)}`, disabled: i === estado.niveis.length - 1, onclick: () => mover(nivel, 1) }, '↓')) : null);
+    })) : null);
+  return [niveis, niveisCelular];
+}
+
 /** "6199 - Razão social", com o CNPJ na linha de baixo. */
 export function razaoSocial({ codigo, razao, doc, prospectId = null }) {
   const titulo = codigo == null ? razao ?? '' : `${codigo} - ${razao ?? ''}`;

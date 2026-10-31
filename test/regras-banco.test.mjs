@@ -529,3 +529,22 @@ test('0020: sem interesse do representante leva o cliente ao E-commerce (como es
   // a exceção da validação vale só para a ida automática: o vendedor não transfere outro cliente ao E-commerce na mão
   await assert.rejects(db.execute({ sql: "INSERT INTO transferencias (prospect_id, de_vendedor_id, para_vendedor_id, data_transferencia, motivo, usuario_id) VALUES (?, 2, ?, '2026-10-07', 'x', 2)", args: [b, ec] }), /sem permissão/);
 });
+
+test('crédito depois do pedido: registra sem mudar o status; inválido continua recusado (0023)', async () => {
+  const id = await criarProspect(db, { n: 41 });
+  await evento(db, { prospectId: id, tipo: 'pedido', data: '2026-10-05', documento: 'P41' });
+  const imp = (await db.execute("INSERT INTO importacoes (tipo, arquivo_nome, arquivo_sha256, executado_por) VALUES ('credito_erp', 'c', 'c41', 'x') RETURNING id")).rows[0].id;
+  const liberar = (p) => db.execute({ sql: "INSERT INTO liberacoes_credito (prospect_id, origem, importacao_id, data_liberacao, forma_pagamento, limite_cnpj, limite_credito, limite_origem) VALUES (?, 'importacao', ?, '2026-10-20', 'boleto', 500, 500, 'cnpj')", args: [p, imp] });
+  await liberar(id);
+  const p = await prospect(db, id);
+  assert.equal(p.status_atual, 'venda_realizada');
+  assert.equal(Number(p.limite_credito), 500);
+  const mov = (await db.execute({ sql: "SELECT status_anterior, status_novo FROM movimentacoes WHERE prospect_id = ? AND tipo = 'liberacao_credito'", args: [id] })).rows[0];
+  assert.deepEqual([mov.status_anterior, mov.status_novo], ['venda_realizada', 'venda_realizada']);
+  const invalido = await criarProspect(db, { n: 42 });
+  await evento(db, { prospectId: invalido, tipo: 'baixa', data: '2026-10-05' });
+  await assert.rejects(liberar(invalido), /não está em análise financeira/);
+  const novo = await criarProspect(db, { n: 43 });
+  await assert.rejects(liberar(novo), /não está em análise financeira/, 'sem pedido e sem cadastro continua recusado');
+});
+

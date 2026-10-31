@@ -114,7 +114,7 @@ export async function importarCredito(db, { linhas, colunas = {}, mapaFormas = n
   const formas = mapaFormas ?? FORMAS_PADRAO;
 
   const prospects = new Map((await db.execute(`
-    SELECT p.id, p.cnpj, p.status_atual, p.razao_social, p.dt_cadastro_erp,
+    SELECT p.id, p.cnpj, p.status_atual, p.razao_social, p.dt_cadastro_erp, p.dt_liberacao_credito,
            l.forma_pagamento, l.prazo_pagamento_dias, l.limite_credito, l.limite_origem, l.cond_pgto_codigo, l.forma_pgto_codigo
       FROM prospects p
       LEFT JOIN liberacoes_credito l ON l.id = (SELECT max(id) FROM liberacoes_credito WHERE prospect_id = p.id)`)).rows
@@ -196,17 +196,21 @@ export async function importarCredito(db, { linhas, colunas = {}, mapaFormas = n
     const p = prospects.get(cnpj);
     if (!p) return ignorar('CNPJ não está na base de prospects');
     if (p.status_atual === 'invalido') return rejeitar('CNPJ baixado: impossibilitado de faturamento');
-    if (p.status_atual === 'venda_realizada') return ignorar('venda já realizada — o crédito não altera o status');
-    if (p.status_atual === 'aguardando_pedido_valido') return ignorar('já teve pedido, aguardando pedido válido — o crédito não altera o status');
-    if (p.forma_pagamento === forma && Number(p.prazo_pagamento_dias) === prazo && Number(p.limite_credito) === limite && p.limite_origem === origem
+    // o pedido pode ter chegado antes do relatório: o cliente recebe o cadastro e o crédito, e o status não muda. Só ignora quem já tem os dois
+    const jaTevePedido = ['venda_realizada', 'aguardando_pedido_valido'].includes(p.status_atual);
+    if (jaTevePedido && p.dt_cadastro_erp && p.dt_liberacao_credito) {
+      return ignorar(p.status_atual === 'venda_realizada' ? 'venda já realizada — o crédito não altera o status' : 'já teve pedido, aguardando pedido válido — o crédito não altera o status');
+    }
+    if (p.status_atual === 'aguardando_pedido' && p.forma_pagamento === forma && Number(p.prazo_pagamento_dias) === prazo && Number(p.limite_credito) === limite && p.limite_origem === origem
         && (p.cond_pgto_codigo ?? null) === condCodigo && (p.forma_pgto_codigo ?? null) === formaCodigo) {
       return ignorar('crédito já registrado com os mesmos dados');
     }
     const razao = indices.razao === undefined ? null : limparTexto(linha[indices.razao]);
     if (razao && normalizarBusca(razao) !== normalizarBusca(p.razao_social)) r.avisos.push(`razão social diferente da base: "${razao}"`);
     if (inicioCampanha && d.data < inicioCampanha) { r.antesCampanha = true; r.avisos.push(`cadastro anterior ao início da campanha (${d.data}) — já era cliente`); }
-    const registraCadastro = STATUS_SEM_CADASTRO.includes(p.status_atual);
-    if (registraCadastro) r.avisos.push(`cadastro registrado pelo relatório (${NOME_STATUS[p.status_atual]} → Análise financeira)`);
+    const registraCadastro = STATUS_SEM_CADASTRO.includes(p.status_atual) || (jaTevePedido && !p.dt_cadastro_erp);
+    if (jaTevePedido) r.avisos.push(p.dt_cadastro_erp ? 'crédito registrado; o status não muda: já teve pedido' : 'cadastro e crédito registrados; os pedidos já importados passam a valer no fluxo');
+    else if (registraCadastro) r.avisos.push(`cadastro registrado pelo relatório (${NOME_STATUS[p.status_atual]} → Análise financeira)`);
     r.credito = { prospectId: Number(p.id), forma, prazo, prazoMedio, parcelas, limCnpj, limGrupo, limite, origem, semLimite, dataCadastro: d.data, codigo, registraCadastro,
       condCodigo, condDesc, formaCodigo, formaDesc, observacao: condCodigo || condDesc ? `ERP: cond. ${[condCodigo, condDesc].filter(Boolean).join(' ')}` : null,
       dataLiberacao: p.dt_cadastro_erp && p.dt_cadastro_erp > hoje ? p.dt_cadastro_erp : hoje };
