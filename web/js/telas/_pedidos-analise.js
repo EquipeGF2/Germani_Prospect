@@ -51,7 +51,7 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
   const campoBusca = h('input', { type: 'search', id: 'busca-pedidos', value: estado.busca, 'aria-label': 'Buscar pedido', placeholder: 'Pedido, cliente, CNPJ ou representante',
     oninput: () => { estado.busca = campoBusca.value; desenhar(); campoBusca.focus(); } });
 
-  // filtros na linha da frase, abaixo da chave Empresa ou Grupo
+  // filtro na mesma linha da chave Empresa ou Grupo
   function desenharFiltros() {
     const opcao = (id, ativo, texto, aoClicar) => h('button', { type: 'button', id, class: ativo ? 'ativa' : '', 'aria-pressed': ativo ? 'true' : 'false', onclick: () => { aoClicar(); aoFiltrar(); } }, texto);
     montar(slotFiltros,

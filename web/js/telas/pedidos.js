@@ -34,6 +34,7 @@ export async function render(conteudo, { usuario }) {
   }
   desenharFaixa();
   desenhar();
-  montar(conteudo, h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar pedidos'), chaveVerPor(porGrupo ? 'grupo' : 'empresa', (v) => { porGrupo = v === 'grupo'; desenhar(); })),
-    h('div', { class: 'ped-frase-filtros' }, h('p', { class: 'ajuda' }, 'Só pedidos de clientes da base; filiais, em Ver por Grupo.'), slotFiltros), faixa, area);
+  montar(conteudo, h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar pedidos'),
+    h('div', { class: 'ped-chaves' }, slotFiltros, chaveVerPor(porGrupo ? 'grupo' : 'empresa', (v) => { porGrupo = v === 'grupo'; desenhar(); }))),
+    h('p', { class: 'ajuda ped-frase' }, 'Só os pedidos dos clientes da base. As filiais fora da base aparecem em Ver por Grupo.'), faixa, area);
 }

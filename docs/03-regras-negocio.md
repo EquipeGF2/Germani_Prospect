@@ -578,7 +578,7 @@ desistências a partir de `alerta_desistencias_cliente` (5) · pedido em carteir
 
 **Explorar pedidos** (`shared/pedidos.mjs`, `web/js/telas/_pedidos-analise.js`), como o Explorar carteira:
 - **Hierarquia, sem listas de filtro:** árvore do total até o pedido, com níveis livres em qualquer ordem: Supervisor, Quem vendeu, Dono da carteira, Na lista?, Cidade, Segmento, Onda, Grupo, Cliente, Tipo, Situação e Mês. Os níveis se arrastam (no celular, botão Mudar) e a ordem fica guardada no navegador.
-- **Filtro** na linha da frase, abaixo da chave Empresa ou Grupo: **Pedidos de venda, Pedidos de bonificação ou Ambos**.
+- **Filtro** na mesma linha da chave Empresa ou Grupo: **Pedidos de venda, Pedidos de bonificação ou Ambos**.
 - Clicar numa linha da hierarquia escolhe o que se vê: os seis valores, os gráficos e a lista "Pedidos de …" (com CSV) seguem essa linha. A **busca** procura só nessa lista: pedido, razão social, CNPJ ou representante. Tudo é calculado sobre os pedidos já lidos: filtrar, abrir linha ou mudar nível não volta ao banco.
 - **Leitura:** os pedidos só são lidos de novo quando há arquivo novo ou apagado (`consultaVersaoPedidos`, poucas linhas) ou depois de 30 minutos. A ficha lê só os pedidos do cliente e do grupo dele, pelo índice do CNPJ.
 - **Alertas** numa faixa no topo, que abre ao clicar.
