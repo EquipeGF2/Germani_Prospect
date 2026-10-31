@@ -1,7 +1,7 @@
 // Conexões com o banco (ADR-0001).
 //   bancoApp()   — token do APP embutido no site (permissões restritas)
 //   bancoAdmin() — chave de ADMINISTRAÇÃO: aberta do cofre no login do administrador (ADR-0006) ou, em último caso,
-//                  colada na tela "Acesso de administração"; fica só nesta aba (sessionStorage)
+//                  colada na tela "Acesso de administração"; fica neste navegador enquanto durar o login (localStorage) e sai no Sair
 // Modo demonstração: banco SQLite temporário no navegador, com a mesma estrutura e regras.
 const cfg = window.GERMANI_CONFIG ?? { modo: 'demonstracao' };
 const CHAVE_TOKEN = 'germani.tokenAdmin';
@@ -84,41 +84,45 @@ export async function bancoApp() {
   return app;
 }
 
+/** A chave acompanha o login: vale em outra aba e com o navegador reaberto, sem pedir a senha de novo (ADR-0006). */
+function lerToken() {
+  try { return localStorage.getItem(CHAVE_TOKEN); } catch { return null; }
+}
+
 export function temTokenAdmin() {
   if (modoDemonstracao()) return true;
-  try { return Boolean(sessionStorage.getItem(CHAVE_TOKEN)); } catch { return false; }
+  return Boolean(lerToken());
 }
 
 export async function bancoAdmin() {
   if (modoDemonstracao()) return bancoDemonstracao();
-  let token = null;
-  try { token = sessionStorage.getItem(CHAVE_TOKEN); } catch { /* armazenamento indisponível */ }
+  const token = lerToken();
   if (!token) throw new ErroAcessoAdmin();
   admin ??= await cliente(token);
   return admin;
 }
 
-/** Chave de administração aberta nesta aba (para trancar no cofre de outro administrador), ou null. */
+/** Chave de administração aberta neste navegador (para trancar no cofre de outro administrador), ou null. */
 export function tokenAdminAtual() {
   if (modoDemonstracao()) return null;
-  try { return sessionStorage.getItem(CHAVE_TOKEN); } catch { return null; }
+  return lerToken();
 }
 
 /** Guarda a chave aberta do cofre no login (sem testar a conexão: o login já falou com o banco). */
 export function guardarTokenAdmin(token, versao = null) {
   try {
-    sessionStorage.setItem(CHAVE_TOKEN, token);
-    if (versao) sessionStorage.setItem(`${CHAVE_TOKEN}.versao`, String(versao)); else sessionStorage.removeItem(`${CHAVE_TOKEN}.versao`);
+    localStorage.setItem(CHAVE_TOKEN, token);
+    if (versao) localStorage.setItem(`${CHAVE_TOKEN}.versao`, String(versao)); else localStorage.removeItem(`${CHAVE_TOKEN}.versao`);
   } catch { /* sem armazenamento: cai na tela de acesso */ }
   admin = null;
 }
 
-/** Versão das permissões da chave aberta nesta aba (shared/cofre.mjs), para regravá-la no cofre sem perder a marca. */
+/** Versão das permissões da chave aberta neste navegador (shared/cofre.mjs), para regravá-la no cofre sem perder a marca. */
 export function versaoTokenAdmin() {
-  try { return Number(sessionStorage.getItem(`${CHAVE_TOKEN}.versao`)) || null; } catch { return null; }
+  try { return Number(localStorage.getItem(`${CHAVE_TOKEN}.versao`)) || null; } catch { return null; }
 }
 
 export function limparTokenAdmin() {
-  try { sessionStorage.removeItem(CHAVE_TOKEN); sessionStorage.removeItem(`${CHAVE_TOKEN}.versao`); } catch { /* nada */ }
+  try { localStorage.removeItem(CHAVE_TOKEN); localStorage.removeItem(`${CHAVE_TOKEN}.versao`); } catch { /* nada */ }
   admin = null;
 }

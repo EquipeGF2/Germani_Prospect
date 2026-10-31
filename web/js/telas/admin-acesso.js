@@ -1,5 +1,5 @@
 // Reabre o cofre de administração (ADR-0006) pedindo só a senha do próprio administrador — nunca token.
-// Aparece quando a sessão continua (outra aba, navegador reaberto) mas a chave aberta no login ficou na aba anterior.
+// Aparece só quando a sessão continua sem a chave: login anterior a esta regra, ou cofre que a senha do login não abriu.
 import { bancoApp, guardarTokenAdmin, modoDemonstracao } from '../db.js';
 import { abrirCofre, versaoDoCofre } from '../../shared/cofre.mjs';
 import { h, montar, comEspera } from '../ui.js';
@@ -25,7 +25,7 @@ export async function render(conteudo, { usuario, parametros, irPara }) {
     irPara(volta);
   } },
   h('h1', {}, 'Confirme sua senha'),
-  h('p', { class: 'ajuda' }, `Para abrir a administração nesta aba, digite a senha de ${usuario.login}.`),
+  h('p', { class: 'ajuda' }, `Para abrir a administração neste navegador, digite a senha de ${usuario.login}. Ela só será pedida de novo depois de sair.`),
   h('div', { class: 'campo' }, h('label', { for: 'senha-cofre' }, 'Senha'), senha),
   botao));
   senha.focus();
