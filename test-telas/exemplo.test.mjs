@@ -264,6 +264,17 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await irAoInicio();
   await pagina.waitForSelector('.painel-web');
 
+  // a chave de administração acompanha o login: vale em outra aba, sem pedir a senha, e sai no Sair
+  const modDb = await pagina.evaluate(() => new URL(document.querySelector('script[type=module]').src).search);
+  await pagina.evaluate(async (v) => { const { guardarTokenAdmin } = await import(`./js/db.js${v}`); guardarTokenAdmin('chave-ficticia', 3); }, modDb);
+  assert.deepEqual(await pagina.evaluate(() => [localStorage.getItem('germani.tokenAdmin'), sessionStorage.getItem('germani.tokenAdmin')]), ['chave-ficticia', null], 'fica no armazenamento que todas as abas leem');
+  await pagina.click('.menu-sair');
+  await pagina.waitForSelector('#login');
+  assert.equal(await pagina.evaluate(() => localStorage.getItem('germani.tokenAdmin')), null, 'Sair apaga a chave');
+  assert.equal(await pagina.evaluate(() => localStorage.getItem('germani.tokenAdmin.versao')), null);
+  await entrar('admin');
+  await irAoInicio();
+
   // outros perfis com a senha de exemplo
   await pagina.click('.menu-sair');
   await entrar('gerente');

@@ -17,7 +17,7 @@ qualquer pessoa que abrir o site criar administradores, trocar senhas e alterar 
    `usuarios.cofre_admin` (migração 0005) **cifrada com a senha do próprio administrador**: AES-GCM 256, chave
    derivada por PBKDF2-SHA256 (600 mil iterações, sal próprio) — `shared/cofre.mjs`.
 2. **Login** (`web/js/sessao.js`): senha conferida → se o perfil é administrador e há cofre, a mesma senha abre o
-   cofre e a chave fica só na aba (sessionStorage). Nenhuma tela pede token.
+   cofre e a chave fica no navegador enquanto durar o login (atualização de 2026-10-31). Nenhuma tela pede token.
 3. **Primeiro administrador:** o workflow "Criar administrador" gera a chave com a chave de API do Turso
    (`scripts/gerar-token-app.sh admin`) e a tranca com a senha do Secret `ADMIN_SENHA_INICIAL`.
 4. **Outros administradores:** quem já está logado como administrador tranca a chave aberta na aba com a senha do
@@ -46,3 +46,9 @@ qualquer pessoa que abrir o site criar administradores, trocar senhas e alterar 
 - A publicação também renova o cofre de chave antiga com a senha do Secret ADMIN_SENHA_INICIAL (autorizado pelo dono em
   2026-10-20): gera a chave nova só quando algum cofre precisa, e só regrava o cofre que essa senha abre. O cofre guarda a
   versão das permissões da chave (`chave`), mantida ao trocar a senha pela tela.
+
+## Atualização 2026-10-31 — a senha só é pedida no login
+
+- A chave aberta deixa de ficar só na aba (sessionStorage) e passa a acompanhar o login, neste navegador (localStorage). Vale em outra aba e com o navegador reaberto, e sai ao clicar em Sair ou em outro login. Pedido do dono: o perfil de administrador basta, sem pedir senha a cada tela.
+- Risco aceito: enquanto o login durar, a chave de administração fica aberta no navegador, sem cifra. Quem usar aquele navegador sem sair, ou conseguir rodar script no site, tem a chave. Em computador compartilhado, é preciso clicar em Sair. Para revogar, vale o procedimento acima (`turso db tokens invalidate`).
+
