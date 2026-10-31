@@ -20,6 +20,7 @@ Atualizado em 2026-10-19. Cada item diz o que já está implementado como padrã
 | 16 | Registros do app | **resolvido:** atendido · sem interesse (também em lote) · reabrir com pedido identificado; "não atendido" não gera registro | — |
 | 19 | Operação pelo app | **decidido:** nada direto no banco; carga e administração por telas. Token de administração digitado na tela (ADR-0001) | definir com a F1 |
 | 20 | Relatório de cadastro e crédito | **implementado com o layout real do ERP** (2026-10-23): Cliente, CPF / CNPJ, Razão Social, Cond. Pgto + Descrição, Forma Pgto + Descrição, Créd. Cliente, Créd. Grupo, Dt. Cadastro | pedidos em aberto do grupo × limite: alerta em docs/03 §14 |
+| 28 | Vendas antigas (`eventos_erp`) | a venda saiu do Acompanhamento; Explorar pedidos mostra só o que veio do relatório novo | pedido importado pela rota antiga só aparece pela ficha e pelo Explorar carteira |
 | 27 | Pedidos do ERP | **implementado** (docs/03 §14) com o layout real, sem coluna de data | confirmar se o ERP traz a data de cada status e o motivo do bloqueio; frequência diária ou semanal; "Liquidado" = faturado (não pago); o que é o Rep. 1; custo da bonificação (hoje vale o valor do pedido) |
 | 21 | Ações em lote | tela faz só **sem interesse** em lote (atendido em lote existe no backend) | confirmar se precisa de atendido em lote na tela |
 | 22 | Telefone da base | Ligar / WhatsApp só aparecem com DDD (10+ dígitos); assume Brasil (+55) | conferir o formato do telefone na planilha real |

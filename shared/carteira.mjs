@@ -106,6 +106,7 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   // Aguardando cadastro, Sem interesse etc. só aparecem no acompanhamento (visão 'status' ou filtro de status)
   if (!incluirForaDaLista && !filtros.foraDaLista && visao !== 'status' && !filtros.status) where.push('na_lista = 1');
   if (filtros.foraDaLista) where.push('na_lista = 0');
+  if (filtros.semVenda) where.push("status_atual <> 'venda_realizada'");   // Acompanhamento: a venda está em Explorar pedidos
   if (filtros.somentePendentes) where.push('pendente_hoje = 1');
   if (filtros.somenteRetornos) where.push('retorno_pendente = 1');
   if (filtros.status) { where.push('status_atual = ?'); args.push(filtros.status); }

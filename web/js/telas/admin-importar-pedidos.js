@@ -184,7 +184,7 @@ export async function render(conteudo, ctx) {
       const paraTela = g.resultados.map((r) => ({ numeroLinha: r.numeroLinha, resultado: r.resultado, cnpj: r.documento, mensagens: r.resultado === 'aceita' ? r.avisos : r.erros }));
       montar(area, passos(ETAPAS, 4), mensagem(`Importação nº ${g.importacaoId} concluída. Os dados deste arquivo podem ser apagados em Importações.`, 'ok'),
         blocoResultado({ titulo: `Importação nº ${g.importacaoId}`, resumo: g.resumo, resultados: paraTela, nomeRelatorio: `pedidos-${g.importacaoId}.csv` }),
-        h('div', { class: 'acoes' }, h('a', { class: 'botao', href: '#/pedidos' }, 'Ver o acompanhamento de pedidos'), h('a', { class: 'botao secundario', href: '#/admin/importacoes' }, 'Ver importações')));
+        h('div', { class: 'acoes' }, h('a', { class: 'botao', href: '#/pedidos' }, 'Ver Explorar pedidos'), h('a', { class: 'botao secundario', href: '#/admin/importacoes' }, 'Ver importações')));
     } }, 'Confirmar e gravar');
     const rejeitadas = s.resumo.rejeitadas;
     montar(area, passos(ETAPAS, 3),

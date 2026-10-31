@@ -219,8 +219,8 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForFunction(() => location.hash.includes('periodo=mes'));
   await telaPronta();
   await pagina.waitForSelector('.lista-tabela tbody tr');
-  const ordem = await pagina.locator('.chip-situacao').evaluateAll((els) => els.slice(1).map((el) => el.dataset.status));
-  const processo = ['aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse:cliente', 'sem_interesse:representante', 'invalido'];
+  const ordem = await pagina.locator('.chip-situacao[data-status]').evaluateAll((els) => els.slice(1).map((el) => el.dataset.status));
+  const processo = ['aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'aguardando_pedido_valido', 'venda_realizada', 'sem_interesse:cliente', 'sem_interesse:representante', 'invalido'];
   assert.ok(ordem.length >= 2 && ordem.every((x, i) => i === 0 || processo.indexOf(x) > processo.indexOf(ordem[i - 1])), `ordem: ${ordem}`);
   // filtros em cascata: escolher a cidade deixa só os representantes dela
   const opcoesDe = (id) => pagina.locator(`#${id} option`).evaluateAll((os) => os.slice(1).map((o) => o.value));

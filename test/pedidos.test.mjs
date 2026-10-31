@@ -5,8 +5,10 @@ import { bancoTeste, cnpjTeste, criarEquipe, criarProspect, evento, prospect, re
 import { lerBiff2 } from '../shared/biff.mjs';
 import { lerPlanilhaDeBytes } from '../shared/planilha.mjs';
 import { apagarArquivoPedidos, conferirExclusao, gravarPedidos, listarArquivosPedidos, simularPedidos, statusDepois } from '../shared/importar-pedidos.mjs';
-import { alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, consultaPedidosGrupo, consultaSaldoFiliais, montarArvorePedidos, niveisPedidosPossiveis, porRepresentante, resumirPedidos } from '../shared/pedidos.mjs';
+import { agruparPorRaiz, alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, consultaPedidosGrupo, consultaSaldoFiliais, montarArvorePedidos, niveisPedidosPossiveis, porRepresentante, resumirPedidos } from '../shared/pedidos.mjs';
 import { consultaPedidosResumo } from '../shared/explorar.mjs';
+import { consultaCarteira } from '../shared/carteira.mjs';
+import { STATUS_ENCERRADOS } from '../shared/status.mjs';
 
 const CAB = ['Cliente', 'Razão Social', 'CPF / CNPJ', 'Vlr. Pedido', 'Vlr. Faturado', 'Pedido', 'Sit.', 'Situação', 'Transação', 'Desc. Trans.', 'Rep.'];
 const SIT = { 9: 'Não Fechado', 1: 'Aberto Total', 2: 'Aberto Parcial', 4: 'Liquidado', 5: 'Desistência' };
@@ -347,5 +349,49 @@ test('análise: níveis livres, cada ramo soma o que está abaixo dele e abre at
   assert.deepEqual(porCidade.slice(1).map((n) => n.rotulo), ['Estrela/RS', 'Lajeado/RS']);
   assert.equal(niveisPedidosPossiveis({ perfil: 'vendedor' }).includes('supervisor'), false);
   assert.equal(niveisPedidosPossiveis(adm).includes('supervisor'), true);
+});
+
+test('ver por grupo: empresas da mesma raiz numa linha que abre, sem mudar os valores; empresa sem grupo fica solta', async () => {
+  const db = await montar();
+  const m = cnpjTeste(1, 1); const f = cnpjTeste(1, 2); const s = cnpjTeste(2);
+  await criarProspect(db, { n: 1, cnpj: m, razao: 'Rede Um', vendedorId: 2 }); await criarProspect(db, { n: 3, cnpj: f, razao: 'Rede Um Filial', vendedorId: 3 }); await criarProspect(db, { n: 2, cnpj: s, razao: 'Loja Só', vendedorId: 2 });
+  await grava(db, arquivo(linha({ doc: m, num: 1, sit: 4, valor: 100, fat: 100, rep: 10 }), linha({ doc: f, num: 2, sit: 1, valor: 50, rep: 11 }), linha({ doc: f, num: 3, sit: 4, valor: 9, fat: 9, tr: '90106', rep: 11 }), linha({ doc: s, num: 4, sit: 1, valor: 30, rep: 10 })));
+  const pedidos = await pedidosDe(db);
+  const { grupos, soltas } = agruparPorRaiz(pedidos, (p) => p.cpf_cnpj);
+  assert.equal(grupos.length, 1); assert.equal(grupos[0].empresas.size, 2); assert.deepEqual(soltas.map((p) => p.numero), ['4']);
+  assert.equal(clientesDistintos(pedidos), 3); assert.equal(clientesDistintos(pedidos, { porGrupo: true }), 2);
+  const raiz = m.slice(0, 8);
+  const arv = montarArvorePedidos({ pedidos, niveis: ['cliente'], abertos: new Set(['', `/grupo=${raiz}`]), porGrupo: true });
+  assert.deepEqual(arv.map((n) => [n.profundidade, n.ehGrupo, n.ind.venda.valor]), [[0, false, 180], [1, true, 150], [2, false, 100], [2, false, 50], [1, false, 30]]);
+  assert.match(arv[1].rotulo, /^Grupo .* · 2 empresas$/);
+  assert.equal(arv[2].temFilhos, false, 'a empresa é a última folha');
+  assert.equal(arv[0].ind.clientes, 2);
+  const comSituacao = montarArvorePedidos({ pedidos, niveis: ['cliente', 'situacao'], abertos: new Set(['', `/grupo=${raiz}`, `/grupo=${raiz}/cliente=${f}`]), porGrupo: true });
+  assert.ok(comSituacao.some((n) => n.nivel === 'situacao' && n.profundidade === 3), 'abre o nível seguinte dentro do grupo');
+  const emp = montarArvorePedidos({ pedidos, niveis: ['cliente'], abertos: new Set(['']) });
+  assert.equal(emp.filter((n) => n.profundidade === 1).length, 3, 'por empresa, sem grupo');
+  assert.equal(emp[0].ind.venda.valor, arv[0].ind.venda.valor, 'a chave não muda os valores');
+  const r10 = porRepresentante(pedidos, { porGrupo: true }).find((r) => r.codigo === '10');
+  assert.deepEqual(r10.clientes.map((c) => [c.documento, c.venda]), [[raiz, 100], [s, 30]]);
+  const varios = clientesVariosRepresentantes(pedidos, { porGrupo: true });
+  assert.equal(varios.length, 1, 'o grupo foi vendido por dois representantes'); assert.equal(clientesVariosRepresentantes(pedidos).length, 0);
+  const b = bonificacaoPorCliente(pedidos, { porGrupo: true });
+  assert.deepEqual(b.map((c) => [c.documento, c.investimento, c.venda]), [[raiz, 9, 150]]);
+  assert.equal((await prospect(db, 1)).status_atual, 'venda_realizada'); assert.equal(pedidos.length, 4);
+});
+
+test('Acompanhamento: só o que está em processo e encerrados; a venda fica em Explorar pedidos', async () => {
+  const db = await montar();
+  const ids = [];
+  for (const n of [1, 2, 3, 4]) ids.push(await criarProspect(db, { n }));
+  await registrarContato(db, { prospectId: ids[0], resultado: 'atendido', data: '2026-10-10' });
+  await registrarContato(db, { prospectId: ids[1], resultado: 'sem_interesse', data: '2026-10-10', motivo: 'OUTRO', observacao: 'x' });
+  await grava(db, arquivo(linha({ doc: cnpjTeste(3), num: 1, sit: 1 })));
+  const consulta = consultaCarteira({ usuario: adm, filtros: { foraDaLista: true, semVenda: true } });
+  const st = (await db.execute(consulta)).rows.map((p) => p.status_atual).sort();
+  assert.deepEqual(st, ['aguardando_cadastro', 'sem_interesse']);
+  const lista = (await db.execute(consultaCarteira({ usuario: adm, filtros: {} }))).rows.map((p) => p.status_atual);
+  assert.deepEqual(lista, ['nao_contactado'], 'a Lista principal não muda');
+  assert.deepEqual([...STATUS_ENCERRADOS].sort(), ['expurgado', 'invalido', 'sem_interesse']);
 });
 

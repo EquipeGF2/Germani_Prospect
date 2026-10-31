@@ -13,6 +13,9 @@ export const STATUS = Object.freeze({
 /** Status que aparecem na lista de prospects (os demais só saem da lista — continuam nos indicadores). */
 export const STATUS_LISTA = Object.freeze([STATUS.NAO_CONTACTADO, STATUS.EM_PROSPECCAO]);
 
+/** Acompanhamento: em andamento × encerrados. Venda realizada não entra: está em Explorar pedidos. */
+export const STATUS_ENCERRADOS = Object.freeze(['sem_interesse', STATUS.INVALIDO, 'expurgado']);
+
 /** Status que aceitam novo contato (não há limite de contatos). */
 export const STATUS_ACEITAM_CONTATO = Object.freeze([STATUS.NAO_CONTACTADO, STATUS.EM_PROSPECCAO, STATUS.EM_NEGOCIACAO,
   STATUS.SEM_INTERESSE, STATUS.CADASTRADO_ERP]);

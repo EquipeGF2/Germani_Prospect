@@ -210,7 +210,7 @@ movimentação conta sempre nos indicadores.
 - **Lista principal:** ordenada por pendentes de hoje, retornos, próxima ação, cidade, bairro, nome.
   Filtros: pendentes hoje, retornos pendentes, cidade, bairro, **onda**, UF, rota/subrota (vendedor).
   Busca por nome, CNPJ (com ou sem pontuação), cidade ou bairro, **sem acento**.
-- **Acompanhamento (visão Status):** todos os status com quantidade, retornos pendentes, prazos de cadastro
+- **Acompanhamento:** só o que está **em andamento** (aguardando cadastro, análise financeira, aguardando pedido, aguardando pedido válido); sem interesse, inválido e expurgado ficam em **Encerrados**, um filtro na própria tela, e a venda fica em Explorar pedidos (docs/03 §14). Visão Status: quantidade, retornos pendentes, prazos de cadastro
   vencidos e média de dias corridos, **na ordem do processo** (aguardando cadastro → análise financeira → aguardando
   pedido → venda realizada; sem interesse e inválido por último). Tocar num status abre a lista daquele status.
 - **Onda:** coluna ONDA da planilha base — visão agrupada e filtro para os dois perfis, também nos indicadores
@@ -506,7 +506,12 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 
 ## 14. Pedidos do ERP (migração 0022 · `shared/importar-pedidos.mjs`, `shared/pedidos.mjs`)
 
-Importação: docs/05 §6. Tela: **Acompanhamento de pedidos** (`#/pedidos`), uma linha por pedido — o Acompanhamento continua uma linha por cliente.
+Importação: docs/05 §6. Tela: **Explorar pedidos** (`#/pedidos`), o que foi vendido: abas Análise, Pedidos, Por representante, Bonificação e Alertas.
+
+**Cada tela responde a uma pergunta.** Explorar carteira: como está a base? · Lista principal: quem procurar? · Acompanhamento: o que está em andamento? · Explorar pedidos: o que foi vendido?
+
+**Ver por Empresa ou Grupo** (chave em Explorar pedidos e no Acompanhamento, guardada no navegador; Explorar carteira e Lista principal não têm): grupo são as empresas da mesma raiz de CNPJ. Por grupo, elas ficam numa linha que abre, e a empresa sem grupo fica solta.
+A chave só muda como se vê e conta clientes: o grupo conta uma vez se ao menos uma empresa comprou. Status, atendimento e crédito continuam de cada empresa, e os valores não mudam. Cada um vê só as empresas do seu escopo.
 
 **Só entram os pedidos dos CNPJs da base.** O relatório traz todos os clientes do ERP, mas a campanha olha só a base:
 

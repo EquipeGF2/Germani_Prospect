@@ -1,4 +1,4 @@
-// Aba Análise do Acompanhamento de pedidos: árvore de níveis livres, como o Explorar carteira, sobre os pedidos já lidos.
+// Aba Análise de Explorar pedidos: árvore de níveis livres, como o Explorar carteira, sobre os pedidos já lidos.
 // Arrastar níveis, abrir ramos e escolher um ramo só redesenham no navegador: nada volta ao banco.
 import { montarArvorePedidos, NIVEIS_PEDIDOS, niveisPedidosPossiveis, rotuloRepresentante } from '../../shared/pedidos.mjs';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
@@ -19,7 +19,7 @@ function lerNiveis(possiveis, padrao) {
 }
 function guardarNiveis(n) { try { localStorage.setItem(CHAVE_NIVEIS, JSON.stringify(n)); } catch { /* só nesta visita */ } }
 
-export function renderAnalise(destino, { pedidos, usuario }) {
+export function renderAnalise(destino, { pedidos, usuario, porGrupo = false }) {
   const possiveis = niveisPedidosPossiveis(usuario);
   const raiz = veTodasEquipes(usuario) ? 'Todos os pedidos' : usuario.perfil === 'supervisor' ? 'Pedidos da minha equipe' : 'Meus pedidos';
   const estado = { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cliente']), abertos: new Set(['']), sel: '', editarNiveis: false };
@@ -54,7 +54,7 @@ export function renderAnalise(destino, { pedidos, usuario }) {
   }
 
   function tela() {
-    const arvore = montarArvorePedidos({ pedidos, niveis: estado.niveis, abertos: estado.abertos, rotuloRaiz: raiz });
+    const arvore = montarArvorePedidos({ pedidos, niveis: estado.niveis, abertos: estado.abertos, rotuloRaiz: raiz, porGrupo });
     const escolhido = arvore.find((n) => n.caminho === estado.sel) ?? arvore[0];
     const ind = escolhido.ind;
     const etapas = arvore.filter((n) => estado.sel === n.caminho || estado.sel.startsWith(`${n.caminho}/`) || n.caminho === '').sort((a, b) => a.profundidade - b.profundidade);
