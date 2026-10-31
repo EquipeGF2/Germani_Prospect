@@ -235,7 +235,7 @@ test('lista principal em faixas (migração 0010): mesma ordem e mesmas páginas
   }
 });
 
-test('lista do computador: representante obrigatório na Lista; equipe e período no Acompanhamento', () => {
+test('lista do computador: representante obrigatório na Lista; equipe no Acompanhamento, com período opcional', () => {
   const ADM = { id: 4, perfil: 'administrador' };
   // Lista principal: representante obrigatório (com o supervisor) para gestão e supervisor; a busca não dispensa
   assert.deepEqual(faltaParaLista(ADM, {}), ['representante']);
@@ -245,15 +245,15 @@ test('lista do computador: representante obrigatório na Lista; equipe e períod
   assert.deepEqual(faltaParaLista(SUP, {}), ['representante'], 'supervisor escolhe o representante da equipe');
   assert.deepEqual(faltaParaLista(REP, {}), [], 'o representante já é ele');
   // Acompanhamento: equipe (supervisor ou representante; uma busca também) e período
-  assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento' }), ['equipe', 'periodo']);
+  assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento' }), ['equipe']);
   assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento', busca: '  ', filtros: { dataDe: '2026-10-01' } }), ['equipe'], 'busca vazia não conta');
   assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento', busca: '1101', filtros: { dataDe: '2026-10-01' } }), [], 'uma busca já é estreita o bastante');
-  assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento', filtros: { supervisorId: 1 } }), ['periodo']);
-  assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento', busca: 'x' }), ['periodo'], 'a busca nunca dispensa o período');
+  assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento', filtros: { supervisorId: 1 } }), [], 'o período é opcional');
+  assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento', busca: 'x' }), []);
   assert.deepEqual(faltaParaLista(ADM, { aba: 'acompanhamento', filtros: { supervisorId: 1, dataDe: '2026-10-01' } }), []);
   assert.deepEqual(faltaParaLista(SUP, { aba: 'acompanhamento', filtros: { dataDe: '2026-10-01' } }), [], 'supervisor já tem a equipe');
   assert.deepEqual(faltaParaLista({ ...SUP, ve_todos: 1 }, { aba: 'acompanhamento', filtros: { dataDe: '2026-10-01' } }), ['equipe'], 'supervisor que vê todas escolhe a equipe');
-  assert.deepEqual(faltaParaLista(REP, { aba: 'acompanhamento' }), ['periodo']);
+  assert.deepEqual(faltaParaLista(REP, { aba: 'acompanhamento' }), [], 'quem está em processo desde o mês passado não pode parecer sumido');
   assert.deepEqual(datasDoPeriodo('mes', { hoje: '2026-10-20' }), { dataDe: '2026-10-01', dataAte: '2026-10-20' });
   assert.deepEqual(datasDoPeriodo('ultimo', { hoje: '2026-10-20' }), { dataDe: '2026-09-01', dataAte: '2026-09-30' });
   assert.deepEqual(datasDoPeriodo('ultimo', { hoje: '2026-01-05' }), { dataDe: '2025-12-01', dataAte: '2025-12-31' });

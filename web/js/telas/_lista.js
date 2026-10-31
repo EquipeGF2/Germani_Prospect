@@ -1,7 +1,6 @@
 // Lista principal e Acompanhamento no COMPUTADOR (docs/03 §6) — sempre em lista (tabela), filtros em grupos:
 // Equipe (supervisor / representante) · Local (UF / cidade / bairro, este só com a cidade) · Carteira (onda / segmento)
-// · Período (só no Acompanhamento). Os filtros só valem no botão Buscar (nada é lido antes); a gestão escolhe a equipe e
-// o Acompanhamento exige o período. Situação com contagem, "Agrupar por" (só na Lista), ficha ao lado e "Carregar mais".
+// · Período (só no Acompanhamento, opcional). Os filtros só valem no botão Buscar (nada é lido antes); a gestão escolhe a equipe. Situação com contagem, "Agrupar por" (só na Lista), ficha ao lado e "Carregar mais".
 // No celular, a Lista principal segue em carteira.js; o Acompanhamento usa esta mesma tela (`celular`): filtros num
 // painel que abre e fecha, situação em faixa, cada prospect num cartão e a ficha subindo por baixo — as mesmas leituras.
 import { bancoApp, lerComCache } from '../db.js';
@@ -33,11 +32,10 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   // coluna Rota só para o vendedor (é quem monta rota); a gestão agrupa por rota quando quiser
   const colunaRota = comRota && usuario.perfil === 'vendedor';
 
-  // período (só Acompanhamento): este mês / último mês / período de · até. Todos entram no mês atual.
+  // período (só Acompanhamento) é opcional: quem está em processo desde o mês passado não pode parecer sumido.
   if (!acomp) { delete e.filtros.dataDe; delete e.filtros.dataAte; e.periodo = ''; }
   else {
-    // sem período escolhido: sempre o mês atual (para todos); o usuário troca para Último mês ou Período
-    if (!PERIODOS_LISTA[e.periodo]) e.periodo = e.filtros.dataDe || e.filtros.dataAte ? 'periodo' : 'mes';
+    if (!PERIODOS_LISTA[e.periodo]) e.periodo = e.filtros.dataDe || e.filtros.dataAte ? 'periodo' : '';
     if (e.periodo && e.periodo !== 'periodo') Object.assign(e.filtros, datasDoPeriodo(e.periodo, { hoje: hojeSaoPaulo() }));
   }
   if (!e.filtros.cidadeBusca) delete e.filtros.bairroBusca;
@@ -120,8 +118,8 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     if (acomp) {
       const data = (id, rotulo, chave) => h('input', { type: 'date', id, 'aria-label': rotulo, value: f[chave] ?? '',
         onchange: (ev) => { f[chave] = ev.target.value || null; } });
-      grupos.push(grupo('Período', 'periodo',
-        selecao('filtro-periodo', 'Último registro', rascunho.periodo, Object.entries(PERIODOS_LISTA), (v) => mudar({}, { periodo: v }), { vazio: 'Escolha…' }),
+      grupos.push(grupo('Período', null,
+        selecao('filtro-periodo', 'Último registro', rascunho.periodo, Object.entries(PERIODOS_LISTA), (v) => mudar({}, { periodo: v }), { vazio: 'Todos' }),
         rascunho.periodo === 'periodo' ? h('div', { class: 'filtro' }, h('label', { for: 'filtro-data-de' }, 'De · até'),
           h('div', { class: 'datas' }, data('filtro-data-de', 'Último registro de', 'dataDe'), data('filtro-data-ate', 'Último registro até', 'dataAte'))) : null));
     }
@@ -152,12 +150,11 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   if (!ler) {
     const texto = !e.ver ? 'Defina os filtros e clique em Buscar'
       : falta.includes('representante') ? 'Escolha o supervisor e o representante e clique em Buscar'
-      : falta.includes('equipe') && falta.includes('periodo') ? 'Escolha a equipe e o período e clique em Buscar'
-        : falta.includes('equipe') ? 'Escolha a equipe e clique em Buscar' : 'Escolha o período e clique em Buscar';
+      : 'Escolha a equipe e clique em Buscar';
     return montar(conteudo, cabecalho, filtrosNaTela(),
       h('div', { class: 'lista-vazia', id: 'lista-falta' }, h('b', {}, texto),
         h('span', {}, falta.includes('representante') ? 'Supervisor e representante. ' : falta.includes('equipe') ? 'Equipe: supervisor (com toda a equipe) ou representante. ' : '',
-          falta.includes('periodo') ? 'Período: pela data do último registro. ' : '', 'A lista só é lida depois disso — nunca a base inteira.')));
+          'A lista só é lida depois disso — nunca a base inteira.')));
   }
 
   // ---------- lista inteira já lida: situação, ordem e grupos no navegador ----------
@@ -347,7 +344,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     const filtros = [
       `UF: ${e.filtros.uf ?? 'todas'}`, `Cidade: ${cidade ?? 'todas'}`, e.filtros.bairroBusca ? `Bairro: ${e.filtros.bairroBusca}` : null,
       `Onda: ${e.filtros.onda ?? 'todas'}`, `Segmento: ${e.filtros.segmento ?? 'todos'}`,
-      acomp ? `Período: ${formatar.data(e.filtros.dataDe) || '…'} a ${formatar.data(e.filtros.dataAte) || '…'}` : null,
+      acomp && (e.filtros.dataDe || e.filtros.dataAte) ? `Período: ${formatar.data(e.filtros.dataDe) || '…'} a ${formatar.data(e.filtros.dataAte) || '…'}` : null,
       vista.status ? `Situação: ${nomeStatus[vista.status]?.[0]}` : null, e.busca ? `Busca: "${e.busca}"` : null,
       vista.agrupar ? `Agrupado por ${AGRUPAMENTOS[vista.agrupar].nome.toLowerCase()}` : null, vista.porGrupo ? 'Por grupo de CNPJ' : null,
     ].filter(Boolean).join(' · ');

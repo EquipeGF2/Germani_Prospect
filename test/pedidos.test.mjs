@@ -5,7 +5,7 @@ import { bancoTeste, cnpjTeste, criarEquipe, criarProspect, evento, prospect, re
 import { lerBiff2 } from '../shared/biff.mjs';
 import { lerPlanilhaDeBytes } from '../shared/planilha.mjs';
 import { apagarArquivoPedidos, conferirExclusao, gravarPedidos, listarArquivosPedidos, simularPedidos, statusDepois } from '../shared/importar-pedidos.mjs';
-import { agruparPorRaiz, alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, consultaPedidosGrupo, consultaSaldoFiliais, montarArvorePedidos, niveisPedidosPossiveis, porRepresentante, resumirPedidos } from '../shared/pedidos.mjs';
+import { agruparPorRaiz, alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, consultaPedidosGrupo, consultaSaldoFiliais, filtrarPedidos, filtrosPedidosPossiveis, indicadoresRamo, montarArvorePedidos, opcoesPedidosEmCascata, niveisPedidosPossiveis, porRepresentante, resumirPedidos } from '../shared/pedidos.mjs';
 import { consultaPedidosResumo } from '../shared/explorar.mjs';
 import { consultaCarteira } from '../shared/carteira.mjs';
 import { STATUS_ENCERRADOS } from '../shared/status.mjs';
@@ -393,5 +393,33 @@ test('Acompanhamento: só o que está em processo e encerrados; a venda fica em 
   const lista = (await db.execute(consultaCarteira({ usuario: adm, filtros: {} }))).rows.map((p) => p.status_atual);
   assert.deepEqual(lista, ['nao_contactado'], 'a Lista principal não muda');
   assert.deepEqual([...STATUS_ENCERRADOS].sort(), ['expurgado', 'invalido', 'sem_interesse']);
+});
+
+test('filtros em cascata: cada filtro mostra só o que existe com os outros, e os atalhos restringem por cliente', async () => {
+  const db = await montar();
+  await criarProspect(db, { n: 1, vendedorId: 2, cidade: 'Lajeado', onda: '1' }); await criarProspect(db, { n: 2, vendedorId: 3, cidade: 'Estrela', onda: '2' }); await criarProspect(db, { n: 3, vendedorId: 2, cidade: 'Lajeado', onda: '2' });
+  await grava(db, arquivo(linha({ doc: cnpjTeste(1), num: 1, sit: 4, valor: 100, fat: 100, rep: 10 }), linha({ doc: cnpjTeste(1), num: 2, sit: 1, valor: 50, rep: 11 }),
+    linha({ doc: cnpjTeste(2), num: 3, sit: 1, valor: 300, rep: 11 }), linha({ doc: cnpjTeste(3), num: 4, sit: 4, valor: 9, fat: 9, tr: '90106', rep: 10 })));
+  const pedidos = await pedidosDe(db);
+  const cidades = (op) => op.cidade.map((o) => o.rotulo);
+  const tudo = opcoesPedidosEmCascata(pedidos);
+  assert.deepEqual(cidades(tudo), ['Estrela/RS', 'Lajeado/RS']);
+  const lajeado = 'Lajeado|RS';
+  const comCidade = opcoesPedidosEmCascata(pedidos, { filtros: { cidade: lajeado } });
+  assert.deepEqual(comCidade.onda.map((o) => o.valor), ['1', '2'], 'só as ondas de Lajeado');
+  assert.deepEqual(comCidade.representante.map((o) => o.valor), ['10', '11']);
+  assert.deepEqual(cidades(comCidade), ['Estrela/RS', 'Lajeado/RS'], 'a própria faceta não se restringe: dá para trocar a cidade');
+  const comOnda = opcoesPedidosEmCascata(pedidos, { filtros: { onda: '2', representante: '10' } });
+  assert.deepEqual(cidades(comOnda), ['Lajeado/RS'], 'cada escolha estreita as outras');
+  assert.deepEqual(filtrarPedidos(pedidos, { filtros: { cidade: lajeado, onda: '1' } }).map((p) => p.numero).sort(), ['1', '2']);
+  assert.deepEqual(filtrarPedidos(pedidos, { busca: 'vend onze' }).map((p) => p.numero).sort(), ['2', '3'], 'busca pelo nome do representante, sem acento');
+  assert.deepEqual(filtrarPedidos(pedidos, { variosReps: true }).map((p) => p.numero).sort(), ['1', '2'], 'cliente com mais de um representante');
+  assert.deepEqual(filtrarPedidos(pedidos, { comBonificacao: true }).map((p) => p.numero), ['4'], 'cliente com bonificação');
+  const r = indicadoresRamo(pedidos);
+  assert.equal(r.propria + r.outra, r.venda.valor, 'na lista + fora da lista = venda');
+  assert.equal(r.propria, 400); assert.equal(r.outra, 50);
+  assert.ok(Math.abs(r.pctInvestimento - (9 / 450) * 100) < 0.001);
+  const expl = opcoesPedidosEmCascata(pedidos, { possiveis: filtrosPedidosPossiveis({ perfil: 'vendedor' }) });
+  assert.equal('supervisor' in expl, false, 'vendedor não filtra por supervisor');
 });
 

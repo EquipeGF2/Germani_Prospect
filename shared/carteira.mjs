@@ -312,7 +312,7 @@ export function datasDoPeriodo(chave, { hoje, de = null, ate = null }) {
 /**
  * O que falta escolher antes de ler a lista do computador (docs/03 §6): na Lista principal, o REPRESENTANTE (com o
  * supervisor; o vendedor já é o seu); no Acompanhamento, a EQUIPE para quem vê todas as equipes (supervisor ou
- * representante; uma busca também basta); o Acompanhamento exige também o PERÍODO do último registro.
+ * representante; uma busca também basta). O período do último registro é opcional.
  * A Lista principal não tem período: não contactados não têm data nenhuma.
  */
 export function faltaParaLista(usuario, { aba = 'principal', filtros = {}, busca = '', doExplorar = false } = {}) {
@@ -320,12 +320,11 @@ export function faltaParaLista(usuario, { aba = 'principal', filtros = {}, busca
   // aberta pelo Explorar ("Abrir na Lista principal" de um ramo): o filtro do ramo já estreita a lista e dispensa a equipe
   const ramo = doExplorar && FILTROS_RESTRITIVOS.some((f) => filtros[f] != null && filtros[f] !== '' && filtros[f] !== false);
   // quem vê todas as equipes (gestão, financeiro, supervisor que também é gerente) escolhe uma; supervisor e vendedor já
-  // têm a sua. Uma busca (CNPJ, nome, representante…) já é estreita o bastante e dispensa a equipe — nunca o período.
+  // têm a sua. Uma busca (CNPJ, nome, representante…) já é estreita o bastante e dispensa a equipe.
   // Lista principal: supervisor E representante obrigatórios para a gestão e o supervisor (o vendedor já é o representante);
-  // a lista sai inteira, para o representante. No Acompanhamento basta a equipe (uma busca também), mais o período.
+  // a lista sai inteira, para o representante. No Acompanhamento basta a equipe (uma busca também).
   if (aba !== 'acompanhamento') {
     if (usuario.perfil !== 'vendedor' && !filtros.vendedorId && !ramo) falta.push('representante');
   } else if (veTodasEquipes(usuario) && !filtros.supervisorId && !filtros.vendedorId && !normalizarBusca(busca)) falta.push('equipe');
-  if (aba === 'acompanhamento' && !filtros.dataDe && !filtros.dataAte) falta.push('periodo');
   return falta;
 }

@@ -1,7 +1,8 @@
-// Explorar pedidos: leitura e contas das abas (Análise · Pedidos · Por representante · Bonificação · Alertas), da ficha e dos alertas.
-// A tela lê os pedidos do escopo numa consulta só; filtros e abas são calculados no navegador. docs/03 §14
+// Explorar pedidos: leitura, filtros em cascata, árvore e alertas, além das contas da ficha.
+// A tela lê os pedidos do escopo numa consulta só; filtros e árvore são calculados no navegador. docs/03 §14
 // Só clientes da base. A filial de um grupo da base (prospect_id NULL) aparece apenas na visão do grupo.
 import { veTodasEquipes } from './perfis.mjs';
+import { normalizarBusca } from './texto.mjs';
 
 /** Pedidos que o usuário enxerga: os da carteira dele (ou da equipe) e os que ele mesmo fez, inclusive para cliente de outra lista. */
 function escopoPedidos(usuario) {
@@ -147,7 +148,7 @@ export function bonificacaoPorCliente(pedidos, { porGrupo = false } = {}) {
   return [...clientes.values()].map((c) => ({ ...c, pct: c.venda ? (c.investimento / c.venda) * 100 : null })).sort((a, b) => b.investimento - a.investimento);
 }
 
-/** Alertas do conjunto. Venda por outro representante não é alerta: é informação (aba Por representante). */
+/** Alertas do conjunto. Venda por outro representante não é alerta: é informação (nível Quem vendeu). */
 export function alertasPedidos(pedidos, { hoje, prazoPedidoValido = 10, desistencias = 5, diasAberto = 30, entradas = new Map(), saldoFiliais = new Map() } = {}) {
   const alertas = [];
   const diasDesde = (d) => (d ? Math.floor((Date.parse(hoje) - Date.parse(d)) / 86400000) : null);
@@ -222,7 +223,9 @@ export const niveisPedidosPossiveis = (usuario) => Object.keys(NIVEIS_PEDIDOS).f
 export function indicadoresRamo(pedidos, { porGrupo = false } = {}) {
   const r = resumirPedidos(pedidos);
   const clientes = clientesDistintos(pedidos, { porGrupo });
-  return { ...r, clientes, ticket: r.venda.qtd ? r.venda.valor / r.venda.qtd : 0, pctFaturado: r.venda.valor ? (r.faturado / r.venda.valor) * 100 : null };
+  const naLista = (rel) => pedidos.filter((p) => num(p.valida) && p.relacao === rel).reduce((t, p) => t + num(p.valor_pedido), 0);
+  return { ...r, clientes, ticket: r.venda.qtd ? r.venda.valor / r.venda.qtd : 0, pctFaturado: r.venda.valor ? (r.faturado / r.venda.valor) * 100 : null,
+    pctInvestimento: r.venda.valor ? (r.investimento.valor / r.venda.valor) * 100 : null, propria: naLista('propria'), outra: naLista('outra') };
 }
 
 /**
@@ -264,3 +267,51 @@ export function montarArvorePedidos({ pedidos, niveis, abertos, rotuloRaiz = 'To
   visitar('', 0, pedidos, rotuloRaiz, null);
   return saida;
 }
+
+// ---------- filtros em cascata: cada filtro mostra só o que existe com os OUTROS filtros escolhidos ----------
+/** Filtros de lista suspensa, na ordem da tela. Cliente e Grupo ficam na busca e na árvore. */
+const FILTROS_PEDIDOS = ['supervisor', 'representante', 'carteira', 'cidade', 'segmento', 'onda', 'tipo', 'situacao', 'lista', 'mes'];
+export const filtrosPedidosPossiveis = (usuario) => FILTROS_PEDIDOS.filter((f) => f !== 'supervisor' || veTodasEquipes(usuario));
+
+/** Atalhos: só os clientes vendidos por mais de um representante e só os que receberam bonificação (por empresa ou por grupo). */
+function aplicarAtalhos(pedidos, { variosReps = false, comBonificacao = false, porGrupo = false } = {}) {
+  let rows = pedidos;
+  const chave = (p) => { const r = String(p.cpf_cnpj).slice(0, 8); return r; };
+  if (variosReps) {
+    const docs = new Set(clientesVariosRepresentantes(pedidos, { porGrupo }).map((c) => c.documento));
+    rows = rows.filter((p) => docs.has(p.cpf_cnpj) || docs.has(chave(p)));
+  }
+  if (comBonificacao) {
+    const docs = new Set(bonificacaoPorCliente(pedidos, { porGrupo }).map((c) => c.documento));
+    rows = rows.filter((p) => docs.has(p.cpf_cnpj) || docs.has(chave(p)));
+  }
+  return rows;
+}
+
+const passaBusca = (p, busca) => !busca || normalizarBusca(`${p.numero} ${p.razao_social} ${p.cpf_cnpj} ${p.codigo_cliente} ${p.rep_codigo} ${p.rep_nome}`).includes(normalizarBusca(busca));
+const passaFiltro = (p, f, valor) => valor == null || valor === '' || NIVEIS_PEDIDOS[f].chave(p) === valor;
+
+/** Aplica filtros ({ nivel: chave }), busca e atalhos. Tudo no navegador, sobre os pedidos já lidos. */
+export function filtrarPedidos(pedidos, { filtros = {}, busca = '', variosReps = false, comBonificacao = false, porGrupo = false } = {}) {
+  return aplicarAtalhos(pedidos, { variosReps, comBonificacao, porGrupo })
+    .filter((p) => passaBusca(p, busca) && Object.entries(filtros).every(([f, v]) => passaFiltro(p, f, v)));
+}
+
+/** Opções de cada filtro: as que existem nos pedidos que passam nos outros filtros. Mantém a escolhida, mesmo sem pedido, para poder trocá-la. */
+export function opcoesPedidosEmCascata(pedidos, { filtros = {}, busca = '', variosReps = false, comBonificacao = false, porGrupo = false, possiveis = FILTROS_PEDIDOS } = {}) {
+  const base = aplicarAtalhos(pedidos, { variosReps, comBonificacao, porGrupo }).filter((p) => passaBusca(p, busca));
+  const saida = {};
+  for (const f of possiveis) {
+    const def = NIVEIS_PEDIDOS[f];
+    const rows = base.filter((p) => Object.entries(filtros).every(([o, v]) => o === f || passaFiltro(p, o, v)));
+    const opcoes = new Map();
+    for (const p of rows) { const k = def.chave(p); if (k !== '' && k != null && !opcoes.has(k)) opcoes.set(k, def.rotulo(p)); }
+    if (filtros[f] && !opcoes.has(filtros[f])) {
+      const exemplo = pedidos.find((p) => def.chave(p) === filtros[f]);
+      if (exemplo) opcoes.set(filtros[f], def.rotulo(exemplo));
+    }
+    saida[f] = [...opcoes].map(([valor, rotulo]) => ({ valor, rotulo })).sort((a, b) => String(a.rotulo).localeCompare(String(b.rotulo), 'pt-BR', { numeric: true }));
+  }
+  return saida;
+}
+

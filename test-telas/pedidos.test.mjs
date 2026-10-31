@@ -114,60 +114,54 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.waitForSelector('text=concluída');
   await foto('p5-gravado');
 
-  // análise: abre direto, como o Explorar carteira; os números seguem o ramo escolhido e nada volta ao banco
+  // tela única, como o Explorar carteira: filtros em cascata, níveis, números e pedidos seguem o ramo; nada volta ao banco
   await ir('#/pedidos');
   await pagina.waitForSelector('#analise-pedidos');
   await pagina.waitForSelector('.exp-linha.raiz.escolhida');
-  await foto('p5b-analise');
+  await foto('p6-explorar');
+  const colunas = await pagina.locator('#analise-pedidos .exp-linha').evaluateAll((ls) => ls.map((l) => [...l.children].filter((c) => c.classList.contains('num')).map((c) => Math.round(c.getBoundingClientRect().left + c.getBoundingClientRect().width / 2))));
+  for (const l of colunas) assert.deepEqual(l, colunas[0], 'os números ficam sob os títulos das colunas');
+  assert.equal(await pagina.locator('#menu a[title="Explorar pedidos"]').count(), 1, 'a tela se chama Explorar pedidos');
+  assert.equal(await pagina.locator('button[data-aba]').count(), 0, 'sem abas');
   const vendaDe = () => pagina.locator('#analise-numeros .ped-kpi.destaque b').innerText();
   assert.match(await vendaDe(), /1\.580,00/);
   assert.ok(await pagina.locator('#analise-pedidos .exp-nivel[draggable="true"]').count() >= 3, 'níveis arrastáveis');
-  const ramos = pagina.locator('#analise-pedidos .exp-linha:not(.cab):not(.raiz)');
-  await ramos.first().click();
-  await pagina.waitForSelector('.exp-caminho button.atual');
+  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 6, 'todo pedido de cliente da base, qualquer que seja a situação');
+  // cascata: o representante restringe as outras opções e os números acompanham
+  await pagina.selectOption('#filtro-ped-representante', '9002');
+  await pagina.waitForFunction(() => document.querySelector('#filtro-ped-representante').value === '9002');
+  assert.match(await vendaDe(), /580,00/);
+  const situacoes = await pagina.locator('#filtro-ped-situacao option').allInnerTexts();
+  assert.ok(!situacoes.includes('Desistência'), `o 9002 não tem desistência: ${situacoes}`);
+  await foto('p6b-explorar-filtro');
+  await pagina.click('#limpar-filtros-ped');
+  assert.match(await vendaDe(), /1\.580,00/);
+  await pagina.click('#so-bonificacao');
+  assert.ok(await pagina.locator('#pedidos-do-ramo tbody tr').count() >= 3, 'clientes com bonificação');
+  await pagina.click('#so-bonificacao');
+  // busca sem perder o foco ao digitar
+  await pagina.locator('#busca-pedidos').pressSequentially('70005');
+  assert.equal(await pagina.inputValue('#busca-pedidos'), '70005');
+  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 1);
+  await pagina.click('#limpar-filtros-ped');
+  // níveis: incluir e tirar; ramo escolhido
   await pagina.locator('#analise-pedidos .exp-nivel[data-livre="situacao"]').click();
   assert.equal(await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="situacao"]').count(), 1, 'incluir nível com um clique');
   await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="situacao"] .tirar').click();
-  await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="supervisor"] .tirar').click();
-  await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="representante"] .tirar').click();
+  await pagina.locator('#analise-pedidos .exp-linha:not(.cab):not(.raiz)').first().click();
+  await pagina.waitForSelector('.exp-caminho button.atual');
   await pagina.locator('#analise-pedidos .exp-linha.raiz').click();
-  await pagina.waitForSelector('#pedidos-do-ramo tbody tr');
-  await foto('p5c-analise-ramo');
-  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 6, 'pedidos do ramo escolhido');
-  await pagina.click('button[data-aba="pedidos"]');
-  await pagina.waitForSelector('#lista-pedidos');
-  await foto('p6-pedidos');
-  assert.ok(await pagina.locator('#menu a[title="Explorar pedidos"]').count() === 1, 'a tela se chama Explorar pedidos');
-  // chave: por grupo, as empresas da mesma raiz ficam numa linha que abre (A e a filial)
+  // chave: por grupo, as empresas da mesma raiz ficam numa linha que abre (A e a loja 2)
   await pagina.click('#ver-grupo');
-  await pagina.waitForSelector('.ped-grupo .abre-grupo');
-  await foto('p6b-pedidos-grupo');
-  assert.equal(await pagina.locator('#lista-pedidos .ped-grupo').count(), 1, 'um grupo: o cliente A e a loja 2');
+  await pagina.waitForSelector('#pedidos-do-ramo .ped-grupo .abre-grupo');
+  assert.equal(await pagina.locator('#pedidos-do-ramo .ped-grupo').count(), 1, 'um grupo: o cliente A e a loja 2');
   await pagina.click('.ped-grupo .abre-grupo');
   await pagina.waitForSelector('.ped-grupo .abre-grupo[aria-expanded="true"]');
-  assert.equal(await pagina.locator('#lista-pedidos tbody tr').count(), 7, 'o grupo aberto, com os 4 pedidos, e os 2 sem grupo');
-  await foto('p6c-pedidos-grupo-aberto');
-  await pagina.click('button[data-aba="analise"]');
-  await pagina.waitForSelector('#analise-pedidos');
-  await foto('p6d-analise-grupo');
-  await pagina.click('button[data-aba="representantes"]');
-  await pagina.waitForSelector('#tabela-representantes');
-  await pagina.click('button[data-aba="pedidos"]');
-  await pagina.waitForSelector('#lista-pedidos');
+  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 7, 'o grupo aberto, com os 4 pedidos, e os 2 sem grupo');
+  await foto('p6c-explorar-grupo');
   await pagina.click('#ver-empresa');
-
-  assert.equal(await pagina.locator('#lista-pedidos tbody tr').count(), 6, 'todo pedido de cliente da base, qualquer que seja a situação');
-  const umaLinha = await pagina.locator('.ped-kpi').evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size);
-  assert.equal(umaLinha, 1, 'cards numa linha só');
-  await pagina.click('button[data-aba="representantes"]');
-  await pagina.waitForSelector('#tabela-representantes');
-  await foto('p7-representantes');
-  assert.match(await texto(), /9001 · sem cadastro/);
-  assert.match(await texto(), /distintos/);
-  await pagina.click('button[data-aba="bonificacao"]');
-  await pagina.waitForSelector('#tabela-bonificacao');
-  await foto('p8-bonificacao');
-  await pagina.click('button[data-aba="alertas"]');
+  // alertas numa faixa, que abre ao clicar
+  await pagina.click('#faixa-alertas');
   await pagina.waitForSelector('#tabela-alertas');
   await foto('p9-alertas');
   assert.match(await texto(), /Rep\. sem código/);
@@ -195,12 +189,10 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   assert.equal(await pagina.locator('#ver-grupo').count(), 0, 'Explorar carteira não muda');
 
   await ir('#/pedidos');
-  await pagina.waitForSelector('button[data-aba="pedidos"]');
+  await pagina.waitForSelector('#pedidos-do-ramo');
 
   // ficha do cliente com pedidos
-  await pagina.click('button[data-aba="pedidos"]');
-  await pagina.waitForSelector('#lista-pedidos');
-  await pagina.locator('#lista-pedidos tbody tr', { hasText: '70001' }).locator('a').click();
+  await pagina.locator('#pedidos-do-ramo tbody tr', { hasText: '70001' }).locator('a').click();
   await pagina.waitForSelector('#pedidos-cliente');
   await pagina.waitForSelector('#pedidos-grupo >> text=Filiais fora da base');
   await foto('p10-ficha');
