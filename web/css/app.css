@@ -721,9 +721,10 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ped-opcao { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--borda-forte); border-radius: var(--raio-p); background: #fff; font-weight: 400; margin: 0; }
 .ped-opcao input { width: auto; min-height: 0; margin-top: 4px; }
 .ped-confirma { background: #FEF3F2; border: 1px solid #FECDCA; border-radius: var(--raio); padding: 16px; margin-bottom: 16px; }
-.ped-exp .exp-linha { grid-template-columns: minmax(330px, 3.4fr) repeat(8, minmax(76px, 1fr)); }
+/* todas as linhas com a mesma largura: cada linha é um grid próprio, e só assim os números ficam sob os títulos */
+.ped-exp .exp-linha { grid-template-columns: minmax(300px, 3fr) repeat(11, minmax(88px, 1fr)); width: 100%; min-width: 1320px; box-sizing: border-box; }
 .ped-exp .exp-arvore { margin-bottom: 16px; }
-@media (max-width: 760px) { .ped-exp .exp-arvore .rolagem .exp-linha { display: grid; grid-template-columns: minmax(200px, 2fr) repeat(8, minmax(78px, 1fr)); width: max-content; min-width: 100%; }
+@media (max-width: 760px) { .ped-exp .exp-arvore .rolagem .exp-linha { display: grid; grid-template-columns: 200px repeat(11, 88px); width: 1168px; min-width: 1168px; }
   .ped-exp .exp-linha .num::before { content: none; } }
 .ped-chave { display: inline-flex; border: 1px solid var(--borda-forte); border-radius: var(--raio-p); overflow: hidden; background: #fff; flex: none; }
 .ped-chave button { border: 0; border-radius: 0; background: #fff; color: var(--texto); min-height: 42px; white-space: nowrap; }
@@ -734,4 +735,13 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ped-grupo .abre-grupo:hover { background: transparent; color: var(--destaque); }
 .lista-sep { color: #9CA3AF; }
 .cabecalho-pagina:has(.ped-chave) { display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: space-between; align-items: center; }
-
+.ped-cascata { padding: 14px 16px; }
+.ped-cascata-campos { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); }
+.ped-cascata .filtro label { font-size: 12px; margin-bottom: 3px; }
+.ped-cascata select { min-height: 38px; padding: 4px 8px; }
+.ped-cascata-busca { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.ped-cascata-busca input { flex: 1 1 280px; width: auto; min-height: 38px; }
+.ped-faixa-alertas { background: #FEF3C7; border: 1px solid #FDE68A; border-radius: var(--raio); padding: 8px 14px; margin-bottom: 14px; }
+.ped-faixa-alertas > button { background: transparent; border: 0; color: #78350F; font-weight: 700; min-height: 32px; padding: 0; }
+.ped-faixa-alertas > button:hover { background: transparent; color: #78350F; text-decoration: underline; }
+.ped-faixa-alertas .tabela-wrap { margin-top: 8px; }

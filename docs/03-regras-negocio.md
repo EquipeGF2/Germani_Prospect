@@ -235,8 +235,7 @@ movimentação conta sempre nos indicadores.
   "só retornos") ou de buscar. UF sozinha não basta para ele. As visões Cidade/Bairro/Onda/Rota continuam lendo só o resumo
   (sem os cartões de totais no topo: só a lista de grupos).
 - **Celular — Acompanhamento = a tela do computador** (`renderComputador(…, { celular: true })`): mesmos filtros (num painel
-  que abre e fecha; aberto enquanto a lista não foi lida), mesmo botão Buscar, mesmo período obrigatório (o representante
-  entra no mês atual) e a mesma leitura única. Situação em faixa que rola para o lado, ordem numa lista, cada prospect num
+  que abre e fecha; aberto enquanto a lista não foi lida), mesmo botão Buscar, mesmo período opcional e a mesma leitura única. Situação em faixa que rola para o lado, ordem numa lista, cada prospect num
   cartão (status, Registrar, último registro, próxima ação, dias) e a ficha sobe por baixo ao tocar no cartão.
 - **Computador** (Lista principal e Acompanhamento — [`_lista.js`](../web/js/telas/_lista.js); o celular não muda):
   **sempre em lista** (tabela; sem cards e sem visões). Filtros em grupos, cada um em cascata (`opcoesEmCascata`):
@@ -250,9 +249,8 @@ movimentação conta sempre nos indicadores.
     e não pode ficar sem opções); só um status escolhido as restringe.
   - **Obrigatórios** (`faltaParaLista`): na **Lista principal**, **supervisor e representante** (o vendedor já é o seu) —
     a lista é a carteira de um representante. No Acompanhamento, quem vê todas as equipes escolhe a **equipe**
-    (supervisor ou representante; uma busca também basta); supervisor e vendedor já têm a sua. O **Acompanhamento** exige o
-    **período** do último registro: Este mês, Último mês ou Período (de · até) — `datasDoPeriodo`; **todos entram no mês
-    atual** e trocam quando quiserem.
+    (supervisor ou representante; uma busca também basta); supervisor e vendedor já têm a sua. O **período** do
+    último registro é opcional: Este mês, Último mês ou Período (de · até) — `datasDoPeriodo`. Sem ele, aparece tudo o que está em processo.
   - **Aberta pelo Explorar** ("Abrir na Lista principal" de um ramo, `de=explorar`): o filtro do ramo (cidade, segmento,
     onda, rota, supervisor ou representante) já estreita a lista e **dispensa supervisor e representante** — a lista abre
     lida, com o filtro do ramo. Pela própria Lista, continuam obrigatórios. A **Lista principal não tem período** (não contactados não têm data nenhuma). Até escolher,
@@ -506,7 +504,7 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 
 ## 14. Pedidos do ERP (migração 0022 · `shared/importar-pedidos.mjs`, `shared/pedidos.mjs`)
 
-Importação: docs/05 §6. Tela: **Explorar pedidos** (`#/pedidos`), o que foi vendido: abas Análise, Pedidos, Por representante, Bonificação e Alertas.
+Importação: docs/05 §6. Tela: **Explorar pedidos** (`#/pedidos`), o que foi vendido, numa tela só, sem abas.
 
 **Cada tela responde a uma pergunta.** Explorar carteira: como está a base? · Lista principal: quem procurar? · Acompanhamento: o que está em andamento? · Explorar pedidos: o que foi vendido?
 
@@ -553,12 +551,14 @@ Vale a regra do atendimento automático (§3): sem registro do representante no 
 não exige importar de novo). O cliente aparece na lista de cada representante que vendeu para ele, com o valor de cada um. É só informação, sem alerta: a carteira nunca muda sozinha.
 O valor não duplica (cada pedido tem um representante); o total de clientes usa os distintos.
 
-**Alertas** (aba Alertas; prazos em Parâmetros): Aguardando pedido válido além de `prazo_pedido_valido_dias` (10) · bonificação sem venda · representante sem código no cadastro ·
+**Alertas** (faixa no topo de Explorar pedidos; prazos em Parâmetros): Aguardando pedido válido além de `prazo_pedido_valido_dias` (10) · bonificação sem venda · representante sem código no cadastro ·
 desistências a partir de `alerta_desistencias_cliente` (5) · pedido em carteira além de `dias_alerta_pedido_aberto` (30) · em carteira do grupo, com as filiais, acima do Créd. Grupo (só pedidos em aberto: sem os títulos a receber, é uma visão parcial).
 
-**Análise** (primeira aba, `shared/pedidos.mjs` · `montarArvorePedidos`): como o Explorar carteira, árvore do total até o pedido com níveis livres em qualquer ordem: Supervisor, Quem vendeu, Dono da carteira, Na lista?,
-Cidade, Segmento, Onda, Grupo, Cliente, Tipo, Situação e Mês. Os níveis se arrastam (no celular, botão Mudar) e a ordem fica guardada no navegador. Os seis valores, os gráficos e a lista de pedidos seguem o ramo escolhido.
-Tudo é calculado sobre os pedidos já lidos: abrir ramo ou mudar nível não volta ao banco.
+**Explorar pedidos** (`shared/pedidos.mjs`, `web/js/telas/_pedidos-analise.js`), como o Explorar carteira:
+- **Filtros em cascata** (`opcoesPedidosEmCascata`): Supervisor, Quem vendeu, Dono da carteira, Cidade, Segmento, Onda, Tipo, Situação, Na lista? e Mês. Cada um mostra só o que existe com os outros escolhidos. Mais a busca e os atalhos **Mais de um representante** e **Clientes com bonificação**.
+- **Árvore do total até o pedido** com níveis livres em qualquer ordem (os mesmos, mais Grupo e Cliente). Os níveis se arrastam (no celular, botão Mudar) e a ordem fica guardada no navegador.
+- Os seis valores, os gráficos e a lista de pedidos (com CSV) seguem os filtros e o ramo escolhido. Tudo é calculado sobre os pedidos já lidos: filtrar, abrir ramo ou mudar nível não volta ao banco.
+- **Alertas** numa faixa no topo, que abre ao clicar.
 
 **Quem vê:** administrador, gerente e quem vê todas as equipes, tudo; supervisor, a equipe; vendedor, os pedidos da carteira dele e os que ele mesmo fez.
 

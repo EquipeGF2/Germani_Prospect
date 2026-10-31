@@ -196,7 +196,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForSelector('.lista-tabela tbody tr');
   assert.equal(await pagina.locator('#lista-falta').count(), 0);
   assert.ok(Number(total.replace(/\./g, '')) > 0);
-  // Acompanhamento: equipe e período obrigatórios; situações na ordem do processo
+  // Acompanhamento: equipe obrigatória, período opcional; situações na ordem do processo
   await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
   await telaPronta();
   await pagina.waitForSelector('#lista-falta');
@@ -207,7 +207,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.click('#aplicar-filtros');
   await pagina.waitForFunction(() => location.hash.includes('supervisorId='));
   await telaPronta();
-  assert.equal(await pagina.locator('#filtro-periodo').inputValue(), 'mes', 'o período já vem em Este mês');
+  assert.equal(await pagina.locator('#filtro-periodo').inputValue(), '', 'o período é opcional: abre em Todos');
   await pagina.waitForSelector('.lista-tabela tbody tr, .mensagem');     // equipe escolhida + mês atual: já lê
   await pagina.selectOption('#filtro-periodo', 'periodo');
   await pagina.click('#aplicar-filtros');
