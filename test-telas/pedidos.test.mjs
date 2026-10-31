@@ -128,19 +128,33 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   assert.ok(await pagina.locator('#analise-pedidos .exp-nivel[draggable="true"]').count() >= 3, 'níveis arrastáveis');
   assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 6, 'todo pedido de cliente da base, qualquer que seja a situação');
   // como no Explorar carteira: sem listas de filtro; quem filtra é a hierarquia, e os números seguem o ramo
-  assert.equal(await pagina.locator('#analise-pedidos select').count(), 0, 'sem listas de filtro');
+  assert.equal(await pagina.locator('#analise-pedidos select, #filtros-pedidos select').count(), 0, 'sem listas de filtro');
   const titulos = await pagina.locator('#analise-pedidos .exp-linha.cab span').allInnerTexts();
   assert.ok(titulos.some((t) => /^invest\. \(r\$\)$/i.test(t)) && titulos.some((t) => /^pr[oó]prio \(r\$\)$/i.test(t)) && titulos.some((t) => /^outro \(r\$\)$/i.test(t)), `rótulos: ${titulos}`);
   const disponiveis = await pagina.locator('#analise-pedidos .exp-nivel.livre').evaluateAll((els) => { const z = els[0].parentElement.getBoundingClientRect(); return els.every((e) => e.getBoundingClientRect().right <= z.right + 1); });
   assert.ok(disponiveis, 'todos os níveis disponíveis ficam à vista');
-  await pagina.click('#so-bonificacao');
-  assert.ok(await pagina.locator('#pedidos-do-ramo tbody tr').count() >= 3, 'clientes com bonificação');
-  await pagina.click('#so-bonificacao');
-  // busca sem perder o foco ao digitar
+  // filtros na linha da frase, abaixo da chave
+  const topoChave = await pagina.locator('.ped-chave:has(#ver-grupo)').boundingBox();
+  const topoFiltros = await pagina.locator('#filtros-pedidos').boundingBox();
+  assert.ok(topoFiltros.y >= topoChave.y + topoChave.height - 1, 'abaixo de Ver por Empresa ou Grupo');
+  const frase = await pagina.locator('.ped-frase-filtros .ajuda').boundingBox();
+  assert.ok(frase.y < topoFiltros.y + topoFiltros.height && topoFiltros.y < frase.y + frase.height, 'na mesma linha da frase');
+  await pagina.click('#tipo-investimento');
+  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 1, 'só bonificação');
+  assert.match(await vendaDe(), /R\$\s?0,00/, 'bonificação não é venda');
+  await pagina.click('#tipo-venda');
+  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 5, 'só pedidos de venda');
+  await pagina.click('#tipo-ambos');
+  await pagina.click('#varios-sim');
+  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 3, 'o cliente A, vendido por 2 representantes');
+  await pagina.click('#varios-nao');
+  // a lista diz de qual linha são os pedidos; a busca procura só nela, sem perder o foco ao digitar
+  assert.match(await pagina.locator('#titulo-pedidos').innerText(), /^Todos os pedidos \(6\)$/);
   await pagina.locator('#busca-pedidos').pressSequentially('70005');
   assert.equal(await pagina.inputValue('#busca-pedidos'), '70005');
   assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 1);
-  await pagina.click('#limpar-filtros-ped');
+  assert.match(await vendaDe(), /1\.580,00/, 'a busca não muda os números de cima');
+  await pagina.fill('#busca-pedidos', '');
   // níveis: incluir e tirar; ramo escolhido
   await pagina.locator('#analise-pedidos .exp-nivel[data-livre="situacao"]').click();
   assert.equal(await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="situacao"]').count(), 1, 'incluir nível com um clique');

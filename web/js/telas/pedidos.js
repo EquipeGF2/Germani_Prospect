@@ -1,5 +1,5 @@
 // Explorar pedidos: o que foi vendido, numa tela só, como o Explorar carteira: filtros em cascata e árvore do total até o pedido.
-// Lê os pedidos do escopo uma vez, e de novo só quando há arquivo novo; buscar, abrir ramos e trocar os níveis não voltam ao banco. docs/03 §14
+// Lê os pedidos do escopo uma vez, e de novo só quando há arquivo novo; filtrar, abrir linhas e trocar os níveis não voltam ao banco. docs/03 §14
 import { bancoApp, lerComCache } from '../db.js';
 import { alertasPedidos, consultaMotivosPedidoValido, consultaPedidos, consultaSaldoFiliais } from '../../shared/pedidos.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
@@ -18,7 +18,8 @@ export async function render(conteudo, { usuario }) {
 
   let porGrupo = lerVerPor() === 'grupo';
   const area = h('div');
-  const desenhar = () => renderAnalise(area, { pedidos, usuario, porGrupo });
+  const slotFiltros = h('div', { class: 'ped-filtros-linha', id: 'filtros-pedidos' });
+  const desenhar = () => renderAnalise(area, { pedidos, usuario, porGrupo, slotFiltros });
 
   // alertas numa faixa: quem só quer analisar não é atrapalhado, quem precisa agir vê que há algo pendente
   const faixa = h('div');
@@ -34,5 +35,5 @@ export async function render(conteudo, { usuario }) {
   desenharFaixa();
   desenhar();
   montar(conteudo, h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar pedidos'), chaveVerPor(porGrupo ? 'grupo' : 'empresa', (v) => { porGrupo = v === 'grupo'; desenhar(); })),
-    h('p', { class: 'ajuda' }, 'Só os pedidos dos clientes da base. As filiais fora da base aparecem em Ver por Grupo.'), faixa, area);
+    h('div', { class: 'ped-frase-filtros' }, h('p', { class: 'ajuda' }, 'Só pedidos de clientes da base; filiais, em Ver por Grupo.'), slotFiltros), faixa, area);
 }

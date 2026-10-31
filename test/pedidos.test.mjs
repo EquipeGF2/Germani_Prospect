@@ -5,7 +5,7 @@ import { bancoTeste, cnpjTeste, criarEquipe, criarProspect, evento, prospect, re
 import { lerBiff2 } from '../shared/biff.mjs';
 import { lerPlanilhaDeBytes } from '../shared/planilha.mjs';
 import { apagarArquivoPedidos, conferirExclusao, gravarPedidos, listarArquivosPedidos, simularPedidos, statusDepois } from '../shared/importar-pedidos.mjs';
-import { agruparPorRaiz, alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, comVersaoPedidos, consultaPedidosGrupo, consultaSaldoFiliais, consultaVersaoPedidos, filtrarPedidos, indicadoresRamo, montarArvorePedidos, niveisPedidosPossiveis, porRepresentante, resumirPedidos, rotuloGrupo } from '../shared/pedidos.mjs';
+import { agruparPorRaiz, alertasPedidos, buscarPedidos, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, comVersaoPedidos, consultaPedidosGrupo, consultaSaldoFiliais, consultaVersaoPedidos, filtrarPedidos, indicadoresRamo, montarArvorePedidos, niveisPedidosPossiveis, porRepresentante, resumirPedidos, rotuloGrupo } from '../shared/pedidos.mjs';
 import { consultaPedidosResumo } from '../shared/explorar.mjs';
 import { consultaCarteira } from '../shared/carteira.mjs';
 import { STATUS_ENCERRADOS } from '../shared/status.mjs';
@@ -165,14 +165,14 @@ test('representante: cliente fica com o dono, venda vai para quem realizou, valo
   assert.deepEqual(alertas.map((x) => x.tipo), ['sem_codigo'], 'venda por outro representante não gera alerta');
 });
 
-test('investimento por cliente e alerta de bonificação sem venda', async () => {
+test('investimento por cliente pela árvore e alerta de bonificação sem venda', async () => {
   const db = await montar();
   const a = cnpjTeste(1); const b = cnpjTeste(2);
   await criarProspect(db, { n: 1 }); await criarProspect(db, { n: 2 });
   await grava(db, arquivo(linha({ doc: a, num: 1, sit: 4, valor: 1000, fat: 1000 }), linha({ doc: a, num: 2, sit: 4, valor: 10, fat: 10, tr: '90106' }), linha({ doc: b, num: 3, sit: 4, valor: 500, fat: 500, tr: '90106' })));
   const pedidos = await pedidosDe(db);
-  const b1 = bonificacaoPorCliente(pedidos);
-  assert.deepEqual(b1.map((c) => [c.documento, c.investimento, c.venda, c.pct]), [[b, 500, 0, null], [a, 10, 1000, 1]]);
+  const arv = montarArvorePedidos({ pedidos, niveis: ['cliente'], abertos: new Set(['']) }).slice(1);
+  assert.deepEqual(arv.map((n) => [n.pedidos[0].cpf_cnpj, n.ind.investimento.valor, n.ind.venda.valor, n.ind.pctInvestimento]), [[a, 10, 1000, 1], [b, 500, 0, null]]);
   assert.equal(resumirPedidos(pedidos).venda.valor, 1000, 'bonificação não muda a venda');
   assert.deepEqual(alertasPedidos(pedidos, { hoje: '2026-11-01' }).map((x) => x.tipo), ['bonificacao']);
 });
@@ -375,8 +375,7 @@ test('ver por grupo: empresas da mesma raiz numa linha que abre, sem mudar os va
   assert.deepEqual(r10.clientes.map((c) => [c.documento, c.venda]), [[raiz, 100], [s, 30]]);
   const varios = clientesVariosRepresentantes(pedidos, { porGrupo: true });
   assert.equal(varios.length, 1, 'o grupo foi vendido por dois representantes'); assert.equal(clientesVariosRepresentantes(pedidos).length, 0);
-  const b = bonificacaoPorCliente(pedidos, { porGrupo: true });
-  assert.deepEqual(b.map((c) => [c.documento, c.investimento, c.venda]), [[raiz, 9, 150]]);
+  assert.equal(arv[1].ind.investimento.valor, 9, 'o investimento soma no grupo');
   assert.equal((await prospect(db, 1)).status_atual, 'venda_realizada'); assert.equal(pedidos.length, 4);
 });
 
@@ -395,15 +394,19 @@ test('Acompanhamento: só o que está em processo e encerrados; a venda fica em 
   assert.deepEqual([...STATUS_ENCERRADOS].sort(), ['expurgado', 'invalido', 'sem_interesse']);
 });
 
-test('busca e atalhos restringem os pedidos; as colunas somam a venda', async () => {
+test('filtros: tipo do pedido e mais de um representante; a busca procura na lista; as colunas somam a venda', async () => {
   const db = await montar();
   await criarProspect(db, { n: 1, vendedorId: 2 }); await criarProspect(db, { n: 2, vendedorId: 3 }); await criarProspect(db, { n: 3, vendedorId: 2 });
   await grava(db, arquivo(linha({ doc: cnpjTeste(1), num: 1, sit: 4, valor: 100, fat: 100, rep: 10 }), linha({ doc: cnpjTeste(1), num: 2, sit: 1, valor: 50, rep: 11 }),
     linha({ doc: cnpjTeste(2), num: 3, sit: 1, valor: 300, rep: 11 }), linha({ doc: cnpjTeste(3), num: 4, sit: 4, valor: 9, fat: 9, tr: '90106', rep: 10 })));
   const pedidos = await pedidosDe(db);
-  assert.deepEqual(filtrarPedidos(pedidos, { busca: 'vend onze' }).map((p) => p.numero).sort(), ['2', '3'], 'busca pelo nome do representante, sem acento');
-  assert.deepEqual(filtrarPedidos(pedidos, { variosReps: true }).map((p) => p.numero).sort(), ['1', '2'], 'cliente com mais de um representante');
-  assert.deepEqual(filtrarPedidos(pedidos, { comBonificacao: true }).map((p) => p.numero), ['4'], 'cliente com bonificação');
+  const numeros = (l) => l.map((p) => p.numero).sort();
+  assert.deepEqual(numeros(filtrarPedidos(pedidos)), ['1', '2', '3', '4'], 'ambos');
+  assert.deepEqual(numeros(filtrarPedidos(pedidos, { tipo: 'venda' })), ['1', '2', '3']);
+  assert.deepEqual(numeros(filtrarPedidos(pedidos, { tipo: 'investimento' })), ['4']);
+  assert.deepEqual(numeros(filtrarPedidos(pedidos, { variosReps: true })), ['1', '2'], 'cliente com mais de um representante');
+  assert.deepEqual(numeros(buscarPedidos(pedidos, 'vend onze')), ['2', '3'], 'busca pelo nome do representante, sem acento');
+  assert.equal(buscarPedidos(pedidos, '  ').length, 4, 'busca vazia não filtra');
   const r = indicadoresRamo(pedidos);
   assert.equal(r.propria + r.outra, r.venda.valor, 'próprio + outro = venda');
   assert.equal(r.propria, 400); assert.equal(r.outra, 50);
