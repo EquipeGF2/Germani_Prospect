@@ -257,11 +257,20 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await ir('#/ajuda');
   await pagina.waitForSelector('#fluxograma');
   assert.equal(await pagina.locator('#fluxograma .ajf-passo').count(), 8);
+  // a sequência: as etapas numeradas, e a seta da 1ª linha chega ao início da 2ª, na etapa 5
+  assert.deepEqual((await pagina.locator('#fluxograma .ajf-passo b').allInnerTexts()).map((t) => t.split('.')[0]), ['1', '2', '3', '4', '5', '6', '7', '8']);
+  const caixaVolta = await pagina.locator('.ajf-volta').boundingBox();
+  const caixa5 = await pagina.locator('.ajf-passo[data-etapa="analise"]').boundingBox();
+  const caixa4 = await pagina.locator('.ajf-passo[data-etapa="aguardando"]').boundingBox();
+  assert.ok(caixaVolta.x > caixa5.x && caixaVolta.x < caixa5.x + caixa5.width, 'a seta chega à etapa 5');
+  const fimVolta = caixaVolta.x + caixaVolta.width;
+  assert.ok(fimVolta > caixa4.x && fimVolta < caixa4.x + caixa4.width, 'a seta sai da etapa 4');
   await pagina.click('#fluxograma .ajf-passo[data-etapa="analise"]');
   assert.match(await pagina.locator('#detalhe-etapa').innerText(), /Analista financeiro/);
   await foto('p10b-ajuda');
   const [manual] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#pdf-manual')]);
   assert.match(manual.suggestedFilename(), /^manual-germani-.*\.pdf$/);
+  if (FOTOS) await manual.saveAs(path.join(FOTOS, 'manual.pdf'));
   await pagina.click('#ler-capitulo');
   await pagina.waitForSelector('#capitulo-ajuda');
   assert.match(await pagina.locator('#capitulo-ajuda h1').innerText(), /^5\. Crédito/);
@@ -281,6 +290,66 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await foto('p10e-botao-ajuda-celular');
   await pagina.click('#fechar-ajuda');
   await pagina.setViewportSize({ width: 1360, height: 900 });
+  // imagem de um capítulo aparece e tem conteúdo
+  await ir('#/ajuda?cap=4');
+  await pagina.waitForSelector('.ajf-figura img');
+  await pagina.waitForFunction(() => { const i = document.querySelector('.ajf-figura img'); i.loading = 'eager'; return i.complete && i.naturalWidth > 0; });
+  await foto('p10f-capitulo-com-imagem');
+
+  // imagens do manual, com dados fictícios: IMAGENS_AJUDA=web/img/ajuda npm run test:telas
+  if (process.env.IMAGENS_AJUDA) {
+    const limpa = await pagina.addStyleTag({ content: '#faixa-demo, .aviso { display: none !important; }' });
+    await pagina.setViewportSize({ width: 1360, height: 1200 });
+    const imagem = async (nome, { inteira = false, altura = 760 } = {}) => {
+      await pagina.evaluate(() => { document.activeElement?.blur?.(); scrollTo(0, 0); });
+      const c = await pagina.locator('#conteudo').boundingBox();
+      const clip = inteira ? undefined : { x: c.x, y: c.y, width: c.width, height: Math.min(c.height, altura) };
+      await pagina.screenshot({ path: path.join(process.env.IMAGENS_AJUDA, `${nome}.jpg`), type: 'jpeg', quality: 72, clip });
+    };
+    await ir('#/explorar');
+    await imagem('explorar-carteira');
+    await pagina.setViewportSize({ width: 1360, height: 760 });
+    await imagem('menu', { inteira: true });
+    await pagina.setViewportSize({ width: 1360, height: 1200 });
+    await ir('#/carteira');
+    await pagina.selectOption('#filtro-supervisor', { index: 1 });
+    await pagina.selectOption('#filtro-vendedor', { index: 1 });
+    await pagina.click('#aplicar-filtros');
+    await pagina.waitForSelector('.lista-tabela tbody tr');
+    await imagem('lista-principal');
+    await pagina.locator('a.registrar').first().click();
+    await pagina.waitForSelector('h1:text("Registrar atendimento")');
+    await imagem('registrar');
+    await ir('#/carteira?aba=acompanhamento');
+    await pagina.waitForSelector('#acf-fluxo');
+    await pagina.click('#etapa-analise');
+    await pagina.click('#so-primeiro');
+    await imagem('acompanhamento', { altura: 1100 });
+    await pagina.click('#visao-credito');
+    await pagina.waitForSelector('#acf-credito');
+    await pagina.click('#todos-pedidos');
+    await imagem('credito-pedido', { altura: 1100 });
+    await pagina.click('#visao-fluxo');
+    await pagina.click('#so-primeiro');
+    // no celular: desenha a tela já na largura do celular, e espera o menu terminar de fechar
+    await pagina.setViewportSize({ width: 390, height: 780 });
+    await ir('#/pedidos');
+    await ir('#/carteira?aba=acompanhamento');
+    await pagina.waitForSelector('#acf-fluxo');
+    await pagina.waitForTimeout(500);
+    await imagem('acompanhamento-celular', { inteira: true });
+    await pagina.setViewportSize({ width: 1360, height: 1200 });
+    await ir('#/pedidos');
+    await imagem('explorar-pedidos');
+    await ir('#/financeiro');
+    await imagem('console-credito');
+    await ir('#/admin/importacoes');
+    await imagem('importacoes');
+    await ir('#/admin/usuarios');
+    await imagem('usuarios');
+    await limpa.evaluate((e) => e.remove());
+    await pagina.setViewportSize({ width: 1360, height: 900 });
+  }
 
   // a Lista principal não ganhou a chave
   await ir('#/carteira');

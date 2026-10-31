@@ -12,6 +12,7 @@ function blocos(lista) {
   return lista.map((b) => {
     if (b[0] === 'p') return h('p', {}, b[1]);
     if (b[0] === 'h') return h('h2', {}, b[1]);
+    if (b[0] === 'img') return h('figure', { class: `ajf-figura${b[1].includes('celular') ? ' celular' : ''}` }, h('img', { src: `img/ajuda/${b[1]}`, alt: b[2], loading: 'lazy' }), h('figcaption', {}, b[2]));
     if (b[0] === 'lista') return h('ul', {}, b[1].map((x) => h('li', {}, item(x))));
     if (b[0] === 'passos') return h('ol', {}, b[1].map((x) => h('li', {}, item(x))));
     return h('div', { class: 'tabela-wrap' }, h('table', { class: 'ped-tabela' },
@@ -48,10 +49,10 @@ export async function render(conteudo, { usuario, parametros }) {
   const detalhe = h('section', { class: 'cartao ajf-detalhe', id: 'detalhe-etapa', 'aria-live': 'polite' });
   function desenharFluxo() {
     const passo = (e) => h('button', { type: 'button', class: `ajf-passo${selecionada === e.id ? ' ativo' : ''}`, dados: { etapa: e.id }, 'aria-pressed': selecionada === e.id ? 'true' : 'false', onclick: () => { selecionada = e.id; desenharFluxo(); } },
-      h('b', {}, e.nome), h('span', {}, e.quem));
+      h('b', {}, `${FLUXO.indexOf(e) + 1}. ${e.nome}`), h('span', {}, e.quem));
     const linha = (etapas) => h('div', { class: 'ajf-linha' }, etapas.flatMap((e, i) => [passo(e), i < etapas.length - 1 ? h('span', { class: 'ajf-seta', 'aria-hidden': 'true' }, '›') : null]));
     montar(fluxograma, h('h2', {}, 'O fluxo da operação'), h('p', { class: 'ajuda' }, 'Clique numa etapa para ver quem age, em qual tela e o que faz o cliente avançar.'),
-      linha(FLUXO.slice(0, 4)), h('div', { class: 'ajf-desce', 'aria-hidden': 'true' }, '↓'), linha(FLUXO.slice(4)),
+      linha(FLUXO.slice(0, 4)), h('div', { class: 'ajf-volta', 'aria-hidden': 'true' }), linha(FLUXO.slice(4)),
       h('div', { class: 'ajf-desvios' }, h('span', { class: 'ajuda' }, 'Desvios do caminho:'), DESVIOS.map((d) => h('button', { type: 'button', class: `ajf-desvio${selecionada === d.id ? ' ativo' : ''}`, dados: { etapa: d.id }, onclick: () => { selecionada = d.id; desenharFluxo(); } }, d.nome))));
     const e = [...FLUXO, ...DESVIOS].find((x) => x.id === selecionada);
     const temCapitulo = capitulos.some((c) => c.n === e.cap);

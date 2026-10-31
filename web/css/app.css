@@ -799,7 +799,10 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ajf-passo b { font-size: 15px; line-height: 1.25; }
 .ajf-passo span { font-size: 12px; color: var(--suave); }
 .ajf-seta { align-self: center; flex: none; font-size: 20px; color: var(--suave); }
-.ajf-desce { display: flex; justify-content: flex-end; padding: 2px 8px; color: var(--suave); font-size: 18px; }
+/* a seta sai do fim da 1ª linha e chega ao início da 2ª: a etapa 4 continua na etapa 5 */
+.ajf-volta { position: relative; height: 12px; margin: 0 11.5% 18px; border: solid var(--suave); border-width: 0 2px 2px 0; }
+.ajf-volta::after { content: '▼'; position: absolute; left: -7px; top: 100%; font-size: 12px; line-height: 16px; color: var(--suave); }
+.ajf-volta::before { content: ''; position: absolute; left: -2px; right: 0; bottom: -2px; border-left: 2px solid var(--suave); height: 2px; }
 .ajf-desvios { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
 .ajf-desvio { min-height: 44px; padding: 0 12px; border: 1px dashed var(--borda-forte); border-radius: 8px; background: #F9FAFB; color: #374151; font-size: 13px; font-weight: 400; }
 .ajf-desvio:hover { background: #F9FAFB; color: var(--destaque); }
@@ -830,5 +833,9 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ajf-topo { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
 .ajf-topo h1 { margin: 0; }
 .ajf-navega { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--borda); }
-@media (max-width: 760px) { .ajf-linha { flex-direction: column; } .ajf-seta, .ajf-desce { display: none; } .ajf-linha + .ajf-linha { margin-top: 6px; } }
+@media (max-width: 760px) { .ajf-linha { flex-direction: column; } .ajf-seta, .ajf-volta { display: none; } .ajf-linha + .ajf-linha { margin-top: 6px; } }
+.ajf-figura { margin: 12px 0; }
+.ajf-figura img { display: block; width: 100%; height: auto; border: 1px solid var(--borda); border-radius: 8px; }
+.ajf-figura.celular { max-width: 300px; }
+.ajf-figura figcaption { margin-top: 4px; font-size: 13px; color: var(--suave); }
 
