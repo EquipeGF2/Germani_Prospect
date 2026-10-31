@@ -1,5 +1,13 @@
 import { entrar } from '../sessao.js';
 import { h, montar, comEspera } from '../ui.js';
+import { modoDemonstracao } from '../db.js';
+import { chaveAjudaVista } from '../../shared/ajuda.mjs';
+
+// a Ajuda abre sozinha só no primeiro acesso de cada usuário, neste navegador
+function primeiroAcesso(u) {
+  if (modoDemonstracao()) return false;
+  try { if (localStorage.getItem(chaveAjudaVista(u))) return false; localStorage.setItem(chaveAjudaVista(u), '1'); return true; } catch { return false; }
+}
 
 export async function render(conteudo, { irPara }) {
   const login = h('input', { id: 'login', autocomplete: 'username', autocapitalize: 'none', required: true });
@@ -8,7 +16,7 @@ export async function render(conteudo, { irPara }) {
   const form = h('form', { class: 'cartao login', onsubmit: async (ev) => {
     ev.preventDefault();
     const u = await comEspera(botao, () => entrar(login.value, senha.value));
-    if (u) irPara('/');   // página inicial do perfil (Explorar carteira; sem ela, a primeira tela permitida)
+    if (u) irPara(primeiroAcesso(u) ? '/ajuda' : '/');   // página inicial do perfil (Explorar carteira; sem ela, a primeira tela permitida)
   } },
   h('img', { class: 'logo-entrada', src: 'logo-germani.jpg', alt: 'GERMANI' }),
   h('h1', {}, 'Entrar'),

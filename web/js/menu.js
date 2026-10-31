@@ -2,6 +2,7 @@
 // Ícones em SVG desenhados aqui mesmo (sem biblioteca externa).
 import { h, montar } from './ui.js';
 import { podeTela } from '../shared/perfis.mjs';
+import { ajudaDaTela } from '../shared/ajuda.mjs';
 
 const CHAVE_RECOLHIDO = 'germani.menuRecolhido';
 const SVG = 'http://www.w3.org/2000/svg';
@@ -10,6 +11,7 @@ const ICONES = {
   inicio: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z',
   lista: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01',
   explorar: 'M4 4h6v4H4zM14 10h6v4h-6zM14 18h6v3h-6zM7 8v10h7M7 12h7',
+  ajuda: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.7M12 17h.01',
   acompanhamento: 'M9 11l3 3 8-8M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9',
   feriados: 'M3 5h18v16H3zM3 10h18M8 3v4M16 3v4M8 15h.01M12 15h.01M16 15h.01',
   base: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
@@ -40,6 +42,9 @@ export function icone(nome) {
 
 // Grupos do menu. Cada item aparece se o perfil do usuário tem a tela (shared/perfis.mjs); grupo vazio some.
 const GRUPOS = [
+  { titulo: 'Ajuda', itens: [
+    { caminho: '/ajuda', rotulo: 'Ajuda', icone: 'ajuda' },
+  ] },
   { titulo: 'Prospecção', itens: [
     { caminho: '/explorar', rotulo: 'Explorar carteira', icone: 'explorar', tela: 'explorar' },
     { caminho: '/carteira', rotulo: 'Lista principal', icone: 'lista', tela: 'lista' },
@@ -90,6 +95,42 @@ function aplicarRecolhido(valor) {
 
 function fecharGaveta() { document.getElementById('casca').classList.remove('gaveta-aberta'); }
 
+// ---------- botão ? e painel de ajuda da tela: acompanham a navegação e não tiram o usuário do que está fazendo ----------
+let ajudaAtual = null;
+let ajudaAberta = false;
+const secoesAbertas = new Set(['objetivo']);
+
+function desenharAjuda() {
+  const painel = document.getElementById('painel-ajuda');
+  const aberta = ajudaAberta && Boolean(ajudaAtual);
+  painel.hidden = !aberta;
+  document.getElementById('casca').classList.toggle('com-ajuda', aberta);
+  document.getElementById('botao-ajuda').setAttribute('aria-expanded', aberta ? 'true' : 'false');
+  if (!aberta) return montar(painel);
+  const a = ajudaAtual;
+  const secao = (id, titulo, corpo) => {
+    const abre = secoesAbertas.has(id);
+    return [h('button', { type: 'button', class: 'ajuda-secao', dados: { secao: id }, 'aria-expanded': abre ? 'true' : 'false', onclick: () => { if (abre) secoesAbertas.delete(id); else secoesAbertas.add(id); desenharAjuda(); } },
+      titulo, h('span', { 'aria-hidden': 'true' }, abre ? '▼' : '▶')), abre ? h('div', { class: 'ajuda-corpo' }, corpo) : null];
+  };
+  const pares = (lista) => h('dl', {}, lista.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, v)]));
+  montar(painel,
+    h('div', { class: 'ajuda-topo' }, h('h2', {}, `Ajuda: ${a.titulo}`), h('button', { type: 'button', class: 'secundario', id: 'fechar-ajuda', 'aria-label': 'Fechar ajuda', onclick: () => { ajudaAberta = false; desenharAjuda(); } }, '×')),
+    secao('objetivo', 'Objetivo', h('p', {}, a.objetivo)),
+    secao('como', 'Como funciona', h('ol', {}, a.como.map((t) => h('li', {}, t)))),
+    secao('campos', 'O que significa cada campo', pares(a.campos)),
+    secao('analisar', 'O que analisar', h('ul', {}, a.analisar.map((t) => h('li', {}, t)))),
+    secao('comuns', 'Situações comuns', pares(a.comuns)),
+    secao('proximo', 'Próximo passo', h('p', {}, a.proximo)),
+    h('a', { class: 'ajuda-capitulo', href: `#/ajuda?cap=${a.cap}`, id: 'ajuda-capitulo', onclick: () => { ajudaAberta = false; desenharAjuda(); } }, `Ler o capítulo ${a.cap} completo`));
+}
+
+function atualizarAjuda(usuario, caminho, consulta) {
+  ajudaAtual = usuario ? ajudaDaTela(caminho, consulta) : null;
+  document.getElementById('botao-ajuda').hidden = !ajudaAtual;
+  desenharAjuda();
+}
+
 /** Liga os botões fixos da casca (uma vez). */
 export function iniciarCasca() {
   aplicarRecolhido(recolhido());
@@ -103,7 +144,8 @@ export function iniciarCasca() {
     }
   });
   document.getElementById('fundo-gaveta').addEventListener('click', fecharGaveta);
-  addEventListener('keydown', (ev) => { if (ev.key === 'Escape') fecharGaveta(); });
+  document.getElementById('botao-ajuda').addEventListener('click', () => { ajudaAberta = !ajudaAberta; desenharAjuda(); });
+  addEventListener('keydown', (ev) => { if (ev.key !== 'Escape') return; fecharGaveta(); if (ajudaAberta) { ajudaAberta = false; desenharAjuda(); } });
 }
 
 /** Redesenha menu, rodapé do menu e caminho da página a cada navegação. */
@@ -113,12 +155,13 @@ export function atualizarCasca({ usuario, caminho, consulta, papel, aoSair }) {
   fecharGaveta();
   const menu = document.getElementById('menu');
   const caminhoTopo = document.getElementById('caminho-topo');
+  atualizarAjuda(usuario, caminho, consulta);
   if (!usuario) { montar(menu); montar(caminhoTopo); montar(document.getElementById('usuario-lateral')); return; }
 
   const ativo = itemAtivo(caminho, consulta);
   let grupoAtivo = null;
   let itemDoTopo = null;
-  const visiveis = GRUPOS.map((g) => ({ ...g, itens: g.itens.filter((i) => podeTela(usuario, i.tela)) })).filter((g) => g.itens.length);
+  const visiveis = GRUPOS.map((g) => ({ ...g, itens: g.itens.filter((i) => !i.tela || podeTela(usuario, i.tela)) })).filter((g) => g.itens.length);
   montar(menu, visiveis.map((g) => h('div', { class: 'menu-grupo' },
     h('div', { class: 'menu-titulo' }, g.titulo),
     g.itens.map((i) => {

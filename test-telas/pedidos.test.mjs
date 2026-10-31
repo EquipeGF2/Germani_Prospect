@@ -242,6 +242,46 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.waitForSelector('#acf-fluxo');
   await foto('p9d-acompanhamento-grupo');
   await pagina.click('#ver-empresa');
+  // ajuda: botão ? em toda tela, painel, fluxograma, capítulos e PDF
+  await ir('#/carteira?aba=acompanhamento');
+  await pagina.click('#botao-ajuda');
+  await pagina.waitForSelector('#painel-ajuda:not([hidden])');
+  assert.match(await pagina.locator('#painel-ajuda h2').innerText(), /Ajuda: Acompanhamento/);
+  await pagina.click('.ajuda-secao[data-secao="campos"]');
+  assert.match(await pagina.locator('#painel-ajuda').innerText(), /Cadastros realizados/);
+  await foto('p10a-botao-ajuda');
+  await ir('#/pedidos');
+  assert.match(await pagina.locator('#painel-ajuda h2').innerText(), /Ajuda: Explorar pedidos/, 'a ajuda acompanha a tela');
+  await pagina.click('#fechar-ajuda');
+  assert.equal(await pagina.locator('#painel-ajuda').isVisible(), false);
+  await ir('#/ajuda');
+  await pagina.waitForSelector('#fluxograma');
+  assert.equal(await pagina.locator('#fluxograma .ajf-passo').count(), 8);
+  await pagina.click('#fluxograma .ajf-passo[data-etapa="analise"]');
+  assert.match(await pagina.locator('#detalhe-etapa').innerText(), /Analista financeiro/);
+  await foto('p10b-ajuda');
+  const [manual] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#pdf-manual')]);
+  assert.match(manual.suggestedFilename(), /^manual-germani-.*\.pdf$/);
+  await pagina.click('#ler-capitulo');
+  await pagina.waitForSelector('#capitulo-ajuda');
+  assert.match(await pagina.locator('#capitulo-ajuda h1').innerText(), /^5\. Crédito/);
+  await foto('p10c-capitulo');
+  const [capPdf] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#pdf-capitulo')]);
+  assert.match(capPdf.suggestedFilename(), /^manual-capitulo-5-.*\.pdf$/);
+  // no celular: a ajuda em tela cheia e o fluxo de cima para baixo, sem rolagem lateral
+  await pagina.setViewportSize({ width: 390, height: 844 });
+  await ir('#/ajuda');
+  await pagina.waitForSelector('#fluxograma');
+  const largCel = await pagina.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
+  assert.ok(largCel[0] <= largCel[1], `Ajuda mais larga que o celular: ${largCel}`);
+  await foto('p10d-ajuda-celular');
+  await pagina.click('#botao-ajuda');
+  const painelCel = await pagina.locator('#painel-ajuda').boundingBox();
+  assert.equal(Math.round(painelCel.width), 390, 'ajuda em tela cheia');
+  await foto('p10e-botao-ajuda-celular');
+  await pagina.click('#fechar-ajuda');
+  await pagina.setViewportSize({ width: 1360, height: 900 });
+
   // a Lista principal não ganhou a chave
   await ir('#/carteira');
   assert.equal(await pagina.locator('#ver-grupo').count(), 0, 'Lista principal não muda');

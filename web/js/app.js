@@ -10,6 +10,7 @@ import { podeTela } from '../shared/perfis.mjs';
 const ROTAS = [
   { caminho: '/entrar', tela: () => import('./telas/entrar.js'), publica: true },
   { caminho: '/inicio', tela: () => import('./telas/inicio.js'), telas: ['inicio'] },
+  { caminho: '/ajuda', tela: () => import('./telas/ajuda.js') },
   { caminho: '/explorar', tela: () => import('./telas/explorar.js'), telas: ['explorar'] },
   { caminho: '/carteira', tela: () => import('./telas/carteira.js'), telas: (q) => [q.get('aba') === 'acompanhamento' ? 'acompanhamento' : 'lista'] },
   { caminho: '/pedidos', tela: () => import('./telas/pedidos.js'), telas: ['pedidos'] },

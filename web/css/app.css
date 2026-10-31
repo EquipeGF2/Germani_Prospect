@@ -770,3 +770,65 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ped-exp.acf-exp .exp-linha { grid-template-columns: minmax(300px, 3fr) repeat(5, minmax(96px, 1fr)); min-width: 780px; }
 @media (max-width: 760px) { .ped-exp.acf-exp .exp-arvore .rolagem .exp-linha { grid-template-columns: 200px repeat(5, 96px); width: 680px; min-width: 680px; } }
 
+/* Botão ? e painel de ajuda da tela */
+.botao-ajuda { margin-left: auto; flex: none; justify-content: center; width: 40px; height: 40px; min-height: 0; padding: 0; border: 1px solid var(--destaque); border-radius: 50%; background: #fff; color: var(--destaque); font-size: 17px; font-weight: 700; }
+.botao-ajuda:hover, .botao-ajuda[aria-expanded="true"] { background: var(--destaque); color: #fff; }
+.painel-ajuda { position: fixed; top: 0; right: 0; bottom: 0; z-index: 40; width: 400px; max-width: 100%; box-sizing: border-box; padding: 16px 18px 24px; overflow-y: auto; background: #fff; border-left: 1px solid var(--borda); box-shadow: -6px 0 18px rgba(17, 24, 39, .08); }
+.casca.com-ajuda .area { margin-right: 400px; }
+.ajuda-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.ajuda-topo h2 { margin: 0; font-size: 20px; }
+.ajuda-topo button { justify-content: center; flex: none; width: 44px; min-height: 44px; padding: 0; font-size: 18px; }
+.ajuda-secao { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: space-between; gap: 8px; padding: 0 2px; border: 0; border-top: 1px solid var(--borda); border-radius: 0; background: none; color: var(--texto); font-weight: 600; text-align: left; }
+.ajuda-secao:hover { background: none; color: var(--destaque); }
+.ajuda-corpo { padding: 0 2px 10px; font-size: 14px; }
+.ajuda-corpo p { margin: 0; }
+.ajuda-corpo ol, .ajuda-corpo ul { margin: 0; padding-left: 18px; }
+.ajuda-corpo li { margin: 3px 0; }
+.ajuda-corpo dt { font-weight: 600; margin-top: 6px; }
+.ajuda-corpo dd { margin: 0; color: #374151; }
+.ajuda-capitulo { display: inline-block; margin-top: 10px; padding-top: 10px; font-size: 14px; font-weight: 600; }
+@media (max-width: 900px) { .painel-ajuda { width: 100%; border-left: 0; box-shadow: none; } .casca.com-ajuda .area { margin-right: 0; } }
+
+/* Tela Ajuda: fluxograma e capítulos */
+#fluxograma { margin: 12px 0 14px; }
+#fluxograma h2, .ajf-capitulos h2, .ajf-detalhe h2 { margin: 0 0 4px; }
+.ajf-linha { display: flex; gap: 6px; }
+.ajf-passo { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 2px; box-sizing: border-box; padding: 12px; text-align: left; background: #fff; color: var(--texto); border: 1px solid var(--borda-forte); border-radius: 10px; font-weight: 400; white-space: normal; }
+.ajf-passo:hover { background: #fff; color: var(--texto); border-color: var(--destaque); }
+.ajf-passo.ativo, .ajf-passo.ativo:hover { border: 2px solid var(--destaque); background: var(--destaque-claro); padding: 11px; }
+.ajf-passo b { font-size: 15px; line-height: 1.25; }
+.ajf-passo span { font-size: 12px; color: var(--suave); }
+.ajf-seta { align-self: center; flex: none; font-size: 20px; color: var(--suave); }
+.ajf-desce { display: flex; justify-content: flex-end; padding: 2px 8px; color: var(--suave); font-size: 18px; }
+.ajf-desvios { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.ajf-desvio { min-height: 44px; padding: 0 12px; border: 1px dashed var(--borda-forte); border-radius: 8px; background: #F9FAFB; color: #374151; font-size: 13px; font-weight: 400; }
+.ajf-desvio:hover { background: #F9FAFB; color: var(--destaque); }
+.ajf-desvio.ativo, .ajf-desvio.ativo:hover { border: 2px solid var(--destaque); background: var(--destaque-claro); color: var(--texto); }
+.ajf-baixo { display: flex; flex-wrap: wrap; gap: 14px; align-items: stretch; }
+.ajf-detalhe { flex: 1 1 320px; min-width: 0; margin: 0; }
+.ajf-capitulos { flex: 2 1 480px; min-width: 0; margin: 0; }
+.ajf-dados { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 12px; margin: 8px 0 12px; font-size: 14px; }
+.ajf-dados dt { color: var(--suave); }
+.ajf-dados dd { margin: 0; font-weight: 500; }
+.ajf-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 10px; }
+.ajf-cap { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid var(--borda); border-radius: 10px; color: var(--texto); text-decoration: none; }
+.ajf-cap:hover { border-color: var(--destaque); color: var(--texto); }
+.ajf-cap .num { flex: none; display: flex; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: 8px; background: var(--destaque-claro); color: var(--destaque-escuro); font-weight: 700; }
+.ajf-cap b, .ajf-cap small { display: block; }
+.ajf-cap small { font-size: 13px; color: var(--suave); }
+.ajf-capitulo { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.ajf-indice { flex: 1 1 230px; min-width: 0; margin: 0; padding: 10px; }
+.ajf-indice a { display: block; padding: 10px 12px; border-radius: 8px; color: var(--texto); text-decoration: none; font-size: 14px; }
+.ajf-indice a:hover { background: var(--fundo); }
+.ajf-indice a.ativo { background: var(--destaque-claro); color: var(--destaque-escuro); font-weight: 700; }
+.ajf-indice .ajf-voltar { color: var(--destaque); font-weight: 600; }
+.ajf-texto { flex: 999 1 520px; min-width: 0; margin: 0; }
+.ajf-texto h2 { margin: 18px 0 6px; font-size: 20px; }
+.ajf-texto p { margin: 8px 0; }
+.ajf-texto ol, .ajf-texto ul { margin: 6px 0; padding-left: 20px; }
+.ajf-texto li { margin: 4px 0; }
+.ajf-topo { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+.ajf-topo h1 { margin: 0; }
+.ajf-navega { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--borda); }
+@media (max-width: 760px) { .ajf-linha { flex-direction: column; } .ajf-seta, .ajf-desce { display: none; } .ajf-linha + .ajf-linha { margin-top: 6px; } }
+

@@ -463,6 +463,10 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 - Números vêm de `resumo_carteira` (uma linha por combinação, mantida pelos triggers) e dos pedidos do ERP agrupados —
   nunca da carteira inteira. Teste prova que o resumo bate com a base em todo o processo e que a raiz bate com o Início.
 
+## 15. Ajuda e manual (`shared/ajuda.mjs`)
+
+Um único conteúdo alimenta três saídas, para não haver textos diferentes: a tela **Ajuda** (item no topo do menu, com o fluxograma e os capítulos), o botão **?** no topo de toda tela (objetivo, como funciona, campos, o que analisar, situações comuns e próximo passo) e o **manual em PDF**, gerado na hora no navegador. Cada perfil vê só os capítulos do que usa. O Explorar carteira continua como tela inicial; a Ajuda abre sozinha só no primeiro acesso de cada usuário, em cada navegador. Tela nova ou alterada: atualize `shared/ajuda.mjs`; `test/ajuda.test.mjs` falha se uma tela ficar sem ajuda.
+
 ## 11. Perfis de acesso e telas (migração 0008 · `shared/perfis.mjs`)
 
 - **Perfil** = nome + **tipo-base** + **telas**. O tipo-base é o perfil técnico do usuário e decide **quais dados** ele vê e
