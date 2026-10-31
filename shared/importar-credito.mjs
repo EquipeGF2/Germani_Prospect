@@ -197,6 +197,7 @@ export async function importarCredito(db, { linhas, colunas = {}, mapaFormas = n
     if (!p) return ignorar('CNPJ não está na base de prospects');
     if (p.status_atual === 'invalido') return rejeitar('CNPJ baixado: impossibilitado de faturamento');
     if (p.status_atual === 'venda_realizada') return ignorar('venda já realizada — o crédito não altera o status');
+    if (p.status_atual === 'aguardando_pedido_valido') return ignorar('já teve pedido, aguardando pedido válido — o crédito não altera o status');
     if (p.forma_pagamento === forma && Number(p.prazo_pagamento_dias) === prazo && Number(p.limite_credito) === limite && p.limite_origem === origem
         && (p.cond_pgto_codigo ?? null) === condCodigo && (p.forma_pgto_codigo ?? null) === formaCodigo) {
       return ignorar('crédito já registrado com os mesmos dados');

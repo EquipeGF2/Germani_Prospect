@@ -171,7 +171,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   const totalRamo = Number((await pagina.locator('#grafico-totalidade .exp-total b').innerText()).replace(/\./g, ''));
   assert.equal(partesTotal.length, 5);
   assert.equal(partesTotal.reduce((t, x) => t + Number(x.replace(/\./g, '')), 0), totalRamo, 'as 5 partes somam o total');
-  assert.equal(await pagina.locator('#grafico-contactados .exp-etapa').count(), 4);
+  assert.equal(await pagina.locator('#grafico-contactados .exp-etapa').count(), 5);
   assert.equal(await pagina.locator('.exp-linha.cab span').count(), 12, 'colunas: ramo, prospects, contactados, cobertura, sem interesse do cliente e do representante, 3 etapas, pedido realizado, R$');
   await pagina.locator('.exp-nivel[data-nivel="cidade"]').dragTo(pagina.locator('.exp-nivel[data-nivel="supervisor"]'));
   assert.match(await pagina.locator('.exp-niveis .exp-nivel >> nth=0').innerText(), /Cidade/, 'arrastou Cidade para o 1º nível');
@@ -271,7 +271,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await irAoInicio();
   await pagina.waitForSelector('h1:text("Sua equipe")');
   const menuSup = await pagina.locator('#menu a').allInnerTexts();
-  assert.ok(menuSup.some((t) => t.includes('Lista principal')) && !menuSup.some((t) => t.includes('Acompanhamento')), `menu: ${menuSup}`);
+  assert.ok(menuSup.some((t) => t.includes('Lista principal')) && !menuSup.some((t) => t.trim() === 'Acompanhamento'), `menu: ${menuSup}`);
   await pagina.goto(`${base}#/carteira?aba=acompanhamento`);
   await pagina.waitForSelector('text=Seu perfil não tem acesso a esta tela.');
   await pagina.click('.menu-sair');

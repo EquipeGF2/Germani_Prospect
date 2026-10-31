@@ -37,8 +37,8 @@ export function consultaPedidosResumo({ usuario }) {
     sql: `SELECT x.vendedor_id, COALESCE(x.cidade_busca, '') AS cidade_busca, COALESCE(x.uf, '') AS uf, COALESCE(x.tipologia_gtm, '') AS tipologia_gtm,
                  COALESCE(x.onda, '') AS onda, COALESCE(x.rota, '') AS rota, COALESCE(x.subrota, '') AS subrota, x.status_atual,
                  COUNT(*) AS qtd, COALESCE(SUM(e.valor), 0) AS valor, ${colunasUsuario}
-            FROM eventos_erp e JOIN prospects x ON x.id = e.prospect_id ${juntaUsuario}
-           WHERE e.tipo = 'pedido' ${e.where}
+            FROM vw_valor_pedidos e JOIN prospects x ON x.id = e.prospect_id ${juntaUsuario}
+           WHERE 1 = 1 ${e.where}
            GROUP BY 1, 2, 3, 4, 5, 6, 7, 8`,
     args: e.args,
   };
@@ -67,7 +67,7 @@ export function niveisPossiveis(usuario) {
   return todos.filter((n) => n !== 'supervisor' && n !== 'representante');
 }
 
-export const STATUS_ORDEM = ['nao_contactado', 'em_prospeccao', 'aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse', 'invalido', 'expurgado'];
+export const STATUS_ORDEM = ['nao_contactado', 'em_prospeccao', 'aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'aguardando_pedido_valido', 'venda_realizada', 'sem_interesse', 'invalido', 'expurgado'];
 
 /** Soma linhas do resumo (e os pedidos) num bloco de indicadores. `parametros`: percentual_pipeline, valor_medio_cliente. */
 export function somarResumo(linhas, pedidos = [], parametros = {}) {
@@ -90,7 +90,7 @@ export function somarResumo(linhas, pedidos = [], parametros = {}) {
   return {
     qtd, base, inativos, status: st, contactados, atendidos, cadastrados, credito, vendas: st.venda_realizada, semInteresse: st.sem_interesse,
     siRepresentante, siCliente: st.sem_interesse - siRepresentante,
-    emAndamento: st.aguardando_cadastro + st.analise_financeira, aguardandoPedido: st.aguardando_pedido,
+    emAndamento: st.aguardando_cadastro + st.analise_financeira, aguardandoPedido: st.aguardando_pedido, aguardandoPedidoValido: st.aguardando_pedido_valido,
     qtdPedidos, valorPedidos, emAberto, potencial: (emAberto * pct * valorMedio) / 100,
     cobertura: base ? (contactados / base) * 100 : null, conversao: contactados ? (st.venda_realizada / contactados) * 100 : null,
   };

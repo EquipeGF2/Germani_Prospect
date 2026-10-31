@@ -87,7 +87,7 @@ Por que não há tabela `supervisores` separada: o supervisor também faz login 
 | `expurgos` | administrador, na tela Grupos de CNPJ (0021) | somente inclusão: expurgar / desfazer, com motivo, data, quem e o dono da carteira; o trigger muda `prospects.status_atual` para `expurgado` (ou volta à situação anterior) e guarda status anterior/novo. Aparece no histórico (`vw_movimentacoes` junta as duas tabelas) |
 | `erros_app` | o próprio app, quando uma tela ou botão dá erro (0019) | somente inclusão: usuário, tela, versão do site, tipo e mensagem, detalhe (com o código mostrado ao usuário), aparelho. Administração → Erros do app lista os últimos dias e os mais frequentes. O token do app tem só `erros_app:data_add` |
 | `transferencias` | supervisor da equipe ou administrador | troca `prospects.vendedor_id` |
-| `movimentacoes` | **somente triggers** | **histórico de movimentação do cliente**: uma linha por movimento (entrada na base, contato da planilha, atendido, sem interesse, pedido identificado, cadastro, liberação de crédito, pedido, baixa, transferência) com status antes → depois, data, origem, **quem fez**, **vendedor dono da carteira no dia** e detalhe |
+| `movimentacoes` | **somente triggers** (também: pedidos, 0022) | **histórico de movimentação do cliente**: uma linha por movimento (entrada na base, contato da planilha, atendido, sem interesse, pedido identificado, cadastro, liberação de crédito, pedido, baixa, transferência) com status antes → depois, data, origem, **quem fez**, **vendedor dono da carteira no dia** e detalhe |
 
 `contatos.resultado`: `atendido` · `sem_interesse` · `pedido_informado` (exige `data_pedido_informado`) —
 os três do app; "não atendido" não gera registro. `contato_planilha` existe só para as datas DT 1o/2o da
@@ -105,6 +105,18 @@ importação inicial (origem `importacao`). `contatos.lote_id` agrupa registros 
 Rota é **plano**: pode ser reordenada enquanto planejada. O que foi feito é medido pelos contatos
 (`vw_rota_paradas.atendida` = contato do vendedor naquele prospect na data da rota). Ordem manual — sem
 cálculo de distância ([ADR-0005](adr/0005-sem-calculo-de-distancia.md)).
+
+### Pedidos do ERP (0022)
+
+| Tabela | Conteúdo |
+|---|---|
+| `pedido_transacoes` · `pedido_situacoes` | classificação dos códigos do ERP (`conta_como`), editada na importação |
+| `pedido_importacoes` | arquivos de pedidos: data de referência e, se apagado, quando e por quem |
+| `pedidos_erp` | uma linha por pedido por arquivo em que mudou, com `importacao_id` e `prospect_id` (NULL = fora da base). Só inclusão, exceto pela exclusão do arquivo |
+| `pedido_aplicacoes` | efeito de um arquivo em cada cliente: status antes e depois, motivo e a foto dos campos para poder voltar. O trigger desta tabela é o único que muda o status por pedido |
+| `pedido_exclusoes` | exclusão de um arquivo: quem, quando, quantidades. Somente inclusão; o trigger faz toda a exclusão numa transação (ADR-0007) |
+
+Views: `vw_pedidos` (situação atual de cada pedido, classificada, com representante, dono da carteira e `relacao`: propria · outra · fora_base · cpf) e `vw_valor_pedidos` (valor do painel).
 
 ### Auditoria de carga
 

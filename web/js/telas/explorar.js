@@ -148,6 +148,7 @@ export async function render(conteudo, { usuario }) {
     const etapasProcesso = [['Aguardando cadastro', ind.status.aguardando_cadastro, status.aguardando_cadastro?.cor ?? '#6D28D9'],
       ['Aguardando financeiro', ind.status.analise_financeira, status.analise_financeira?.cor ?? '#C2410C'],
       ['Aguardando pedido', ind.status.aguardando_pedido, status.aguardando_pedido?.cor ?? '#0F766E'],
+      ['Aguardando pedido válido', ind.status.aguardando_pedido_valido, status.aguardando_pedido_valido?.cor ?? '#B45309'],
       ['Pedido realizado', ind.vendas, status.venda_realizada?.cor ?? '#1D4ED8']];
     const doProcesso = h('section', { class: 'cartao exp-grafico', id: 'grafico-contactados' },
       h('div', { class: 'exp-grafico-topo' }, h('div', {}, h('span', { class: 'tit' }, 'Dos contactados'),

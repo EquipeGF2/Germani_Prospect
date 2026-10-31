@@ -685,3 +685,39 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .tabela-grupos select { width: auto; min-width: 150px; margin: 0; }
 .tabela-grupos td:nth-child(1) { white-space: nowrap; }
 .confirmar-expurgo { border: 2px solid var(--vinho, #9F1D24); }
+
+/* ---------- pedidos (0022): rótulo centralizado, texto à esquerda, número centralizado, card sem quebra de linha ---------- */
+.ped-kpis { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); gap: 12px; overflow-x: auto; margin-bottom: 16px; }
+.ped-kpi { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); box-shadow: var(--sombra); padding: 14px; white-space: nowrap; }
+.ped-kpi span { display: block; font-size: 13px; color: var(--suave); }
+.ped-kpi b { display: block; font: 700 1.3rem/1.2 "IBM Plex Sans Condensed", sans-serif; font-variant-numeric: tabular-nums; }
+.ped-kpi.destaque { border: 2px solid var(--destaque); } .ped-kpi.destaque b { color: var(--destaque); }
+.ped-kpi.investimento b { color: #1E3A8A; }
+.ped-kpi .selo { display: inline-block; margin-bottom: 8px; }
+.ped-kpis.compacto { grid-auto-columns: minmax(130px, 1fr); gap: 8px; }
+.ped-kpis.compacto .ped-kpi { padding: 10px 8px; }
+.ped-kpis.compacto .selo { padding: 2px 6px; font-size: 11px; }
+.ped-tabela th, .ped-tabela td { padding: 10px 8px; }
+.ped-tabela th { text-align: center; }
+.ped-filtros { display: grid; gap: 12px; grid-template-columns: 2fr 1fr 1fr 1fr auto; align-items: center; }
+@media (max-width: 900px) { .ped-filtros { grid-template-columns: 1fr; } }
+.ped-tabela td { text-align: left; vertical-align: middle; }
+.ped-tabela td.num, .ped-tabela td.cen, .ped-tabela th.num { text-align: center; }
+.ped-tabela td.num { white-space: nowrap; }
+.ped-tabela tfoot td { font-weight: 700; background: #F9FAFB; }
+.ped-tabela .doc { display: block; font-size: 12px; color: var(--suave); white-space: nowrap; }
+.ped-tabela .selo { white-space: nowrap; }
+.ped-tabela td.rz { min-width: 200px; }
+.ped-fixa { table-layout: fixed; min-width: 620px; }
+.ped-fixa select { min-height: 36px; padding: 4px 8px; }
+.selo.investimento { background: #DBEAFE; color: #1E3A8A; }
+.ped-abas { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.ped-abas button { background: #fff; color: var(--texto); border-color: var(--borda-forte); }
+.ped-abas button.ativa { background: var(--destaque); color: #fff; border-color: var(--destaque); }
+.ped-colunas { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+.ped-colunas > .largo { flex: 999 1 560px; min-width: 0; }
+.ped-colunas > .estreito { flex: 1 1 320px; min-width: 0; }
+.ped-linha { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--borda); font-size: 14px; font-variant-numeric: tabular-nums; }
+.ped-opcao { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--borda-forte); border-radius: var(--raio-p); background: #fff; font-weight: 400; margin: 0; }
+.ped-opcao input { width: auto; min-height: 0; margin-top: 4px; }
+.ped-confirma { background: #FEF3F2; border: 1px solid #FECDCA; border-radius: var(--raio); padding: 16px; margin-bottom: 16px; }

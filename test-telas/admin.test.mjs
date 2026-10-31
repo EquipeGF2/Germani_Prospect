@@ -144,7 +144,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const cadastro = path.join(tmp, 'cadastro.csv');
   await writeFile(cadastro, `CNPJ;Data Cadastro;Codigo\n${cnpjs[0]};15/10/2026;C1\n${cnpjs[1]};16/10/2026;C2\n11222333000181;16/10/2026;C3\n`);
   await pagina.click('#menu a[title="Pedidos · Baixados (ERP)"]');
-  await pagina.click('label.card-tipo[data-tipo="pedido"]');
+  await pagina.waitForSelector('#importar-pedidos');
+  await pagina.click('label.card-tipo[data-tipo="baixa"]');
   await pagina.click('label.card-tipo[data-tipo="cadastro"]');             // escolha por cards
   assert.ok(await pagina.isChecked('input[name="tipo-erp"][value="cadastro"]'));
   await foto('08a-erp-cards');

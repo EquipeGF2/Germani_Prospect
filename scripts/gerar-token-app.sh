@@ -39,9 +39,11 @@ if [ "${1:-app}" = "admin" ]; then
   # Incluir e alterar dados em TODAS as tabelas (nunca estrutura): tabela nova de migração futura já fica coberta e a
   # chave não precisa ser renovada a cada mudança. O que é somente inclusão (contatos, eventos, movimentações, auditoria,
   # transferências, liberações) continua protegido pelos triggers do banco. Apagar: só onde a regra permite.
+  # movimentacoes e importacao_linhas: o trigger só deixa apagar dentro da exclusão de um arquivo de pedidos (0022, ADR-0007).
   TOKEN="$(turso db tokens create "$BANCO" --expiration never \
     -p all:data_read,data_add,data_update \
     -p feriados:data_delete -p perfil_telas:data_delete -p rota_paradas:data_delete \
+    -p pedidos_erp:data_delete -p pedido_aplicacoes:data_delete -p movimentacoes:data_delete -p importacao_linhas:data_delete \
     -p prospects_busca:data_delete -p prospects_busca_data:data_delete -p prospects_busca_idx:data_delete -p prospects_busca_docsize:data_delete | tr -d '[:space:]')"
   conferir "$TOKEN"
   echo "::add-mask::$TOKEN"

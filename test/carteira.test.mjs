@@ -107,9 +107,9 @@ test('indicadores continuam contando quem saiu da lista; agrupamento por bairro 
 test('acompanhamento por status: carteira inteira, inclusive o que saiu da lista', async () => {
   const r = await linhas(consultaCarteira({ usuario: VEND, visao: 'status' }));
   const por = Object.fromEntries(r.map((x) => [x.status_atual, Number(x.prospects)]));
-  assert.deepEqual(por, { nao_contactado: 2, em_prospeccao: 0, aguardando_cadastro: 1, sem_interesse: 0, analise_financeira: 0, aguardando_pedido: 0, venda_realizada: 0, invalido: 0, expurgado: 0 });
+  assert.deepEqual(por, { nao_contactado: 2, em_prospeccao: 0, aguardando_cadastro: 1, sem_interesse: 0, analise_financeira: 0, aguardando_pedido: 0, aguardando_pedido_valido: 0, venda_realizada: 0, invalido: 0, expurgado: 0 });
   // cards na ordem do processo; sem interesse e inválido (encerrados) por último
-  assert.deepEqual(r.map((x) => x.status_atual), ['nao_contactado', 'em_prospeccao', 'aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse', 'invalido', 'expurgado']);
+  assert.deepEqual(r.map((x) => x.status_atual), ['nao_contactado', 'em_prospeccao', 'aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'aguardando_pedido_valido', 'venda_realizada', 'sem_interesse', 'invalido', 'expurgado']);
   const neg = await linhas(consultaCarteira({ usuario: VEND, filtros: { status: 'aguardando_cadastro' } }));
   assert.equal(neg.length, 1);
   assert.equal(neg[0].status_descricao, 'Aguardando cadastro · atendido em 05/10/2026');

@@ -8,6 +8,10 @@ relatorios/
 *.xlsx
 *.xls
 *.csv
+# o ERP e o Windows também gravam a extensão em maiúsculas (o Git diferencia)
+*.XLSX
+*.XLS
+*.CSV
 !exemplos/*.xlsx
 *.db
 *.db-*

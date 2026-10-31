@@ -220,7 +220,7 @@ export function consultaFicha({ usuario, prospectId }) {
   where.push('id = ?');
   args.push(prospectId);
   return { sql: `SELECT vw_prospects.*,
-                       (SELECT SUM(e.valor) FROM eventos_erp e WHERE e.prospect_id = vw_prospects.id AND e.tipo = 'pedido') AS valor_pedidos
+                       (SELECT SUM(e.valor) FROM vw_valor_pedidos e WHERE e.prospect_id = vw_prospects.id) AS valor_pedidos
                   FROM vw_prospects WHERE ${where.join(' AND ')}`, args };
 }
 

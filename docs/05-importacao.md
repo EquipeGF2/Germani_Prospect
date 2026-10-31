@@ -94,7 +94,7 @@ cadastrado com outro supervisor.
 
 ## 2. Arquivos do ERP e CNPJs baixados (recorrente)
 
-O layout desses arquivos ainda não foi enviado — as colunas são informadas na linha de comando:
+Cadastro e baixados: as colunas são informadas na tela ou na linha de comando. Pedidos: use a §6 (o comando abaixo é só contingência, grava venda definitiva e não pode ser apagado):
 
 ```bash
 npm run importar:eventos -- --listar-colunas arquivo.xlsx
@@ -156,6 +156,31 @@ npm run importar:tipos -- tipos.xlsx --col-codigo "Código" --col-tipo "Função
   Ignoradas: já estava com aquele tipo. Toda alteração vai para `auditoria`.
 - Ao final, o resumo avisa quantos ainda estão **sem tipo** (tratados como representante).
 - Para um ajuste pontual: `npm run usuarios -- tipo <login> representante|vendedor`.
+
+## 6. Pedidos do ERP (rotina)
+
+Tela **Administração → Pedidos · Baixados (ERP) → Importar arquivo de pedidos** (`#/admin/importar/pedidos`). Regras: docs/03 §14.
+
+Etapas: **arquivo** (e data) → **classificação** dos códigos → **vínculo** com os clientes → **simulação** → **gravação**. Nada é gravado antes da confirmação.
+
+| Coluna do relatório | Uso |
+|---|---|
+| Pedido | identifica o pedido. Repetido no arquivo = rejeitado |
+| CPF / CNPJ | liga ao cliente pelo CNPJ exato. Até 11 dígitos = CPF. Inválido = rejeitado |
+| Cliente · Razão Social | código do ERP e nome (vale o nome da base, quando o CNPJ está nela). Código diferente do cadastro = aviso |
+| Vlr. Pedido · Vlr. Faturado | valores. Faturado maior que o pedido = aviso |
+| Sit. + Situação · Transação + Desc. Trans. | classificação |
+| Rep. | representante do pedido |
+| Dt. Emissão ou Data (opcional) | data da linha; sem ela, vale a data informada |
+
+O arquivo é o **.xls antigo do Senior** (BIFF2, `shared/biff.mjs`), com qualquer caixa na extensão; também aceita .xlsx e .csv. A extensão não importa para o `.gitignore`: planilha real nunca vai para o repositório.
+
+**Data:** importação diária = data do dia; semanal = data informada na tela (ou coluna de data). Todas as mudanças do arquivo ficam com essa data.
+
+**Próximo arquivo:** o mesmo pedido volta com outra situação e entra uma linha nova (`pedidos_erp`, só inclusão; a atual é a última). Pedido igual ao anterior é ignorado, então reimportar o mesmo arquivo não muda nada.
+Pedido em aberto que não veio no arquivo novo não é cancelado (o relatório pode ter outro filtro): a simulação só avisa.
+
+**Toda linha fica vinculada ao arquivo** (`importacao_id`) e pode ser apagada: docs/03 §14, ADR-0007.
 
 ## 5. Planilha fictícia para testes
 `npm run exemplo:planilha` gera `exemplos/base-ficticia.xlsx` no layout real, com CNPJs inventados
