@@ -5,7 +5,7 @@ import { bancoTeste, cnpjTeste, criarEquipe, criarProspect, evento, prospect, re
 import { lerBiff2 } from '../shared/biff.mjs';
 import { lerPlanilhaDeBytes } from '../shared/planilha.mjs';
 import { apagarArquivoPedidos, conferirExclusao, gravarPedidos, listarArquivosPedidos, simularPedidos, statusDepois } from '../shared/importar-pedidos.mjs';
-import { agruparPorRaiz, alertasPedidos, buscarPedidos, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, comVersaoPedidos, consultaPedidosGrupo, consultaSaldoFiliais, consultaVersaoPedidos, filtrarPedidos, indicadoresRamo, montarArvorePedidos, niveisPedidosPossiveis, porRepresentante, resumirPedidos, rotuloGrupo } from '../shared/pedidos.mjs';
+import { agruparPorRaiz, alertasPedidos, buscarPedidos, clientesDistintos, consultaPedidos, comVersaoPedidos, consultaPedidosGrupo, consultaSaldoFiliais, consultaVersaoPedidos, filtrarPedidos, indicadoresRamo, montarArvorePedidos, niveisPedidosPossiveis, porRepresentante, resumirPedidos, rotuloGrupo } from '../shared/pedidos.mjs';
 import { consultaPedidosResumo } from '../shared/explorar.mjs';
 import { consultaCarteira } from '../shared/carteira.mjs';
 import { STATUS_ENCERRADOS } from '../shared/status.mjs';
@@ -154,8 +154,6 @@ test('representante: cliente fica com o dono, venda vai para quem realizou, valo
   assert.equal(r77.rotulo, '77 · sem cadastro');
   assert.equal(reps.reduce((s, r) => s + r.venda, 0), 112, 'valor nunca duplica');
   assert.equal(reps.reduce((s, r) => s + r.clientes.length, 0), 4); assert.equal(clientesDistintos(todos), 2, 'cliente distinto no total');
-  const varios = clientesVariosRepresentantes(todos);
-  assert.equal(varios.length, 2); assert.deepEqual(varios.find((c) => c.documento === a).reps.map((r) => r.parte), [70, 30]);
   assert.equal((await prospect(db, 1)).vendedor_id, 2, 'a carteira não muda');
   const do11 = await pedidosDe(db, { id: 3, perfil: 'vendedor' });
   assert.deepEqual(do11.map((p) => p.numero).sort(), ['2', '3', '4'], 'o 11 vê o que vendeu, inclusive fora da lista dele, e os pedidos da carteira dele');
@@ -373,8 +371,6 @@ test('ver por grupo: empresas da mesma raiz numa linha que abre, sem mudar os va
   assert.equal(emp[0].ind.venda.valor, arv[0].ind.venda.valor, 'a chave não muda os valores');
   const r10 = porRepresentante(pedidos, { porGrupo: true }).find((r) => r.codigo === '10');
   assert.deepEqual(r10.clientes.map((c) => [c.documento, c.venda]), [[raiz, 100], [s, 30]]);
-  const varios = clientesVariosRepresentantes(pedidos, { porGrupo: true });
-  assert.equal(varios.length, 1, 'o grupo foi vendido por dois representantes'); assert.equal(clientesVariosRepresentantes(pedidos).length, 0);
   assert.equal(arv[1].ind.investimento.valor, 9, 'o investimento soma no grupo');
   assert.equal((await prospect(db, 1)).status_atual, 'venda_realizada'); assert.equal(pedidos.length, 4);
 });
@@ -394,7 +390,7 @@ test('Acompanhamento: só o que está em processo e encerrados; a venda fica em 
   assert.deepEqual([...STATUS_ENCERRADOS].sort(), ['expurgado', 'invalido', 'sem_interesse']);
 });
 
-test('filtros: tipo do pedido e mais de um representante; a busca procura na lista; as colunas somam a venda', async () => {
+test('filtro do tipo do pedido; a busca procura na lista; as colunas somam a venda', async () => {
   const db = await montar();
   await criarProspect(db, { n: 1, vendedorId: 2 }); await criarProspect(db, { n: 2, vendedorId: 3 }); await criarProspect(db, { n: 3, vendedorId: 2 });
   await grava(db, arquivo(linha({ doc: cnpjTeste(1), num: 1, sit: 4, valor: 100, fat: 100, rep: 10 }), linha({ doc: cnpjTeste(1), num: 2, sit: 1, valor: 50, rep: 11 }),
@@ -404,7 +400,6 @@ test('filtros: tipo do pedido e mais de um representante; a busca procura na lis
   assert.deepEqual(numeros(filtrarPedidos(pedidos)), ['1', '2', '3', '4'], 'ambos');
   assert.deepEqual(numeros(filtrarPedidos(pedidos, { tipo: 'venda' })), ['1', '2', '3']);
   assert.deepEqual(numeros(filtrarPedidos(pedidos, { tipo: 'investimento' })), ['4']);
-  assert.deepEqual(numeros(filtrarPedidos(pedidos, { variosReps: true })), ['1', '2'], 'cliente com mais de um representante');
   assert.deepEqual(numeros(buscarPedidos(pedidos, 'vend onze')), ['2', '3'], 'busca pelo nome do representante, sem acento');
   assert.equal(buscarPedidos(pedidos, '  ').length, 4, 'busca vazia não filtra');
   const r = indicadoresRamo(pedidos);

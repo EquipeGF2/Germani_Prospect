@@ -29,7 +29,7 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
   const pedidos = porGrupo ? todosPedidos : todosPedidos.filter((p) => p.prospect_id !== null);
   const possiveis = niveisPedidosPossiveis(usuario);
   const raiz = veTodasEquipes(usuario) ? 'Todos os pedidos' : usuario.perfil === 'supervisor' ? 'Pedidos da minha equipe' : 'Meus pedidos';
-  if (!memoria.has(destino)) memoria.set(destino, { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cliente']), abertos: new Set(['']), sel: '', editarNiveis: false, busca: '', tipo: 'ambos', variosReps: false, gruposAbertos: new Set() });
+  if (!memoria.has(destino)) memoria.set(destino, { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cliente']), abertos: new Set(['']), sel: '', editarNiveis: false, busca: '', tipo: 'ambos', gruposAbertos: new Set() });
   const estado = memoria.get(destino);
   const area = h('div', { id: 'analise-pedidos', class: 'ped-exp' });
   montar(destino, area);
@@ -71,10 +71,7 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
     const opcao = (id, ativo, texto, aoClicar) => h('button', { type: 'button', id, class: ativo ? 'ativa' : '', 'aria-pressed': ativo ? 'true' : 'false', onclick: () => { aoClicar(); aoFiltrar(); } }, texto);
     montar(slotFiltros,
       h('div', { class: 'ped-chave ped-seg', role: 'group', 'aria-label': 'Tipo de pedido' },
-        [['venda', 'Pedidos de venda'], ['investimento', 'Pedidos de bonificação'], ['ambos', 'Ambos']].map(([v, t]) => opcao(`tipo-${v}`, estado.tipo === v, t, () => { estado.tipo = v; }))),
-      h('span', { class: 'ped-seg-rotulo' }, 'Mais de um representante'),
-      h('div', { class: 'ped-chave ped-seg', role: 'group', 'aria-label': 'Mais de um representante' },
-        opcao('varios-nao', !estado.variosReps, 'Não', () => { estado.variosReps = false; }), opcao('varios-sim', estado.variosReps, 'Sim', () => { estado.variosReps = true; })));
+        [['venda', 'Pedidos de venda'], ['investimento', 'Pedidos de bonificação'], ['ambos', 'Ambos']].map(([v, t]) => opcao(`tipo-${v}`, estado.tipo === v, t, () => { estado.tipo = v; }))));
   }
 
   function listaDoRamo(doRamo, escolhido) {
@@ -105,7 +102,7 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
   }
 
   function tela() {
-    const vistos = filtrarPedidos(pedidos, { tipo: estado.tipo, variosReps: estado.variosReps, porGrupo });
+    const vistos = filtrarPedidos(pedidos, { tipo: estado.tipo });
     const arvore = montarArvorePedidos({ pedidos: vistos, niveis: estado.niveis, abertos: estado.abertos, rotuloRaiz: raiz, porGrupo });
     const escolhido = arvore.find((n) => n.caminho === estado.sel) ?? arvore[0];
     const ind = escolhido.ind;
