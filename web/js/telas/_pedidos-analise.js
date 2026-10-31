@@ -1,6 +1,6 @@
-// Corpo de Explorar pedidos: filtros em cascata, cards, gráficos, árvore de níveis livres e os pedidos do ramo, como no Explorar carteira.
-// Tudo sobre os pedidos já lidos: filtrar, arrastar níveis e abrir ramos só redesenham no navegador.
-import { agruparPorRaiz, filtrarPedidos, filtrosPedidosPossiveis, montarArvorePedidos, NIVEIS_PEDIDOS, niveisPedidosPossiveis, opcoesPedidosEmCascata, resumirPedidos, rotuloGrupo, rotuloRepresentante } from '../../shared/pedidos.mjs';
+// Corpo de Explorar pedidos: hierarquia de níveis, cards, gráficos, árvore e os pedidos do ramo, como no Explorar carteira.
+// Tudo sobre os pedidos já lidos: arrastar níveis, abrir ramos e buscar só redesenham no navegador.
+import { agruparPorRaiz, filtrarPedidos, montarArvorePedidos, NIVEIS_PEDIDOS, niveisPedidosPossiveis, resumirPedidos, rotuloGrupo, rotuloRepresentante } from '../../shared/pedidos.mjs';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { h, montar, formatar, baixarCsv } from '../ui.js';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
@@ -28,9 +28,8 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
   // Ver por Empresa: só os CNPJs da base. Ver por Grupo: também as filiais fora da base com a raiz de um cliente da base
   const pedidos = porGrupo ? todosPedidos : todosPedidos.filter((p) => p.prospect_id !== null);
   const possiveis = niveisPedidosPossiveis(usuario);
-  const filtraveis = filtrosPedidosPossiveis(usuario);
   const raiz = veTodasEquipes(usuario) ? 'Todos os pedidos' : usuario.perfil === 'supervisor' ? 'Pedidos da minha equipe' : 'Meus pedidos';
-  if (!memoria.has(destino)) memoria.set(destino, { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cliente']), abertos: new Set(['']), sel: '', editarNiveis: false, filtros: {}, busca: '', variosReps: false, comBonificacao: false, gruposAbertos: new Set() });
+  if (!memoria.has(destino)) memoria.set(destino, { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cliente']), abertos: new Set(['']), sel: '', editarNiveis: false, busca: '', variosReps: false, comBonificacao: false, gruposAbertos: new Set() });
   const estado = memoria.get(destino);
   const area = h('div', { id: 'analise-pedidos', class: 'ped-exp' });
   montar(destino, area);
@@ -68,18 +67,11 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
     oninput: () => { estado.busca = campoBusca.value; aoFiltrar(); campoBusca.focus(); } });
 
   function filtros() {
-    const criterio = { filtros: estado.filtros, busca: estado.busca, variosReps: estado.variosReps, comBonificacao: estado.comBonificacao, porGrupo, possiveis: filtraveis };
-    const opcoes = opcoesPedidosEmCascata(pedidos, criterio);
-    const ativos = Object.values(estado.filtros).filter(Boolean).length + (estado.busca ? 1 : 0) + (estado.variosReps ? 1 : 0) + (estado.comBonificacao ? 1 : 0);
-    const seletor = (f) => h('div', { class: 'filtro' }, h('label', { for: `filtro-ped-${f}` }, nome(f)),
-      h('select', { id: `filtro-ped-${f}`, onchange: (ev) => { if (ev.target.value) estado.filtros[f] = ev.target.value; else delete estado.filtros[f]; aoFiltrar(); } },
-        h('option', { value: '' }, 'Todos'), opcoes[f].map((o) => h('option', { value: o.valor, selected: o.valor === estado.filtros[f] }, o.rotulo))));
+    const ativos = (estado.busca ? 1 : 0) + (estado.variosReps ? 1 : 0) + (estado.comBonificacao ? 1 : 0);
     const atalho = (id, chave, texto) => h('button', { type: 'button', id, class: `chip-situacao${estado[chave] ? ' ativa' : ''}`, 'aria-pressed': estado[chave] ? 'true' : 'false', onclick: () => { estado[chave] = !estado[chave]; aoFiltrar(); } }, texto);
-    return h('section', { class: 'cartao ped-cascata', 'aria-label': 'Filtros' },
-      h('div', { class: 'ped-cascata-campos' }, filtraveis.map(seletor)),
-      h('div', { class: 'ped-cascata-busca' }, campoBusca,
-        atalho('so-varios-reps', 'variosReps', 'Mais de um representante'), atalho('so-bonificacao', 'comBonificacao', 'Clientes com bonificação'),
-        ativos ? h('button', { type: 'button', class: 'secundario pequeno', id: 'limpar-filtros-ped', onclick: () => { estado.filtros = {}; estado.busca = ''; estado.variosReps = false; estado.comBonificacao = false; campoBusca.value = ''; aoFiltrar(); } }, `Limpar filtros (${ativos})`) : null));
+    return h('div', { class: 'ped-busca-linha' }, campoBusca,
+      atalho('so-varios-reps', 'variosReps', 'Mais de um representante'), atalho('so-bonificacao', 'comBonificacao', 'Clientes com bonificação'),
+      ativos ? h('button', { type: 'button', class: 'secundario pequeno', id: 'limpar-filtros-ped', onclick: () => { estado.busca = ''; estado.variosReps = false; estado.comBonificacao = false; campoBusca.value = ''; aoFiltrar(); } }, 'Limpar') : null);
   }
 
   function listaDoRamo(doRamo) {
@@ -110,7 +102,7 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
   }
 
   function tela() {
-    const vistos = filtrarPedidos(pedidos, { filtros: estado.filtros, busca: estado.busca, variosReps: estado.variosReps, comBonificacao: estado.comBonificacao, porGrupo });
+    const vistos = filtrarPedidos(pedidos, { busca: estado.busca, variosReps: estado.variosReps, comBonificacao: estado.comBonificacao, porGrupo });
     const arvore = montarArvorePedidos({ pedidos: vistos, niveis: estado.niveis, abertos: estado.abertos, rotuloRaiz: raiz, porGrupo });
     const escolhido = arvore.find((n) => n.caminho === estado.sel) ?? arvore[0];
     const ind = escolhido.ind;
@@ -151,7 +143,7 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
       else { estado.sel = n.caminho; if (n.temFilhos) estado.abertos.add(n.caminho); }
       desenhar();
     };
-    const cab = h('div', { class: 'exp-linha cab' }, ['Ramo', 'Clientes', 'Válidos', 'Venda (R$)', 'Faturado (R$)', 'Em carteira (R$)', 'Digitado (R$)', 'Desistência (R$)', 'Investimento (R$)', 'Invest. ÷ venda', 'Na própria lista (R$)', 'Na lista de outro (R$)'].map((t, i) => h('span', { class: i ? 'num' : '' }, t)));
+    const cab = h('div', { class: 'exp-linha cab' }, ['Ramo', 'Clientes', 'Válidos', 'Venda (R$)', 'Faturado (R$)', 'Em carteira (R$)', 'Digitado (R$)', 'Desistência (R$)', 'Invest. (R$)', 'Invest. ÷ venda', 'Próprio (R$)', 'Outro (R$)'].map((t, i) => h('span', { class: i ? 'num' : '' }, t)));
     const linhas = arvore.map((n) => h('div', { class: `exp-linha${n.caminho === escolhido.caminho ? ' escolhida' : ''}${n.profundidade ? '' : ' raiz'}`, dados: { caminho: n.caminho }, onclick: () => clicarLinha(n) },
       h('span', { class: 'ramo', style: `padding-left:${n.profundidade * 24}px` },
         n.temFilhos ? h('button', { type: 'button', class: 'abre', 'aria-expanded': n.aberto ? 'true' : 'false', 'aria-label': `${n.aberto ? 'Fechar' : 'Abrir'} ${n.rotulo}`,
@@ -161,7 +153,7 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
       h('span', { class: 'num' }, valor(n.ind.saldo)), h('span', { class: 'num' }, valor(n.ind.digitado.valor)), h('span', { class: 'num' }, valor(n.ind.cancelado.valor)), h('span', { class: 'num' }, valor(n.ind.investimento.valor)),
       h('span', { class: 'num' }, pct(n.ind.pctInvestimento)), h('span', { class: 'num' }, valor(n.ind.propria)), h('span', { class: 'num' }, valor(n.ind.outra))));
 
-    return [filtros(), niveis, niveisCelular, migalhas, numeros, h('div', { class: 'exp-quadros' }, venda, processo),
+    return [niveis, niveisCelular, filtros(), migalhas, numeros, h('div', { class: 'exp-quadros' }, venda, processo),
       h('section', { class: 'cartao exp-arvore', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas)), listaDoRamo(escolhido.pedidos)];
   }
   if (!pedidos.length) {

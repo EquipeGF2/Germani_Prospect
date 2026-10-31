@@ -1,6 +1,15 @@
 // Peças comuns das telas de pedidos: tabela no padrão (rótulo centralizado, texto à esquerda, número centralizado) e cards numa linha.
 import { h, formatar, montar, selo } from '../ui.js';
+import { lerComCache } from '../db.js';
+import { comVersaoPedidos, consultaVersaoPedidos } from '../../shared/pedidos.mjs';
 import { formatarCnpj } from '../../shared/cnpj.mjs';
+
+// Leitura dos pedidos sem repetir: enquanto não houver arquivo novo, navegar entre as telas usa o que já foi lido nesta aba.
+// Mudança de carteira ou de cadastro aparece em até 30 minutos; gravação feita neste aparelho limpa o cache na hora.
+export async function lerPedidos(db, consulta) {
+  const versao = (await lerComCache(db, consultaVersaoPedidos(), 30)).rows[0];
+  return lerComCache(db, comVersaoPedidos(consulta, { ultima: Number(versao?.ultima ?? 0), apagadas: Number(versao?.apagadas ?? 0) }), 1800);
+}
 
 export const moeda = (v) => formatar.moeda(Number(v ?? 0));
 export const valor = (v) => Number(v ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
