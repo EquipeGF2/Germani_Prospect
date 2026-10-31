@@ -13,12 +13,29 @@ function escopoPedidos(usuario) {
   return { where: '(dono_id = ? OR rep_id = ?)', args: [usuario.id, usuario.id] };
 }
 
-export function consultaPedidos({ usuario, prospectId = null, limite = 5000 }) {
+/**
+ * Pedidos do escopo. `incluirFiliais`: também os de filial fora da base com a raiz de um cliente da base (Ver por Grupo).
+ * A filial não tem carteira própria: fica com o dono da empresa da base naquele grupo, para o escopo e o nível Dono da carteira.
+ */
+export function consultaPedidos({ usuario, prospectId = null, limite = 5000, incluirFiliais = false }) {
   const e = escopoPedidos(usuario);
   return {
-    sql: `SELECT v.*, p.cidade, p.uf, p.tipologia_gtm, p.onda, p.rota, sup.nome AS supervisor_nome
-            FROM vw_pedidos v JOIN prospects p ON p.id = v.prospect_id LEFT JOIN usuarios sup ON sup.id = v.dono_supervisor_id
-           WHERE ${e.where} ${prospectId ? 'AND v.prospect_id = ?' : ''} ORDER BY CAST(v.numero AS INTEGER) DESC LIMIT ?`,
+    sql: `SELECT * FROM (
+            SELECT v.id, v.numero, v.importacao_id, v.data_situacao, v.data_primeira, v.cpf_cnpj, v.prospect_id, v.codigo_cliente, v.razao_social,
+                   v.transacao_codigo, v.transacao_descricao, v.tipo, v.situacao_codigo, v.situacao_descricao, v.fase,
+                   v.rep_codigo, v.rep_id, v.rep_nome, v.rep_supervisor_id, v.valor_pedido, v.valor_faturado, v.valida, v.saldo, v.status_atual, v.raiz,
+                   COALESCE(v.limite_credito, g.limite_credito) AS limite_credito, COALESCE(v.limite_credito_origem, g.limite_credito_origem) AS limite_credito_origem,
+                   COALESCE(v.dono_id, g.vendedor_id) AS dono_id, COALESCE(v.dono_nome, gd.nome) AS dono_nome, COALESCE(v.dono_codigo, gd.codigo_erp) AS dono_codigo,
+                   COALESCE(v.dono_supervisor_id, gd.supervisor_id) AS dono_supervisor_id,
+                   CASE WHEN v.prospect_id IS NOT NULL THEN v.relacao WHEN v.rep_id = g.vendedor_id THEN 'propria' ELSE 'outra' END AS relacao,
+                   p.cidade, p.uf, COALESCE(p.tipologia_gtm, g.tipologia_gtm) AS tipologia_gtm, COALESCE(p.onda, g.onda) AS onda, p.rota, sup.nome AS supervisor_nome
+              FROM vw_pedidos v
+              LEFT JOIN prospects p ON p.id = v.prospect_id
+              LEFT JOIN prospects g ON v.prospect_id IS NULL AND length(v.cpf_cnpj) = 14 AND g.id = (SELECT MIN(x.id) FROM prospects x WHERE x.cnpj_raiz = v.raiz)
+              LEFT JOIN usuarios gd ON gd.id = g.vendedor_id
+              LEFT JOIN usuarios sup ON sup.id = COALESCE(v.dono_supervisor_id, gd.supervisor_id)
+             WHERE v.prospect_id IS NOT NULL ${incluirFiliais ? 'OR g.id IS NOT NULL' : ''})
+           WHERE ${e.where} ${prospectId ? 'AND prospect_id = ?' : ''} ORDER BY CAST(numero AS INTEGER) DESC LIMIT ?`,
     args: [...e.args, ...(prospectId ? [prospectId] : []), limite],
   };
 }
@@ -41,32 +58,44 @@ export function consultaSaldoFiliais() {
 const num = (v) => Number(v ?? 0);
 
 /**
- * Separa uma lista pela raiz do CNPJ (8 primeiros dígitos). Grupo = 2 ou mais empresas diferentes da mesma raiz; o resto fica solto.
+ * Separa uma lista pela raiz do CNPJ (8 primeiros dígitos). Grupo = 2 ou mais empresas diferentes da mesma raiz, ou pedido de filial
+ * fora da base (prospect_id nulo), que só existe por causa do grupo; o resto fica solto.
  * Só agrupa para mostrar: status, atendimento e crédito continuam de cada empresa.
  */
 export function agruparPorRaiz(linhas, documentoDe) {
   const raizes = new Map();
   for (const l of linhas) {
     const r = String(documentoDe(l)).slice(0, 8);
-    if (!raizes.has(r)) raizes.set(r, { raiz: r, linhas: [], empresas: new Set() });
+    if (!raizes.has(r)) raizes.set(r, { raiz: r, linhas: [], empresas: new Set(), filial: false });
     const g = raizes.get(r);
     g.linhas.push(l); g.empresas.add(documentoDe(l));
+    if (l.prospect_id === null) g.filial = true;
   }
   const todos = [...raizes.values()];
-  return { grupos: todos.filter((g) => g.empresas.size > 1), soltas: todos.filter((g) => g.empresas.size === 1).flatMap((g) => g.linhas) };
+  const ehGrupo = (g) => g.empresas.size > 1 || g.filial;
+  return { grupos: todos.filter(ehGrupo), soltas: todos.filter((g) => !ehGrupo(g)).flatMap((g) => g.linhas) };
 }
-/** Quantas empresas cada raiz tem no conjunto: a chave do cliente é a raiz só quando ela tem mais de uma empresa. */
+const nomeEmpresas = (n) => `${n} ${n === 1 ? 'empresa' : 'empresas'}`;
+/** Rótulo da linha do grupo: "Grupo X · 2 empresas". */
+export const rotuloGrupo = (g) => `Grupo ${g.linhas[0].razao_social} · ${nomeEmpresas(g.empresas.size)}`;
+/** Empresas de cada raiz no conjunto: a chave do cliente é a raiz quando ela forma grupo. */
 function empresasPorRaiz(pedidos) {
   const m = new Map();
-  for (const p of pedidos) { const r = String(p.cpf_cnpj).slice(0, 8); if (!m.has(r)) m.set(r, new Set()); m.get(r).add(p.cpf_cnpj); }
+  for (const p of pedidos) {
+    const r = String(p.cpf_cnpj).slice(0, 8);
+    if (!m.has(r)) m.set(r, { empresas: new Set(), filial: false });
+    m.get(r).empresas.add(p.cpf_cnpj);
+    if (p.prospect_id === null) m.get(r).filial = true;
+  }
   return m;
 }
 function clienteDe(p, porGrupo, raizes) {
   const r = String(p.cpf_cnpj).slice(0, 8);
-  const n = raizes?.get(r)?.size ?? 1;
-  if (!porGrupo || n < 2) return { chave: p.cpf_cnpj, documento: p.cpf_cnpj, codigo: p.codigo_cliente, razao: p.razao_social };
-  return { chave: r, documento: r, codigo: null, razao: `Grupo ${p.razao_social} · ${n} empresas` };
+  const g = raizes?.get(r);
+  if (!porGrupo || !g || (g.empresas.size < 2 && !g.filial)) return { chave: p.cpf_cnpj, documento: p.cpf_cnpj, codigo: p.codigo_cliente, razao: p.razao_social };
+  return { chave: r, documento: r, codigo: null, razao: `Grupo ${p.razao_social} · ${nomeEmpresas(g.empresas.size)}` };
 }
+
 const vazio = () => ({ qtd: 0, valor: 0 });
 const somar = (t, v) => { t.qtd += 1; t.valor += num(v); };
 
@@ -248,7 +277,7 @@ export function montarArvorePedidos({ pedidos, niveis, abertos, rotuloRaiz = 'To
     const dentro = dentroDoGrupo || ehGrupo;
     if (separarGrupo && codNivel === 'cliente' && !ehGrupo) {
       const { grupos, soltas } = agruparPorRaiz(rows, (p) => p.cpf_cnpj);
-      const itens = [...grupos.map((g) => ({ g: g.linhas, k: `grupo=${g.raiz}`, rot: `Grupo ${g.linhas[0].razao_social} · ${g.empresas.size} empresas`, n: 'grupo', eh: true, i: ind(g.linhas) }))];
+      const itens = [...grupos.map((g) => ({ g: g.linhas, k: `grupo=${g.raiz}`, rot: rotuloGrupo(g), n: 'grupo', eh: true, i: ind(g.linhas) }))];
       const porDoc = new Map();
       for (const p of soltas) { if (!porDoc.has(p.cpf_cnpj)) porDoc.set(p.cpf_cnpj, []); porDoc.get(p.cpf_cnpj).push(p); }
       for (const [doc, l] of porDoc) itens.push({ g: l, k: `cliente=${doc}`, rot: def.rotulo(l[0]), n: 'cliente', eh: false, i: ind(l) });

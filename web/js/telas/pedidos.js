@@ -9,10 +9,11 @@ import { chaveVerPor, lerVerPor, tabelaPedidos } from './_pedidos.js';
 
 export async function render(conteudo, { usuario }) {
   const db = await bancoApp();
-  const [pedidos, motivos, filiais, valores] = (await Promise.all([db.execute(consultaPedidos({ usuario })), db.execute(consultaMotivosPedidoValido()), db.execute(consultaSaldoFiliais()),
+  const [pedidos, motivos, filiais, valores] = (await Promise.all([db.execute(consultaPedidos({ usuario, incluirFiliais: true })), db.execute(consultaMotivosPedidoValido()), db.execute(consultaSaldoFiliais()),
     db.execute("SELECT chave, valor FROM parametros WHERE chave IN ('prazo_pedido_valido_dias','alerta_desistencias_cliente','dias_alerta_pedido_aberto')")])).map((r) => r.rows);
   const p = Object.fromEntries(valores.map((v) => [v.chave, Number(v.valor)]));
-  const alertas = alertasPedidos(pedidos, { hoje: hojeSaoPaulo(), prazoPedidoValido: p.prazo_pedido_valido_dias, desistencias: p.alerta_desistencias_cliente, diasAberto: p.dias_alerta_pedido_aberto,
+  // alertas olham só os clientes da base: a filial entra pelo saldo, na conta do limite do grupo
+  const alertas = alertasPedidos(pedidos.filter((x) => x.prospect_id !== null), { hoje: hojeSaoPaulo(), prazoPedidoValido: p.prazo_pedido_valido_dias, desistencias: p.alerta_desistencias_cliente, diasAberto: p.dias_alerta_pedido_aberto,
     entradas: new Map(motivos.map((m) => [Number(m.prospect_id), m.data_evento])), saldoFiliais: new Map(filiais.map((f) => [f.raiz, Number(f.saldo)])) });
 
   let porGrupo = lerVerPor() === 'grupo';
@@ -33,5 +34,5 @@ export async function render(conteudo, { usuario }) {
   desenharFaixa();
   desenhar();
   montar(conteudo, h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar pedidos'), chaveVerPor(porGrupo ? 'grupo' : 'empresa', (v) => { porGrupo = v === 'grupo'; desenhar(); })),
-    h('p', { class: 'ajuda' }, 'Só os pedidos dos clientes da base. As filiais fora da base aparecem na ficha, na visão do grupo.'), faixa, area);
+    h('p', { class: 'ajuda' }, 'Só os pedidos dos clientes da base. As filiais fora da base aparecem em Ver por Grupo.'), faixa, area);
 }

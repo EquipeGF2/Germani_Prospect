@@ -5,7 +5,7 @@ import { bancoTeste, cnpjTeste, criarEquipe, criarProspect, evento, prospect, re
 import { lerBiff2 } from '../shared/biff.mjs';
 import { lerPlanilhaDeBytes } from '../shared/planilha.mjs';
 import { apagarArquivoPedidos, conferirExclusao, gravarPedidos, listarArquivosPedidos, simularPedidos, statusDepois } from '../shared/importar-pedidos.mjs';
-import { agruparPorRaiz, alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, consultaPedidosGrupo, consultaSaldoFiliais, filtrarPedidos, filtrosPedidosPossiveis, indicadoresRamo, montarArvorePedidos, opcoesPedidosEmCascata, niveisPedidosPossiveis, porRepresentante, resumirPedidos } from '../shared/pedidos.mjs';
+import { agruparPorRaiz, alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, consultaPedidosGrupo, consultaSaldoFiliais, filtrarPedidos, filtrosPedidosPossiveis, indicadoresRamo, montarArvorePedidos, opcoesPedidosEmCascata, niveisPedidosPossiveis, porRepresentante, resumirPedidos, rotuloGrupo } from '../shared/pedidos.mjs';
 import { consultaPedidosResumo } from '../shared/explorar.mjs';
 import { consultaCarteira } from '../shared/carteira.mjs';
 import { STATUS_ENCERRADOS } from '../shared/status.mjs';
@@ -421,5 +421,30 @@ test('filtros em cascata: cada filtro mostra só o que existe com os outros, e o
   assert.ok(Math.abs(r.pctInvestimento - (9 / 450) * 100) < 0.001);
   const expl = opcoesPedidosEmCascata(pedidos, { possiveis: filtrosPedidosPossiveis({ perfil: 'vendedor' }) });
   assert.equal('supervisor' in expl, false, 'vendedor não filtra por supervisor');
+});
+
+test('pedido de filial fora da base: aparece só em Ver por Grupo, com o dono do grupo, e não muda status nem o resto', async () => {
+  const db = await montar();
+  const base = cnpjTeste(1); const filial = cnpjTeste(1, 2); const fora = cnpjTeste(7);
+  const id = await criarProspect(db, { n: 1, vendedorId: 2, razao: 'Rede Um' });
+  await grava(db, arquivo(linha({ doc: filial, num: 2, razao: 'Rede Um Filial', sit: 1, valor: 40, rep: 11 }), linha({ doc: fora, num: 3, sit: 1, valor: 900 })));
+  assert.equal((await pedidosDe(db)).length, 0, 'por empresa, nada');
+  const lerTodos = async (usuario = adm) => (await db.execute(consultaPedidos({ usuario, incluirFiliais: true }))).rows;
+  const todos = await lerTodos();
+  assert.deepEqual(todos.map((p) => [p.numero, p.prospect_id, Number(p.dono_id), p.relacao]), [['2', null, 2, 'outra']], 'a filial fica com o dono da empresa da base');
+  assert.equal((await prospect(db, id)).status_atual, 'nao_contactado', 'não muda o status');
+  const { grupos, soltas } = agruparPorRaiz(todos, (p) => p.cpf_cnpj);
+  assert.equal(grupos.length, 1, 'mesmo sendo o único pedido do grupo'); assert.equal(soltas.length, 0);
+  assert.match(rotuloGrupo(grupos[0]), /^Grupo Rede Um Filial · 1 empresa$/);
+  const arv = montarArvorePedidos({ pedidos: todos, niveis: ['cliente'], abertos: new Set(['', `/grupo=${base.slice(0, 8)}`]), porGrupo: true });
+  assert.deepEqual(arv.map((n) => [n.profundidade, n.ehGrupo, n.ind.venda.valor]), [[0, false, 40], [1, true, 40], [2, false, 40]]);
+  assert.equal(arv[0].ind.clientes, 1);
+  assert.deepEqual(porRepresentante(todos, { porGrupo: true }).find((r) => r.codigo === '11').clientes.map((c) => c.documento), [base.slice(0, 8)]);
+  assert.deepEqual((await lerTodos({ id: 2, perfil: 'vendedor' })).map((p) => p.numero), ['2'], 'o dono da carteira vê');
+  assert.deepEqual((await lerTodos({ id: 3, perfil: 'vendedor' })).map((p) => p.numero), ['2'], 'quem vendeu vê');
+  assert.equal((await lerTodos({ id: 5, perfil: 'supervisor' })).length, 0, 'outra equipe não vê');
+  assert.deepEqual((await lerTodos({ id: 1, perfil: 'supervisor' })).map((p) => p.numero), ['2'], 'o supervisor da equipe vê');
+  const valor = Number((await db.execute({ sql: 'SELECT COALESCE(SUM(valor), 0) v FROM vw_valor_pedidos WHERE prospect_id = ?', args: [id] })).rows[0].v);
+  assert.equal(valor, 0, 'não entra no valor do Início e do Explorar carteira');
 });
 
