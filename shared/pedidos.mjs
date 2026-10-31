@@ -151,23 +151,6 @@ export function porRepresentante(pedidos, { porGrupo = false } = {}) {
 /** Clientes com venda válida distintos no conjunto (os representantes podem repetir o mesmo cliente). */
 export const clientesDistintos = (pedidos, { porGrupo = false } = {}) => new Set(pedidos.filter((p) => num(p.valida)).map((p) => (porGrupo ? String(p.cpf_cnpj).slice(0, 8) : p.cpf_cnpj))).size;
 
-/** Clientes vendidos por mais de um representante, com a parte de cada um. */
-export function clientesVariosRepresentantes(pedidos, { porGrupo = false } = {}) {
-  const clientes = new Map();
-  const raizes = empresasPorRaiz(pedidos);
-  for (const p of pedidos) {
-    if (!num(p.valida)) continue;
-    const cli = clienteDe(p, porGrupo, raizes);
-    if (!clientes.has(cli.chave)) clientes.set(cli.chave, { ...cli, reps: new Map(), venda: 0 });
-    const c = clientes.get(cli.chave);
-    const k = String(p.rep_codigo ?? '');
-    if (!c.reps.has(k)) c.reps.set(k, { rotulo: nomeRep(p), pedidos: 0, venda: 0 });
-    c.reps.get(k).pedidos += 1; c.reps.get(k).venda += num(p.valor_pedido); c.venda += num(p.valor_pedido);
-  }
-  return [...clientes.values()].filter((c) => c.reps.size > 1).map((c) => ({ ...c,
-    reps: [...c.reps.values()].sort((a, b) => b.venda - a.venda).map((r) => ({ ...r, parte: c.venda ? (r.venda / c.venda) * 100 : 0 })) })).sort((a, b) => b.venda - a.venda);
-}
-
 /** Alertas do conjunto. Venda por outro representante não é alerta: é informação (nível Quem vendeu). */
 export function alertasPedidos(pedidos, { hoje, prazoPedidoValido = 10, desistencias = 5, diasAberto = 30, entradas = new Map(), saldoFiliais = new Map() } = {}) {
   const alertas = [];
@@ -288,16 +271,9 @@ export function montarArvorePedidos({ pedidos, niveis, abertos, rotuloRaiz = 'To
   return saida;
 }
 
-// ---------- filtros: tipo do pedido e clientes com mais de um representante; o resto é a hierarquia da árvore ----------
-/** @param tipo 'ambos' | 'venda' | 'investimento'. `variosReps`: só os clientes vendidos por mais de um representante. */
-export function filtrarPedidos(pedidos, { tipo = 'ambos', variosReps = false, porGrupo = false } = {}) {
-  let rows = pedidos;
-  if (variosReps) {
-    const docs = new Set(clientesVariosRepresentantes(pedidos, { porGrupo }).map((c) => c.documento));
-    rows = rows.filter((p) => docs.has(p.cpf_cnpj) || docs.has(String(p.cpf_cnpj).slice(0, 8)));
-  }
-  return tipo === 'ambos' ? rows : rows.filter((p) => p.tipo === tipo);
-}
+// ---------- filtro do tipo do pedido; o resto é a hierarquia da árvore ----------
+/** @param tipo 'ambos' | 'venda' | 'investimento' */
+export const filtrarPedidos = (pedidos, { tipo = 'ambos' } = {}) => (tipo === 'ambos' ? pedidos : pedidos.filter((p) => p.tipo === tipo));
 
 /** Busca da lista de pedidos: pedido, razão social, CNPJ, código ou representante, sem acento. */
 export const buscarPedidos = (pedidos, busca) => (!normalizarBusca(busca) ? pedidos

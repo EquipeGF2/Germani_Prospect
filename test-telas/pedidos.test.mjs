@@ -145,9 +145,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.click('#tipo-venda');
   assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 5, 'só pedidos de venda');
   await pagina.click('#tipo-ambos');
-  await pagina.click('#varios-sim');
-  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 3, 'o cliente A, vendido por 2 representantes');
-  await pagina.click('#varios-nao');
+  assert.equal(await pagina.locator('#varios-sim').count(), 0, 'sem o filtro de mais de um representante');
   // a lista diz de qual linha são os pedidos; a busca procura só nela, sem perder o foco ao digitar
   assert.match(await pagina.locator('#titulo-pedidos').innerText(), /^Todos os pedidos \(6\)$/);
   await pagina.locator('#busca-pedidos').pressSequentially('70005');
