@@ -133,12 +133,10 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   assert.ok(titulos.some((t) => /^invest\. \(r\$\)$/i.test(t)) && titulos.some((t) => /^pr[oó]prio \(r\$\)$/i.test(t)) && titulos.some((t) => /^outro \(r\$\)$/i.test(t)), `rótulos: ${titulos}`);
   const disponiveis = await pagina.locator('#analise-pedidos .exp-nivel.livre').evaluateAll((els) => { const z = els[0].parentElement.getBoundingClientRect(); return els.every((e) => e.getBoundingClientRect().right <= z.right + 1); });
   assert.ok(disponiveis, 'todos os níveis disponíveis ficam à vista');
-  // filtros na linha da frase, abaixo da chave
-  const topoChave = await pagina.locator('.ped-chave:has(#ver-grupo)').boundingBox();
-  const topoFiltros = await pagina.locator('#filtros-pedidos').boundingBox();
-  assert.ok(topoFiltros.y >= topoChave.y + topoChave.height - 1, 'abaixo de Ver por Empresa ou Grupo');
-  const frase = await pagina.locator('.ped-frase-filtros .ajuda').boundingBox();
-  assert.ok(frase.y < topoFiltros.y + topoFiltros.height && topoFiltros.y < frase.y + frase.height, 'na mesma linha da frase');
+  // filtro na mesma linha da chave Empresa ou Grupo
+  const caixaChave = await pagina.locator('.ped-chave:has(#ver-grupo)').boundingBox();
+  const caixaFiltro = await pagina.locator('#filtros-pedidos').boundingBox();
+  assert.ok(caixaFiltro.y < caixaChave.y + caixaChave.height && caixaChave.y < caixaFiltro.y + caixaFiltro.height, 'na mesma linha da chave');
   await pagina.click('#tipo-investimento');
   assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 1, 'só bonificação');
   assert.match(await vendaDe(), /R\$\s?0,00/, 'bonificação não é venda');

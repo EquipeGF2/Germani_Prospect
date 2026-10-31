@@ -735,10 +735,10 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ped-grupo .abre-grupo:hover { background: transparent; color: var(--destaque); }
 .lista-sep { color: #9CA3AF; }
 .cabecalho-pagina:has(.ped-chave) { display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: space-between; align-items: center; }
-.ped-frase-filtros { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.ped-frase-filtros .ajuda { margin: 0; }
+.ped-chaves { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ped-frase { margin: 0 0 14px; }
 .ped-filtros-linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.ped-seg button { min-height: 34px; padding: 0 12px; font-size: 13px; }
+.ped-seg button { padding: 0 12px; font-size: 13px; }
 .ped-lista-topo { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 12px; }
 .ped-lista-topo h2 { flex: 1 1 300px; min-width: 0; margin: 0; }
 .ped-lista-topo input { flex: 0 1 340px; width: auto; min-height: 36px; padding: 4px 10px; }
