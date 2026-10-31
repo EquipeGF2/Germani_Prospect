@@ -735,12 +735,12 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ped-grupo .abre-grupo:hover { background: transparent; color: var(--destaque); }
 .lista-sep { color: #9CA3AF; }
 .cabecalho-pagina:has(.ped-chave) { display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: space-between; align-items: center; }
-.ped-cascata { padding: 14px 16px; }
-.ped-cascata-campos { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); }
-.ped-cascata .filtro label { font-size: 12px; margin-bottom: 3px; }
-.ped-cascata select { min-height: 38px; padding: 4px 8px; }
-.ped-cascata-busca { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
-.ped-cascata-busca input { flex: 1 1 280px; width: auto; min-height: 38px; }
+.ped-busca-linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.ped-busca-linha input { flex: 0 1 340px; width: auto; min-height: 36px; padding: 4px 10px; }
+/* são mais níveis que no Explorar carteira: os disponíveis quebram linha, para todos ficarem à vista */
+.ped-exp .exp-niveis { flex-wrap: wrap; }
+.ped-exp .exp-niveis .zona { flex-wrap: wrap; flex: 1 1 auto; }
+.ped-exp .exp-niveis .zona.livres { flex: 1 1 100%; max-width: none; }
 .ped-faixa-alertas { background: #FEF3C7; border: 1px solid #FDE68A; border-radius: var(--raio); padding: 8px 14px; margin-bottom: 14px; }
 .ped-faixa-alertas > button { background: transparent; border: 0; color: #78350F; font-weight: 700; min-height: 32px; padding: 0; }
 .ped-faixa-alertas > button:hover { background: transparent; color: #78350F; text-decoration: underline; }

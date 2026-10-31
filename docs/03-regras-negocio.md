@@ -555,9 +555,10 @@ O valor não duplica (cada pedido tem um representante); o total de clientes usa
 desistências a partir de `alerta_desistencias_cliente` (5) · pedido em carteira além de `dias_alerta_pedido_aberto` (30) · em carteira do grupo, com as filiais, acima do Créd. Grupo (só pedidos em aberto: sem os títulos a receber, é uma visão parcial).
 
 **Explorar pedidos** (`shared/pedidos.mjs`, `web/js/telas/_pedidos-analise.js`), como o Explorar carteira:
-- **Filtros em cascata** (`opcoesPedidosEmCascata`): Supervisor, Quem vendeu, Dono da carteira, Cidade, Segmento, Onda, Tipo, Situação, Na lista? e Mês. Cada um mostra só o que existe com os outros escolhidos. Mais a busca e os atalhos **Mais de um representante** e **Clientes com bonificação**.
-- **Árvore do total até o pedido** com níveis livres em qualquer ordem (os mesmos, mais Grupo e Cliente). Os níveis se arrastam (no celular, botão Mudar) e a ordem fica guardada no navegador.
-- Os seis valores, os gráficos e a lista de pedidos (com CSV) seguem os filtros e o ramo escolhido. Tudo é calculado sobre os pedidos já lidos: filtrar, abrir ramo ou mudar nível não volta ao banco.
+- **Hierarquia, sem listas de filtro:** árvore do total até o pedido, com níveis livres em qualquer ordem: Supervisor, Quem vendeu, Dono da carteira, Na lista?, Cidade, Segmento, Onda, Grupo, Cliente, Tipo, Situação e Mês. Os níveis se arrastam (no celular, botão Mudar) e a ordem fica guardada no navegador.
+- **Busca e atalhos** numa linha: pedido, razão social, CNPJ ou representante; **Mais de um representante** e **Clientes com bonificação**.
+- Os seis valores, os gráficos e a lista de pedidos (com CSV) seguem o ramo escolhido. Tudo é calculado sobre os pedidos já lidos: abrir ramo ou mudar nível não volta ao banco.
+- **Leitura:** os pedidos só são lidos de novo quando há arquivo novo ou apagado (`consultaVersaoPedidos`, poucas linhas) ou depois de 30 minutos. A ficha lê só os pedidos do cliente e do grupo dele, pelo índice do CNPJ.
 - **Alertas** numa faixa no topo, que abre ao clicar.
 
 **Quem vê:** administrador, gerente e quem vê todas as equipes, tudo; supervisor, a equipe; vendedor, os pedidos da carteira dele e os que ele mesmo fez.

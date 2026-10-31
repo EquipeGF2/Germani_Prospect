@@ -127,15 +127,12 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   assert.match(await vendaDe(), /1\.580,00/);
   assert.ok(await pagina.locator('#analise-pedidos .exp-nivel[draggable="true"]').count() >= 3, 'níveis arrastáveis');
   assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 6, 'todo pedido de cliente da base, qualquer que seja a situação');
-  // cascata: o representante restringe as outras opções e os números acompanham
-  await pagina.selectOption('#filtro-ped-representante', '9002');
-  await pagina.waitForFunction(() => document.querySelector('#filtro-ped-representante').value === '9002');
-  assert.match(await vendaDe(), /580,00/);
-  const situacoes = await pagina.locator('#filtro-ped-situacao option').allInnerTexts();
-  assert.ok(!situacoes.includes('Desistência'), `o 9002 não tem desistência: ${situacoes}`);
-  await foto('p6b-explorar-filtro');
-  await pagina.click('#limpar-filtros-ped');
-  assert.match(await vendaDe(), /1\.580,00/);
+  // como no Explorar carteira: sem listas de filtro; quem filtra é a hierarquia, e os números seguem o ramo
+  assert.equal(await pagina.locator('#analise-pedidos select').count(), 0, 'sem listas de filtro');
+  const titulos = await pagina.locator('#analise-pedidos .exp-linha.cab span').allInnerTexts();
+  assert.ok(titulos.some((t) => /^invest\. \(r\$\)$/i.test(t)) && titulos.some((t) => /^pr[oó]prio \(r\$\)$/i.test(t)) && titulos.some((t) => /^outro \(r\$\)$/i.test(t)), `rótulos: ${titulos}`);
+  const disponiveis = await pagina.locator('#analise-pedidos .exp-nivel.livre').evaluateAll((els) => { const z = els[0].parentElement.getBoundingClientRect(); return els.every((e) => e.getBoundingClientRect().right <= z.right + 1); });
+  assert.ok(disponiveis, 'todos os níveis disponíveis ficam à vista');
   await pagina.click('#so-bonificacao');
   assert.ok(await pagina.locator('#pedidos-do-ramo tbody tr').count() >= 3, 'clientes com bonificação');
   await pagina.click('#so-bonificacao');

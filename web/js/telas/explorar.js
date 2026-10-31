@@ -6,6 +6,7 @@ import { consultaPedidosResumo, consultaResumo, montarArvore, NIVEIS, niveisPoss
 import { lerParametrosPainel } from '../../shared/painel.mjs';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { h, montar, mensagem, formatar } from '../ui.js';
+import { lerPedidos } from './_pedidos.js';
 
 const CHAVE_NIVEIS = 'germani.explorarNiveis';
 const n0 = (x) => formatar.numero(Math.round(Number(x) || 0));
@@ -38,7 +39,7 @@ export async function render(conteudo, { usuario }) {
   const db = await bancoApp();
   const [resumo, pedidos, parametros, status] = await Promise.all([
     lerComCache(db, consultaResumo({ usuario }), 120).then((r) => r.rows),
-    lerComCache(db, consultaPedidosResumo({ usuario }), 120).then((r) => r.rows),
+    lerPedidos(db, consultaPedidosResumo({ usuario })).then((r) => r.rows),
     lerParametrosPainel(leitorComCache(db, 600)),
     lerComCache(db, 'SELECT codigo, nome, cor FROM status', 3600).then((r) => Object.fromEntries(r.rows.map((s) => [s.codigo, s]))),
   ]).catch((e) => {

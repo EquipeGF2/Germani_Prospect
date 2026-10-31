@@ -1,16 +1,16 @@
 // Explorar pedidos: o que foi vendido, numa tela só, como o Explorar carteira: filtros em cascata e árvore do total até o pedido.
-// Lê os pedidos do escopo uma vez; filtrar, abrir ramos e trocar os níveis não voltam ao banco. docs/03 §14
-import { bancoApp } from '../db.js';
+// Lê os pedidos do escopo uma vez, e de novo só quando há arquivo novo; buscar, abrir ramos e trocar os níveis não voltam ao banco. docs/03 §14
+import { bancoApp, lerComCache } from '../db.js';
 import { alertasPedidos, consultaMotivosPedidoValido, consultaPedidos, consultaSaldoFiliais } from '../../shared/pedidos.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, selo } from '../ui.js';
 import { renderAnalise } from './_pedidos-analise.js';
-import { chaveVerPor, lerVerPor, tabelaPedidos } from './_pedidos.js';
+import { chaveVerPor, lerPedidos, lerVerPor, tabelaPedidos } from './_pedidos.js';
 
 export async function render(conteudo, { usuario }) {
   const db = await bancoApp();
-  const [pedidos, motivos, filiais, valores] = (await Promise.all([db.execute(consultaPedidos({ usuario, incluirFiliais: true })), db.execute(consultaMotivosPedidoValido()), db.execute(consultaSaldoFiliais()),
-    db.execute("SELECT chave, valor FROM parametros WHERE chave IN ('prazo_pedido_valido_dias','alerta_desistencias_cliente','dias_alerta_pedido_aberto')")])).map((r) => r.rows);
+  const [pedidos, motivos, filiais, valores] = (await Promise.all([lerPedidos(db, consultaPedidos({ usuario, incluirFiliais: true })), lerPedidos(db, consultaMotivosPedidoValido()), lerPedidos(db, consultaSaldoFiliais()),
+    lerComCache(db, "SELECT chave, valor FROM parametros WHERE chave IN ('prazo_pedido_valido_dias','alerta_desistencias_cliente','dias_alerta_pedido_aberto')", 600)])).map((r) => r.rows);
   const p = Object.fromEntries(valores.map((v) => [v.chave, Number(v.valor)]));
   // alertas olham só os clientes da base: a filial entra pelo saldo, na conta do limite do grupo
   const alertas = alertasPedidos(pedidos.filter((x) => x.prospect_id !== null), { hoje: hojeSaoPaulo(), prazoPedidoValido: p.prazo_pedido_valido_dias, desistencias: p.alerta_desistencias_cliente, diasAberto: p.dias_alerta_pedido_aberto,

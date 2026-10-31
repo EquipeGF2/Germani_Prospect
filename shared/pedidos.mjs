@@ -1,5 +1,5 @@
-// Explorar pedidos: leitura, filtros em cascata, árvore e alertas, além das contas da ficha.
-// A tela lê os pedidos do escopo numa consulta só; filtros e árvore são calculados no navegador. docs/03 §14
+// Explorar pedidos: leitura, árvore, busca, atalhos e alertas, além das contas da ficha.
+// A tela lê os pedidos do escopo numa consulta só; a árvore é calculada no navegador. docs/03 §14
 // Só clientes da base. A filial de um grupo da base (prospect_id NULL) aparece apenas na visão do grupo.
 import { veTodasEquipes } from './perfis.mjs';
 import { normalizarBusca } from './texto.mjs';
@@ -45,10 +45,17 @@ export function consultaPedidosGrupo({ prospectId }) {
   return {
     sql: `SELECT g.prospect_id, g.cpf_cnpj, g.razao_social, SUM(g.valida) AS validos, SUM(CASE WHEN g.valida = 1 THEN g.valor_pedido ELSE 0 END) AS venda, SUM(g.saldo) AS saldo,
                  SUM(CASE WHEN g.tipo = 'investimento' AND g.fase <> 'cancelado' THEN g.valor_pedido ELSE 0 END) AS investimento
-            FROM vw_pedidos g WHERE length(g.cpf_cnpj) = 14 AND g.raiz = (SELECT cnpj_raiz FROM prospects WHERE id = ?) GROUP BY g.cpf_cnpj`,
-    args: [prospectId],
+            FROM vw_pedidos g
+           WHERE g.cpf_cnpj >= (SELECT cnpj_raiz FROM prospects WHERE id = ?) AND g.cpf_cnpj < (SELECT cnpj_raiz || '~' FROM prospects WHERE id = ?)
+             AND length(g.cpf_cnpj) = 14 GROUP BY g.cpf_cnpj`,   // pelo começo do CNPJ, que tem índice: lê só o grupo, não todos os pedidos
+    args: [prospectId, prospectId],
   };
 }
+
+/** Os pedidos só mudam com um arquivo importado ou apagado: esta consulta, de poucas linhas, diz se o que já foi lido ainda vale. */
+export const consultaVersaoPedidos = () => ({ sql: 'SELECT COALESCE(MAX(importacao_id), 0) AS ultima, COUNT(apagada_em) AS apagadas FROM pedido_importacoes', args: [] });
+/** A mesma consulta, marcada com a versão dos arquivos: arquivo novo vira outra chave no cache, e a tela lê de novo. */
+export const comVersaoPedidos = (consulta, { ultima = 0, apagadas = 0 } = {}) => ({ ...consulta, sql: `${consulta.sql} /* arquivos ${ultima}.${apagadas} */` });
 
 /** Em carteira das filiais fora da base, por raiz: entra na conta do limite do grupo. */
 export function consultaSaldoFiliais() {
@@ -297,50 +304,25 @@ export function montarArvorePedidos({ pedidos, niveis, abertos, rotuloRaiz = 'To
   return saida;
 }
 
-// ---------- filtros em cascata: cada filtro mostra só o que existe com os OUTROS filtros escolhidos ----------
-/** Filtros de lista suspensa, na ordem da tela. Cliente e Grupo ficam na busca e na árvore. */
-const FILTROS_PEDIDOS = ['supervisor', 'representante', 'carteira', 'cidade', 'segmento', 'onda', 'tipo', 'situacao', 'lista', 'mes'];
-export const filtrosPedidosPossiveis = (usuario) => FILTROS_PEDIDOS.filter((f) => f !== 'supervisor' || veTodasEquipes(usuario));
-
+// ---------- busca e atalhos: os filtros de Explorar pedidos; o resto é a hierarquia da árvore ----------
 /** Atalhos: só os clientes vendidos por mais de um representante e só os que receberam bonificação (por empresa ou por grupo). */
 function aplicarAtalhos(pedidos, { variosReps = false, comBonificacao = false, porGrupo = false } = {}) {
   let rows = pedidos;
-  const chave = (p) => { const r = String(p.cpf_cnpj).slice(0, 8); return r; };
+  const raiz = (p) => String(p.cpf_cnpj).slice(0, 8);
   if (variosReps) {
     const docs = new Set(clientesVariosRepresentantes(pedidos, { porGrupo }).map((c) => c.documento));
-    rows = rows.filter((p) => docs.has(p.cpf_cnpj) || docs.has(chave(p)));
+    rows = rows.filter((p) => docs.has(p.cpf_cnpj) || docs.has(raiz(p)));
   }
   if (comBonificacao) {
     const docs = new Set(bonificacaoPorCliente(pedidos, { porGrupo }).map((c) => c.documento));
-    rows = rows.filter((p) => docs.has(p.cpf_cnpj) || docs.has(chave(p)));
+    rows = rows.filter((p) => docs.has(p.cpf_cnpj) || docs.has(raiz(p)));
   }
   return rows;
 }
 
 const passaBusca = (p, busca) => !busca || normalizarBusca(`${p.numero} ${p.razao_social} ${p.cpf_cnpj} ${p.codigo_cliente} ${p.rep_codigo} ${p.rep_nome}`).includes(normalizarBusca(busca));
-const passaFiltro = (p, f, valor) => valor == null || valor === '' || NIVEIS_PEDIDOS[f].chave(p) === valor;
 
-/** Aplica filtros ({ nivel: chave }), busca e atalhos. Tudo no navegador, sobre os pedidos já lidos. */
-export function filtrarPedidos(pedidos, { filtros = {}, busca = '', variosReps = false, comBonificacao = false, porGrupo = false } = {}) {
-  return aplicarAtalhos(pedidos, { variosReps, comBonificacao, porGrupo })
-    .filter((p) => passaBusca(p, busca) && Object.entries(filtros).every(([f, v]) => passaFiltro(p, f, v)));
+/** Aplica busca e atalhos. Tudo no navegador, sobre os pedidos já lidos. */
+export function filtrarPedidos(pedidos, { busca = '', variosReps = false, comBonificacao = false, porGrupo = false } = {}) {
+  return aplicarAtalhos(pedidos, { variosReps, comBonificacao, porGrupo }).filter((p) => passaBusca(p, busca));
 }
-
-/** Opções de cada filtro: as que existem nos pedidos que passam nos outros filtros. Mantém a escolhida, mesmo sem pedido, para poder trocá-la. */
-export function opcoesPedidosEmCascata(pedidos, { filtros = {}, busca = '', variosReps = false, comBonificacao = false, porGrupo = false, possiveis = FILTROS_PEDIDOS } = {}) {
-  const base = aplicarAtalhos(pedidos, { variosReps, comBonificacao, porGrupo }).filter((p) => passaBusca(p, busca));
-  const saida = {};
-  for (const f of possiveis) {
-    const def = NIVEIS_PEDIDOS[f];
-    const rows = base.filter((p) => Object.entries(filtros).every(([o, v]) => o === f || passaFiltro(p, o, v)));
-    const opcoes = new Map();
-    for (const p of rows) { const k = def.chave(p); if (k !== '' && k != null && !opcoes.has(k)) opcoes.set(k, def.rotulo(p)); }
-    if (filtros[f] && !opcoes.has(filtros[f])) {
-      const exemplo = pedidos.find((p) => def.chave(p) === filtros[f]);
-      if (exemplo) opcoes.set(filtros[f], def.rotulo(exemplo));
-    }
-    saida[f] = [...opcoes].map(([valor, rotulo]) => ({ valor, rotulo })).sort((a, b) => String(a.rotulo).localeCompare(String(b.rotulo), 'pt-BR', { numeric: true }));
-  }
-  return saida;
-}
-

@@ -5,7 +5,7 @@ import { bancoTeste, cnpjTeste, criarEquipe, criarProspect, evento, prospect, re
 import { lerBiff2 } from '../shared/biff.mjs';
 import { lerPlanilhaDeBytes } from '../shared/planilha.mjs';
 import { apagarArquivoPedidos, conferirExclusao, gravarPedidos, listarArquivosPedidos, simularPedidos, statusDepois } from '../shared/importar-pedidos.mjs';
-import { agruparPorRaiz, alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, consultaPedidosGrupo, consultaSaldoFiliais, filtrarPedidos, filtrosPedidosPossiveis, indicadoresRamo, montarArvorePedidos, opcoesPedidosEmCascata, niveisPedidosPossiveis, porRepresentante, resumirPedidos, rotuloGrupo } from '../shared/pedidos.mjs';
+import { agruparPorRaiz, alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, comVersaoPedidos, consultaPedidosGrupo, consultaSaldoFiliais, consultaVersaoPedidos, filtrarPedidos, indicadoresRamo, montarArvorePedidos, niveisPedidosPossiveis, porRepresentante, resumirPedidos, rotuloGrupo } from '../shared/pedidos.mjs';
 import { consultaPedidosResumo } from '../shared/explorar.mjs';
 import { consultaCarteira } from '../shared/carteira.mjs';
 import { STATUS_ENCERRADOS } from '../shared/status.mjs';
@@ -395,32 +395,19 @@ test('Acompanhamento: só o que está em processo e encerrados; a venda fica em 
   assert.deepEqual([...STATUS_ENCERRADOS].sort(), ['expurgado', 'invalido', 'sem_interesse']);
 });
 
-test('filtros em cascata: cada filtro mostra só o que existe com os outros, e os atalhos restringem por cliente', async () => {
+test('busca e atalhos restringem os pedidos; as colunas somam a venda', async () => {
   const db = await montar();
-  await criarProspect(db, { n: 1, vendedorId: 2, cidade: 'Lajeado', onda: '1' }); await criarProspect(db, { n: 2, vendedorId: 3, cidade: 'Estrela', onda: '2' }); await criarProspect(db, { n: 3, vendedorId: 2, cidade: 'Lajeado', onda: '2' });
+  await criarProspect(db, { n: 1, vendedorId: 2 }); await criarProspect(db, { n: 2, vendedorId: 3 }); await criarProspect(db, { n: 3, vendedorId: 2 });
   await grava(db, arquivo(linha({ doc: cnpjTeste(1), num: 1, sit: 4, valor: 100, fat: 100, rep: 10 }), linha({ doc: cnpjTeste(1), num: 2, sit: 1, valor: 50, rep: 11 }),
     linha({ doc: cnpjTeste(2), num: 3, sit: 1, valor: 300, rep: 11 }), linha({ doc: cnpjTeste(3), num: 4, sit: 4, valor: 9, fat: 9, tr: '90106', rep: 10 })));
   const pedidos = await pedidosDe(db);
-  const cidades = (op) => op.cidade.map((o) => o.rotulo);
-  const tudo = opcoesPedidosEmCascata(pedidos);
-  assert.deepEqual(cidades(tudo), ['Estrela/RS', 'Lajeado/RS']);
-  const lajeado = 'Lajeado|RS';
-  const comCidade = opcoesPedidosEmCascata(pedidos, { filtros: { cidade: lajeado } });
-  assert.deepEqual(comCidade.onda.map((o) => o.valor), ['1', '2'], 'só as ondas de Lajeado');
-  assert.deepEqual(comCidade.representante.map((o) => o.valor), ['10', '11']);
-  assert.deepEqual(cidades(comCidade), ['Estrela/RS', 'Lajeado/RS'], 'a própria faceta não se restringe: dá para trocar a cidade');
-  const comOnda = opcoesPedidosEmCascata(pedidos, { filtros: { onda: '2', representante: '10' } });
-  assert.deepEqual(cidades(comOnda), ['Lajeado/RS'], 'cada escolha estreita as outras');
-  assert.deepEqual(filtrarPedidos(pedidos, { filtros: { cidade: lajeado, onda: '1' } }).map((p) => p.numero).sort(), ['1', '2']);
   assert.deepEqual(filtrarPedidos(pedidos, { busca: 'vend onze' }).map((p) => p.numero).sort(), ['2', '3'], 'busca pelo nome do representante, sem acento');
   assert.deepEqual(filtrarPedidos(pedidos, { variosReps: true }).map((p) => p.numero).sort(), ['1', '2'], 'cliente com mais de um representante');
   assert.deepEqual(filtrarPedidos(pedidos, { comBonificacao: true }).map((p) => p.numero), ['4'], 'cliente com bonificação');
   const r = indicadoresRamo(pedidos);
-  assert.equal(r.propria + r.outra, r.venda.valor, 'na lista + fora da lista = venda');
+  assert.equal(r.propria + r.outra, r.venda.valor, 'próprio + outro = venda');
   assert.equal(r.propria, 400); assert.equal(r.outra, 50);
   assert.ok(Math.abs(r.pctInvestimento - (9 / 450) * 100) < 0.001);
-  const expl = opcoesPedidosEmCascata(pedidos, { possiveis: filtrosPedidosPossiveis({ perfil: 'vendedor' }) });
-  assert.equal('supervisor' in expl, false, 'vendedor não filtra por supervisor');
 });
 
 test('pedido de filial fora da base: aparece só em Ver por Grupo, com o dono do grupo, e não muda status nem o resto', async () => {
@@ -446,5 +433,28 @@ test('pedido de filial fora da base: aparece só em Ver por Grupo, com o dono do
   assert.deepEqual((await lerTodos({ id: 1, perfil: 'supervisor' })).map((p) => p.numero), ['2'], 'o supervisor da equipe vê');
   const valor = Number((await db.execute({ sql: 'SELECT COALESCE(SUM(valor), 0) v FROM vw_valor_pedidos WHERE prospect_id = ?', args: [id] })).rows[0].v);
   assert.equal(valor, 0, 'não entra no valor do Início e do Explorar carteira');
+});
+
+test('leitura: a ficha não percorre todos os pedidos, e os pedidos só são relidos com arquivo novo ou apagado', async () => {
+  const db = await montar();
+  const a = cnpjTeste(1, 1); const b = cnpjTeste(1, 2); const outro = cnpjTeste(2);
+  const id = await criarProspect(db, { n: 1, cnpj: a }); await criarProspect(db, { n: 3, cnpj: b }); await criarProspect(db, { n: 2, cnpj: outro });
+  const v0 = (await db.execute(consultaVersaoPedidos())).rows[0];
+  assert.deepEqual([Number(v0.ultima), Number(v0.apagadas)], [0, 0]);
+  const g = await grava(db, arquivo(linha({ doc: a, num: 1, valor: 10 }), linha({ doc: b, num: 2, valor: 20 }), linha({ doc: outro, num: 3, valor: 40 })));
+  const c = consultaPedidosGrupo({ prospectId: id });
+  const plano = (await db.execute({ sql: `EXPLAIN QUERY PLAN ${c.sql}`, args: c.args })).rows.map((l) => String(l.detail));
+  assert.ok(plano.some((d) => /SEARCH pe USING INDEX ix_pedidos_erp_documento/.test(d)), `usa o índice do CNPJ: ${plano}`);
+  assert.ok(!plano.some((d) => /SCAN pe/.test(d)), `não percorre todos os pedidos: ${plano}`);
+  const grupo = (await db.execute(c)).rows;
+  assert.deepEqual(grupo.map((x) => [x.cpf_cnpj, Number(x.saldo)]).sort(), [[a, 10], [b, 20]].sort(), 'só o grupo do cliente');
+  const v1 = (await db.execute(consultaVersaoPedidos())).rows[0];
+  assert.equal(Number(v1.ultima), g.importacaoId);
+  const base = consultaPedidos({ usuario: adm });
+  const antes = comVersaoPedidos(base, v1);
+  assert.equal((await db.execute(antes)).rows.length, 3, 'a marca da versão não muda o resultado');
+  await apagarArquivoPedidos(db, { importacaoId: g.importacaoId, usuarioId: 4 });
+  const v2 = (await db.execute(consultaVersaoPedidos())).rows[0];
+  assert.notEqual(comVersaoPedidos(base, v2).sql, antes.sql, 'apagar um arquivo também vira outra chave');
 });
 
