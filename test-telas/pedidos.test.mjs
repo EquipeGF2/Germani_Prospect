@@ -7,7 +7,7 @@ import path from 'node:path';
 import { chromium } from 'playwright-core';
 import { servir } from '../scripts/servir.mjs';
 import { lerPlanilha } from '../lib/planilha.mjs';
-import { analisarCnpj } from '../shared/cnpj.mjs';
+import { analisarCnpj, calcularDv } from '../shared/cnpj.mjs';
 
 const CHROME = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const FOTOS = process.env.FOTOS_TELAS ?? null;
@@ -56,6 +56,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   const { linhas } = await lerPlanilha('exemplos/base-ficticia.xlsx');
   const cnpjs = linhas.slice(1).map((l) => analisarCnpj(l[0])).filter((c) => !c.erro).map((c) => c.cnpj);
   const [a, b, c] = cnpjs.slice(100, 103);
+  const filial = (() => { const b = a.slice(0, 8) + '0777'; return b + calcularDv(b); })();
   const arquivo = path.join(tmp, 'pedidos_teste.xlsx.XLS');
   await writeFile(arquivo, xls([CAB,
     [901, 'CLIENTE A', a, 1000, 1000, 70001, 4, 'Liquidado', '90100', 'Pedido de Venda', 9001],
@@ -63,6 +64,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
     [901, 'CLIENTE A', a, 50, 50, 70003, 4, 'Liquidado', '90106', 'Pedido de Bonificação', 9001],
     [902, 'CLIENTE B', b, 300, 0, 70004, 9, 'Não Fechado', '90100', 'Pedido de Venda', 9002],
     [903, 'CLIENTE C', c, 200, 0, 70005, 5, 'Desistência', '90100', 'Pedido de Venda', 9001],
+    [906, 'CLIENTE A FILIAL', filial, 80, 0, 70008, 1, 'Aberto Total', '90100', 'Pedido de Venda', 9001],
     [904, 'FORA DA BASE', '11222333000181', 400, 0, 70006, 1, 'Aberto Total', '90100', 'Pedido de Venda', 9001],
     [905, 'PESSOA', '12345678909', 100, 0, 70007, 1, 'Aberto Total', '90100', 'Pedido de Venda', 9002],
   ]));
@@ -75,7 +77,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await foto('p1-arquivo');
   await pagina.click('#ler-pedidos');
   await pagina.waitForSelector('#ir-classificar');
-  assert.match(await texto(), /Representantes sem código no cadastro/);
+  assert.match(await texto(), /Fora da base e CPF \(ignorados\)/);
   await foto('p1b-conferencia');
   await pagina.click('#ir-classificar');
   await pagina.waitForSelector('#ir-vincular');
@@ -87,7 +89,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.click('#ir-vincular');
   await pagina.waitForSelector('#ir-simular');
   await foto('p3-vinculo');
-  assert.equal(await pagina.locator('#clientes-arquivo tbody tr').count(), 5);
+  assert.equal(await pagina.locator('#clientes-arquivo tbody tr').count(), 4, 'os 3 da base e a filial do grupo; fora da base e CPF não entram');
   assert.equal(await alinhamento('#clientes-arquivo tbody td:nth-child(1) >> nth=0'), 'left', 'razão social à esquerda');
   assert.equal(await alinhamento('#clientes-arquivo tbody td:nth-child(5) >> nth=0'), 'center', 'número centralizado');
   assert.equal(await alinhamento('#clientes-arquivo thead th:nth-child(1)'), 'center', 'rótulo centralizado');
@@ -96,15 +98,36 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await foto('p4-simulacao');
   const simulado = await texto();
   assert.match(simulado, /Aguardando pedido válido/);
-  assert.match(simulado, /R\$\s?1\.900,00|R\$\s?2\.000,00/, 'venda válida na simulação');
+  assert.match(simulado, /R\$\s?1\.500,00/, 'venda válida só dos clientes da base');
+  assert.match(simulado, /sem código no cadastro/);
   await pagina.click('#gravar-pedidos');
   await pagina.waitForSelector('text=concluída');
   await foto('p5-gravado');
 
+  // análise: abre direto, como o Explorar carteira; os números seguem o ramo escolhido e nada volta ao banco
   await ir('#/pedidos');
+  await pagina.waitForSelector('#analise-pedidos');
+  await pagina.waitForSelector('.exp-linha.raiz.escolhida');
+  await foto('p5b-analise');
+  const vendaDe = () => pagina.locator('#analise-numeros .ped-kpi.destaque b').innerText();
+  assert.match(await vendaDe(), /1\.500,00/);
+  assert.ok(await pagina.locator('#analise-pedidos .exp-nivel[draggable="true"]').count() >= 3, 'níveis arrastáveis');
+  const ramos = pagina.locator('#analise-pedidos .exp-linha:not(.cab):not(.raiz)');
+  await ramos.first().click();
+  await pagina.waitForSelector('.exp-caminho button.atual');
+  await pagina.locator('#analise-pedidos .exp-nivel[data-livre="situacao"]').click();
+  assert.equal(await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="situacao"]').count(), 1, 'incluir nível com um clique');
+  await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="situacao"] .tirar').click();
+  await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="supervisor"] .tirar').click();
+  await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="representante"] .tirar').click();
+  await pagina.locator('#analise-pedidos .exp-linha.raiz').click();
+  await pagina.waitForSelector('#pedidos-do-ramo tbody tr');
+  await foto('p5c-analise-ramo');
+  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 5, 'pedidos do ramo escolhido');
+  await pagina.click('button[data-aba="pedidos"]');
   await pagina.waitForSelector('#lista-pedidos');
   await foto('p6-pedidos');
-  assert.equal(await pagina.locator('#lista-pedidos tbody tr').count(), 7, 'todo pedido fica listado, qualquer que seja a situação');
+  assert.equal(await pagina.locator('#lista-pedidos tbody tr').count(), 5, 'todo pedido de cliente da base, qualquer que seja a situação');
   const umaLinha = await pagina.locator('.ped-kpi').evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size);
   assert.equal(umaLinha, 1, 'cards numa linha só');
   await pagina.click('button[data-aba="representantes"]');
@@ -123,8 +146,10 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
 
   // ficha do cliente com pedidos
   await pagina.click('button[data-aba="pedidos"]');
-  await pagina.locator('#lista-pedidos tbody a', { hasText: 'CLIENTE' }).or(pagina.locator('#lista-pedidos tbody a')).first().click();
+  await pagina.waitForSelector('#lista-pedidos');
+  await pagina.locator('#lista-pedidos tbody tr', { hasText: '70001' }).locator('a').click();
   await pagina.waitForSelector('#pedidos-cliente');
+  await pagina.waitForSelector('#pedidos-grupo >> text=Filiais fora da base');
   await foto('p10-ficha');
 
   // apagar: tira os dados e volta os status

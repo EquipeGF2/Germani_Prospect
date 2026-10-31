@@ -17,6 +17,8 @@ export async function render(conteudo, ctx) {
   let lidas = null;      // linhas validadas do arquivo
   let classificacao = await lerClassificacao(db);
   let simulacao = null;
+  let cnpjsBase = new Set();
+  let raizesBase = new Set();
   const hoje = hojeSaoPaulo();
   const dataArquivo = h('input', { id: 'data-arquivo', type: 'date', value: hoje, max: hoje });
   const nomesStatus = Object.fromEntries((await db.execute('SELECT codigo, nome FROM status')).rows.map((s) => [s.codigo, s.nome]));
@@ -53,25 +55,32 @@ export async function render(conteudo, ctx) {
     const faltam = [];
     if (numeros.length) for (let n = numeros[0]; n <= numeros.at(-1) && faltam.length < 21; n++) if (!numeros.includes(n)) faltam.push(n);
     const repetido = (await db.execute({ sql: `SELECT i.id FROM importacoes i JOIN pedido_importacoes p ON p.importacao_id = i.id WHERE i.arquivo_sha256 = ? AND p.apagada_em IS NULL LIMIT 1`, args: [planilha.sha256] })).rows[0];
-    const reps = new Set((await db.execute("SELECT codigo_erp FROM usuarios WHERE codigo_erp IS NOT NULL AND perfil IN ('vendedor','supervisor')")).rows.map((u) => String(u.codigo_erp)));
-    const semCodigo = [...new Set(ok.map((r) => r.rep).filter((r) => r && !reps.has(r)))].sort((a, b) => Number(a) - Number(b));
+    const base = (await db.execute('SELECT cnpj, cnpj_raiz FROM prospects')).rows;
+    cnpjsBase = new Set(base.map((p) => String(p.cnpj)));
+    raizesBase = new Set(base.map((p) => String(p.cnpj_raiz)));
+    const naBase = ok.filter((r) => !r.cpf && cnpjsBase.has(r.documento));
+    const filiais = ok.filter((r) => !r.cpf && !cnpjsBase.has(r.documento) && raizesBase.has(r.documento.slice(0, 8)));
+    const fora = ok.length - naBase.length - filiais.length;
     const linha = (rotulo, texto, tipo) => h('div', { class: 'ped-linha' }, h('span', {}, rotulo), selo(texto, tipo));
     montar(area, passos(ETAPAS, 0),
       h('div', { class: 'cartao' }, h('h2', {}, `${planilha.nome}`),
         h('p', { class: 'ajuda' }, `${formatar.numero(lidas.resultados.length)} linhas · ${planilha.observacao} · data ${formatar.data(dataArquivo.value)}${lidas.temColunaData ? ' (ou a coluna de data de cada linha)' : ''}`),
         linha('Linhas com erro', String(lidas.resultados.length - ok.length), lidas.resultados.length === ok.length ? 'ok' : 'erro'),
-        linha('CPF (pessoa física)', `${ok.filter((r) => r.cpf).length} linha(s)`, ok.some((r) => r.cpf) ? 'alerta' : 'ok'),
-        linha('Representantes sem código no cadastro', semCodigo.length ? semCodigo.join(', ') : 'nenhum', semCodigo.length ? 'alerta' : 'ok'),
+        linha('Pedidos de clientes da base', `${formatar.numero(naBase.length)} linha(s)`, naBase.length ? 'ok' : 'alerta'),
+        linha('Filiais de grupos da base (só na visão do grupo)', `${formatar.numero(filiais.length)} linha(s)`, ''),
+        linha('Fora da base e CPF (ignorados)', `${formatar.numero(fora)} linha(s)`, ''),
         linha('Faturado maior que o pedido', String(ok.filter((r) => r.avisos.some((a) => a.includes('faturado maior'))).length), ok.some((r) => r.avisos.some((a) => a.includes('faturado maior'))) ? 'alerta' : 'ok'),
         linha('Números faltando na sequência', faltam.length ? (faltam.length > 20 ? 'mais de 20' : faltam.join(', ')) : 'nenhum', faltam.length ? 'alerta' : 'ok'),
         linha('Este arquivo já foi importado?', repetido ? `sim, nº ${repetido.id}` : 'não', repetido ? 'alerta' : 'ok'),
-        semCodigo.length ? mensagem('Sem o código no cadastro, o nome do representante não aparece. Inclua o código em Usuários; o nome passa a aparecer sem precisar importar de novo.', 'info') : null),
+        naBase.length ? null : mensagem('Nenhum pedido deste arquivo é de cliente da base.', 'info')),
       h('div', { class: 'acoes' }, h('button', { id: 'ir-classificar', onclick: etapaClassificacao }, 'Continuar: classificar os pedidos'), h('button', { class: 'secundario', onclick: etapaArquivo }, 'Trocar arquivo')));
   }
 
   function etapaClassificacao() {
-    const ok = lidas.resultados.filter((r) => r.resultado === 'aceita');
-    const reunir = (campo, descricao) => { const m = new Map(); for (const r of ok) { const k = r[campo]; if (!m.has(k)) m.set(k, { codigo: k, descricao: r[descricao], qtd: 0, valor: 0 }); m.get(k).qtd++; m.get(k).valor += r.valorPedido; } return [...m.values()]; };
+    // classifica e soma só o que entra: clientes da base; as filiais só contam para os códigos
+    const entram = lidas.resultados.filter((r) => r.resultado === 'aceita' && !r.cpf && (cnpjsBase.has(r.documento) || raizesBase.has(r.documento.slice(0, 8))));
+    const ok = entram.filter((r) => cnpjsBase.has(r.documento));
+    const reunir = (campo, descricao) => { const m = new Map(); for (const r of entram) { const k = r[campo]; if (!m.has(k)) m.set(k, { codigo: k, descricao: r[descricao], qtd: 0, valor: 0 }); if (cnpjsBase.has(r.documento)) { m.get(k).qtd++; m.get(k).valor += r.valorPedido; } } return [...m.values()]; };
     const transacoes = reunir('transacao', 'transacaoDescricao').sort((a, b) => a.codigo.localeCompare(b.codigo));
     const situacoes = reunir('situacao', 'situacaoDescricao').sort((a, b) => Number(classificacao.situacoes.get(a.codigo)?.ordem ?? 99) - Number(classificacao.situacoes.get(b.codigo)?.ordem ?? 99));
     const escolhas = new Map();
@@ -128,24 +137,24 @@ export async function render(conteudo, ctx) {
     const s = simulacao;
     const nomeRep = (c) => `${c} · ${s.nomeRep(c) ?? 'sem cadastro'}`;
     const efeito = (c) => {
-      if (c.cpf) return 'Fora da carteira';
-      if (c.prospectId == null) return c.filial ? 'Filial do grupo: só informação' : 'Só informação';
+      if (c.filial) return 'Só na visão do grupo';
       if (c.statusAtual === 'expurgado') return 'Expurgado: só registra';
       if (c.validos) return 'Venda realizada';
       if (c.digitados || c.desistencias) return 'Aguardando pedido válido';
       return 'Exceção: bonificação sem venda';
     };
-    const base = (c) => (c.cpf ? selo('CPF') : c.prospectId != null ? selo('Na base', 'ok') : c.filial ? selo('Filial do grupo', 'alerta') : selo('Fora da base'));
+    const base = (c) => (c.prospectId != null ? selo('Na base', 'ok') : selo('Filial do grupo', 'alerta'));
     montar(area, passos(ETAPAS, 2),
-      h('div', { class: 'ped-kpis compacto' }, [['ok', 'Pedido válido', 'Venda realizada'], ['alerta', 'Sem pedido válido', 'Ag. pedido válido'], ['investimento', 'Só bonificação', 'Exceção, com alerta'], ['', 'Filial do grupo', 'Dica na ficha'], ['', 'Fora da base', 'Só informação'], ['', 'CPF', 'Ignorado'], ['alerta', 'Rep. sem código', 'Incluir o código']]
+      h('div', { class: 'ped-kpis compacto' }, [['ok', 'Pedido válido', 'Venda realizada'], ['alerta', 'Sem pedido válido', 'Ag. pedido válido'], ['investimento', 'Só bonificação', 'Exceção, com alerta'], ['', 'Filial do grupo', 'Só na visão do grupo'], ['', 'Fora da base', 'Ignorado'], ['', 'CPF', 'Ignorado'], ['alerta', 'Rep. sem código', 'Incluir o código']]
         .map(([c, t, d]) => h('div', { class: 'ped-kpi' }, selo(t, c), h('span', {}, d)))),
-      h('div', { class: 'cartao' }, h('h2', {}, `Os ${formatar.numero(s.clientes.length)} clientes do arquivo`),
+      h('div', { class: 'cartao' }, h('h2', {}, `Os ${formatar.numero(s.clientes.length)} clientes que entram`),
+        h('p', { class: 'ajuda' }, `${formatar.numero(s.pontos.foraDaBase.clientes)} cliente(s) fora da base ou com CPF ficam de fora (${formatar.numero(s.pontos.foraDaBase.linhas)} linhas, ${moeda(s.pontos.foraDaBase.valor)}).`),
         tabelaPedidos([
           { titulo: 'Razão social', valor: (c) => razaoSocial({ codigo: c.cliente, razao: c.razao, doc: c.documento }), classe: 'rz' },
           { titulo: 'Válidos', valor: (c) => formatar.numero(c.validos), classe: 'num' }, { titulo: 'Digit.', valor: (c) => formatar.numero(c.digitados), classe: 'num' },
           { titulo: 'Desist.', valor: (c) => formatar.numero(c.desistencias), classe: 'num' }, { titulo: 'Venda válida (R$)', valor: (c) => valor(c.venda), classe: 'num' },
           { titulo: 'Investimento (R$)', valor: (c) => valor(c.investimento), classe: 'num' }, { titulo: 'Representantes (cód. · nome)', valor: (c) => c.reps.map(nomeRep).join(', ') },
-          { titulo: 'Na base?', valor: base, classe: 'cen' }, { titulo: 'Efeito', valor: efeito, classe: 'cen' }], s.clientes, { id: 'clientes-arquivo' })),
+          { titulo: 'Na base?', valor: base, classe: 'cen' }, { titulo: 'Efeito', valor: efeito, classe: 'cen' }], s.clientes, { id: 'clientes-arquivo', vazio: 'Nenhum cliente deste arquivo está na base.' })),
       h('div', { class: 'acoes' }, h('button', { id: 'ir-simular', onclick: etapaSimulacao }, 'Continuar: simular'), h('button', { class: 'secundario', onclick: etapaClassificacao }, 'Voltar')));
   }
 
@@ -161,7 +170,8 @@ export async function render(conteudo, ctx) {
       ...s.pontos.muitaDesistencia.map((c) => ponto('alerta', 'Conferir', `${c.razao}: ${c.desistencias} desistências.`)),
       ...(s.pontos.variosRepresentantes ? [ponto('', 'Informação', `${s.pontos.variosRepresentantes} cliente(s) com mais de um representante. O cliente fica com o dono, e a venda vai para quem a realizou.`)] : []),
       ponto('', 'Informação', 'Pode ser desfeito: os dados deste arquivo podem ser apagados depois, em Importações.'),
-      ...(s.pontos.cpf.length ? [ponto('', 'Informação', `CPF: ${s.pontos.cpf.length} cliente(s) ficam fora da carteira.`)] : []),
+      ...(s.pontos.filiais.length ? [ponto('', 'Informação', `${s.pontos.filiais.length} filial(is) de grupos da base, ${moeda(t.grupo.valor)}: só entram na visão do grupo, não contam como venda do cliente.`)] : []),
+      ...(s.pontos.foraDaBase.linhas ? [ponto('', 'Ignorado', `${s.pontos.foraDaBase.clientes} cliente(s) fora da base ou com CPF: ${s.pontos.foraDaBase.linhas} linhas, ${moeda(s.pontos.foraDaBase.valor)}.`)] : []),
     ];
     const colunasCsv = [{ titulo: 'Linha', texto: (r) => r.numeroLinha }, { titulo: 'Pedido', texto: (r) => r.numero ?? '' }, { titulo: 'CPF/CNPJ', texto: (r) => r.documento ?? '' }, { titulo: 'Razão social', texto: (r) => r.razao ?? '' },
       { titulo: 'Tipo', texto: (r) => TIPOS_TRANSACAO[r.tipo] ?? '' }, { titulo: 'Conta como', texto: (r) => FASES[r.fase] ?? '' }, { titulo: 'Resultado', texto: (r) => r.resultado },
@@ -178,14 +188,14 @@ export async function render(conteudo, ctx) {
     } }, 'Confirmar e gravar');
     const rejeitadas = s.resumo.rejeitadas;
     montar(area, passos(ETAPAS, 3),
-      cartoes([['Linhas lidas', formatar.numero(s.resumo.linhasLidas), `${formatar.numero(s.resumo.ignoradas)} sem mudança · ${formatar.numero(rejeitadas)} rejeitadas`],
+      cartoes([['Linhas lidas', formatar.numero(s.resumo.linhasLidas), `${formatar.numero(s.pontos.foraDaBase.linhas)} fora da base · ${formatar.numero(rejeitadas)} rejeitadas`],
         ['Venda válida', moeda(t.venda.valor), `${formatar.numero(t.venda.qtd)} pedidos`, 'destaque'], ['Digitado', moeda(t.digitado.valor), `${formatar.numero(t.digitado.qtd)} pedidos`],
         ['Desistência', moeda(t.cancelado.valor), `${formatar.numero(t.cancelado.qtd)} pedidos`], ['Investimento', moeda(t.investimento.valor), `${formatar.numero(t.investimento.qtd)} pedidos`, 'investimento']]),
       h('div', { class: 'ped-colunas' },
         h('div', { class: 'estreito' }, h('div', { class: 'cartao' }, h('h2', {}, 'Mudanças nos clientes da base'),
           tabelaPedidos([{ titulo: 'Hoje', valor: (m) => nomesStatus[m.antes] ?? m.antes }, { titulo: 'Depois', valor: (m) => selo(nomesStatus[m.depois] ?? m.depois, m.depois === 'venda_realizada' ? 'ok' : 'alerta'), classe: 'cen' }, { titulo: 'Clientes', valor: (m) => formatar.numero(m.clientes), classe: 'num' }],
             s.movimentos, { vazio: 'Nenhum cliente da base muda de status com este arquivo.', id: 'mudancas' }),
-          h('p', { class: 'ajuda', style: 'margin-bottom:0' }, `${formatar.numero(s.clientes.filter((c) => c.prospectId != null).length)} cliente(s) na base · ${formatar.numero(s.pontos.foraDaBase.length)} fora da base · ${formatar.numero(s.pontos.cpf.length)} CPF.`))),
+          h('p', { class: 'ajuda', style: 'margin-bottom:0' }, `${formatar.numero(s.clientes.filter((c) => c.prospectId != null).length)} cliente(s) na base · ${formatar.numero(s.pontos.filiais.length)} filial(is) de grupo · ${formatar.numero(s.pontos.foraDaBase.clientes)} ignorado(s).`))),
         h('div', { class: 'largo' }, h('div', { class: 'cartao' }, h('h2', {}, 'Pontos para conferir antes de gravar'),
           tabelaPedidos([{ titulo: 'Tipo', valor: (p) => selo(p.rotulo, p.tipo), classe: 'cen' }, { titulo: 'O quê', campo: 'texto' }], pontos)))),
       rejeitadas ? h('div', { class: 'cartao' }, h('h2', {}, `Linhas rejeitadas (${formatar.numero(rejeitadas)})`),

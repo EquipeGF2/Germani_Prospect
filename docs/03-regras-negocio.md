@@ -508,6 +508,16 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 
 Importação: docs/05 §6. Tela: **Acompanhamento de pedidos** (`#/pedidos`), uma linha por pedido — o Acompanhamento continua uma linha por cliente.
 
+**Só entram os pedidos dos CNPJs da base.** O relatório traz todos os clientes do ERP, mas a campanha olha só a base:
+
+| CPF / CNPJ da linha | O que acontece |
+|---|---|
+| CNPJ na base | Entra: vincula ao cliente, conta em tudo |
+| Outro CNPJ com a raiz de um cliente da base (filial do grupo) | Entra só na **visão do grupo**, na ficha, e na conta do limite do grupo. Não é venda do cliente, não muda status, não entra nos totais nem nas listas |
+| CNPJ fora da base e CPF | **Ignorado**: não é gravado como pedido; fica só na contagem e nas linhas da importação |
+
+Se o CNPJ entrar na base depois, o pedido passa a entrar no próximo arquivo.
+
 **Classificação** (tabelas `pedido_transacoes` e `pedido_situacoes`, escolhidas na importação; código novo para a importação e pergunta):
 
 | Código do ERP | Conta como |
@@ -536,10 +546,14 @@ Vale a regra do atendimento automático (§3): sem registro do representante no 
 
 **Representante:** o cliente fica com o dono da carteira e a venda vai para quem a realizou (coluna Rep. ligada a `usuarios.codigo_erp`; o nome vem do cadastro, então incluir o código depois
 não exige importar de novo). O cliente aparece na lista de cada representante que vendeu para ele, com o valor de cada um. É só informação, sem alerta: a carteira nunca muda sozinha.
-O valor não duplica (cada pedido tem um representante); o total de clientes usa os distintos. CPF e CNPJ fora da base ficam como informação para quem vendeu, fora dos indicadores de prospecção.
+O valor não duplica (cada pedido tem um representante); o total de clientes usa os distintos.
 
 **Alertas** (aba Alertas; prazos em Parâmetros): Aguardando pedido válido além de `prazo_pedido_valido_dias` (10) · bonificação sem venda · representante sem código no cadastro ·
-desistências a partir de `alerta_desistencias_cliente` (5) · pedido em carteira além de `dias_alerta_pedido_aberto` (30) · em carteira do grupo acima do Créd. Grupo (só pedidos em aberto: sem os títulos a receber, é uma visão parcial).
+desistências a partir de `alerta_desistencias_cliente` (5) · pedido em carteira além de `dias_alerta_pedido_aberto` (30) · em carteira do grupo, com as filiais, acima do Créd. Grupo (só pedidos em aberto: sem os títulos a receber, é uma visão parcial).
+
+**Análise** (primeira aba, `shared/pedidos.mjs` · `montarArvorePedidos`): como o Explorar carteira, árvore do total até o pedido com níveis livres em qualquer ordem: Supervisor, Quem vendeu, Dono da carteira, Na lista?,
+Cidade, Segmento, Onda, Grupo, Cliente, Tipo, Situação e Mês. Os níveis se arrastam (no celular, botão Mudar) e a ordem fica guardada no navegador. Os seis valores, os gráficos e a lista de pedidos seguem o ramo escolhido.
+Tudo é calculado sobre os pedidos já lidos: abrir ramo ou mudar nível não volta ao banco.
 
 **Quem vê:** administrador, gerente e quem vê todas as equipes, tudo; supervisor, a equipe; vendedor, os pedidos da carteira dele e os que ele mesmo fez.
 

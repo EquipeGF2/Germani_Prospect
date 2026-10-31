@@ -1,38 +1,40 @@
 // Acompanhamento de pedidos: cada linha é um pedido (o Acompanhamento de clientes continua uma linha por cliente). docs/03 §14
 import { bancoApp } from '../db.js';
-import { alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaMotivosPedidoValido, consultaPedidos, porRepresentante, resumirPedidos, rotuloRepresentante } from '../../shared/pedidos.mjs';
+import { alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaMotivosPedidoValido, consultaPedidos, consultaSaldoFiliais, porRepresentante, resumirPedidos, rotuloRepresentante } from '../../shared/pedidos.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
 import { h, montar, mensagem, formatar, selo, baixarCsv } from '../ui.js';
+import { renderAnalise } from './_pedidos-analise.js';
 import { cartoes, moeda, valor, razaoSocial, documento, seloSituacao, seloRelacao, tabelaPedidos } from './_pedidos.js';
 
-const ABAS = { pedidos: 'Pedidos', representantes: 'Por representante', bonificacao: 'Bonificação', alertas: 'Alertas' };
+const ABAS = { analise: 'Análise', pedidos: 'Pedidos', representantes: 'Por representante', bonificacao: 'Bonificação', alertas: 'Alertas' };
 const NOME_TIPO = { venda: 'Venda', investimento: 'Bonificação', ignorar: 'Não considerado' };
 const LIMITE_LINHAS = 300;
 const n0 = (v) => formatar.numero(v);
 
 export async function render(conteudo, { usuario, parametros }) {
   const db = await bancoApp();
-  const [pedidos, motivos, valores] = (await Promise.all([db.execute(consultaPedidos({ usuario })), db.execute(consultaMotivosPedidoValido()),
+  const [pedidos, motivos, filiais, valores] = (await Promise.all([db.execute(consultaPedidos({ usuario })), db.execute(consultaMotivosPedidoValido()), db.execute(consultaSaldoFiliais()),
     db.execute("SELECT chave, valor FROM parametros WHERE chave IN ('prazo_pedido_valido_dias','alerta_desistencias_cliente','dias_alerta_pedido_aberto')")])).map((r) => r.rows);
   const p = Object.fromEntries(valores.map((v) => [v.chave, Number(v.valor)]));
   const entradas = new Map(motivos.map((m) => [Number(m.prospect_id), m.data_evento]));
   const hoje = hojeSaoPaulo();
-  const alertas = alertasPedidos(pedidos, { hoje, prazoPedidoValido: p.prazo_pedido_valido_dias, desistencias: p.alerta_desistencias_cliente, diasAberto: p.dias_alerta_pedido_aberto, entradas });
+  const alertas = alertasPedidos(pedidos, { hoje, prazoPedidoValido: p.prazo_pedido_valido_dias, desistencias: p.alerta_desistencias_cliente, diasAberto: p.dias_alerta_pedido_aberto, entradas, saldoFiliais: new Map(filiais.map((f) => [f.raiz, Number(f.saldo)])) });
 
   const r = resumirPedidos(pedidos);
   const pct = (v) => (r.venda.valor ? `${Math.round((v / r.venda.valor) * 100)}% da venda` : '');
   const numeros = cartoes([['Venda válida', moeda(r.venda.valor), `${n0(r.venda.qtd)} pedidos`, 'destaque'], ['Faturado', moeda(r.faturado), pct(r.faturado)], ['Em carteira', moeda(r.saldo), pct(r.saldo)],
     ['Digitado', moeda(r.digitado.valor), `${n0(r.digitado.qtd)} pedidos`], ['Desistência', moeda(r.cancelado.valor), `${n0(r.cancelado.qtd)} pedidos`], ['Investimento', moeda(r.investimento.valor), `${n0(r.investimento.qtd)} bonificações`, 'investimento']]);
 
-  let aba = ABAS[parametros.get('aba')] ? parametros.get('aba') : 'pedidos';
+  let aba = ABAS[parametros.get('aba')] ? parametros.get('aba') : 'analise';
+  const slotNumeros = h('div');
   const area = h('div');
   const barra = h('div', { class: 'ped-abas', role: 'tablist' });
   function desenharBarra() {
     montar(barra, Object.entries(ABAS).map(([k, t]) => h('button', { type: 'button', role: 'tab', class: k === aba ? 'ativa' : '', dados: { aba: k }, 'aria-selected': k === aba ? 'true' : 'false',
       onclick: () => { aba = k; desenharBarra(); desenhar(); } }, k === 'alertas' && alertas.length ? `${t} (${alertas.length})` : t)));
   }
-  const desenhar = () => ({ pedidos: abaPedidos, representantes: abaRepresentantes, bonificacao: abaBonificacao, alertas: abaAlertas })[aba](area);
+  const desenhar = () => { montar(slotNumeros, aba === 'analise' ? null : numeros); return ({ analise: (d) => renderAnalise(d, { pedidos, usuario }), pedidos: abaPedidos, representantes: abaRepresentantes, bonificacao: abaBonificacao, alertas: abaAlertas })[aba](area); };
 
   function abaPedidos(destino) {
     const busca = h('input', { type: 'search', id: 'busca-pedidos', placeholder: 'Pedido, razão social, CNPJ ou representante', oninput: filtrar });
@@ -81,8 +83,8 @@ export async function render(conteudo, { usuario, parametros }) {
       h('div', { class: 'cartao' }, h('h2', {}, 'Por representante'),
         tabelaPedidos([{ titulo: 'Representante', campo: 'rotulo' }, { titulo: 'Clientes', valor: (x) => n0(x.clientes.length), classe: 'num' }, { titulo: 'Válidos', valor: (x) => n0(x.validos), classe: 'num' }, { titulo: 'Venda (R$)', valor: (x) => valor(x.venda), classe: 'num' },
           { titulo: 'Faturado (R$)', valor: (x) => valor(x.faturado), classe: 'num' }, { titulo: 'Em carteira (R$)', valor: (x) => valor(x.saldo), classe: 'num' }, { titulo: 'Digitado (R$)', valor: (x) => valor(x.digitado), classe: 'num' }, { titulo: 'Desistência (R$)', valor: (x) => valor(x.desistencia), classe: 'num' },
-          { titulo: 'Investimento (R$)', valor: (x) => valor(x.investimento), classe: 'num' }, { titulo: 'Na própria lista (R$)', valor: (x) => valor(x.propria), classe: 'num' }, { titulo: 'Na lista de outro (R$)', valor: (x) => valor(x.outra), classe: 'num' }, { titulo: 'Fora da base (R$)', valor: (x) => valor(x.fora), classe: 'num' }],
-        reps, { id: 'tabela-representantes', rodape: [{ texto: 'Total' }, `${n0(clientesDistintos(pedidos))} distintos`, n0(total('validos')), valor(total('venda')), valor(total('faturado')), valor(total('saldo')), valor(total('digitado')), valor(total('desistencia')), valor(total('investimento')), valor(total('propria')), valor(total('outra')), valor(total('fora'))] }),
+          { titulo: 'Investimento (R$)', valor: (x) => valor(x.investimento), classe: 'num' }, { titulo: 'Na própria lista (R$)', valor: (x) => valor(x.propria), classe: 'num' }, { titulo: 'Na lista de outro (R$)', valor: (x) => valor(x.outra), classe: 'num' }],
+        reps, { id: 'tabela-representantes', rodape: [{ texto: 'Total' }, `${n0(clientesDistintos(pedidos))} distintos`, n0(total('validos')), valor(total('venda')), valor(total('faturado')), valor(total('saldo')), valor(total('digitado')), valor(total('desistencia')), valor(total('investimento')), valor(total('propria')), valor(total('outra'))] }),
         h('p', { class: 'ajuda', style: 'margin:12px 0 0' }, 'O valor nunca duplica, porque cada pedido tem um só representante. Já um cliente pode aparecer em mais de uma lista, então o total usa os clientes distintos.')),
       h('div', { class: 'cartao' }, h('h2', {}, 'Lista de cada representante'), h('div', { style: 'max-width:360px;margin-bottom:12px' }, escolhido), lista),
       h('div', { class: 'cartao' }, h('h2', {}, 'Clientes vendidos por mais de um representante'),
@@ -116,5 +118,5 @@ export async function render(conteudo, { usuario, parametros }) {
 
   desenharBarra();
   desenhar();
-  montar(conteudo, h('h1', {}, 'Acompanhamento de pedidos'), numeros, barra, area);
+  montar(conteudo, h('h1', {}, 'Acompanhamento de pedidos'), h('p', { class: 'ajuda' }, 'Só os pedidos dos clientes da base. As filiais de um grupo da base aparecem na ficha, na visão do grupo.'), barra, slotNumeros, area);
 }

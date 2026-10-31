@@ -166,7 +166,7 @@ Etapas: **arquivo** (e data) → **classificação** dos códigos → **vínculo
 | Coluna do relatório | Uso |
 |---|---|
 | Pedido | identifica o pedido. Repetido no arquivo = rejeitado |
-| CPF / CNPJ | liga ao cliente pelo CNPJ exato. Até 11 dígitos = CPF. Inválido = rejeitado |
+| CPF / CNPJ | liga ao cliente pelo CNPJ exato. Até 11 dígitos = CPF, ignorado. CNPJ fora da base = ignorado; mesma raiz de um cliente da base = visão do grupo (docs/03 §14). Inválido = rejeitado |
 | Cliente · Razão Social | código do ERP e nome (vale o nome da base, quando o CNPJ está nela). Código diferente do cadastro = aviso |
 | Vlr. Pedido · Vlr. Faturado | valores. Faturado maior que o pedido = aviso |
 | Sit. + Situação · Transação + Desc. Trans. | classificação |

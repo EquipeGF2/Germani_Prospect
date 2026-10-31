@@ -1,5 +1,6 @@
 // Acompanhamento de pedidos: leitura e contas das abas (Pedidos · Por representante · Bonificação · Alertas), da ficha e dos alertas.
 // A tela lê os pedidos do escopo numa consulta só; filtros e abas são calculados no navegador. docs/03 §14
+// Só clientes da base. A filial de um grupo da base (prospect_id NULL) aparece apenas na visão do grupo.
 import { veTodasEquipes } from './perfis.mjs';
 
 /** Pedidos que o usuário enxerga: os da carteira dele (ou da equipe) e os que ele mesmo fez, inclusive para cliente de outra lista. */
@@ -14,19 +15,26 @@ function escopoPedidos(usuario) {
 export function consultaPedidos({ usuario, prospectId = null, limite = 5000 }) {
   const e = escopoPedidos(usuario);
   return {
-    sql: `SELECT * FROM vw_pedidos WHERE ${e.where} ${prospectId ? 'AND prospect_id = ?' : ''} ORDER BY CAST(numero AS INTEGER) DESC LIMIT ?`,
+    sql: `SELECT v.*, p.cidade, p.uf, p.tipologia_gtm, p.onda, p.rota, sup.nome AS supervisor_nome
+            FROM vw_pedidos v JOIN prospects p ON p.id = v.prospect_id LEFT JOIN usuarios sup ON sup.id = v.dono_supervisor_id
+           WHERE ${e.where} ${prospectId ? 'AND v.prospect_id = ?' : ''} ORDER BY CAST(v.numero AS INTEGER) DESC LIMIT ?`,
     args: [...e.args, ...(prospectId ? [prospectId] : []), limite],
   };
 }
 
-/** Pedidos de um cliente e o que está em aberto no grupo (raiz do CNPJ). */
+/** O grupo do cliente (raiz do CNPJ), empresa por empresa: inclui as filiais que não estão na base. */
 export function consultaPedidosGrupo({ prospectId }) {
   return {
     sql: `SELECT g.prospect_id, g.cpf_cnpj, g.razao_social, SUM(g.valida) AS validos, SUM(CASE WHEN g.valida = 1 THEN g.valor_pedido ELSE 0 END) AS venda, SUM(g.saldo) AS saldo,
                  SUM(CASE WHEN g.tipo = 'investimento' AND g.fase <> 'cancelado' THEN g.valor_pedido ELSE 0 END) AS investimento
-            FROM vw_pedidos g WHERE g.raiz = (SELECT cnpj_raiz FROM prospects WHERE id = ?) GROUP BY g.cpf_cnpj`,
+            FROM vw_pedidos g WHERE length(g.cpf_cnpj) = 14 AND g.raiz = (SELECT cnpj_raiz FROM prospects WHERE id = ?) GROUP BY g.cpf_cnpj`,
     args: [prospectId],
   };
+}
+
+/** Em carteira das filiais fora da base, por raiz: entra na conta do limite do grupo. */
+export function consultaSaldoFiliais() {
+  return { sql: 'SELECT raiz, SUM(saldo) AS saldo FROM vw_pedidos WHERE prospect_id IS NULL AND length(cpf_cnpj) = 14 AND saldo > 0 GROUP BY raiz', args: [] };
 }
 
 const num = (v) => Number(v ?? 0);
@@ -57,15 +65,14 @@ export function porRepresentante(pedidos) {
   const reps = new Map();
   for (const p of pedidos) {
     const chave = String(p.rep_codigo ?? '');
-    if (!reps.has(chave)) reps.set(chave, { codigo: p.rep_codigo, nome: p.rep_nome, rotulo: nomeRep(p), clientes: new Map(), validos: 0, venda: 0, faturado: 0, saldo: 0, digitado: 0, desistencia: 0, investimento: 0, propria: 0, outra: 0, fora: 0 });
+    if (!reps.has(chave)) reps.set(chave, { codigo: p.rep_codigo, nome: p.rep_nome, rotulo: nomeRep(p), clientes: new Map(), validos: 0, venda: 0, faturado: 0, saldo: 0, digitado: 0, desistencia: 0, investimento: 0, propria: 0, outra: 0 });
     const r = reps.get(chave);
     if (p.tipo === 'investimento') { if (p.fase !== 'cancelado' && p.fase !== 'digitado') r.investimento += num(p.valor_pedido); continue; }
     if (p.tipo !== 'venda') continue;
     if (!num(p.valida)) { if (p.fase === 'digitado') r.digitado += num(p.valor_pedido); else r.desistencia += num(p.valor_pedido); continue; }
     r.validos += 1; r.venda += num(p.valor_pedido); r.faturado += num(p.valor_faturado); r.saldo += num(p.saldo);
     if (p.relacao === 'propria') r.propria += num(p.valor_pedido);
-    else if (p.relacao === 'outra') r.outra += num(p.valor_pedido);
-    else r.fora += num(p.valor_pedido);
+    else r.outra += num(p.valor_pedido);
     if (!r.clientes.has(p.cpf_cnpj)) r.clientes.set(p.cpf_cnpj, { documento: p.cpf_cnpj, codigo: p.codigo_cliente, razao: p.razao_social, relacao: p.relacao, dono: p.dono_id != null ? `${p.dono_codigo ?? ''} · ${p.dono_nome ?? ''}` : null, pedidos: 0, venda: 0 });
     const c = r.clientes.get(p.cpf_cnpj);
     c.pedidos += 1; c.venda += num(p.valor_pedido);
@@ -106,7 +113,7 @@ export function bonificacaoPorCliente(pedidos) {
 }
 
 /** Alertas do conjunto. Venda por outro representante não é alerta: é informação (aba Por representante). */
-export function alertasPedidos(pedidos, { hoje, prazoPedidoValido = 10, desistencias = 5, diasAberto = 30, entradas = new Map() } = {}) {
+export function alertasPedidos(pedidos, { hoje, prazoPedidoValido = 10, desistencias = 5, diasAberto = 30, entradas = new Map(), saldoFiliais = new Map() } = {}) {
   const alertas = [];
   const diasDesde = (d) => (d ? Math.floor((Date.parse(hoje) - Date.parse(d)) / 86400000) : null);
   const clientes = new Map();
@@ -132,7 +139,7 @@ export function alertasPedidos(pedidos, { hoje, prazoPedidoValido = 10, desisten
   const grupos = new Map();
   for (const p of pedidos) {
     if (!num(p.saldo) || p.prospect_id == null) continue;
-    if (!grupos.has(p.raiz)) grupos.set(p.raiz, { saldo: 0, razao: p.razao_social, limite: null, prospectId: p.prospect_id });
+    if (!grupos.has(p.raiz)) grupos.set(p.raiz, { saldo: num(saldoFiliais.get(p.raiz)), razao: p.razao_social, limite: null, prospectId: p.prospect_id });
     const g = grupos.get(p.raiz);
     g.saldo += num(p.saldo);
     if (p.limite_credito != null && p.limite_credito_origem === 'grupo') g.limite = num(p.limite_credito);
@@ -151,3 +158,62 @@ export function consultaMotivosPedidoValido() {
                   WHERE a.status_novo = 'aguardando_pedido_valido'
                     AND NOT EXISTS (SELECT 1 FROM pedido_aplicacoes n WHERE n.prospect_id = a.prospect_id AND n.id > a.id)`, args: [] };
 }
+
+// ---------- Análise: árvore de níveis livres, como o Explorar carteira, sobre os pedidos já lidos (nada volta ao banco) ----------
+const texto = (v, vazio) => (v == null || v === '' ? vazio : String(v));
+const NOME_TIPO = { venda: 'Venda', investimento: 'Bonificação', ignorar: 'Não considerado' };
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+/** Níveis possíveis. `chave` agrupa; `rotulo` mostra. */
+export const NIVEIS_PEDIDOS = Object.freeze({
+  supervisor: { nome: 'Supervisor', chave: (p) => texto(p.dono_supervisor_id, ''), rotulo: (p) => texto(p.supervisor_nome, 'sem supervisor') },
+  representante: { nome: 'Quem vendeu', chave: (p) => texto(p.rep_codigo, ''), rotulo: nomeRep },
+  carteira: { nome: 'Dono da carteira', chave: (p) => texto(p.dono_id, ''), rotulo: (p) => [p.dono_codigo, p.dono_nome].filter(Boolean).join(' · ') || 'sem dono' },
+  lista: { nome: 'Na lista?', chave: (p) => p.relacao, rotulo: (p) => (p.relacao === 'propria' ? 'Na lista de quem vendeu' : 'Fora da lista de quem vendeu') },
+  cidade: { nome: 'Cidade', chave: (p) => `${texto(p.cidade, '')}|${texto(p.uf, '')}`, rotulo: (p) => (p.cidade ? `${p.cidade}${p.uf ? '/' + p.uf : ''}` : 'sem cidade') },
+  segmento: { nome: 'Segmento', chave: (p) => texto(p.tipologia_gtm, ''), rotulo: (p) => texto(p.tipologia_gtm, 'sem segmento') },
+  onda: { nome: 'Onda', chave: (p) => texto(p.onda, ''), rotulo: (p) => (p.onda ? `Onda ${p.onda}` : 'sem onda') },
+  grupo: { nome: 'Grupo', chave: (p) => texto(p.raiz, ''), rotulo: (p) => `${texto(p.razao_social, '')} · raiz ${texto(p.raiz, '')}` },
+  cliente: { nome: 'Cliente', chave: (p) => p.cpf_cnpj, rotulo: (p) => `${texto(p.codigo_cliente, '—')} - ${texto(p.razao_social, '')}` },
+  tipo: { nome: 'Tipo', chave: (p) => p.tipo, rotulo: (p) => NOME_TIPO[p.tipo] ?? p.tipo },
+  situacao: { nome: 'Situação', chave: (p) => p.situacao_codigo, rotulo: (p) => texto(p.situacao_descricao, p.situacao_codigo) },
+  mes: { nome: 'Mês', chave: (p) => String(p.data_primeira ?? '').slice(0, 7), rotulo: (p) => (p.data_primeira ? `${MESES[Number(p.data_primeira.slice(5, 7)) - 1]}/${p.data_primeira.slice(0, 4)}` : 'sem data') },
+});
+
+/** Níveis que o usuário pode usar: quem não vê todas as equipes não tem o nível Supervisor. */
+export const niveisPedidosPossiveis = (usuario) => Object.keys(NIVEIS_PEDIDOS).filter((n) => n !== 'supervisor' || veTodasEquipes(usuario));
+
+/** Indicadores de um ramo: os seis valores, clientes distintos com venda e ticket médio. */
+export function indicadoresRamo(pedidos) {
+  const r = resumirPedidos(pedidos);
+  const clientes = clientesDistintos(pedidos);
+  return { ...r, clientes, ticket: r.venda.qtd ? r.venda.valor / r.venda.qtd : 0, pctFaturado: r.venda.valor ? (r.faturado / r.venda.valor) * 100 : null };
+}
+
+/**
+ * Árvore visível: linhas na ordem de exibição, cada uma { caminho, profundidade, nivel, rotulo, aberto, temFilhos, ind, pedidos }.
+ * Mostra todos os itens de cada nível aberto, do maior valor de venda para o menor.
+ */
+export function montarArvorePedidos({ pedidos, niveis, abertos, rotuloRaiz = 'Todos os pedidos' }) {
+  const saida = [];
+  const visitar = (caminho, profundidade, rows, rotulo, nivel) => {
+    const temFilhos = profundidade < niveis.length;
+    const aberto = temFilhos && abertos.has(caminho);
+    const ind = indicadoresRamo(rows);
+    saida.push({ caminho, profundidade, nivel, rotulo, aberto, temFilhos, ind, pedidos: rows });
+    if (!aberto) return;
+    const def = NIVEIS_PEDIDOS[niveis[profundidade]];
+    const grupos = new Map();
+    for (const p of rows) {
+      const k = def.chave(p);
+      if (!grupos.has(k)) grupos.set(k, []);
+      grupos.get(k).push(p);
+    }
+    const ordem = [...grupos.entries()].map(([k, g]) => ({ k, g, i: indicadoresRamo(g), rot: def.rotulo(g[0]) }))
+      .sort((a, b) => b.i.venda.valor - a.i.venda.valor || b.i.investimento.valor - a.i.investimento.valor || a.rot.localeCompare(b.rot, 'pt-BR'));
+    for (const o of ordem) visitar(`${caminho}/${niveis[profundidade]}=${o.k}`, profundidade + 1, o.g, o.rot, niveis[profundidade]);
+  };
+  visitar('', 0, pedidos, rotuloRaiz, null);
+  return saida;
+}
+

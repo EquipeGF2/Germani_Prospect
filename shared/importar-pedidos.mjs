@@ -1,5 +1,6 @@
 // Importação de pedidos do ERP (relatório do Senior). docs/03 §14 · docs/05 §6
 // Cada linha é uma foto do pedido na data do arquivo. Só grava o que mudou desde o arquivo anterior, sempre vinculado ao arquivo.
+// Só entram os pedidos dos CNPJs da base. Filial de um grupo da base (mesma raiz) entra só na visão do grupo; CPF e o resto são ignorados.
 // O status do cliente muda só no banco (trigger de pedido_aplicacoes); a simulação calcula aqui a mesma regra, para mostrar antes.
 import { analisarCnpj } from './cnpj.mjs';
 import { analisarData } from './datas.mjs';
@@ -146,7 +147,6 @@ export async function simularPedidos(db, { linhas, dataPadrao, hoje, classificac
   const raizes = new Set(base.rows.map((p) => String(p.cnpj_raiz)));
   const anteriores = new Map(atuais.rows.map((p) => [String(p.numero), p]));
   const reps = new Map(usuarios.rows.map((u) => [String(u.codigo_erp), u]));   // vendedor por último: prevalece sobre o supervisor de mesmo código
-  const novos = codigosNovos(resultados, mapa);
   // pedidos atuais por cliente: o que já estava na base, com o arquivo por cima
   const porCliente = new Map();
   const pedidosDe = (id) => { if (!porCliente.has(id)) porCliente.set(id, new Map()); return porCliente.get(id); };
@@ -155,31 +155,40 @@ export async function simularPedidos(db, { linhas, dataPadrao, hoje, classificac
   const afetados = new Set();
   const clientes = new Map();
   const naoEncontrados = new Set();
-  const totais = { venda: { qtd: 0, valor: 0, faturado: 0 }, digitado: { qtd: 0, valor: 0 }, cancelado: { qtd: 0, valor: 0 }, investimento: { qtd: 0, valor: 0 }, ignorado: { qtd: 0, valor: 0 }, saldo: 0 };
+  const totais = { venda: { qtd: 0, valor: 0, faturado: 0 }, digitado: { qtd: 0, valor: 0 }, cancelado: { qtd: 0, valor: 0 }, investimento: { qtd: 0, valor: 0 }, ignorado: { qtd: 0, valor: 0 }, grupo: { qtd: 0, valor: 0 }, saldo: 0 };
+  const foraDaBase = { linhas: 0, valor: 0, documentos: new Set() };
   const reconhecidos = new Set();
   for (const r of resultados) {
     if (r.resultado !== 'aceita') continue;
     const p = r.cpf ? null : prospects.get(r.documento) ?? null;
     if (p?.status_atual === 'invalido') { r.erros.push('CNPJ baixado: impossibilitado de faturamento'); r.resultado = 'rejeitada'; continue; }
+    // só interessa quem está na base: CPF e CNPJ de fora são ignorados e entram só na contagem
+    r.filial = !r.cpf && !p && raizes.has(r.documento.slice(0, 8));
+    if (!p && !r.filial) {
+      r.erros.push(r.cpf ? 'CPF: fora da base' : 'CNPJ fora da base');
+      r.resultado = 'ignorada';
+      foraDaBase.linhas++; foraDaBase.valor += r.valorPedido; foraDaBase.documentos.add(r.documento);
+      continue;
+    }
     r.prospectId = p ? Number(p.id) : null;
     const c = classificar(mapa, r.transacao, r.situacao);
     Object.assign(r, c);
     reconhecidos.add(r.numero);
     // destino da linha
-    if (r.cpf) r.avisos.push('CPF: fica fora da carteira');
-    else if (!p) r.avisos.push(raizes.has(r.documento.slice(0, 8)) ? 'filial de grupo da base, com outro CNPJ: só informação' : 'CNPJ fora da base: só informação');
+    if (r.filial) r.avisos.push('filial de grupo da base, com outro CNPJ: só entra na visão do grupo');
     else if (p.status_atual === 'expurgado') r.avisos.push('cliente expurgado: o pedido só fica registrado');
-    if (r.rep && !reps.has(r.rep)) { r.avisos.push(`representante ${r.rep} sem código no cadastro`); naoEncontrados.add(r.rep); }
+    if (!r.filial && r.rep && !reps.has(r.rep)) { r.avisos.push(`representante ${r.rep} sem código no cadastro`); naoEncontrados.add(r.rep); }
     if (p?.codigo_cliente_erp && r.cliente && String(p.codigo_cliente_erp) !== r.cliente) r.avisos.push(`código do cliente diferente do cadastro (${p.codigo_cliente_erp})`);
-    // totais do arquivo
-    if (c.tipo === 'investimento') { totais.investimento.qtd++; totais.investimento.valor += r.valorPedido; }
+    // totais do arquivo: só os clientes da base; a filial fica à parte, na visão do grupo
+    if (r.filial) { totais.grupo.qtd++; totais.grupo.valor += r.valorPedido; }
+    else if (c.tipo === 'investimento') { totais.investimento.qtd++; totais.investimento.valor += r.valorPedido; }
     else if (c.tipo === 'ignorar') { totais.ignorado.qtd++; totais.ignorado.valor += r.valorPedido; }
     else if (c.valida) { totais.venda.qtd++; totais.venda.valor += r.valorPedido; totais.venda.faturado += r.valorFaturado; totais.saldo += Math.max(r.valorPedido - r.valorFaturado, 0); }
     else if (c.fase === 'digitado') { totais.digitado.qtd++; totais.digitado.valor += r.valorPedido; }
     else { totais.cancelado.qtd++; totais.cancelado.valor += r.valorPedido; }
     // resumo por cliente do arquivo (tela de vínculo)
-    if (!clientes.has(r.documento)) clientes.set(r.documento, { documento: r.documento, cpf: Boolean(r.cpf), razao: r.razao, cliente: r.cliente, prospectId: r.prospectId, statusAtual: p?.status_atual ?? null,
-      filial: !r.cpf && !p && raizes.has(r.documento.slice(0, 8)), validos: 0, digitados: 0, desistencias: 0, venda: 0, investimento: 0, reps: new Set() });
+    if (!clientes.has(r.documento)) clientes.set(r.documento, { documento: r.documento, razao: r.razao, cliente: r.cliente, prospectId: r.prospectId, statusAtual: p?.status_atual ?? null,
+      filial: r.filial, validos: 0, digitados: 0, desistencias: 0, venda: 0, investimento: 0, reps: new Set() });
     const k = clientes.get(r.documento);
     if (r.rep) k.reps.add(r.rep);
     if (c.tipo === 'investimento') k.investimento += r.valorPedido;
@@ -200,6 +209,8 @@ export async function simularPedidos(db, { linhas, dataPadrao, hoje, classificac
       if (a?.prospect_id != null && Number(a.prospect_id) !== r.prospectId) { pedidosDe(Number(a.prospect_id)).delete(r.numero); afetados.add(Number(a.prospect_id)); }
     }
   }
+  // depois do filtro: código novo de quem está fora da base não trava a importação
+  const novos = codigosNovos(resultados, mapa);
   // efeito em cada cliente da base
   const statusPorId = new Map(base.rows.map((p) => [Number(p.id), String(p.status_atual)]));
   const movimentos = new Map();
@@ -211,18 +222,18 @@ export async function simularPedidos(db, { linhas, dataPadrao, hoje, classificac
     movimentos.set(chave, { antes, depois, clientes: (movimentos.get(chave)?.clientes ?? 0) + 1 });
   }
   // pedidos em aberto que vieram antes e não vieram agora: não assume cancelamento (o relatório pode ter outro filtro)
-  const sumiram = atuais.rows.filter((p) => !reconhecidos.has(String(p.numero)) && ['digitado', 'carteira', 'parcial'].includes(p.fase)).length;
+  const sumiram = atuais.rows.filter((p) => p.prospect_id != null && !reconhecidos.has(String(p.numero)) && ['digitado', 'carteira', 'parcial'].includes(p.fase)).length;
 
   const lista = [...clientes.values()].map((c) => ({ ...c, reps: [...c.reps].sort((a, b) => Number(a) - Number(b)) })).sort((a, b) => b.venda - a.venda);
   const nomeRep = (cod) => reps.get(String(cod))?.nome ?? null;
   const limiteDesistencia = Number(parametros.rows[0]?.valor ?? 5);
   const pontos = {
-    variosRepresentantes: lista.filter((c) => c.reps.length > 1).length,
+    variosRepresentantes: lista.filter((c) => !c.filial && c.reps.length > 1).length,
     semCodigo: [...naoEncontrados].sort((a, b) => Number(a) - Number(b)),
-    soBonificacao: lista.filter((c) => c.investimento > 0 && !c.validos && !c.digitados && !c.desistencias),
-    cpf: lista.filter((c) => c.cpf),
-    muitaDesistencia: lista.filter((c) => c.desistencias >= limiteDesistencia),
-    foraDaBase: lista.filter((c) => !c.cpf && c.prospectId == null),
+    soBonificacao: lista.filter((c) => !c.filial && c.investimento > 0 && !c.validos && !c.digitados && !c.desistencias),
+    muitaDesistencia: lista.filter((c) => !c.filial && c.desistencias >= limiteDesistencia),
+    filiais: lista.filter((c) => c.filial),
+    foraDaBase: { linhas: foraDaBase.linhas, valor: foraDaBase.valor, clientes: foraDaBase.documentos.size },
   };
   const contar = () => ({
     linhasLidas: resultados.length, linhasVazias: vazias,
