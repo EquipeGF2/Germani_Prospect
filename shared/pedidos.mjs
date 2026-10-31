@@ -1,4 +1,4 @@
-// Explorar pedidos: leitura, árvore, busca, atalhos e alertas, além das contas da ficha.
+// Explorar pedidos: leitura, árvore, filtros, busca e alertas, além das contas da ficha.
 // A tela lê os pedidos do escopo numa consulta só; a árvore é calculada no navegador. docs/03 §14
 // Só clientes da base. A filial de um grupo da base (prospect_id NULL) aparece apenas na visão do grupo.
 import { veTodasEquipes } from './perfis.mjs';
@@ -168,22 +168,6 @@ export function clientesVariosRepresentantes(pedidos, { porGrupo = false } = {})
     reps: [...c.reps.values()].sort((a, b) => b.venda - a.venda).map((r) => ({ ...r, parte: c.venda ? (r.venda / c.venda) * 100 : 0 })) })).sort((a, b) => b.venda - a.venda);
 }
 
-/** Investimento em bonificação por cliente: conta à parte, a venda não muda. "digitado" fica como previsão; desistência fica fora. */
-export function bonificacaoPorCliente(pedidos, { porGrupo = false } = {}) {
-  const clientes = new Map();
-  const venda = new Map();
-  const raizes = empresasPorRaiz(pedidos);
-  for (const p of pedidos) if (num(p.valida)) { const k = clienteDe(p, porGrupo, raizes).chave; venda.set(k, (venda.get(k) ?? 0) + num(p.valor_pedido)); }
-  for (const p of pedidos) {
-    if (p.tipo !== 'investimento' || p.fase === 'cancelado' || p.fase === 'digitado') continue;
-    const cli = clienteDe(p, porGrupo, raizes);
-    if (!clientes.has(cli.chave)) clientes.set(cli.chave, { ...cli, prospectId: porGrupo && cli.codigo == null ? null : p.prospect_id, rep: nomeRep(p), pedidos: [], investimento: 0, venda: venda.get(cli.chave) ?? 0 });
-    const c = clientes.get(cli.chave);
-    c.pedidos.push(p.numero); c.investimento += num(p.valor_pedido);
-  }
-  return [...clientes.values()].map((c) => ({ ...c, pct: c.venda ? (c.investimento / c.venda) * 100 : null })).sort((a, b) => b.investimento - a.investimento);
-}
-
 /** Alertas do conjunto. Venda por outro representante não é alerta: é informação (nível Quem vendeu). */
 export function alertasPedidos(pedidos, { hoje, prazoPedidoValido = 10, desistencias = 5, diasAberto = 30, entradas = new Map(), saldoFiliais = new Map() } = {}) {
   const alertas = [];
@@ -304,25 +288,17 @@ export function montarArvorePedidos({ pedidos, niveis, abertos, rotuloRaiz = 'To
   return saida;
 }
 
-// ---------- busca e atalhos: os filtros de Explorar pedidos; o resto é a hierarquia da árvore ----------
-/** Atalhos: só os clientes vendidos por mais de um representante e só os que receberam bonificação (por empresa ou por grupo). */
-function aplicarAtalhos(pedidos, { variosReps = false, comBonificacao = false, porGrupo = false } = {}) {
+// ---------- filtros: tipo do pedido e clientes com mais de um representante; o resto é a hierarquia da árvore ----------
+/** @param tipo 'ambos' | 'venda' | 'investimento'. `variosReps`: só os clientes vendidos por mais de um representante. */
+export function filtrarPedidos(pedidos, { tipo = 'ambos', variosReps = false, porGrupo = false } = {}) {
   let rows = pedidos;
-  const raiz = (p) => String(p.cpf_cnpj).slice(0, 8);
   if (variosReps) {
     const docs = new Set(clientesVariosRepresentantes(pedidos, { porGrupo }).map((c) => c.documento));
-    rows = rows.filter((p) => docs.has(p.cpf_cnpj) || docs.has(raiz(p)));
+    rows = rows.filter((p) => docs.has(p.cpf_cnpj) || docs.has(String(p.cpf_cnpj).slice(0, 8)));
   }
-  if (comBonificacao) {
-    const docs = new Set(bonificacaoPorCliente(pedidos, { porGrupo }).map((c) => c.documento));
-    rows = rows.filter((p) => docs.has(p.cpf_cnpj) || docs.has(raiz(p)));
-  }
-  return rows;
+  return tipo === 'ambos' ? rows : rows.filter((p) => p.tipo === tipo);
 }
 
-const passaBusca = (p, busca) => !busca || normalizarBusca(`${p.numero} ${p.razao_social} ${p.cpf_cnpj} ${p.codigo_cliente} ${p.rep_codigo} ${p.rep_nome}`).includes(normalizarBusca(busca));
-
-/** Aplica busca e atalhos. Tudo no navegador, sobre os pedidos já lidos. */
-export function filtrarPedidos(pedidos, { busca = '', variosReps = false, comBonificacao = false, porGrupo = false } = {}) {
-  return aplicarAtalhos(pedidos, { variosReps, comBonificacao, porGrupo }).filter((p) => passaBusca(p, busca));
-}
+/** Busca da lista de pedidos: pedido, razão social, CNPJ, código ou representante, sem acento. */
+export const buscarPedidos = (pedidos, busca) => (!normalizarBusca(busca) ? pedidos
+  : pedidos.filter((p) => normalizarBusca(`${p.numero} ${p.razao_social} ${p.cpf_cnpj} ${p.codigo_cliente} ${p.rep_codigo} ${p.rep_nome}`).includes(normalizarBusca(busca))));
