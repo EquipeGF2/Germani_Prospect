@@ -1,7 +1,7 @@
 // Ajuda: toda tela do menu tem ajuda completa, e cada perfil vê os capítulos do que usa.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { AJUDA_TELAS, ajudaDaTela, CAPITULOS, capitulosDoUsuario, DESVIOS, FLUXO, TELAS_SEM_AJUDA } from '../shared/ajuda.mjs';
 
 const app = readFileSync(new URL('../web/js/app.js', import.meta.url), 'utf8');
@@ -21,6 +21,12 @@ test('toda tela tem ajuda: objetivo, como funciona, campos, o que analisar, situ
     for (const lista of ['como', 'campos', 'analisar', 'comuns']) assert.ok(a[lista].length >= 1, `${c}: ${lista}`);
     assert.ok(CAPITULOS.some((x) => x.n === a.cap), `${c}: capítulo ${a.cap}`);
   }
+});
+
+test('as imagens dos capítulos existem', () => {
+  const imagens = CAPITULOS.flatMap((c) => c.blocos).filter((b) => b[0] === 'img');
+  assert.ok(imagens.length >= 10);
+  for (const b of imagens) { assert.ok(existsSync(new URL(`../web/img/ajuda/${b[1]}`, import.meta.url)), `falta a imagem ${b[1]}`); assert.ok(b[2], `${b[1]}: legenda`); }
 });
 
 test('o Acompanhamento tem ajuda própria, separada da Lista principal', () => {
@@ -44,5 +50,5 @@ test('o fluxo aponta para capítulos que existem, e os capítulos têm conteúdo
     assert.ok(CAPITULOS.some((c) => c.n === e.cap), `${e.id}: capítulo ${e.cap}`);
   }
   assert.deepEqual(CAPITULOS.map((c) => c.n), [1, 2, 3, 4, 5, 6, 7, 8]);
-  for (const c of CAPITULOS) assert.ok(c.blocos.length >= 2 && c.blocos.every((b) => ['p', 'h', 'lista', 'passos', 'tabela'].includes(b[0])), `capítulo ${c.n}`);
+  for (const c of CAPITULOS) assert.ok(c.blocos.length >= 2 && c.blocos.every((b) => ['p', 'h', 'lista', 'passos', 'tabela', 'img'].includes(b[0])), `capítulo ${c.n}`);
 });

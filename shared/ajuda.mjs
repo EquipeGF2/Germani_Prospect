@@ -34,7 +34,8 @@ const ETAPAS_TABELA = ['tabela', ['Etapa', 'O que significa', 'O que faz avança
 ]];
 
 /**
- * Capítulos, na ordem do processo. Blocos: ['p', texto] · ['h', título] · ['lista', itens] · ['passos', itens] · ['tabela', colunas, linhas].
+ * Capítulos, na ordem do processo. Blocos: ['p', texto] · ['h', título] · ['lista', itens] · ['passos', itens] · ['tabela', colunas, linhas] · ['img', arquivo, legenda].
+ * As imagens ficam em web/img/ajuda, com dados fictícios: IMAGENS_AJUDA=web/img/ajuda npm run test:telas gera todas de novo.
  * Item de lista: texto ou [destaque, texto]. `para`: quem vê o capítulo; sem ele, todos.
  */
 export const CAPITULOS = Object.freeze([
@@ -50,6 +51,7 @@ export const CAPITULOS = Object.freeze([
   { n: 2, nome: 'Acesso e navegação', desc: 'Entrar, usar o menu e o botão de ajuda.', blocos: [
     ['h', 'Entrar e sair'],
     ['passos', ['Abra o sistema e informe o login e a senha recebidos do administrador.', 'O sistema abre no Explorar carteira ou, se o seu perfil não tiver essa tela, na primeira tela permitida.', 'Ao terminar, clique em Sair, principalmente em computador compartilhado.']],
+    ['img', 'menu.jpg', 'O menu à esquerda, o botão ? no canto superior direito e a tela inicial.'],
     ['h', 'O que cada perfil enxerga'],
     ['lista', [['Representante/vendedor', 'a própria carteira e os pedidos que fez.'], ['Supervisor', 'a equipe.'], ['Gerente e administrador', 'todas as equipes.'], ['Analista financeiro', 'o Console de crédito.']]],
     ['h', 'Botão de ajuda'],
@@ -61,12 +63,14 @@ export const CAPITULOS = Object.freeze([
     ['p', 'A Lista principal mostra quem ainda precisa ser procurado: os clientes Não contactados e Em prospecção. Depois do registro, o cliente sai da lista.'],
     ['h', 'Passo a passo'],
     ['passos', ['Abra a Lista principal. Supervisor e gestão escolhem o supervisor e o representante/vendedor e clicam em Buscar.', 'Clique em Registrar na linha do cliente ou abra a ficha dele.', 'Informe o canal, o resultado e a data do registro.', 'Grave: a ficha mostra o novo status e o movimento no histórico.']],
+    ['img', 'lista-principal.jpg', 'Lista principal de um representante/vendedor.'],
     ['h', 'Os resultados do atendimento'],
     ['tabela', ['Resultado', 'O que pede', 'O que acontece'], [
       ['Atendido', 'Data de retorno, opcional', 'Vai para Aguardando cadastro'],
       ['Sem interesse', 'Motivo, do cliente ou do representante/vendedor', 'Vai para Sem interesse, e pode ser reaberto'],
       ['Reabrir: pedido identificado', 'Data de entrada do pedido', 'Vai para Aguardando cadastro, com o pedido informado'],
     ]],
+    ['img', 'registrar.jpg', 'Registrar atendimento.'],
     ['p', 'Cliente que não atendeu não gera registro: ele continua na lista. Não há limite de contatos, e uma correção é feita com um novo registro.'],
     ['h', 'Sem interesse em lote'],
     ['p', 'Marque os clientes na Lista principal e clique em Sem interesse em lote. Informe um motivo para todos e, se precisar, um motivo diferente para algum deles.'],
@@ -78,6 +82,8 @@ export const CAPITULOS = Object.freeze([
     ['p', 'Cadastros realizados é a soma das quatro etapas. Um cliente cadastrado não volta para a Lista principal.'],
     ['h', 'Passo a passo'],
     ['passos', ['Clique numa etapa nos cards do topo: a lista abaixo mostra quem está nela, com quem está há mais tempo primeiro.', 'Use os níveis para ver por supervisor, representante/vendedor, cidade ou mês do cadastro.', 'Recolha ou reexiba a lista em cascata pelas setas de cada linha.', 'Clique no cliente para abrir a ficha e registrar um novo atendimento.']],
+    ['img', 'acompanhamento.jpg', 'Acompanhamento no computador: os cards do fluxo, a hierarquia e a lista.'],
+    ['img', 'acompanhamento-celular.jpg', 'Acompanhamento no celular.'],
     ['h', 'O que analisar'],
     ['lista', [['Análise vencida', 'o prazo de análise passou e falta o crédito. Cobre o financeiro.'], ['Pedido não válido', 'houve pedido digitado ou cancelado. Veja com o cliente o que faltou.'],
       ['Apenas o primeiro pedido × Todos os pedidos', 'o primeiro mostra clientes conquistados; todos mostra o valor vendido. Dez pedidos para o mesmo cliente somam valor, mas contam um cliente só.']]],
@@ -89,14 +95,17 @@ export const CAPITULOS = Object.freeze([
     ['p', 'Depois do cadastro identificado, o cliente fica em Análise financeira até o crédito ser liberado. Há duas formas: o relatório de cadastro e crédito do ERP, na rotina, e o Console de crédito, nos casos pontuais.'],
     ['h', 'Liberar pelo Console de crédito'],
     ['passos', ['Abra o Console de crédito: os clientes mais antigos vêm primeiro.', 'Clique no cliente e informe forma de pagamento, prazo, limite e restrição.', 'Grave: o cliente vai para Aguardando pedido. A correção é uma nova liberação.']],
+    ['img', 'console-credito.jpg', 'Console de crédito.'],
     ['h', 'Crédito × Pedido'],
     ['p', 'No Acompanhamento, a visão Crédito × Pedido compara o limite liberado com os pedidos em carteira.'],
+    ['img', 'credito-pedido.jpg', 'Visão Crédito × Pedido, no Acompanhamento.'],
     ['lista', [['Limite do CNPJ', 'compara com os pedidos do cliente.'], ['Limite do grupo', 'é global: compara com todas as empresas da mesma raiz de CNPJ.'],
       ['Sem limite', '9.999.999 no ERP ou limite não informado: não há o que comparar.'], ['Limite zero', 'sem crédito: qualquer pedido em carteira fica acima do limite.']]],
     ['p', 'O uso do limite é uma estimativa: títulos faturados e não pagos também consomem limite no ERP e não vêm nos relatórios. A comparação de forma e prazo entra quando o relatório de pedidos trouxer esses dados.'],
   ] },
   { n: 6, nome: 'Pedidos', desc: 'Explorar pedidos, primeiro pedido e bonificação.', para: (u) => podeTela(u, 'pedidos'), blocos: [
     ['p', 'Explorar pedidos analisa o que foi vendido: valores, quem vendeu e bonificação. A importação do arquivo de pedidos é o que alimenta esta tela.'],
+    ['img', 'explorar-pedidos.jpg', 'Explorar pedidos.'],
     ['h', 'Os números'],
     ['tabela', ['Número', 'O que é'], [
       ['Venda válida', 'Pedidos de venda em carteira, parciais ou faturados'],
@@ -117,6 +126,7 @@ export const CAPITULOS = Object.freeze([
     ['p', 'O Explorar carteira é a tela inicial e mostra como está a base inteira, em todos os status, do total até o cliente.'],
     ['h', 'Como usar'],
     ['passos', ['Arraste os níveis para montar a hierarquia: supervisor, representante/vendedor, cidade, segmento, onda, rota e subrota.', 'Abra as linhas pelas setas e clique numa delas para ver os números daquela parte.', 'Use os números para decidir onde agir e abra a lista daquela parte.']],
+    ['img', 'explorar-carteira.jpg', 'Explorar carteira.'],
     ['h', 'O que analisar'],
     ['lista', [['Cobertura', 'contactados ÷ base válida. Mostra quanto da base já foi trabalhado.'], ['Da totalidade', 'como a base se divide entre contactados, sem interesse, não contactados e inativos.'], ['Dos contactados', 'em que etapa estão os que seguem no processo.']]],
   ] },
@@ -127,8 +137,10 @@ export const CAPITULOS = Object.freeze([
     ['p', 'Se os pedidos chegarem antes do cadastro, nada se perde: os pedidos ficam guardados, e o relatório de cadastro e crédito completa o cliente depois, sem reimportar.'],
     ['h', 'Apagar um arquivo de pedidos'],
     ['p', 'Em Importações, os arquivos de pedidos podem ser apagados, do mais novo ao mais antigo. Isso devolve cada cliente ao que era antes e não pode ser desfeito.'],
+    ['img', 'importacoes.jpg', 'Importações.'],
     ['h', 'Usuários e perfis'],
     ['p', 'Em Usuários, cadastre as pessoas e defina as senhas. Em Perfis, escolha quais telas cada perfil acessa. O código do ERP liga o usuário ao representante dos arquivos de pedidos.'],
+    ['img', 'usuarios.jpg', 'Usuários.'],
     ['h', 'Parâmetros, feriados e erros'],
     ['p', 'Parâmetros guarda prazos e limites dos alertas. Feriados entram na conta de dias úteis. Erros do app mostra as falhas registradas, com a tela e o usuário.'],
   ] },

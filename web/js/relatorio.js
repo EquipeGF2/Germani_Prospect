@@ -118,6 +118,16 @@ export async function gerarPdfLista({ titulo, representante, supervisor, emissao
   return nomeArquivo;
 }
 
+const MAX_ALTURA_IMAGEM = 130;   // mm
+/** Imagem de uma tela, com o tamanho. Se faltar, o manual sai sem ela. */
+async function imagemDaAjuda(arquivo) {
+  const r = await fetch(`img/ajuda/${arquivo}`).catch(() => null);
+  if (!r?.ok) return null;
+  const dados = await new Promise(async (ok) => { const f = new FileReader(); f.onload = () => ok(f.result); f.onerror = () => ok(null); f.readAsDataURL(await r.blob()); });
+  if (!dados) return null;
+  return new Promise((ok) => { const i = new Image(); i.onload = () => ok({ dados, largura: i.naturalWidth, altura: i.naturalHeight }); i.onerror = () => ok(null); i.src = dados; });
+}
+
 /**
  * Manual em PDF, gerado na hora a partir do conteúdo da Ajuda (shared/ajuda.mjs): A4 retrato, logotipo no cabeçalho, capa, sumário
  * e "Página X de N". Com um capítulo só, vai sem capa nem sumário.
@@ -137,6 +147,12 @@ export async function gerarManualPdf({ capitulos, perfil, emissao, nomeArquivo }
     doc.text(linhas, M + recuo, y + tam * 0.3);
     y += altura + depois;
   };
+  // imagens das telas: lidas antes de desenhar, com o tamanho de cada uma
+  const imagens = new Map();
+  await Promise.all(capitulos.flatMap((c) => c.blocos).filter((b) => b[0] === 'img').map(async (b) => {
+    const dados = await imagemDaAjuda(b[1]);
+    if (dados) imagens.set(b[1], dados);
+  }));
   const completo = capitulos.length > 1;
   if (completo) {
     if (logo) doc.addImage(logo, 'JPEG', M, 60, 60, 30);
@@ -154,7 +170,17 @@ export async function gerarManualPdf({ capitulos, perfil, emissao, nomeArquivo }
     escrever(`${c.n}. ${c.nome}`, { tam: 20, estilo: 'bold', depois: 5 });
     for (const b of c.blocos) {
       if (b[0] === 'p') escrever(b[1], { depois: 4 });
-      else if (b[0] === 'h') { cabe(14); y += 2; escrever(b[1], { tam: 14, estilo: 'bold', cor: VINHO, depois: 3 }); }
+      else if (b[0] === 'img') {
+        const img = imagens.get(b[1]);
+        if (!img) continue;
+        const largura = Math.min(util, (MAX_ALTURA_IMAGEM * img.largura) / img.altura);
+        const altura = (largura * img.altura) / img.largura;
+        cabe(altura + 8);
+        doc.addImage(img.dados, 'JPEG', M + (util - largura) / 2, y, largura, altura);
+        doc.setDrawColor(209, 213, 219); doc.setLineWidth(0.1); doc.rect(M + (util - largura) / 2, y, largura, altura);
+        y += altura + 2;
+        escrever(b[2], { tam: 9, cor: [55, 65, 81], depois: 5 });
+      } else if (b[0] === 'h') { cabe(14); y += 2; escrever(b[1], { tam: 14, estilo: 'bold', cor: VINHO, depois: 3 }); }
       else if (b[0] === 'lista' || b[0] === 'passos') {
         b[1].forEach((x, k) => escrever(`${b[0] === 'passos' ? `${k + 1}.` : '•'} ${Array.isArray(x) ? `${x[0]}: ${x[1]}` : x}`, { recuo: 3, depois: 2 }));
         y += 2;
