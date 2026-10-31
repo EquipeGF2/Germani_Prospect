@@ -5,7 +5,7 @@ import { bancoTeste, cnpjTeste, criarEquipe, criarProspect, evento, prospect, re
 import { lerBiff2 } from '../shared/biff.mjs';
 import { lerPlanilhaDeBytes } from '../shared/planilha.mjs';
 import { apagarArquivoPedidos, conferirExclusao, gravarPedidos, listarArquivosPedidos, simularPedidos, statusDepois } from '../shared/importar-pedidos.mjs';
-import { alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, porRepresentante, resumirPedidos } from '../shared/pedidos.mjs';
+import { alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaPedidos, consultaPedidosGrupo, consultaSaldoFiliais, montarArvorePedidos, niveisPedidosPossiveis, porRepresentante, resumirPedidos } from '../shared/pedidos.mjs';
 import { consultaPedidosResumo } from '../shared/explorar.mjs';
 
 const CAB = ['Cliente', 'Razão Social', 'CPF / CNPJ', 'Vlr. Pedido', 'Vlr. Faturado', 'Pedido', 'Sit.', 'Situação', 'Transação', 'Desc. Trans.', 'Rep.'];
@@ -141,21 +141,22 @@ test('representante: cliente fica com o dono, venda vai para quem realizou, valo
   const db = await montar();
   const a = cnpjTeste(1); const fora = cnpjTeste(9);
   await criarProspect(db, { n: 1, vendedorId: 2 });   // carteira do vendedor 10
+  await criarProspect(db, { n: 2, vendedorId: 3 });   // carteira do vendedor 11
   await grava(db, arquivo(linha({ doc: a, num: 1, sit: 4, valor: 70, fat: 70, rep: 10 }), linha({ doc: a, num: 2, sit: 1, valor: 30, rep: 11 }),
-    linha({ doc: fora, num: 3, sit: 1, valor: 5, rep: 11 }), linha({ doc: '12345678909', num: 4, sit: 1, valor: 7, rep: 77 })));
+    linha({ doc: cnpjTeste(2), num: 3, sit: 1, valor: 5, rep: 11 }), linha({ doc: cnpjTeste(2), num: 4, sit: 1, valor: 7, rep: 77 }), linha({ doc: fora, num: 5, sit: 1, valor: 9, rep: 11 })));
   const todos = await pedidosDe(db);
   const reps = porRepresentante(todos);
   const r10 = reps.find((r) => r.codigo === '10'); const r11 = reps.find((r) => r.codigo === '11'); const r77 = reps.find((r) => r.codigo === '77');
   assert.equal(r10.venda, 70); assert.equal(r10.propria, 70); assert.equal(r10.rotulo, '10 · Vend Dez');
-  assert.equal(r11.outra, 30); assert.equal(r11.fora, 5);
+  assert.equal(r11.outra, 30); assert.equal(r11.propria, 5);
   assert.equal(r77.rotulo, '77 · sem cadastro');
   assert.equal(reps.reduce((s, r) => s + r.venda, 0), 112, 'valor nunca duplica');
-  assert.equal(reps.reduce((s, r) => s + r.clientes.length, 0), 4); assert.equal(clientesDistintos(todos), 3, 'cliente distinto no total');
+  assert.equal(reps.reduce((s, r) => s + r.clientes.length, 0), 4); assert.equal(clientesDistintos(todos), 2, 'cliente distinto no total');
   const varios = clientesVariosRepresentantes(todos);
-  assert.equal(varios.length, 1); assert.deepEqual(varios[0].reps.map((r) => r.parte), [70, 30]);
+  assert.equal(varios.length, 2); assert.deepEqual(varios.find((c) => c.documento === a).reps.map((r) => r.parte), [70, 30]);
   assert.equal((await prospect(db, 1)).vendedor_id, 2, 'a carteira não muda');
   const do11 = await pedidosDe(db, { id: 3, perfil: 'vendedor' });
-  assert.deepEqual(do11.map((p) => p.numero).sort(), ['2', '3'], 'o 11 vê o que vendeu, inclusive fora da lista dele');
+  assert.deepEqual(do11.map((p) => p.numero).sort(), ['2', '3', '4'], 'o 11 vê o que vendeu, inclusive fora da lista dele, e os pedidos da carteira dele');
   const do10 = await pedidosDe(db, { id: 2, perfil: 'vendedor' });
   assert.deepEqual(do10.map((p) => p.numero).sort(), ['1', '2'], 'o dono vê todos os pedidos do cliente dele');
   const alertas = alertasPedidos(todos, { hoje: '2026-11-01' });
@@ -197,7 +198,8 @@ test('linhas recusadas, CPF, CNPJ baixado, expurgado e código novo', async () =
   assert.equal(por[2].resultado, 'rejeitada'); assert.equal(por[3].resultado, 'rejeitada'); assert.equal(por[4].resultado, 'rejeitada');
   assert.match(por[5].erros[0], /impossibilitado de faturamento/);
   assert.equal(por[6].resultado, 'aceita'); assert.match(por[6].avisos.join(), /expurgado/);
-  assert.match(por[7].avisos.join(), /CPF/);
+  await criarProspect(db, { n: 3 });
+  assert.equal(por[7].resultado, 'ignorada'); assert.match(por[7].erros.join(), /CPF/);
   assert.match(por[8].erros[0], /repetido/);
   await grava(db, linhas);
   assert.equal((await prospect(db, idExp)).status_atual, 'expurgado', 'o pedido só fica registrado');
@@ -291,3 +293,59 @@ test('Aguardando pedido válido aceita registro sem mudar a fase e não cai no c
   assert.equal(st.indexOf('aguardando_pedido_valido'), st.indexOf('aguardando_pedido') + 1);
   assert.equal(st.indexOf('venda_realizada'), st.indexOf('aguardando_pedido_valido') + 1);
 });
+
+test('só entram os clientes da base: CPF e CNPJ de fora são ignorados; filial do grupo fica só na visão do grupo', async () => {
+  const db = await montar();
+  const base = cnpjTeste(1); const filial = cnpjTeste(1, 2); const fora = cnpjTeste(7);
+  const id = await criarProspect(db, { n: 1, vendedorId: 2 });
+  const linhas = arquivo(linha({ doc: base, num: 1, sit: 1, valor: 100 }), linha({ doc: filial, num: 2, sit: 1, valor: 40 }),
+    linha({ doc: fora, num: 3, sit: 4, valor: 900, fat: 900, tr: '95000' }), linha({ doc: '12345678909', num: 4, sit: 1, valor: 60, rep: 77 }));
+  const s = await simularPedidos(db, { linhas, dataPadrao: '2026-10-31', hoje: '2026-10-31' });
+  assert.deepEqual(s.novos, { transacoes: [], situacoes: [] }, 'código novo de quem está fora da base não trava a importação');
+  assert.deepEqual([s.resumo.linhasLidas, s.resumo.aceitas, s.resumo.rejeitadas, s.resumo.ignoradas], [4, 2, 0, 2], 'nenhuma linha some');
+  assert.deepEqual(s.totais.venda, { qtd: 1, valor: 100, faturado: 0 });
+  assert.deepEqual(s.totais.grupo, { qtd: 1, valor: 40 });
+  assert.deepEqual(s.pontos.foraDaBase, { linhas: 2, valor: 960, clientes: 2 });
+  assert.deepEqual(s.pontos.semCodigo, [], 'representante de quem está fora não importa');
+  const g = await grava(db, linhas);
+  assert.equal(Number((await db.execute('SELECT COUNT(*) n FROM pedidos_erp')).rows[0].n), 2, 'o que está fora não é gravado');
+  assert.equal(Number((await db.execute({ sql: 'SELECT COUNT(*) n FROM importacao_linhas WHERE importacao_id = ?', args: [g.importacaoId] })).rows[0].n), 4, 'mas fica no relatório da importação');
+  const pedidos = await pedidosDe(db);
+  assert.deepEqual(pedidos.map((p) => p.numero), ['1'], 'a filial não entra nas contas do cliente');
+  assert.equal(resumirPedidos(pedidos).venda.valor, 100);
+  assert.equal((await prospect(db, id)).status_atual, 'venda_realizada');
+  const grupo = (await db.execute(consultaPedidosGrupo({ prospectId: id }))).rows;
+  assert.deepEqual(grupo.map((x) => [x.cpf_cnpj, Number(x.saldo)]).sort(), [[base, 100], [filial, 40]].sort());
+  const sf = new Map((await db.execute(consultaSaldoFiliais())).rows.map((f) => [f.raiz, Number(f.saldo)]));
+  assert.equal(sf.get(base.slice(0, 8)), 40);
+  const limite = pedidos.map((p) => ({ ...p, limite_credito: 120, limite_credito_origem: 'grupo' }));
+  assert.ok(alertasPedidos(limite, { hoje: '2026-11-01', saldoFiliais: sf }).some((a) => a.tipo === 'limite'), 'o limite do grupo conta o que está em aberto na filial');
+  assert.ok(!alertasPedidos(limite, { hoje: '2026-11-01' }).some((a) => a.tipo === 'limite'));
+  // cliente que entra na base depois: o pedido passa a entrar no próximo arquivo
+  await criarProspect(db, { n: 7, vendedorId: 2 });
+  const g2 = await grava(db, arquivo(linha({ doc: fora, num: 3, sit: 1, valor: 900 })), '2026-11-05');
+  assert.equal(g2.resumo.aceitas, 1);
+});
+
+test('análise: níveis livres, cada ramo soma o que está abaixo dele e abre até o pedido', async () => {
+  const db = await montar();
+  await criarProspect(db, { n: 1, vendedorId: 2, cidade: 'Lajeado', onda: '1' }); await criarProspect(db, { n: 2, vendedorId: 3, cidade: 'Estrela', onda: '2' });
+  await grava(db, arquivo(linha({ doc: cnpjTeste(1), num: 1, sit: 4, valor: 100, fat: 100, rep: 10 }), linha({ doc: cnpjTeste(1), num: 2, sit: 1, valor: 50, rep: 11 }),
+    linha({ doc: cnpjTeste(2), num: 3, sit: 1, valor: 300, rep: 11 }), linha({ doc: cnpjTeste(2), num: 4, sit: 5, valor: 20, rep: 11 }), linha({ doc: cnpjTeste(2), num: 5, sit: 4, valor: 7, fat: 7, tr: '90106', rep: 11 })));
+  const pedidos = await pedidosDe(db);
+  const fechada = montarArvorePedidos({ pedidos, niveis: ['representante', 'cliente'], abertos: new Set() });
+  assert.equal(fechada.length, 1, 'fechada: só a raiz');
+  assert.deepEqual(fechada[0].ind.venda, { qtd: 3, valor: 450 });
+  assert.equal(fechada[0].ind.clientes, 2);
+  assert.equal(fechada[0].ind.investimento.valor, 7, 'bonificação à parte');
+  const aberta = montarArvorePedidos({ pedidos, niveis: ['representante', 'cliente'], abertos: new Set(['', '/representante=11']) });
+  assert.deepEqual(aberta.map((n) => [n.profundidade, n.rotulo, n.ind.venda.valor]), [[0, 'Todos os pedidos', 450], [1, '11 · Vend Onze', 350], [2, `100 - Empresa 2`, 300], [2, `100 - Empresa 1`, 50], [1, '10 · Vend Dez', 100]], 'do maior para o menor');
+  const reps = aberta.filter((n) => n.profundidade === 1);
+  assert.equal(reps.reduce((s, n) => s + n.ind.venda.valor, 0), aberta[0].ind.venda.valor, 'os filhos somam o pai');
+  assert.equal(reps.reduce((s, n) => s + n.pedidos.length, 0), pedidos.length);
+  const porCidade = montarArvorePedidos({ pedidos, niveis: ['cidade', 'lista', 'situacao'], abertos: new Set(['']) });
+  assert.deepEqual(porCidade.slice(1).map((n) => n.rotulo), ['Estrela/RS', 'Lajeado/RS']);
+  assert.equal(niveisPedidosPossiveis({ perfil: 'vendedor' }).includes('supervisor'), false);
+  assert.equal(niveisPedidosPossiveis(adm).includes('supervisor'), true);
+});
+

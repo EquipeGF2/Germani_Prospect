@@ -20,7 +20,7 @@ export function razaoSocial({ codigo, razao, doc, prospectId = null }) {
 
 const SELO_FASE = { digitado: 'alerta', carteira: '', parcial: 'ok', faturado: 'ok', cancelado: 'erro' };
 export const seloSituacao = (p) => selo(p.situacao_descricao, SELO_FASE[p.fase] ?? '');
-export const RELACAO = { propria: ['Na lista', 'ok'], outra: ['Fora da lista', ''], fora_base: ['Fora da base', ''], cpf: ['CPF', ''] };
+export const RELACAO = { propria: ['Na lista', 'ok'], outra: ['Fora da lista', ''] };
 export const seloRelacao = (r) => selo(...(RELACAO[r] ?? ['—', '']));
 
 /** Tabela: colunas [{ titulo, valor(l) | campo, classe: 'num' | 'cen' }]; `rodape`: células do tfoot. */

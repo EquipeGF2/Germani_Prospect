@@ -112,7 +112,7 @@ cálculo de distância ([ADR-0005](adr/0005-sem-calculo-de-distancia.md)).
 |---|---|
 | `pedido_transacoes` · `pedido_situacoes` | classificação dos códigos do ERP (`conta_como`), editada na importação |
 | `pedido_importacoes` | arquivos de pedidos: data de referência e, se apagado, quando e por quem |
-| `pedidos_erp` | uma linha por pedido por arquivo em que mudou, com `importacao_id` e `prospect_id` (NULL = fora da base). Só inclusão, exceto pela exclusão do arquivo |
+| `pedidos_erp` | uma linha por pedido por arquivo em que mudou, com `importacao_id` e `prospect_id` (NULL = filial de um grupo da base). Só inclusão, exceto pela exclusão do arquivo |
 | `pedido_aplicacoes` | efeito de um arquivo em cada cliente: status antes e depois, motivo e a foto dos campos para poder voltar. O trigger desta tabela é o único que muda o status por pedido |
 | `pedido_exclusoes` | exclusão de um arquivo: quem, quando, quantidades. Somente inclusão; o trigger faz toda a exclusão numa transação (ADR-0007) |
 

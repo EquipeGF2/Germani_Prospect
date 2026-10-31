@@ -721,3 +721,8 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ped-opcao { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--borda-forte); border-radius: var(--raio-p); background: #fff; font-weight: 400; margin: 0; }
 .ped-opcao input { width: auto; min-height: 0; margin-top: 4px; }
 .ped-confirma { background: #FEF3F2; border: 1px solid #FECDCA; border-radius: var(--raio); padding: 16px; margin-bottom: 16px; }
+.ped-exp .exp-linha { grid-template-columns: minmax(220px, 2.4fr) repeat(8, minmax(82px, 1fr)); }
+.ped-exp .exp-arvore { margin-bottom: 16px; }
+@media (max-width: 760px) { .ped-exp .exp-arvore .rolagem .exp-linha { display: grid; grid-template-columns: minmax(200px, 2fr) repeat(8, minmax(78px, 1fr)); width: max-content; min-width: 100%; }
+  .ped-exp .exp-linha .num::before { content: none; } }
+

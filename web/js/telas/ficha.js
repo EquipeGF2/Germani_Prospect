@@ -118,8 +118,9 @@ export async function render(conteudo, { usuario, parametros }) {
 
   // pedidos do cliente (0022): o cliente fica com o dono da carteira; quem vendeu aparece com o seu valor
   const pedidos = (await db.execute(consultaPedidos({ usuario, prospectId: id }))).rows;
-  const grupoPedidos = pedidos.length ? (await db.execute(consultaPedidosGrupo({ prospectId: id }))).rows : [];
-  const blocoPedidos = pedidos.length ? (() => {
+  const grupoPedidos = (await db.execute(consultaPedidosGrupo({ prospectId: id }))).rows;
+  const filiaisForaDaBase = grupoPedidos.filter((g) => g.prospect_id == null);
+  const blocoPedidos = pedidos.length || filiaisForaDaBase.length ? (() => {
     const r = resumirPedidos(pedidos);
     const reps = porRepresentante(pedidos).filter((x) => x.venda > 0);
     const somaGrupo = (campo) => grupoPedidos.reduce((t, g) => t + Number(g[campo] ?? 0), 0);
@@ -127,17 +128,17 @@ export async function render(conteudo, { usuario, parametros }) {
     const motivo = pedidos.some((x) => x.tipo === 'venda' && x.fase === 'digitado') ? 'há pedido digitado, ainda fora da carteira' : 'o pedido foi cancelado';
     return h('div', { id: 'pedidos-cliente' },
       p.status_atual === 'aguardando_pedido_valido' ? mensagem(`Aguardando pedido válido: ${motivo}.`, 'info') : null,
-      cartoes([['Venda válida', moeda(r.venda.valor), `${r.venda.qtd} pedidos`, 'destaque'], ['Faturado', moeda(r.faturado)], ['Em carteira', moeda(r.saldo)], ['Digitado', moeda(r.digitado.valor), `${r.digitado.qtd} pedidos`],
+      !pedidos.length ? null : cartoes([['Venda válida', moeda(r.venda.valor), `${r.venda.qtd} pedidos`, 'destaque'], ['Faturado', moeda(r.faturado)], ['Em carteira', moeda(r.saldo)], ['Digitado', moeda(r.digitado.valor), `${r.digitado.qtd} pedidos`],
         ['Desistência', moeda(r.cancelado.valor), `${r.cancelado.qtd} pedidos`], ['Investimento', moeda(r.investimento.valor), `${r.investimento.qtd} pedidos`, 'investimento']]),
       h('div', { class: 'ped-colunas' },
-        h('div', { class: 'largo' }, h('div', { class: 'cartao' }, h('h2', {}, `Pedidos do cliente (${pedidos.length})`),
+        !pedidos.length ? null : h('div', { class: 'largo' }, h('div', { class: 'cartao' }, h('h2', {}, `Pedidos do cliente (${pedidos.length})`),
           tabelaPedidos([{ titulo: 'Pedido', campo: 'numero', classe: 'num' }, { titulo: 'Data', valor: (x) => formatar.data(x.data_situacao), classe: 'num' }, { titulo: 'Tipo', valor: (x) => (x.tipo === 'investimento' ? 'Bonificação' : 'Venda'), classe: 'cen' },
             { titulo: 'Situação', valor: seloSituacao, classe: 'cen' }, { titulo: 'Pedido (R$)', valor: (x) => valor(x.valor_pedido), classe: 'num' }, { titulo: 'Faturado (R$)', valor: (x) => valor(x.valor_faturado), classe: 'num' }, { titulo: 'Representante', valor: rotuloRepresentante }], pedidos))),
-        reps.length || grupoPedidos.length > 1 ? h('div', { class: 'estreito' },
+        reps.length || grupoPedidos.length > 1 || filiaisForaDaBase.length ? h('div', { class: 'estreito' },
           reps.length ? h('div', { class: 'cartao' }, h('h2', {}, 'Quem vendeu'), reps.map((x) => linha(`${x.rotulo}${x.propria > 0 ? ', dono da carteira' : ''}`, moeda(x.venda))),
             h('p', { class: 'ajuda', style: 'margin:10px 0 0' }, 'O cliente fica com o dono da carteira, e a venda vai para quem a realizou.')) : null,
-          grupoPedidos.length > 1 ? h('div', { class: 'cartao' }, h('h2', {}, `Grupo · raiz ${formatar.cnpj(p.cnpj).slice(0, 10)}`),
-            linha('Empresas com pedido', grupoPedidos.length), linha('Venda válida do grupo', moeda(somaGrupo('venda'))), linha('Em carteira do grupo', moeda(somaGrupo('saldo'))), linha('Investimento do grupo', moeda(somaGrupo('investimento'))),
+          grupoPedidos.length > 1 || filiaisForaDaBase.length ? h('div', { class: 'cartao', id: 'pedidos-grupo' }, h('h2', {}, `Grupo · raiz ${formatar.cnpj(p.cnpj).slice(0, 10)}`),
+            linha('Empresas com pedido', grupoPedidos.length), filiaisForaDaBase.length ? linha('Filiais fora da base', filiaisForaDaBase.length) : null, linha('Venda válida do grupo', moeda(somaGrupo('venda'))), linha('Em carteira do grupo', moeda(somaGrupo('saldo'))), linha('Investimento do grupo', moeda(somaGrupo('investimento'))),
             p.limite_credito != null && p.limite_credito_origem === 'grupo' ? linha('Créd. Grupo', moeda(p.limite_credito)) : null,
             h('p', { class: 'ajuda', style: 'margin:10px 0 0' }, 'Mostra só pedidos em aberto. Sem os títulos a receber, é uma visão parcial do uso do limite.')) : null) : null));
   })() : null;
