@@ -78,7 +78,7 @@ async function confirmarExclusao(conteudo, db, id, ctx) {
       ['Desistência', moeda(c.cancelado.valor), `${formatar.numero(c.cancelado.qtd)} pedidos`], ['Investimento', moeda(c.investimento.valor), `${formatar.numero(c.investimento.qtd)} pedidos`, 'investimento']]),
     h('div', { class: 'cartao' }, h('h2', {}, 'O que acontece com cada coisa'),
       tabelaPedidos([{ titulo: 'O quê', campo: 'o' }, { titulo: 'Resultado', valor: (l) => selo(l.r, l.t), classe: 'cen' }, { titulo: 'Detalhe', campo: 'd' }], [
-        { o: 'Pedidos e situações deste arquivo', r: 'Apagados', t: 'erro', d: 'Somem da ficha, das listas e do Acompanhamento de pedidos' },
+        { o: 'Pedidos e situações deste arquivo', r: 'Apagados', t: 'erro', d: 'Somem da ficha, das listas e de Explorar pedidos' },
         { o: 'Linhas brutas do arquivo', r: 'Apagadas', t: 'erro', d: 'Os dados da planilha guardados na importação também saem' },
         { o: 'Histórico gerado pelo arquivo', r: 'Apagado', t: 'erro', d: 'Os movimentos da importação do pedido saem da linha do tempo' },
         { o: 'Status do cliente', r: 'Volta ao anterior', t: 'alerta', d: 'Considera os atendimentos registrados depois da importação' },

@@ -44,7 +44,7 @@ const GRUPOS = [
     { caminho: '/explorar', rotulo: 'Explorar carteira', icone: 'explorar', tela: 'explorar' },
     { caminho: '/carteira', rotulo: 'Lista principal', icone: 'lista', tela: 'lista' },
     { caminho: '/carteira?aba=acompanhamento', rotulo: 'Acompanhamento', icone: 'acompanhamento', tela: 'acompanhamento' },
-    { caminho: '/pedidos', rotulo: 'Acompanhamento de pedidos', icone: 'erp', tela: 'pedidos' },
+    { caminho: '/pedidos', rotulo: 'Explorar pedidos', icone: 'erp', tela: 'pedidos' },
   ] },
   { titulo: 'Financeiro', itens: [
     { caminho: '/financeiro', rotulo: 'Console de crédito', icone: 'financeiro', tela: 'credito' },

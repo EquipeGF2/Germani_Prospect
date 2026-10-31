@@ -1,4 +1,4 @@
-// Acompanhamento de pedidos: leitura e contas das abas (Pedidos · Por representante · Bonificação · Alertas), da ficha e dos alertas.
+// Explorar pedidos: leitura e contas das abas (Análise · Pedidos · Por representante · Bonificação · Alertas), da ficha e dos alertas.
 // A tela lê os pedidos do escopo numa consulta só; filtros e abas são calculados no navegador. docs/03 §14
 // Só clientes da base. A filial de um grupo da base (prospect_id NULL) aparece apenas na visão do grupo.
 import { veTodasEquipes } from './perfis.mjs';
@@ -38,6 +38,34 @@ export function consultaSaldoFiliais() {
 }
 
 const num = (v) => Number(v ?? 0);
+
+/**
+ * Separa uma lista pela raiz do CNPJ (8 primeiros dígitos). Grupo = 2 ou mais empresas diferentes da mesma raiz; o resto fica solto.
+ * Só agrupa para mostrar: status, atendimento e crédito continuam de cada empresa.
+ */
+export function agruparPorRaiz(linhas, documentoDe) {
+  const raizes = new Map();
+  for (const l of linhas) {
+    const r = String(documentoDe(l)).slice(0, 8);
+    if (!raizes.has(r)) raizes.set(r, { raiz: r, linhas: [], empresas: new Set() });
+    const g = raizes.get(r);
+    g.linhas.push(l); g.empresas.add(documentoDe(l));
+  }
+  const todos = [...raizes.values()];
+  return { grupos: todos.filter((g) => g.empresas.size > 1), soltas: todos.filter((g) => g.empresas.size === 1).flatMap((g) => g.linhas) };
+}
+/** Quantas empresas cada raiz tem no conjunto: a chave do cliente é a raiz só quando ela tem mais de uma empresa. */
+function empresasPorRaiz(pedidos) {
+  const m = new Map();
+  for (const p of pedidos) { const r = String(p.cpf_cnpj).slice(0, 8); if (!m.has(r)) m.set(r, new Set()); m.get(r).add(p.cpf_cnpj); }
+  return m;
+}
+function clienteDe(p, porGrupo, raizes) {
+  const r = String(p.cpf_cnpj).slice(0, 8);
+  const n = raizes?.get(r)?.size ?? 1;
+  if (!porGrupo || n < 2) return { chave: p.cpf_cnpj, documento: p.cpf_cnpj, codigo: p.codigo_cliente, razao: p.razao_social };
+  return { chave: r, documento: r, codigo: null, razao: `Grupo ${p.razao_social} · ${n} empresas` };
+}
 const vazio = () => ({ qtd: 0, valor: 0 });
 const somar = (t, v) => { t.qtd += 1; t.valor += num(v); };
 
@@ -61,8 +89,9 @@ export const rotuloRepresentante = nomeRep;
  * Por representante, sempre por quem fez o pedido: o cliente fica com o dono da carteira e a venda vai para quem realizou.
  * O valor nunca duplica (cada pedido tem um só representante); os clientes podem repetir entre representantes.
  */
-export function porRepresentante(pedidos) {
+export function porRepresentante(pedidos, { porGrupo = false } = {}) {
   const reps = new Map();
+  const raizes = empresasPorRaiz(pedidos);
   for (const p of pedidos) {
     const chave = String(p.rep_codigo ?? '');
     if (!reps.has(chave)) reps.set(chave, { codigo: p.rep_codigo, nome: p.rep_nome, rotulo: nomeRep(p), clientes: new Map(), validos: 0, venda: 0, faturado: 0, saldo: 0, digitado: 0, desistencia: 0, investimento: 0, propria: 0, outra: 0 });
@@ -73,23 +102,27 @@ export function porRepresentante(pedidos) {
     r.validos += 1; r.venda += num(p.valor_pedido); r.faturado += num(p.valor_faturado); r.saldo += num(p.saldo);
     if (p.relacao === 'propria') r.propria += num(p.valor_pedido);
     else r.outra += num(p.valor_pedido);
-    if (!r.clientes.has(p.cpf_cnpj)) r.clientes.set(p.cpf_cnpj, { documento: p.cpf_cnpj, codigo: p.codigo_cliente, razao: p.razao_social, relacao: p.relacao, dono: p.dono_id != null ? `${p.dono_codigo ?? ''} · ${p.dono_nome ?? ''}` : null, pedidos: 0, venda: 0 });
-    const c = r.clientes.get(p.cpf_cnpj);
+    const cli = clienteDe(p, porGrupo, raizes);
+    if (!r.clientes.has(cli.chave)) r.clientes.set(cli.chave, { ...cli, relacao: p.relacao, dono: p.dono_id != null ? `${p.dono_codigo ?? ''} · ${p.dono_nome ?? ''}` : null, pedidos: 0, venda: 0 });
+    const c = r.clientes.get(cli.chave);
     c.pedidos += 1; c.venda += num(p.valor_pedido);
+    if (p.relacao === 'propria') c.relacao = 'propria';   // grupo: basta uma empresa na lista dele
   }
   return [...reps.values()].map((r) => ({ ...r, clientes: [...r.clientes.values()].sort((a, b) => b.venda - a.venda) })).sort((a, b) => b.venda - a.venda || b.investimento - a.investimento);
 }
 
 /** Clientes com venda válida distintos no conjunto (os representantes podem repetir o mesmo cliente). */
-export const clientesDistintos = (pedidos) => new Set(pedidos.filter((p) => num(p.valida)).map((p) => p.cpf_cnpj)).size;
+export const clientesDistintos = (pedidos, { porGrupo = false } = {}) => new Set(pedidos.filter((p) => num(p.valida)).map((p) => (porGrupo ? String(p.cpf_cnpj).slice(0, 8) : p.cpf_cnpj))).size;
 
 /** Clientes vendidos por mais de um representante, com a parte de cada um. */
-export function clientesVariosRepresentantes(pedidos) {
+export function clientesVariosRepresentantes(pedidos, { porGrupo = false } = {}) {
   const clientes = new Map();
+  const raizes = empresasPorRaiz(pedidos);
   for (const p of pedidos) {
     if (!num(p.valida)) continue;
-    if (!clientes.has(p.cpf_cnpj)) clientes.set(p.cpf_cnpj, { documento: p.cpf_cnpj, codigo: p.codigo_cliente, razao: p.razao_social, reps: new Map(), venda: 0 });
-    const c = clientes.get(p.cpf_cnpj);
+    const cli = clienteDe(p, porGrupo, raizes);
+    if (!clientes.has(cli.chave)) clientes.set(cli.chave, { ...cli, reps: new Map(), venda: 0 });
+    const c = clientes.get(cli.chave);
     const k = String(p.rep_codigo ?? '');
     if (!c.reps.has(k)) c.reps.set(k, { rotulo: nomeRep(p), pedidos: 0, venda: 0 });
     c.reps.get(k).pedidos += 1; c.reps.get(k).venda += num(p.valor_pedido); c.venda += num(p.valor_pedido);
@@ -99,14 +132,16 @@ export function clientesVariosRepresentantes(pedidos) {
 }
 
 /** Investimento em bonificação por cliente: conta à parte, a venda não muda. "digitado" fica como previsão; desistência fica fora. */
-export function bonificacaoPorCliente(pedidos) {
+export function bonificacaoPorCliente(pedidos, { porGrupo = false } = {}) {
   const clientes = new Map();
   const venda = new Map();
-  for (const p of pedidos) if (num(p.valida)) venda.set(p.cpf_cnpj, (venda.get(p.cpf_cnpj) ?? 0) + num(p.valor_pedido));
+  const raizes = empresasPorRaiz(pedidos);
+  for (const p of pedidos) if (num(p.valida)) { const k = clienteDe(p, porGrupo, raizes).chave; venda.set(k, (venda.get(k) ?? 0) + num(p.valor_pedido)); }
   for (const p of pedidos) {
     if (p.tipo !== 'investimento' || p.fase === 'cancelado' || p.fase === 'digitado') continue;
-    if (!clientes.has(p.cpf_cnpj)) clientes.set(p.cpf_cnpj, { documento: p.cpf_cnpj, codigo: p.codigo_cliente, razao: p.razao_social, prospectId: p.prospect_id, rep: nomeRep(p), pedidos: [], investimento: 0, venda: venda.get(p.cpf_cnpj) ?? 0 });
-    const c = clientes.get(p.cpf_cnpj);
+    const cli = clienteDe(p, porGrupo, raizes);
+    if (!clientes.has(cli.chave)) clientes.set(cli.chave, { ...cli, prospectId: porGrupo && cli.codigo == null ? null : p.prospect_id, rep: nomeRep(p), pedidos: [], investimento: 0, venda: venda.get(cli.chave) ?? 0 });
+    const c = clientes.get(cli.chave);
     c.pedidos.push(p.numero); c.investimento += num(p.valor_pedido);
   }
   return [...clientes.values()].map((c) => ({ ...c, pct: c.venda ? (c.investimento / c.venda) * 100 : null })).sort((a, b) => b.investimento - a.investimento);
@@ -184,9 +219,9 @@ export const NIVEIS_PEDIDOS = Object.freeze({
 export const niveisPedidosPossiveis = (usuario) => Object.keys(NIVEIS_PEDIDOS).filter((n) => n !== 'supervisor' || veTodasEquipes(usuario));
 
 /** Indicadores de um ramo: os seis valores, clientes distintos com venda e ticket médio. */
-export function indicadoresRamo(pedidos) {
+export function indicadoresRamo(pedidos, { porGrupo = false } = {}) {
   const r = resumirPedidos(pedidos);
-  const clientes = clientesDistintos(pedidos);
+  const clientes = clientesDistintos(pedidos, { porGrupo });
   return { ...r, clientes, ticket: r.venda.qtd ? r.venda.valor / r.venda.qtd : 0, pctFaturado: r.venda.valor ? (r.faturado / r.venda.valor) * 100 : null };
 }
 
@@ -194,26 +229,38 @@ export function indicadoresRamo(pedidos) {
  * Árvore visível: linhas na ordem de exibição, cada uma { caminho, profundidade, nivel, rotulo, aberto, temFilhos, ind, pedidos }.
  * Mostra todos os itens de cada nível aberto, do maior valor de venda para o menor.
  */
-export function montarArvorePedidos({ pedidos, niveis, abertos, rotuloRaiz = 'Todos os pedidos' }) {
+export function montarArvorePedidos({ pedidos, niveis, abertos, rotuloRaiz = 'Todos os pedidos', porGrupo = false }) {
   const saida = [];
-  const visitar = (caminho, profundidade, rows, rotulo, nivel) => {
-    const temFilhos = profundidade < niveis.length;
+  // Ver por Grupo: no nível Cliente, as empresas da mesma raiz ficam dentro de uma linha do grupo; empresa sem grupo fica direto
+  const separarGrupo = porGrupo && !niveis.includes('grupo');
+  const ind = (rows) => indicadoresRamo(rows, { porGrupo });
+  const ordenar = (lista) => lista.sort((a, b) => b.i.venda.valor - a.i.venda.valor || b.i.investimento.valor - a.i.investimento.valor || a.rot.localeCompare(b.rot, 'pt-BR'));
+  const visitar = (caminho, profundidade, rows, rotulo, nivel, { dentroDoGrupo = false, ehGrupo = false } = {}) => {
+    const temFilhos = ehGrupo || profundidade < niveis.length + (dentroDoGrupo ? 1 : 0);
     const aberto = temFilhos && abertos.has(caminho);
-    const ind = indicadoresRamo(rows);
-    saida.push({ caminho, profundidade, nivel, rotulo, aberto, temFilhos, ind, pedidos: rows });
+    saida.push({ caminho, profundidade, nivel, rotulo, aberto, temFilhos, ehGrupo, ind: ind(rows), pedidos: rows });
     if (!aberto) return;
-    const def = NIVEIS_PEDIDOS[niveis[profundidade]];
+    const codNivel = niveis[profundidade - (dentroDoGrupo || ehGrupo ? 1 : 0)];
+    const def = NIVEIS_PEDIDOS[codNivel];
+    const dentro = dentroDoGrupo || ehGrupo;
+    if (separarGrupo && codNivel === 'cliente' && !ehGrupo) {
+      const { grupos, soltas } = agruparPorRaiz(rows, (p) => p.cpf_cnpj);
+      const itens = [...grupos.map((g) => ({ g: g.linhas, k: `grupo=${g.raiz}`, rot: `Grupo ${g.linhas[0].razao_social} · ${g.empresas.size} empresas`, n: 'grupo', eh: true, i: ind(g.linhas) }))];
+      const porDoc = new Map();
+      for (const p of soltas) { if (!porDoc.has(p.cpf_cnpj)) porDoc.set(p.cpf_cnpj, []); porDoc.get(p.cpf_cnpj).push(p); }
+      for (const [doc, l] of porDoc) itens.push({ g: l, k: `cliente=${doc}`, rot: def.rotulo(l[0]), n: 'cliente', eh: false, i: ind(l) });
+      for (const o of ordenar(itens)) visitar(`${caminho}/${o.k}`, profundidade + 1, o.g, o.rot, o.n, { ehGrupo: o.eh, dentroDoGrupo: dentroDoGrupo });
+      return;
+    }
     const grupos = new Map();
     for (const p of rows) {
       const k = def.chave(p);
       if (!grupos.has(k)) grupos.set(k, []);
       grupos.get(k).push(p);
     }
-    const ordem = [...grupos.entries()].map(([k, g]) => ({ k, g, i: indicadoresRamo(g), rot: def.rotulo(g[0]) }))
-      .sort((a, b) => b.i.venda.valor - a.i.venda.valor || b.i.investimento.valor - a.i.investimento.valor || a.rot.localeCompare(b.rot, 'pt-BR'));
-    for (const o of ordem) visitar(`${caminho}/${niveis[profundidade]}=${o.k}`, profundidade + 1, o.g, o.rot, niveis[profundidade]);
+    const ordem = ordenar([...grupos.entries()].map(([k, g]) => ({ k, g, i: ind(g), rot: def.rotulo(g[0]) })));
+    for (const o of ordem) visitar(`${caminho}/${codNivel}=${o.k}`, profundidade + 1, o.g, o.rot, codNivel, { dentroDoGrupo: dentro });
   };
   visitar('', 0, pedidos, rotuloRaiz, null);
   return saida;
 }
-

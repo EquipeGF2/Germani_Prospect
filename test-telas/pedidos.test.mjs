@@ -56,7 +56,16 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   const { linhas } = await lerPlanilha('exemplos/base-ficticia.xlsx');
   const cnpjs = linhas.slice(1).map((l) => analisarCnpj(l[0])).filter((c) => !c.erro).map((c) => c.cnpj);
   const [a, b, c] = cnpjs.slice(100, 103);
-  const filial = (() => { const b = a.slice(0, 8) + '0777'; return b + calcularDv(b); })();
+  const filialDe = (ordem) => { const b = a.slice(0, 8) + ordem; return b + calcularDv(b); };
+  const filial = filialDe('0777');          // fora da base: só na visão do grupo
+  const naBase = filialDe('0888');          // na base: forma um grupo com o cliente A
+  await pagina.evaluate(async ([novo, origem]) => {
+    // o mesmo módulo da tela (o site carrega com a versão no endereço): a base de exemplo não tem empresas da mesma raiz
+    const { bancoAdmin } = await import(performance.getEntriesByType('resource').map((r) => r.name).find((n) => /\/js\/db\.js/.test(n)));
+    const db = await bancoAdmin();
+    await db.execute({ sql: `INSERT INTO prospects (cnpj, cnpj_raiz, razao_social, cidade, cidade_busca, uf, busca, vendedor_id, dt_entrada_base)
+      SELECT ?, cnpj_raiz, razao_social, cidade, cidade_busca, uf, busca, vendedor_id, dt_entrada_base FROM prospects WHERE cnpj = ?`, args: [novo, origem] });
+  }, [naBase, a]);
   const arquivo = path.join(tmp, 'pedidos_teste.xlsx.XLS');
   await writeFile(arquivo, xls([CAB,
     [901, 'CLIENTE A', a, 1000, 1000, 70001, 4, 'Liquidado', '90100', 'Pedido de Venda', 9001],
@@ -65,6 +74,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
     [902, 'CLIENTE B', b, 300, 0, 70004, 9, 'Não Fechado', '90100', 'Pedido de Venda', 9002],
     [903, 'CLIENTE C', c, 200, 0, 70005, 5, 'Desistência', '90100', 'Pedido de Venda', 9001],
     [906, 'CLIENTE A FILIAL', filial, 80, 0, 70008, 1, 'Aberto Total', '90100', 'Pedido de Venda', 9001],
+    [907, 'CLIENTE A LOJA 2', naBase, 80, 0, 70009, 1, 'Aberto Total', '90100', 'Pedido de Venda', 9002],
     [904, 'FORA DA BASE', '11222333000181', 400, 0, 70006, 1, 'Aberto Total', '90100', 'Pedido de Venda', 9001],
     [905, 'PESSOA', '12345678909', 100, 0, 70007, 1, 'Aberto Total', '90100', 'Pedido de Venda', 9002],
   ]));
@@ -89,7 +99,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.click('#ir-vincular');
   await pagina.waitForSelector('#ir-simular');
   await foto('p3-vinculo');
-  assert.equal(await pagina.locator('#clientes-arquivo tbody tr').count(), 4, 'os 3 da base e a filial do grupo; fora da base e CPF não entram');
+  assert.equal(await pagina.locator('#clientes-arquivo tbody tr').count(), 5, 'os 4 da base e a filial do grupo; fora da base e CPF não entram');
   assert.equal(await alinhamento('#clientes-arquivo tbody td:nth-child(1) >> nth=0'), 'left', 'razão social à esquerda');
   assert.equal(await alinhamento('#clientes-arquivo tbody td:nth-child(5) >> nth=0'), 'center', 'número centralizado');
   assert.equal(await alinhamento('#clientes-arquivo thead th:nth-child(1)'), 'center', 'rótulo centralizado');
@@ -98,7 +108,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await foto('p4-simulacao');
   const simulado = await texto();
   assert.match(simulado, /Aguardando pedido válido/);
-  assert.match(simulado, /R\$\s?1\.500,00/, 'venda válida só dos clientes da base');
+  assert.match(simulado, /R\$\s?1\.580,00/, 'venda válida só dos clientes da base');
   assert.match(simulado, /sem código no cadastro/);
   await pagina.click('#gravar-pedidos');
   await pagina.waitForSelector('text=concluída');
@@ -110,7 +120,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.waitForSelector('.exp-linha.raiz.escolhida');
   await foto('p5b-analise');
   const vendaDe = () => pagina.locator('#analise-numeros .ped-kpi.destaque b').innerText();
-  assert.match(await vendaDe(), /1\.500,00/);
+  assert.match(await vendaDe(), /1\.580,00/);
   assert.ok(await pagina.locator('#analise-pedidos .exp-nivel[draggable="true"]').count() >= 3, 'níveis arrastáveis');
   const ramos = pagina.locator('#analise-pedidos .exp-linha:not(.cab):not(.raiz)');
   await ramos.first().click();
@@ -123,11 +133,30 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.locator('#analise-pedidos .exp-linha.raiz').click();
   await pagina.waitForSelector('#pedidos-do-ramo tbody tr');
   await foto('p5c-analise-ramo');
-  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 5, 'pedidos do ramo escolhido');
+  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 6, 'pedidos do ramo escolhido');
   await pagina.click('button[data-aba="pedidos"]');
   await pagina.waitForSelector('#lista-pedidos');
   await foto('p6-pedidos');
-  assert.equal(await pagina.locator('#lista-pedidos tbody tr').count(), 5, 'todo pedido de cliente da base, qualquer que seja a situação');
+  assert.ok(await pagina.locator('#menu a[title="Explorar pedidos"]').count() === 1, 'a tela se chama Explorar pedidos');
+  // chave: por grupo, as empresas da mesma raiz ficam numa linha que abre (A e a filial)
+  await pagina.click('#ver-grupo');
+  await pagina.waitForSelector('.ped-grupo .abre-grupo');
+  await foto('p6b-pedidos-grupo');
+  assert.equal(await pagina.locator('#lista-pedidos .ped-grupo').count(), 1, 'um grupo: o cliente A e a loja 2');
+  await pagina.click('.ped-grupo .abre-grupo');
+  await pagina.waitForSelector('.ped-grupo .abre-grupo[aria-expanded="true"]');
+  assert.equal(await pagina.locator('#lista-pedidos tbody tr').count(), 7, 'o grupo aberto, com os 4 pedidos, e os 2 sem grupo');
+  await foto('p6c-pedidos-grupo-aberto');
+  await pagina.click('button[data-aba="analise"]');
+  await pagina.waitForSelector('#analise-pedidos');
+  await foto('p6d-analise-grupo');
+  await pagina.click('button[data-aba="representantes"]');
+  await pagina.waitForSelector('#tabela-representantes');
+  await pagina.click('button[data-aba="pedidos"]');
+  await pagina.waitForSelector('#lista-pedidos');
+  await pagina.click('#ver-empresa');
+
+  assert.equal(await pagina.locator('#lista-pedidos tbody tr').count(), 6, 'todo pedido de cliente da base, qualquer que seja a situação');
   const umaLinha = await pagina.locator('.ped-kpi').evaluateAll((els) => new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size);
   assert.equal(umaLinha, 1, 'cards numa linha só');
   await pagina.click('button[data-aba="representantes"]');
@@ -143,6 +172,30 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await foto('p9-alertas');
   assert.match(await texto(), /Rep\. sem código/);
   assert.doesNotMatch(await texto(), /Venda fora da lista/, 'venda por outro representante não é alerta');
+
+  // Acompanhamento: em andamento e encerrados; a venda não aparece; a chave também vale aqui
+  await ir('#/carteira?aba=acompanhamento&periodo=periodo&dataDe=2000-01-01&dataAte=2099-12-31&q=FICT&busca=FICT&ver=1');
+  await pagina.waitForSelector('.lista-situacao');
+  await pagina.waitForFunction(() => document.querySelector('.chip-situacao[data-conjunto="andamento"]'));
+  assert.equal(await pagina.locator('.chip-situacao[data-status="venda_realizada"]').count(), 0, 'venda não está no Acompanhamento');
+  assert.ok(await pagina.locator('.chip-situacao[data-status="aguardando_pedido_valido"]').count() >= 1, 'aguardando pedido válido está');
+  assert.equal(await pagina.locator('.chip-situacao[data-status="invalido"]').count(), 0, 'encerrado fica no outro filtro');
+  await foto('p9b-acompanhamento');
+  await pagina.click('.chip-situacao[data-conjunto="encerrados"]');
+  assert.ok(await pagina.locator('.chip-situacao[data-status^="sem_interesse"]').count() >= 1, 'sem interesse em Encerrados');
+  assert.equal(await pagina.locator('.chip-situacao[data-status="aguardando_cadastro"]').count(), 0);
+  await pagina.click('.chip-situacao[data-conjunto="andamento"]');
+  await pagina.click('#ver-grupo');
+  await foto('p9c-acompanhamento-grupo');
+  await pagina.click('#ver-empresa');
+  // a Lista principal não ganhou a chave
+  await ir('#/carteira');
+  assert.equal(await pagina.locator('#ver-grupo').count(), 0, 'Lista principal não muda');
+  await ir('#/explorar');
+  assert.equal(await pagina.locator('#ver-grupo').count(), 0, 'Explorar carteira não muda');
+
+  await ir('#/pedidos');
+  await pagina.waitForSelector('button[data-aba="pedidos"]');
 
   // ficha do cliente com pedidos
   await pagina.click('button[data-aba="pedidos"]');

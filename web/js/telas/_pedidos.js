@@ -1,5 +1,5 @@
 // Peças comuns das telas de pedidos: tabela no padrão (rótulo centralizado, texto à esquerda, número centralizado) e cards numa linha.
-import { h, formatar, selo } from '../ui.js';
+import { h, formatar, montar, selo } from '../ui.js';
 import { formatarCnpj } from '../../shared/cnpj.mjs';
 
 export const moeda = (v) => formatar.moeda(Number(v ?? 0));
@@ -10,11 +10,24 @@ export function cartoes(itens) {
     h('div', { class: `ped-kpi ${classe ?? ''}` }, h('span', {}, rotulo), h('b', {}, numero), detalhe ? h('span', {}, detalhe) : null)));
 }
 
-export const documento = (d) => (!d ? '' : String(d).length === 11 ? 'CPF' : formatarCnpj(String(d)));
+const raizFormatada = (r) => `raiz ${r.slice(0, 2)}.${r.slice(2, 5)}.${r.slice(5, 8)}`;
+export const documento = (d) => (!d ? '' : String(d).length === 11 ? 'CPF' : String(d).length === 8 ? raizFormatada(String(d)) : formatarCnpj(String(d)));
+
+// Chave "Ver por Empresa | Ver por Grupo" (Explorar pedidos e Acompanhamento): a escolha fica guardada no navegador
+const CHAVE_VER_POR = 'germani.verPor';
+export function lerVerPor() { try { return localStorage.getItem(CHAVE_VER_POR) === 'grupo' ? 'grupo' : 'empresa'; } catch { return 'empresa'; } }
+export function chaveVerPor(atual, aoMudar) {
+  const caixa = h('div', { class: 'ped-chave', role: 'group', 'aria-label': 'Ver por' });
+  const desenhar = (valor) => montar(caixa, [['empresa', 'Ver por Empresa'], ['grupo', 'Ver por Grupo']].map(([v, t]) =>
+    h('button', { type: 'button', id: `ver-${v}`, class: v === valor ? 'ativa' : '', 'aria-pressed': v === valor ? 'true' : 'false',
+      onclick: () => { try { localStorage.setItem(CHAVE_VER_POR, v); } catch { /* só nesta visita */ } desenhar(v); aoMudar(v); } }, t)));
+  desenhar(atual);
+  return caixa;
+}
 
 /** "6199 - Razão social", com o CNPJ na linha de baixo. */
 export function razaoSocial({ codigo, razao, doc, prospectId = null }) {
-  const titulo = `${codigo ?? '—'} - ${razao ?? ''}`;
+  const titulo = codigo == null ? razao ?? '' : `${codigo} - ${razao ?? ''}`;
   return [prospectId ? h('a', { href: `#/ficha?id=${prospectId}` }, titulo) : titulo, h('span', { class: 'doc' }, documento(doc))];
 }
 
@@ -29,6 +42,7 @@ export function tabelaPedidos(colunas, linhas, { vazio = 'Nenhum registro.', rod
   return h('div', { class: 'tabela-wrap' }, h('table', { class: `ped-tabela ${fixa ? 'ped-fixa' : ''}`, id },
     fixa ? h('colgroup', {}, fixa.map((w) => h('col', { style: `width:${w}%` }))) : null,
     h('thead', {}, h('tr', {}, colunas.map((c) => h('th', {}, c.titulo)))),
-    h('tbody', {}, linhas.map((l) => h('tr', {}, colunas.map((c) => h('td', { class: c.classe }, c.valor ? c.valor(l) : l[c.campo] ?? ''))))),
+    h('tbody', {}, linhas.map((l) => l.linhaGrupo ? h('tr', { class: 'ped-grupo' }, h('td', { colspan: String(colunas.length) }, l.linhaGrupo))
+      : h('tr', {}, colunas.map((c) => h('td', { class: c.classe }, c.valor ? c.valor(l) : l[c.campo] ?? ''))))),
     rodape ? h('tfoot', {}, h('tr', {}, rodape.map((c) => (c && typeof c === 'object' && !(c instanceof Node) ? h('td', { class: c.classe, colspan: c.colspan }, c.texto) : h('td', { class: 'num' }, c ?? ''))))) : null));
 }

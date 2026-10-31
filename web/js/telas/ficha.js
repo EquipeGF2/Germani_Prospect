@@ -46,7 +46,7 @@ export async function render(conteudo, { usuario, parametros }) {
   // supervisor que vê todas as equipes registra só na própria equipe (regra do banco)
   const daEquipe = usuario.perfil !== 'supervisor' || !usuario.ve_todos || Number(p.supervisor_id) === usuario.id || Number(p.vendedor_id) === usuario.id;
   const podeRegistrar = usuario.perfil !== 'financeiro' && Number(p.aceita_contato) === 1 && daEquipe;
-  const voltar = Number(p.na_lista) ? '#/carteira' : '#/carteira?aba=acompanhamento';
+  const voltar = Number(p.na_lista) ? '#/carteira' : p.status_atual === 'venda_realizada' ? '#/pedidos' : '#/carteira?aba=acompanhamento';
 
   const situacao = h('div', { class: 'cartao' },
     h('div', { class: 'cartao-prospect-topo' }, h('h2', { style: 'margin:0' }, 'Situação'), seloStatus(p)),
@@ -155,7 +155,7 @@ export async function render(conteudo, { usuario, parametros }) {
       : h('p', { class: 'ajuda' }, 'Sem movimentos.'));
 
   montar(conteudo,
-    h('a', { href: voltar, class: 'voltar' }, '‹ Voltar à lista'),
+    h('a', { href: voltar, class: 'voltar' }, p.status_atual === 'venda_realizada' ? '‹ Voltar a Explorar pedidos' : '‹ Voltar à lista'),
     h('h1', { style: 'margin-top:8px' }, p.razao_social),
     podeRegistrar ? h('div', { class: 'acoes', style: 'margin:0 0 16px' }, h('a', { class: 'botao', href: `#/registrar?id=${p.id}` }, 'Registrar atendimento')) : null,
     situacao, blocoPedidos, credito, blocoGrupo, linhaTempo, cadastro);

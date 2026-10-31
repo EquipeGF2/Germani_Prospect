@@ -1,11 +1,11 @@
-// Acompanhamento de pedidos: cada linha é um pedido (o Acompanhamento de clientes continua uma linha por cliente). docs/03 §14
+// Explorar pedidos: o que foi vendido, com os pedidos importados. O Acompanhamento mostra só o que está em processo. docs/03 §14
 import { bancoApp } from '../db.js';
-import { alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaMotivosPedidoValido, consultaPedidos, consultaSaldoFiliais, porRepresentante, resumirPedidos, rotuloRepresentante } from '../../shared/pedidos.mjs';
+import { agruparPorRaiz, alertasPedidos, bonificacaoPorCliente, clientesDistintos, clientesVariosRepresentantes, consultaMotivosPedidoValido, consultaPedidos, consultaSaldoFiliais, porRepresentante, resumirPedidos, rotuloRepresentante } from '../../shared/pedidos.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
 import { h, montar, mensagem, formatar, selo, baixarCsv } from '../ui.js';
 import { renderAnalise } from './_pedidos-analise.js';
-import { cartoes, moeda, valor, razaoSocial, documento, seloSituacao, seloRelacao, tabelaPedidos } from './_pedidos.js';
+import { cartoes, chaveVerPor, lerVerPor, moeda, valor, razaoSocial, seloSituacao, seloRelacao, tabelaPedidos } from './_pedidos.js';
 
 const ABAS = { analise: 'Análise', pedidos: 'Pedidos', representantes: 'Por representante', bonificacao: 'Bonificação', alertas: 'Alertas' };
 const NOME_TIPO = { venda: 'Venda', investimento: 'Bonificação', ignorar: 'Não considerado' };
@@ -28,13 +28,15 @@ export async function render(conteudo, { usuario, parametros }) {
 
   let aba = ABAS[parametros.get('aba')] ? parametros.get('aba') : 'analise';
   const slotNumeros = h('div');
+  let porGrupo = lerVerPor() === 'grupo';
+  const gruposAbertos = new Set();
   const area = h('div');
   const barra = h('div', { class: 'ped-abas', role: 'tablist' });
   function desenharBarra() {
     montar(barra, Object.entries(ABAS).map(([k, t]) => h('button', { type: 'button', role: 'tab', class: k === aba ? 'ativa' : '', dados: { aba: k }, 'aria-selected': k === aba ? 'true' : 'false',
       onclick: () => { aba = k; desenharBarra(); desenhar(); } }, k === 'alertas' && alertas.length ? `${t} (${alertas.length})` : t)));
   }
-  const desenhar = () => { montar(slotNumeros, aba === 'analise' ? null : numeros); return ({ analise: (d) => renderAnalise(d, { pedidos, usuario }), pedidos: abaPedidos, representantes: abaRepresentantes, bonificacao: abaBonificacao, alertas: abaAlertas })[aba](area); };
+  const desenhar = () => { montar(slotNumeros, aba === 'analise' ? null : numeros); return ({ analise: (d) => renderAnalise(d, { pedidos, usuario, porGrupo }), pedidos: abaPedidos, representantes: abaRepresentantes, bonificacao: abaBonificacao, alertas: abaAlertas })[aba](area); };
 
   function abaPedidos(destino) {
     const busca = h('input', { type: 'search', id: 'busca-pedidos', placeholder: 'Pedido, razão social, CNPJ ou representante', oninput: filtrar });
@@ -55,7 +57,22 @@ export async function render(conteudo, { usuario, parametros }) {
       const t = normalizarBusca(busca.value);
       vistos = pedidos.filter((x) => (!situacao.value || x.situacao_descricao === situacao.value) && (!tipo.value || x.tipo === tipo.value) && (!rep.value || String(x.rep_codigo ?? '') === rep.value)
         && (!t || normalizarBusca(`${x.numero} ${x.razao_social} ${x.cpf_cnpj} ${x.codigo_cliente} ${x.rep_codigo} ${x.rep_nome}`).includes(t)));
-      montar(lista, tabelaPedidos(colunas, vistos.slice(0, LIMITE_LINHAS), { vazio: pedidos.length ? 'Nenhum pedido com esses filtros.' : 'Nenhum pedido importado ainda.', id: 'lista-pedidos' }),
+      // Ver por Grupo: uma linha por grupo, que abre os pedidos das empresas; empresa sem grupo fica solta, depois dos grupos
+      let exibidos = vistos.slice(0, LIMITE_LINHAS);
+      if (porGrupo) {
+        const { grupos, soltas } = agruparPorRaiz(vistos, (x) => x.cpf_cnpj);
+        exibidos = [];
+        for (const g of grupos.sort((a, b) => String(a.linhas[0].razao_social).localeCompare(String(b.linhas[0].razao_social), 'pt-BR'))) {
+          const aberto = gruposAbertos.has(g.raiz);
+          const res = resumirPedidos(g.linhas);
+          exibidos.push({ linhaGrupo: h('button', { type: 'button', class: 'abre-grupo', dados: { raiz: g.raiz }, 'aria-expanded': aberto ? 'true' : 'false', onclick: () => { if (aberto) gruposAbertos.delete(g.raiz); else gruposAbertos.add(g.raiz); filtrar(); } },
+            `${aberto ? '▼' : '▶'} Grupo ${g.linhas[0].razao_social} · ${g.empresas.size} empresas · ${n0(g.linhas.length)} pedidos · venda ${moeda(res.venda.valor)}`) });
+          if (aberto) exibidos.push(...g.linhas);
+        }
+        exibidos.push(...soltas);
+        exibidos = exibidos.slice(0, LIMITE_LINHAS);
+      }
+      montar(lista, tabelaPedidos(colunas, exibidos, { vazio: pedidos.length ? 'Nenhum pedido com esses filtros.' : 'Nenhum pedido importado ainda.', id: 'lista-pedidos' }),
         vistos.length > LIMITE_LINHAS ? h('p', { class: 'ajuda' }, `Mostrando ${LIMITE_LINHAS} de ${n0(vistos.length)}. Baixe o CSV para ver todos.`) : null);
     }
     const csv = [{ titulo: 'Pedido', campo: 'numero' }, { titulo: 'Data', texto: (x) => formatar.data(x.data_situacao) }, { titulo: 'Código', campo: 'codigo_cliente' }, { titulo: 'Razão social', campo: 'razao_social' }, { titulo: 'CPF/CNPJ', campo: 'cpf_cnpj' },
@@ -66,7 +83,7 @@ export async function render(conteudo, { usuario, parametros }) {
   }
 
   function abaRepresentantes(destino) {
-    const reps = porRepresentante(pedidos);
+    const reps = porRepresentante(pedidos, { porGrupo });
     const total = (campo) => reps.reduce((s, x) => s + x[campo], 0);
     const escolhido = h('select', { id: 'rep-lista', 'aria-label': 'Representante', onchange: mostrarLista }, reps.filter((x) => x.clientes.length).map((x) => h('option', { value: String(x.codigo ?? '') }, x.rotulo)));
     const lista = h('div');
@@ -77,14 +94,14 @@ export async function render(conteudo, { usuario, parametros }) {
         { titulo: 'Pedidos', valor: (c) => n0(c.pedidos), classe: 'num' }, { titulo: 'Vendeu (R$)', valor: (c) => valor(c.venda), classe: 'num' }, { titulo: 'Dono da carteira', valor: (c) => c.dono ?? '—' }], x.clientes, { id: 'lista-representante' }) : null);
     }
     mostrarLista();
-    const varios = clientesVariosRepresentantes(pedidos).flatMap((c) => c.reps.map((rp, i) => ({ ...rp, cliente: i === 0 ? c : null })));
+    const varios = clientesVariosRepresentantes(pedidos, { porGrupo }).flatMap((c) => c.reps.map((rp, i) => ({ ...rp, cliente: i === 0 ? c : null })));
     montar(destino,
       mensagem('O cliente fica com o dono da carteira, e a venda vai para quem a realizou. É só informação, sem alerta.', 'info'),
       h('div', { class: 'cartao' }, h('h2', {}, 'Por representante'),
         tabelaPedidos([{ titulo: 'Representante', campo: 'rotulo' }, { titulo: 'Clientes', valor: (x) => n0(x.clientes.length), classe: 'num' }, { titulo: 'Válidos', valor: (x) => n0(x.validos), classe: 'num' }, { titulo: 'Venda (R$)', valor: (x) => valor(x.venda), classe: 'num' },
           { titulo: 'Faturado (R$)', valor: (x) => valor(x.faturado), classe: 'num' }, { titulo: 'Em carteira (R$)', valor: (x) => valor(x.saldo), classe: 'num' }, { titulo: 'Digitado (R$)', valor: (x) => valor(x.digitado), classe: 'num' }, { titulo: 'Desistência (R$)', valor: (x) => valor(x.desistencia), classe: 'num' },
           { titulo: 'Investimento (R$)', valor: (x) => valor(x.investimento), classe: 'num' }, { titulo: 'Na própria lista (R$)', valor: (x) => valor(x.propria), classe: 'num' }, { titulo: 'Na lista de outro (R$)', valor: (x) => valor(x.outra), classe: 'num' }],
-        reps, { id: 'tabela-representantes', rodape: [{ texto: 'Total' }, `${n0(clientesDistintos(pedidos))} distintos`, n0(total('validos')), valor(total('venda')), valor(total('faturado')), valor(total('saldo')), valor(total('digitado')), valor(total('desistencia')), valor(total('investimento')), valor(total('propria')), valor(total('outra'))] }),
+        reps, { id: 'tabela-representantes', rodape: [{ texto: 'Total' }, `${n0(clientesDistintos(pedidos, { porGrupo }))} distintos`, n0(total('validos')), valor(total('venda')), valor(total('faturado')), valor(total('saldo')), valor(total('digitado')), valor(total('desistencia')), valor(total('investimento')), valor(total('propria')), valor(total('outra'))] }),
         h('p', { class: 'ajuda', style: 'margin:12px 0 0' }, 'O valor nunca duplica, porque cada pedido tem um só representante. Já um cliente pode aparecer em mais de uma lista, então o total usa os clientes distintos.')),
       h('div', { class: 'cartao' }, h('h2', {}, 'Lista de cada representante'), h('div', { style: 'max-width:360px;margin-bottom:12px' }, escolhido), lista),
       h('div', { class: 'cartao' }, h('h2', {}, 'Clientes vendidos por mais de um representante'),
@@ -93,11 +110,11 @@ export async function render(conteudo, { usuario, parametros }) {
   }
 
   function abaBonificacao(destino) {
-    const clientes = bonificacaoPorCliente(pedidos);
+    const clientes = bonificacaoPorCliente(pedidos, { porGrupo });
     const comVenda = clientes.filter((c) => c.venda > 0); const semVenda = clientes.filter((c) => !c.venda);
     const soma = (l, campo) => l.reduce((s, c) => s + c[campo], 0);
     const pctVenda = soma(comVenda, 'venda') ? `${comVenda.length} cliente(s), ${(soma(comVenda, 'investimento') / soma(comVenda, 'venda') * 100).toFixed(2).replace('.', ',')}% da venda deles` : `${comVenda.length} cliente(s)`;
-    const porRep = porRepresentante(pedidos).filter((x) => x.investimento > 0).sort((a, b) => b.investimento - a.investimento);
+    const porRep = porRepresentante(pedidos, { porGrupo }).filter((x) => x.investimento > 0).sort((a, b) => b.investimento - a.investimento);
     montar(destino,
       cartoes([['Investimento total', moeda(r.investimento.valor), `${n0(r.investimento.qtd)} pedidos em ${n0(clientes.length)} cliente(s)`, 'investimento'], ['Em clientes com venda', moeda(soma(comVenda, 'investimento')), pctVenda], ['Em clientes sem venda', moeda(soma(semVenda, 'investimento')), `${semVenda.length} cliente(s), exceção com alerta`]]),
       h('p', { class: 'ajuda' }, `A bonificação é uma conta à parte. A venda válida continua em ${moeda(r.venda.valor)}, com ou sem ela.`),
@@ -118,5 +135,6 @@ export async function render(conteudo, { usuario, parametros }) {
 
   desenharBarra();
   desenhar();
-  montar(conteudo, h('h1', {}, 'Acompanhamento de pedidos'), h('p', { class: 'ajuda' }, 'Só os pedidos dos clientes da base. As filiais de um grupo da base aparecem na ficha, na visão do grupo.'), barra, slotNumeros, area);
+  montar(conteudo, h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar pedidos'), chaveVerPor(porGrupo ? 'grupo' : 'empresa', (v) => { porGrupo = v === 'grupo'; gruposAbertos.clear(); desenhar(); })),
+    h('p', { class: 'ajuda' }, 'Só os pedidos dos clientes da base. As filiais fora da base aparecem na ficha, na visão do grupo.'), barra, slotNumeros, area);
 }

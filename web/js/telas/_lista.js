@@ -16,7 +16,9 @@ import { gerarPdfLista } from '../relatorio.js';
 import { icone } from '../menu.js';
 import { consultaResumo, opcoesEmCascata } from '../../shared/explorar.mjs';
 import { endereco, gravarLote, lerEstado, lerLote, nomeStatus as nomeDoStatus, papelDoAgente, seloStatus } from './_carteira.js';
-import { ORIGENS_SEM_INTERESSE } from '../../shared/status.mjs';
+import { ORIGENS_SEM_INTERESSE, STATUS_ENCERRADOS } from '../../shared/status.mjs';
+import { chaveVerPor, lerVerPor } from './_pedidos.js';
+import { agruparPorRaiz } from '../../shared/pedidos.mjs';
 
 const LIMITE = 5000;   // uma carteira (representante) cabe com folga; acima disso pede para refinar os filtros
 
@@ -42,13 +44,15 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   // a lista vem inteira numa leitura só; situação, ordem e agrupamento mudam no navegador, sem voltar ao banco.
   // Na Lista o representante é obrigatório, então não se agrupa por ele.
   const agrupaveis = acomp ? [] : agrupamentosPossiveis(usuario, e.filtros).filter((k) => k !== 'representante');
-  const vista = { agrupar: agrupaveis.includes(e.agrupar) ? e.agrupar : '', ordem: e.ordem, desc: e.desc, status: e.filtros.status ?? '' };
+  const vista = { agrupar: agrupaveis.includes(e.agrupar) ? e.agrupar : '', ordem: e.ordem, desc: e.desc, status: e.filtros.status ?? '', porGrupo: acomp && lerVerPor() === 'grupo',
+    // Acompanhamento: em andamento × encerrados, no navegador. Link direto para um status encerrado já abre em Encerrados
+    conjunto: !acomp || e.filtros.status === 'venda_realizada' ? '' : STATUS_ENCERRADOS.includes(e.filtros.status) ? 'encerrados' : 'andamento' };
   delete e.filtros.status;
   const falta = faltaParaLista(usuario, { aba: e.aba, filtros: e.filtros, busca: e.busca, doExplorar: e.de === 'explorar' });
 
   let consulta;
   try {
-    consulta = consultaCarteira({ usuario, visao: 'lista', filtros: { ...e.filtros, foraDaLista: acomp }, busca: e.busca, limite: LIMITE + 1, ordemNatural: true });
+    consulta = consultaCarteira({ usuario, visao: 'lista', filtros: { ...e.filtros, foraDaLista: acomp, semVenda: acomp && e.filtros.status !== 'venda_realizada' }, busca: e.busca, limite: LIMITE + 1, ordemNatural: true });
   } catch (erro) { return montar(conteudo, mensagem(erro.message, 'erro')); }
 
   // nada é lido da lista enquanto os filtros não forem aplicados no botão Buscar (?ver=1); o representante já entra com a
@@ -142,7 +146,8 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
 
   const titulo = acomp ? 'Acompanhamento' : 'Lista principal';
   const cabecalho = h('div', { class: 'cabecalho-pagina' }, h('div', {}, h('h1', {}, titulo),
-    acomp ? h('p', {}, 'Quem já saiu da lista principal: aguardando cadastro, análise financeira, aguardando pedido, venda, sem interesse e inválidos.') : null));
+    acomp ? h('p', {}, 'O que está em processo: aguardando cadastro, análise financeira, aguardando pedido e aguardando pedido válido. A venda está em Explorar pedidos.') : null),
+    acomp ? chaveVerPor(vista.porGrupo ? 'grupo' : 'empresa', (v) => { vista.porGrupo = v === 'grupo'; abertos.clear(); if (ler) { desenharTabela(); } }) : null);
 
   if (!ler) {
     const texto = !e.ver ? 'Defina os filtros e clique em Buscar'
@@ -174,13 +179,13 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   // situação = status, com "sem interesse" separado em do cliente / do representante (origem do motivo)
   const sit = (p) => (p.status_atual === 'sem_interesse' ? `sem_interesse:${p.sem_interesse_origem ?? 'cliente'}` : p.status_atual);
   const SITUACOES = STATUS_ORDEM.flatMap((c) => (c === 'sem_interesse' ? Object.keys(ORIGENS_SEM_INTERESSE).map((o) => `${c}:${o}`) : [c]));
-  const contagem = new Map();
-  for (const p of linhas) contagem.set(sit(p), (contagem.get(sit(p)) ?? 0) + 1);
-  const statusDaAba = SITUACOES.filter((c) => contagem.get(c));
+  const conjuntoDe = (p) => (STATUS_ENCERRADOS.includes(p.status_atual) ? 'encerrados' : 'andamento');
+  const noConjunto = (p) => !vista.conjunto || conjuntoDe(p) === vista.conjunto;
+  const contar = () => { const c = new Map(); for (const p of linhas) if (noConjunto(p)) c.set(sit(p), (c.get(sit(p)) ?? 0) + 1); return c; };
   const nomeStatus = Object.fromEntries(linhas.map((p) => [sit(p), [p.status_atual === 'sem_interesse'
     ? ORIGENS_SEM_INTERESSE[p.sem_interesse_origem ?? 'cliente'].rotulo : p.status_nome, p.status_cor]]));
   nomeStatus.sem_interesse ??= ['Sem interesse', null];   // filtro vindo do endereço (?status=sem_interesse): as duas origens
-  const naSituacao = (p) => !vista.status || sit(p) === vista.status || p.status_atual === vista.status;
+  const naSituacao = (p) => noConjunto(p) && (!vista.status || sit(p) === vista.status || p.status_atual === vista.status);
 
   const podeRegistrar = usuario.perfil !== 'financeiro';
   const comLote = podeRegistrar && !acomp;
@@ -273,6 +278,13 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     const ordem = ORDENS[vista.ordem];
     const lista = linhas.filter(naSituacao)
       .sort((a, b) => (ordem ? (vista.desc ? -1 : 1) * ordem(a, b) : 0) || posicao.get(a.id) - posicao.get(b.id));
+    // Ver por Grupo: empresas da mesma raiz de CNPJ numa linha que abre; empresa sem grupo fica solta, depois dos grupos
+    if (vista.porGrupo) {
+      const { grupos, soltas } = agruparPorRaiz(lista, (p) => p.cnpj);
+      const resumoStatus = (ls) => { const m = new Map(); for (const p of ls) { const n = nomeDoStatus(p); m.set(n, (m.get(n) ?? 0) + 1); } return [...m].map(([n, q]) => `${q} ${n.toLowerCase()}`).join(' · '); };
+      return [...grupos.map((g) => ({ grupo: `Grupo ${g.linhas[0].razao_social} · ${g.linhas.length} empresas · ${resumoStatus(g.linhas)}`, linhas: g.linhas, ehGrupoCnpj: true })),
+        ...(soltas.length ? [{ grupo: null, linhas: soltas }] : [])];
+    }
     if (!vista.agrupar) return [{ grupo: null, linhas: lista }];
     const def = AGRUPAMENTOS[vista.agrupar];
     const grupos = new Map();
@@ -284,7 +296,12 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     const chip = (codigo, texto, n, cor) => h('button', { type: 'button', class: `chip-situacao${vista.status === codigo ? ' ativa' : ''}`, dados: { status: codigo || 'todos' },
       onclick: () => { vista.status = codigo; desenharTabela(); } },
     cor ? h('span', { class: 'ponto', style: `background:${cor}` }) : null, texto, ' ', h('b', {}, formatar.numero(n)));
-    montar(situacao, h('span', { class: 'lista-grupo-tit' }, 'Situação'), chip('', 'Todos', linhas.length),
+    const contagem = contar();
+    const statusDaAba = SITUACOES.filter((c) => contagem.get(c));
+    const conjuntoBtn = (v, t) => h('button', { type: 'button', class: `chip-situacao${vista.conjunto === v ? ' ativa' : ''}`, dados: { conjunto: v },
+      onclick: () => { vista.conjunto = v; vista.status = ''; abertos.clear(); desenharTabela(); } }, t, ' ', h('b', {}, formatar.numero(linhas.filter((p) => conjuntoDe(p) === v).length)));
+    montar(situacao, acomp && vista.conjunto ? [conjuntoBtn('andamento', 'Em andamento'), conjuntoBtn('encerrados', 'Encerrados'), h('span', { class: 'lista-sep', 'aria-hidden': 'true' }, '|')] : null,
+      h('span', { class: 'lista-grupo-tit' }, 'Situação'), chip('', 'Todos', [...contagem.values()].reduce((t, n) => t + n, 0)),
       statusDaAba.map((c) => chip(c, c === 'em_prospeccao' ? 'Em prospecção (contato da planilha)' : nomeStatus[c][0], contagem.get(c), nomeStatus[c][1])),
       // no celular não há títulos de coluna: a ordem é escolhida numa lista
       celular ? h('select', { id: 'ordem-celular', 'aria-label': 'Ordenar', onchange: (ev) => { const [o, d] = ev.target.value.split('|'); Object.assign(vista, { ordem: o, desc: d === 'desc' }); desenharTabela(); } },
@@ -311,8 +328,10 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
     }
     montar(corpo, linhasTr);
     const n = blocos.reduce((t, b) => t + b.linhas.length, 0);
+    const nGruposCnpj = blocos.filter((b) => b.ehGrupoCnpj).length;
     montar(rodape, h('span', {}, `${formatar.numero(n)} prospect(s)`, vista.agrupar ? ` em ${blocos.length} grupo(s) — clique no grupo para abrir` : '',
-      vista.ordem || vista.agrupar ? '' : ' · ordem: pendências primeiro (clique no título da coluna para ordenar)'),
+      vista.porGrupo ? ` · ${formatar.numero(nGruposCnpj)} grupo(s) com mais de uma empresa nesta lista — clique no grupo para abrir` : '',
+      vista.ordem || vista.agrupar || vista.porGrupo ? '' : ' · ordem: pendências primeiro (clique no título da coluna para ordenar)'),
     excedeu ? h('span', { class: 'alerta-txt' }, `Mostrando os primeiros ${formatar.numero(LIMITE)}: refine os filtros.`) : null);
   }
 
@@ -330,7 +349,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
       `Onda: ${e.filtros.onda ?? 'todas'}`, `Segmento: ${e.filtros.segmento ?? 'todos'}`,
       acomp ? `Período: ${formatar.data(e.filtros.dataDe) || '…'} a ${formatar.data(e.filtros.dataAte) || '…'}` : null,
       vista.status ? `Situação: ${nomeStatus[vista.status]?.[0]}` : null, e.busca ? `Busca: "${e.busca}"` : null,
-      vista.agrupar ? `Agrupado por ${AGRUPAMENTOS[vista.agrupar].nome.toLowerCase()}` : null,
+      vista.agrupar ? `Agrupado por ${AGRUPAMENTOS[vista.agrupar].nome.toLowerCase()}` : null, vista.porGrupo ? 'Por grupo de CNPJ' : null,
     ].filter(Boolean).join(' · ');
     const blocos = visiveis();
     const n = blocos.reduce((t, b) => t + b.linhas.length, 0);
