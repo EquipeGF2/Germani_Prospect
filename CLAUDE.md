@@ -12,6 +12,7 @@ Sistema **GERMANI** (guarda-chuva GERMANI), estado **ativo**. Português do Bras
   passam por `lerComCache` (web/js/db.js), que se limpa a cada gravação.
 - `shared/` não pode depender de Node (é usado também pelo app no navegador).
 - Telas em `web/js/telas/`: só textContent (nunca innerHTML com dado do banco); regra de negócio fica em `shared/`.
+- Tela nova ou alterada: atualize a ajuda em `shared/ajuda.mjs` (docs/03 §15).
 
 ## Não fazer
 - Commitar planilhas, relatórios, `.env` ou tokens (repositório público).

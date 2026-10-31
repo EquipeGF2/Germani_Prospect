@@ -28,7 +28,7 @@ export function prazoLiberado(c) {
   const parcelas = c.prazo_parcelas;
   if (parcelas && /^\d/.test(parcelas)) return `${parcelas} dias`;
   if (parcelas) return parcelas === 'A VISTA' ? 'à vista' : 'antecipado';
-  return c.prazo_pagamento_dias != null ? `${c.prazo_pagamento_dias} dia(s)` : null;
+  return Number(c.prazo_pagamento_dias) > 0 ? `${c.prazo_pagamento_dias} dia(s)` : null;
 }
 
 /** Etapa que um link antigo pede por status (`?status=`). */
