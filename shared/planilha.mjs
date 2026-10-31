@@ -3,6 +3,7 @@
 // Exportações do Senior às vezes geram .xlsx malformado (caminhos internos com "\" e styles.xml quebrado).
 // Estratégia: 1) ler normalmente → 2) reempacotar o zip corrigindo caminhos e trocando styles.xml
 // por um mínimo válido → 3) se ainda falhar, pedir CSV (";" e decimal com vírgula são aceitos).
+import { lerBiff2 } from './biff.mjs';
 
 const STYLES_MINIMO = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
@@ -139,7 +140,8 @@ export async function lerPlanilhaDeBytes(bytes, nomeArquivo, { ExcelJS, JSZip })
     const { linhas, separador } = lerCsvTexto(decodificarTexto(dados));
     return { linhas, formato: 'csv', observacao: `CSV separador "${separador}"` };
   }
-  if (ext !== '.xlsx') throw new Error(`formato não suportado: ${ext || '(sem extensão)'} (use .xlsx ou .csv)`);
+  if (ext === '.xls') return { linhas: lerBiff2(dados), formato: 'xls', observacao: 'Excel antigo (.xls)' };
+  if (ext !== '.xlsx') throw new Error(`formato não suportado: ${ext || '(sem extensão)'} (use .xlsx, .xls ou .csv)`);
   let limpos = dados;
   try { limpos = await limparXlsx(dados, JSZip); } catch { /* zip ilegível: segue com o original e cai no reempacotar */ }
   try {

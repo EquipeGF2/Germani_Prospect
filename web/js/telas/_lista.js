@@ -158,7 +158,7 @@ export async function renderComputador(conteudo, { usuario, parametros }, { celu
   // ---------- lista inteira já lida: situação, ordem e grupos no navegador ----------
   const excedeu = lidas.length > LIMITE;
   const linhas = lidas.slice(0, LIMITE);
-  const STATUS_ORDEM = ['nao_contactado', 'em_prospeccao', 'aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'venda_realizada', 'sem_interesse', 'invalido', 'expurgado'];
+  const STATUS_ORDEM = ['nao_contactado', 'em_prospeccao', 'aguardando_cadastro', 'analise_financeira', 'aguardando_pedido', 'aguardando_pedido_valido', 'venda_realizada', 'sem_interesse', 'invalido', 'expurgado'];
   const natural = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'pt-BR', { numeric: true });
   const ORDENS = {
     prospect: (a, b) => natural(a.razao_social, b.razao_social),

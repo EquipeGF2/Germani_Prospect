@@ -53,12 +53,14 @@ reaberto), a tela **Confirme sua senha** reabre o cofre — só a senha, nunca t
 ```bash
 turso db tokens create germaniprospec -p all:data_read,data_add,data_update \
   -p feriados:data_delete -p perfil_telas:data_delete -p rota_paradas:data_delete \
+  -p pedidos_erp:data_delete -p pedido_aplicacoes:data_delete -p movimentacoes:data_delete -p importacao_linhas:data_delete \
   -p prospects_busca:data_delete -p prospects_busca_data:data_delete -p prospects_busca_idx:data_delete -p prospects_busca_docsize:data_delete
 ```
 A chave pode incluir e alterar dados em **todas** as tabelas (nunca estrutura), então tabela nova de migração futura já
 fica coberta e a chave **não precisa ser renovada** a cada mudança. O que é somente inclusão (contatos, eventos do ERP,
 movimentações, transferências, liberações, auditoria, linhas de importação) continua protegido pelos triggers do banco;
 apagar, só onde a regra permite.
+Apagar um arquivo de pedidos exige essas permissões (versão 3 da chave, renovada na publicação); `movimentacoes` e `importacao_linhas` só aceitam a exclusão dentro do trigger de `pedido_exclusoes` (ADR-0007).
 
 **Renovação automática do cofre:** a publicação confere o cofre de cada administrador. Se a chave guardada for de versão
 antiga (marca `chave` no cofre, `VERSAO_CHAVE_ADMIN` em shared/cofre.mjs) e a senha do Secret `ADMIN_SENHA_INICIAL` abrir

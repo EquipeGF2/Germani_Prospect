@@ -3,7 +3,7 @@
 // Formato (texto JSON): { v: 1, it, sal, iv, dados, chave? } — tudo em base64; `chave` é a versão das permissões da chave guardada.
 const ITERACOES = 600000;
 /** Versão das permissões da chave de administração (scripts/gerar-token-app.sh). 2 = all:data_read,data_add,data_update. */
-export const VERSAO_CHAVE_ADMIN = 2;
+export const VERSAO_CHAVE_ADMIN = 3;
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));

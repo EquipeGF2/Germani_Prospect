@@ -41,7 +41,8 @@ flowchart TD
 | 1 | **Aguardando cadastro** | acompanhamento | "Atendido" no mobile (ou "Pedido identificado") | representante / vendedor | **15 dias** para o cadastro |
 | 2 | **Análise financeira** | acompanhamento | CNPJ no arquivo de **cadastro** do ERP | importação (administrador) | **10 dias** para o OK |
 | 3 | **Aguardando pedido** | acompanhamento | **relatório de crédito** do ERP (forma de pagamento, prazo em dias, limite do CNPJ — ou do grupo se o do CNPJ estiver vazio) **ou** OK no console do analista | administrador (importação) / analista | — |
-| 4 | **Venda realizada** | acompanhamento | CNPJ no arquivo de **pedidos** do ERP | importação | final |
+| 3a | **Aguardando pedido válido** | acompanhamento | **pedidos** do ERP: houve pedido, nenhum válido (digitado ou cancelado) | importação | alerta após 10 dias |
+| 4 | **Venda realizada** | acompanhamento | pedido em carteira ou faturado no arquivo de **pedidos** do ERP | importação | sai só se todos os válidos forem cancelados |
 | — | Sem interesse | acompanhamento | registro com justificativa | representante / vendedor | reabre com "Pedido identificado" |
 | — | Inválido | — | CNPJ no arquivo de baixados (a qualquer momento) | importação | congelado |
 

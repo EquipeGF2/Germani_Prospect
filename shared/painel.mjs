@@ -6,7 +6,7 @@
 // Contagens sobre a carteira válida (status.conta_carteira = 1: inválidos/baixados ficam fora).
 //   funil cumulativo: contactados ⊇ atendidos ⊇ cadastrados ⊇ crédito liberado ⊇ venda (quem chegou à etapa ou além)
 //   % contactado = contactados ÷ total · % conversão = venda realizada ÷ contactados
-//   valor dos pedidos = soma real do valor dos pedidos importados do ERP (eventos_erp.valor, migração 0004)
+//   valor dos pedidos = soma real do valor dos pedidos importados do ERP (vw_valor_pedidos, migração 0022: venda válida + pedidos antigos)
 // Filtro de período (resolverPeriodo): sem período = posição atual; com período = eventos com data no período.
 import { datasDeFeriado } from './feriados.mjs';
 import { veTodasEquipes } from './perfis.mjs';
@@ -57,7 +57,7 @@ export function consultaPainel({ usuario, periodo = null, agregarAntes = true, f
     const contactado = `SUM(EXISTS (SELECT 1 FROM contatos c WHERE c.prospect_id = p.id AND ${entre('c.data_contato')}) OR ${etapa('atendido')})`;
     colunas = [contactado, `SUM(${etapa('atendido')})`, `SUM(${etapa('cadastro')})`, `SUM(${etapa('credito')})`, `SUM(${etapa('venda')})`,
       `SUM(p.status_atual = 'sem_interesse' AND ${entre('p.dt_ultimo_contato')})`];
-    const pedidos = (agregado) => `SUM((SELECT ${agregado} FROM eventos_erp e WHERE e.prospect_id = p.id AND e.tipo = 'pedido' AND ${entre('e.data_evento')}))`;
+    const pedidos = (agregado) => `SUM((SELECT ${agregado} FROM vw_valor_pedidos e WHERE e.prospect_id = p.id AND ${entre('e.data_evento')}))`;
     colunas.push(pedidos('COUNT(*)'), pedidos('SUM(e.valor)'));
   } else if (agregarAntes && fonte === 'resumo') {
     // Posição atual a partir do resumo pronto (migração 0012): alguns milhares de linhas em vez da carteira inteira.
@@ -65,8 +65,8 @@ export function consultaPainel({ usuario, periodo = null, agregarAntes = true, f
     return {
       sql: `WITH ped AS (
               SELECT p.vendedor_id, COUNT(*) AS qtd, SUM(e.valor) AS valor
-                FROM eventos_erp e JOIN prospects p ON p.id = e.prospect_id JOIN status st ON st.codigo = p.status_atual
-               WHERE e.tipo = 'pedido' AND st.conta_carteira = 1
+                FROM vw_valor_pedidos e JOIN prospects p ON p.id = e.prospect_id JOIN status st ON st.codigo = p.status_atual
+               WHERE st.conta_carteira = 1
                GROUP BY p.vendedor_id)
             SELECT v.id AS agente_id, v.nome AS agente_nome, v.perfil AS agente_perfil, v.tipo_atuacao,
                    COALESCE(v.supervisor_id, v.id) AS supervisor_id, COALESCE(sup.nome, v.nome) AS supervisor_nome,
@@ -100,8 +100,8 @@ export function consultaPainel({ usuario, periodo = null, agregarAntes = true, f
                 FROM prospects GROUP BY vendedor_id, status_atual),
             ped AS (
               SELECT p.vendedor_id, COUNT(*) AS qtd, SUM(e.valor) AS valor
-                FROM eventos_erp e JOIN prospects p ON p.id = e.prospect_id JOIN status st ON st.codigo = p.status_atual
-               WHERE e.tipo = 'pedido' AND st.conta_carteira = 1
+                FROM vw_valor_pedidos e JOIN prospects p ON p.id = e.prospect_id JOIN status st ON st.codigo = p.status_atual
+               WHERE st.conta_carteira = 1
                GROUP BY p.vendedor_id)
             SELECT v.id AS agente_id, v.nome AS agente_nome, v.perfil AS agente_perfil, v.tipo_atuacao,
                    COALESCE(v.supervisor_id, v.id) AS supervisor_id, COALESCE(sup.nome, v.nome) AS supervisor_nome,
@@ -125,7 +125,7 @@ export function consultaPainel({ usuario, periodo = null, agregarAntes = true, f
   } else {
     colunas = ["SUM(p.status_atual <> 'nao_contactado')", `SUM(${ETAPA.atendido})`, `SUM(${ETAPA.cadastro})`, `SUM(${ETAPA.credito})`,
       `SUM(${ETAPA.venda})`, "SUM(p.status_atual = 'sem_interesse')"];
-    const pedidos = (agregado) => `SUM((SELECT ${agregado} FROM eventos_erp e WHERE e.prospect_id = p.id AND e.tipo = 'pedido'))`;
+    const pedidos = (agregado) => `SUM((SELECT ${agregado} FROM vw_valor_pedidos e WHERE e.prospect_id = p.id))`;
     colunas.push(pedidos('COUNT(*)'), pedidos('SUM(e.valor)'));
   }
   const [contactados, atendidos, cadastrados, credito, venda, sem, qtdPedidos, valorPedidos] = colunas;

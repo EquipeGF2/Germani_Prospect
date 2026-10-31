@@ -10,7 +10,8 @@
 | Sem interesse | app ("sem interesse", com justificativa) | não | sim | sim | sim |
 | Análise financeira | arquivo de **cadastro** do Senior | não | sim (só registra; status não muda) | sim | sim |
 | Aguardando pedido | **relatório de crédito** do ERP ou **OK do analista** no console (forma, prazo, limite) | não | sim (só registra) | sim | sim |
-| Venda realizada | arquivo de pedidos do Senior (**final**) | não | não | sim | sim |
+| Aguardando pedido válido | arquivo de pedidos: houve pedido de venda, nenhum válido (digitado ou cancelado) — §14 | não | sim (só registra; status não muda) | sim | sim |
+| Venda realizada | arquivo de pedidos do Senior: ao menos um pedido em carteira ou faturado. Sai só se todos os válidos forem cancelados — §14 | não | não | sim | sim |
 | Inválido (baixado) | arquivo de CNPJs baixados | não — **congelado** | não | não | **não** |
 
 O vendedor nunca escolhe "inválido", "cadastrado" ou "venda": não existem como resultado de contato.
@@ -107,7 +108,7 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 | Arquivo | Evento | Efeito |
 |---|---|---|
 | Cadastro de clientes (Senior) | `cadastro` | → **Análise financeira**; guarda código do cliente; `analise_financeira_ate` = data + `prazo_analise_financeira_dias` (10) |
-| Pedidos (Senior) | `pedido` | → **Venda realizada** (final); guarda nº do pedido e, se o arquivo tiver a coluna, o **valor do pedido** ("1.234,56" ou 1234.56; vazio = sem valor, com aviso; inválido/negativo = linha rejeitada). Vale em qualquer etapa (o ERP prevalece) |
+| Pedidos (Senior) — **hoje pelo §14**; este evento fica para os pedidos já importados e o modo demonstração | `pedido` | → **Venda realizada** (final); guarda nº do pedido e, se o arquivo tiver a coluna, o **valor do pedido** ("1.234,56" ou 1234.56; vazio = sem valor, com aviso; inválido/negativo = linha rejeitada). Vale em qualquer etapa (o ERP prevalece) |
 | CNPJs baixados | `baixa` | → Inválido; `situacao_cadastral = baixada`; prospect **congelado**: histórico preservado como estava, sem novos contatos, sem cadastro/pedido ("impossibilitado de faturamento") |
 
 - **Os arquivos do ERP prevalecem sobre o status do app:** cadastro leva a **Análise financeira** e pedido leva a
@@ -502,3 +503,45 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
   (como o inválido: `conta_carteira = 0`; no Explorar entra em "Inativos"), sem aceitar registro. Fica em `expurgos`
   (somente inclusão) com quem, quando e o motivo, e aparece no histórico da ficha. **Desfazer** (na mesma tela) devolve a
   situação anterior. O banco só aceita expurgar quem não foi trabalhado e só pelo administrador.
+
+## 14. Pedidos do ERP (migração 0022 · `shared/importar-pedidos.mjs`, `shared/pedidos.mjs`)
+
+Importação: docs/05 §6. Tela: **Acompanhamento de pedidos** (`#/pedidos`), uma linha por pedido — o Acompanhamento continua uma linha por cliente.
+
+**Classificação** (tabelas `pedido_transacoes` e `pedido_situacoes`, escolhidas na importação; código novo para a importação e pergunta):
+
+| Código do ERP | Conta como |
+|---|---|
+| Transação 90100 Pedido de Venda | Venda |
+| Transação 90106 Pedido de Bonificação | Investimento: conta à parte, por cliente; não soma nem desconta da venda |
+| Situação 9 Não Fechado | Digitado internamente, ainda fora da carteira |
+| Situação 1 Aberto Total · 2 Aberto Parcial · 4 Liquidado | Em carteira · faturado em parte · faturado |
+| Situação 5 Desistência | Cancelado |
+
+**Venda válida** = venda em carteira, parcial ou faturada. **Em carteira** = pedido − faturado da venda válida. O "Valor dos pedidos" do Início, do Explorar e da ficha
+é a venda válida (`vw_valor_pedidos`), mais os pedidos antigos de `eventos_erp` que ainda não vieram neste relatório.
+
+**Status do cliente**, recalculado a cada arquivo olhando o conjunto dos pedidos (trigger de `pedido_aplicacoes`):
+
+| Pedidos do cliente | Status |
+|---|---|
+| Ao menos um em carteira ou faturado | Venda realizada |
+| Só digitado ou desistência (também quando era venda e os válidos foram cancelados) | Aguardando pedido válido |
+| Só bonificação (exceção) | Não muda; alerta |
+| Cliente expurgado | Não muda: o pedido só fica registrado |
+| CNPJ baixado | Linha rejeitada: impossibilitado de faturamento |
+
+Vale a regra do atendimento automático (§3): sem registro do representante no app, o pedido vira o atendimento.
+"Bloqueado no financeiro" chega do ERP igual a Não Fechado: para separar, o relatório precisa trazer o motivo.
+
+**Representante:** o cliente fica com o dono da carteira e a venda vai para quem a realizou (coluna Rep. ligada a `usuarios.codigo_erp`; o nome vem do cadastro, então incluir o código depois
+não exige importar de novo). O cliente aparece na lista de cada representante que vendeu para ele, com o valor de cada um. É só informação, sem alerta: a carteira nunca muda sozinha.
+O valor não duplica (cada pedido tem um representante); o total de clientes usa os distintos. CPF e CNPJ fora da base ficam como informação para quem vendeu, fora dos indicadores de prospecção.
+
+**Alertas** (aba Alertas; prazos em Parâmetros): Aguardando pedido válido além de `prazo_pedido_valido_dias` (10) · bonificação sem venda · representante sem código no cadastro ·
+desistências a partir de `alerta_desistencias_cliente` (5) · pedido em carteira além de `dias_alerta_pedido_aberto` (30) · em carteira do grupo acima do Créd. Grupo (só pedidos em aberto: sem os títulos a receber, é uma visão parcial).
+
+**Quem vê:** administrador, gerente e quem vê todas as equipes, tudo; supervisor, a equipe; vendedor, os pedidos da carteira dele e os que ele mesmo fez.
+
+**Apagar um arquivo** (Administração → Importações): tira os pedidos, as linhas e o histórico que o arquivo trouxe e volta o cliente ao que era antes, considerando os atendimentos registrados depois.
+Mantém atendimentos, cadastro, crédito e baixados. Vai do arquivo mais novo para o mais antigo, só pelo administrador, digitando o nome do arquivo; fica o registro de quem apagou o quê. ADR-0007.

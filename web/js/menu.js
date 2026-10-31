@@ -44,6 +44,7 @@ const GRUPOS = [
     { caminho: '/explorar', rotulo: 'Explorar carteira', icone: 'explorar', tela: 'explorar' },
     { caminho: '/carteira', rotulo: 'Lista principal', icone: 'lista', tela: 'lista' },
     { caminho: '/carteira?aba=acompanhamento', rotulo: 'Acompanhamento', icone: 'acompanhamento', tela: 'acompanhamento' },
+    { caminho: '/pedidos', rotulo: 'Acompanhamento de pedidos', icone: 'erp', tela: 'pedidos' },
   ] },
   { titulo: 'Financeiro', itens: [
     { caminho: '/financeiro', rotulo: 'Console de crédito', icone: 'financeiro', tela: 'credito' },
@@ -68,6 +69,7 @@ const TELAS_INTERNAS = {
   '/ficha': ['/carteira', 'Ficha do cliente'],
   '/registrar': ['/carteira', 'Registrar atendimento'],
   '/lote': ['/carteira', 'Sem interesse em lote'],
+  '/admin/importar/pedidos': ['/admin/importar/erp', 'Importar pedidos'],
   '/financeiro/liberar': ['/financeiro', 'Liberar crédito'],
   '/admin/acesso': ['', 'Confirmar senha'],
   '/admin/perfis': ['/admin/usuarios', 'Perfis'],
