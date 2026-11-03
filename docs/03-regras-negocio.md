@@ -194,6 +194,12 @@ Todos os registros da base são **prospects** — para representante e para vend
 | **Principal (prospects)** | Não contactado · Em prospecção — é onde se vai atrás do cliente |
 | **Secundária (acompanhamento da efetivação do pedido)** | Aguardando cadastro → Análise financeira → Aguardando pedido → Venda realizada, Sem interesse e Inválido status para consulta |
 
+**Ondas liberadas** (migração 0024 · `shared/ondas.mjs`): o administrador marca em **Parâmetros** quais ondas o representante/vendedor
+vê, para liberar a base aos poucos. Vale para quem ainda está na lista (Não contactado e Em prospecção), na Lista principal, na ficha
+e no Explorar carteira; quem já foi atendido aparece sempre, em qualquer onda. "Sem onda" também é uma opção. Supervisor, gerente,
+financeiro e administrador veem todas. Padrão `todas` (sem restrição); o banco aceita só `todas` ou uma lista. A mudança aparece para
+o representante na próxima leitura da tela (até 5 minutos, pelo cache).
+
 Entrar em negociação **tira o cliente da lista principal e o leva para o acompanhamento**. Toda essa
 movimentação conta sempre nos indicadores.
 
@@ -465,9 +471,9 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 
 ## 15. Ajuda e manual (`shared/ajuda.mjs`)
 
-Um único conteúdo alimenta três saídas, para não haver textos diferentes: a tela **Ajuda** (item no topo do menu, com o fluxograma e os capítulos), o botão **?** no topo de toda tela (objetivo, como funciona, campos, o que analisar, situações comuns e próximo passo) e o **manual em PDF**, gerado na hora no navegador. Cada perfil vê só os capítulos do que usa. O Explorar carteira continua como tela inicial; a Ajuda abre sozinha só no primeiro acesso de cada usuário, em cada navegador. Tela nova ou alterada: atualize `shared/ajuda.mjs`; `test/ajuda.test.mjs` falha se uma tela ficar sem ajuda.
+Um único conteúdo alimenta três saídas, para não haver textos diferentes: a tela **Ajuda** (último item do menu, com o fluxograma e os capítulos), o botão **?** no topo de toda tela (objetivo, como funciona, campos, o que analisar, situações comuns e próximo passo) e o **manual em PDF**, gerado na hora no navegador. Cada perfil vê só os capítulos do que usa. O Explorar carteira é a tela inicial: ao entrar, o sistema abre sempre nela. Tela nova ou alterada: atualize `shared/ajuda.mjs`; `test/ajuda.test.mjs` falha se uma tela ficar sem ajuda.
 
-**Significado dos termos** (Ajuda › Significado dos termos, `#/ajuda?termos=todos`; o botão **?** de cada tela leva ao grupo dela; também no fim do manual em PDF): tudo o que aparece nas telas, inclusive as abreviações (Invest., Ag. fin., S.I. cli., Créd. Cliente…), por grupo e com busca. Só entra termo que existe no sistema: `test/ajuda.test.mjs` procura cada um no código das telas e falha se não achar. Rótulo novo em tela: inclua o significado em `TERMOS`.
+**Opções do topo e significado dos termos**, no botão **?** de cada tela (e no fim do manual em PDF): cada opção das chaves e filtros do topo (`OPCOES_TOPO`: Fluxo | Crédito × Pedido, Ver por Empresa | Ver por Grupo…) e tudo o que aparece na tela, inclusive as abreviações (`TERMOS`: Invest., Ag. fin., S.I. cli., Créd. Cliente…). Não há tela separada no menu. Só entra o que existe no sistema: `test/ajuda.test.mjs` procura cada termo e cada opção no código das telas. Rótulo ou opção nova em tela: inclua o significado. Ao entrar, o sistema abre sempre na página inicial (Explorar carteira).
 
 **Sem rolagem para o lado** (computador e celular): rótulos de coluna e textos de card numa linha só. Tabela, hierarquia ou fila de cards que não cabe na largura vira cartão, com o rótulo de cada campo (`semRolagem`, `web/js/ui.js`): a decisão é tomada pela largura real, então muda ao girar o celular ou recolher o menu. No celular, a hierarquia do Explorar pedidos mostra a venda e um resumo por linha (os oito números da linha escolhida ficam nos cards), e as etapas do Acompanhamento ficam uma abaixo da outra. `test-telas/pedidos.test.mjs` mede 390, 768, 1024 e 1366 px.
 

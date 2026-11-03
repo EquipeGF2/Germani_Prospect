@@ -1,5 +1,5 @@
 // Ajuda: fluxograma da operação, manual por capítulos e PDF, conforme o perfil. O conteúdo fica em shared/ajuda.mjs. docs/03 §15
-import { buscarTermos, capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO, termosDoUsuario } from '../../shared/ajuda.mjs';
+import { capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO } from '../../shared/ajuda.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, formatar, comEspera } from '../ui.js';
 import { gerarManualPdf } from '../relatorio.js';
@@ -21,29 +21,6 @@ function blocos(lista) {
   });
 }
 
-/** Significado dos termos: grupos por tela, busca e o grupo da tela de onde veio o botão ?. */
-function telaTermos(conteudo, usuario, inicial, baixar) {
-  const grupos = termosDoUsuario(usuario);
-  const estado = { grupo: grupos.some((g) => g.id === inicial) ? inicial : 'todos', busca: '' };
-  const chips = h('div', { class: 'ajt-grupos', role: 'group', 'aria-label': 'Grupo de termos' });
-  const lista = h('div', { id: 'lista-termos', 'aria-live': 'polite' });
-  const campo = h('input', { type: 'search', id: 'busca-termos', 'aria-label': 'Procurar um termo', placeholder: 'Ex.: Invest. ou Ag. fin.', oninput: () => { estado.busca = campo.value; desenhar(); } });
-  function desenhar() {
-    const chip = (id, nome) => h('button', { type: 'button', class: `chip-situacao${!estado.busca && estado.grupo === id ? ' ativa' : ''}`, dados: { grupo: id }, 'aria-pressed': !estado.busca && estado.grupo === id ? 'true' : 'false',
-      onclick: () => { estado.grupo = id; estado.busca = ''; campo.value = ''; desenhar(); } }, nome);
-    montar(chips, chip('todos', 'Todos'), grupos.map((g) => chip(g.id, g.nome)));
-    const vistos = buscarTermos(estado.busca || estado.grupo === 'todos' ? grupos : grupos.filter((g) => g.id === estado.grupo), estado.busca);
-    montar(lista, vistos.length ? vistos.map((g) => h('section', { class: 'cartao ajt-grupo', dados: { grupo: g.id } }, h('h2', {}, g.nome),
-      h('dl', {}, g.termos.flatMap((t) => [h('dt', {}, t.termo), h('dd', {}, t.significado, t.conta ? h('span', { class: 'ajt-conta' }, t.conta) : null)]))))
-      : h('p', { class: 'ajuda', id: 'sem-termos' }, `Nenhum termo encontrado para "${estado.busca}".`));
-  }
-  desenhar();
-  montar(conteudo,
-    h('div', { class: 'exp-topo' }, h('div', {}, h('h1', {}, 'Significado dos termos'), h('p', { class: 'ajuda', style: 'margin:0' }, 'Tudo o que aparece nas telas, inclusive as abreviações.')),
-      h('button', { type: 'button', class: 'secundario', id: 'pdf-termos', onclick: baixar }, 'Baixar em PDF')),
-    h('section', { class: 'cartao ajt-busca' }, h('label', { for: 'busca-termos' }, 'Procurar um termo'), campo, chips), lista);
-}
-
 export async function render(conteudo, { usuario, parametros }) {
   const capitulos = capitulosDoUsuario(usuario);
   const pedido = Number(parametros?.get('cap'));
@@ -52,7 +29,6 @@ export async function render(conteudo, { usuario, parametros }) {
   const perfil = NOMES_PERFIL[usuario.perfil] ?? usuario.perfil;
   const baixar = (lista, nome) => (ev) => comEspera(ev.currentTarget, () => gerarManualPdf({ capitulos: lista, perfil, emissao: formatar.data(hoje), nomeArquivo: nome }));
   const termos = capituloDeTermos(usuario);
-  if (parametros?.has('termos')) return telaTermos(conteudo, usuario, parametros.get('termos'), baixar([termos], `termos-germani-${hoje}.pdf`));
 
   if (capitulo) {
     const i = capitulos.indexOf(capitulo);
@@ -91,7 +67,6 @@ export async function render(conteudo, { usuario, parametros }) {
     fluxograma,
     h('div', { class: 'ajf-baixo' }, detalhe,
       h('section', { class: 'cartao ajf-capitulos', 'aria-label': 'Manual por capítulos' }, h('h2', {}, 'Manual por capítulos'),
-        h('p', { class: 'ajuda' }, `O perfil ${perfil} vê ${capitulos.length} capítulos: só o que ele usa.`),
-        h('div', { class: 'ajf-grade' }, capitulos.map((c) => h('a', { class: 'ajf-cap', href: `#/ajuda?cap=${c.n}`, dados: { cap: c.n } }, h('span', { class: 'num' }, String(c.n)), h('span', {}, h('b', {}, c.nome), h('small', {}, c.desc)))),
-          h('a', { class: 'ajf-cap', href: '#/ajuda?termos=todos', id: 'abrir-termos' }, h('span', { class: 'num' }, String(termos.n)), h('span', {}, h('b', {}, termos.nome), h('small', {}, termos.desc)))))));
+        h('p', { class: 'ajuda' }, `O perfil ${perfil} vê ${capitulos.length} capítulos: só o que ele usa. O significado de cada termo e das opções do topo fica no botão ? de cada tela e no fim do manual em PDF.`),
+        h('div', { class: 'ajf-grade' }, capitulos.map((c) => h('a', { class: 'ajf-cap', href: `#/ajuda?cap=${c.n}`, dados: { cap: c.n } }, h('span', { class: 'num' }, String(c.n)), h('span', {}, h('b', {}, c.nome), h('small', {}, c.desc))))))));
 }

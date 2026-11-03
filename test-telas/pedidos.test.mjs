@@ -301,21 +301,38 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.waitForFunction(() => { const i = document.querySelector('.ajf-figura img'); i.loading = 'eager'; return i.complete && i.naturalWidth > 0; });
   await foto('p10f-capitulo-com-imagem');
 
-  // significado dos termos: busca, grupos e o link do botão ? da tela
-  await ir('#/pedidos');
+  // opções do topo e significado dos termos: no botão ? da tela, sem tela separada no menu
+  await ir('#/carteira?aba=acompanhamento');
   await pagina.click('#botao-ajuda');
-  await pagina.click('#ajuda-termos');
-  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/ajuda?termos=pedidos');
-  assert.equal(await pagina.locator('.ajt-grupos [aria-pressed="true"]').innerText(), 'Explorar pedidos', 'abre no grupo da tela');
-  assert.match(await pagina.locator('#lista-termos').innerText(), /Invest\. ÷ venda/);
-  await pagina.fill('#busca-termos', 'ag. fin');
-  assert.match(await pagina.locator('#lista-termos').innerText(), /Aguardando financeiro/, 'a busca acha a abreviação');
-  await pagina.fill('#busca-termos', 'xyz-nada');
-  await pagina.waitForSelector('#sem-termos');
-  await foto('p10g-termos');
-  const [termosPdf] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#pdf-termos')]);
-  assert.match(termosPdf.suggestedFilename(), /^termos-germani-.*\.pdf$/);
-  assert.equal(await pagina.locator('#menu a[title="Significado dos termos"].ativo').count(), 1, 'item do menu marcado');
+  await pagina.waitForSelector('#painel-ajuda:not([hidden])');
+  const painelAcomp = await pagina.locator('#painel-ajuda').innerText();
+  for (const o of ['Fluxo', 'Crédito × Pedido', 'Apenas o primeiro pedido', 'Todos os pedidos', 'Ver por Empresa', 'Ver por Grupo']) assert.ok(painelAcomp.includes(o), `opção ${o} explicada`);
+  await ir('#/pedidos');
+  if (!(await pagina.locator('#painel-ajuda').isVisible())) await pagina.click('#botao-ajuda');
+  if ((await pagina.locator('.ajuda-secao[data-secao="campos"]').getAttribute('aria-expanded')) !== 'true') await pagina.click('.ajuda-secao[data-secao="campos"]');
+  const painelPed = await pagina.locator('#painel-ajuda').innerText();
+  assert.match(painelPed, /Significado dos termos/);
+  assert.match(painelPed, /Invest\. ÷ venda/);
+  assert.match(painelPed, /Pedidos de bonificação/);
+  await foto('p10g-termos-no-painel');
+  await pagina.click('#fechar-ajuda');
+  assert.equal(await pagina.locator('#menu a[title="Significado dos termos"]').count(), 0, 'sem item separado no menu');
+  assert.match((await pagina.locator('#menu .menu-titulo').allInnerTexts()).at(-1), /ajuda/i, 'Ajuda é o último grupo do menu');
+
+  // ondas liberadas: o administrador escolhe as ondas em Parâmetros
+  await ir('#/admin/parametros');
+  await pagina.waitForSelector('#ondas-liberadas');
+  assert.match(await pagina.locator('#ondas-liberadas').innerText(), /Todas as ondas liberadas/);
+  const caixas = pagina.locator('#ondas-liberadas input[type=checkbox]');
+  assert.ok(await caixas.count() >= 2, 'uma caixa por onda');
+  await pagina.click('#ondas-liberadas button:text("Desmarcar todas")');
+  await caixas.first().check();
+  await pagina.click('#salvar-ondas');
+  await pagina.waitForSelector('#ondas-liberadas >> text=/^Liberadas: /');
+  await foto('p10h-ondas-liberadas');
+  await pagina.click('#ondas-liberadas button:text("Marcar todas")');
+  await pagina.click('#salvar-ondas');
+  await pagina.waitForSelector('#ondas-liberadas >> text=Todas as ondas liberadas.');
 
   // sem rolagem para o lado em nenhuma largura: o que não cabe vira cartão; rótulo e número nunca ficam cortados
   // espera dois quadros: a troca para cartões acontece antes de a tela aparecer, e o teste mede depois disso
@@ -337,7 +354,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   });
   for (const largura of [390, 768, 1024, 1366]) {
     await pagina.setViewportSize({ width: largura, height: 900 });
-    for (const rota of ['#/pedidos', '#/carteira?aba=acompanhamento', '#/ajuda?termos=todos']) {
+    for (const rota of ['#/pedidos', '#/carteira?aba=acompanhamento', '#/ajuda']) {
       await ir(rota);
       await pagina.waitForTimeout(150);
       const m = await medir();

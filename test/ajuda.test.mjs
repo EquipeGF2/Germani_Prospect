@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { AJUDA_TELAS, ajudaDaTela, buscarTermos, CAPITULOS, capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO, grupoDeTermos, TELAS_SEM_AJUDA, TERMOS, termosDoUsuario } from '../shared/ajuda.mjs';
+import { AJUDA_TELAS, ajudaDaTela, buscarTermos, CAPITULOS, capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO, grupoDeTermos, OPCOES_TOPO, opcoesDaTela, TELAS_SEM_AJUDA, TERMOS, termosDoUsuario } from '../shared/ajuda.mjs';
 import { readdirSync } from 'node:fs';
 
 const app = readFileSync(new URL('../web/js/app.js', import.meta.url), 'utf8');
@@ -78,12 +78,33 @@ test('as abreviações das telas estão nos termos', () => {
 
 test('termos por perfil, busca sem acento e o grupo da tela do botão ?', () => {
   assert.deepEqual(termosDoUsuario({ id: 1, perfil: 'administrador' }).map((g) => g.id), TERMOS.map((g) => g.id));
-  assert.ok(!termosDoUsuario({ id: 2, perfil: 'vendedor' }).some((g) => g.id === 'importacoes'), 'importações só para quem importa');
+  assert.ok(!termosDoUsuario({ id: 2, perfil: 'vendedor' }).some((g) => g.id.startsWith('importar')), 'importações só para quem importa');
   assert.equal(grupoDeTermos('/carteira', 'aba=acompanhamento').id, 'acompanhamento');
   assert.equal(grupoDeTermos('/pedidos').id, 'pedidos');
   assert.equal(grupoDeTermos('/admin/usuarios'), null);
   const achados = buscarTermos(TERMOS, 'DESISTENCIA').flatMap((g) => g.termos.map((t) => t.termo));
   assert.ok(achados.includes('Desistência'));
   const cap = capituloDeTermos({ id: 1, perfil: 'administrador' });
-  assert.equal(cap.blocos.filter((b) => b[0] === 'tabela').length, TERMOS.length, 'uma tabela por grupo no PDF');
+  assert.ok(cap.blocos.filter((b) => b[0] === 'tabela').length >= TERMOS.length, 'termos e opções no PDF');
+  assert.ok(JSON.stringify(cap.blocos).includes('Apenas o primeiro pedido'), 'as opções do topo também saem no PDF');
+});
+
+test('opções do topo: toda tela com chave ou filtro no topo explica cada opção, e cada opção existe na tela', () => {
+  for (const c of ['/explorar', '/carteira', '/carteira?aba=acompanhamento', '/pedidos', '/financeiro', '/admin/grupos']) {
+    assert.ok(OPCOES_TOPO[c]?.length, `${c}: opções do topo`);
+    assert.ok(AJUDA_TELAS[c], `${c}: tela com ajuda`);
+  }
+  for (const [c, grupos] of Object.entries(OPCOES_TOPO)) for (const g of grupos) for (const o of g.opcoes) {
+    assert.ok(codigo.includes(o.opcao), `${c}: a opção "${o.opcao}" não aparece em nenhuma tela`);
+    assert.ok(o.significado.length > 10, `${c}: ${o.opcao}`);
+  }
+  assert.deepEqual(opcoesDaTela('/carteira', 'aba=acompanhamento').map((g) => g.nome), ['Fluxo | Crédito × Pedido', 'Apenas o primeiro pedido | Todos os pedidos', 'Ver por Empresa | Ver por Grupo']);
+  assert.equal(opcoesDaTela('/carteira')[0].nome, 'Equipe');
+  assert.deepEqual(opcoesDaTela('/admin/usuarios'), []);
+});
+
+test('Ajuda é o último item do menu, sem tela separada de termos', () => {
+  const grupos = [...menu.matchAll(/\{ titulo: '([^']+)', itens/g)].map((m) => m[1]);
+  assert.equal(grupos.at(-1), 'Ajuda');
+  assert.ok(!menu.includes('termos=todos'));
 });

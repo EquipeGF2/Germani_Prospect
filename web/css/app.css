@@ -837,6 +837,8 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ajuda-corpo li { margin: 3px 0; }
 .ajuda-corpo dt { font-weight: 600; margin-top: 6px; }
 .ajuda-corpo dd { margin: 0; color: #374151; }
+.ajuda-opcoes { margin: 8px 0 0 !important; font-weight: 700; color: var(--destaque-escuro); }
+.ajuda-conta { display: block; width: fit-content; max-width: 100%; margin-top: 3px; padding: 1px 8px; border-radius: 6px; background: #F3F4F6; color: #374151; font-size: 13px; }
 .ajuda-capitulo { display: block; margin-top: 10px; padding-top: 10px; font-size: 14px; font-weight: 600; }
 @media (max-width: 900px) { .painel-ajuda { width: 100%; border-left: 0; box-shadow: none; } .casca.com-ajuda .area { margin-right: 0; } }
 
@@ -891,13 +893,6 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ajf-figura figcaption { margin-top: 4px; font-size: 13px; color: var(--suave); }
 
 
-/* Significado dos termos */
-.ajt-busca { display: flex; flex-direction: column; gap: 8px; }
-.ajt-busca label { font-weight: 600; font-size: 14px; }
-.ajt-grupos { display: flex; flex-wrap: wrap; gap: 6px; }
-.ajt-grupo h2 { margin: 0 0 4px; }
-.ajt-grupo dl { margin: 0; }
-.ajt-grupo dt { font-weight: 700; padding-top: 10px; border-top: 1px solid var(--borda); margin-top: 10px; }
-.ajt-grupo dt:first-child { border-top: 0; margin-top: 0; padding-top: 4px; }
-.ajt-grupo dd { margin: 2px 0 0; color: #1F2937; font-size: 14px; }
-.ajt-conta { display: block; width: fit-content; max-width: 100%; margin-top: 4px; padding: 2px 8px; border-radius: 6px; background: #F3F4F6; color: #374151; font-size: 13px; }
+/* Parâmetros: ondas liberadas */
+.ondas-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 8px; }
+.ondas-lista .ped-opcao b { white-space: nowrap; }

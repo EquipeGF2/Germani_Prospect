@@ -56,8 +56,8 @@ export const CAPITULOS = Object.freeze([
     ['lista', [['Representante/vendedor', 'a própria carteira e os pedidos que fez.'], ['Supervisor', 'a equipe.'], ['Gerente e administrador', 'todas as equipes.'], ['Analista financeiro', 'o Console de crédito.']]],
     ['h', 'Botão de ajuda'],
     ['p', 'O botão ? fica no topo de todas as telas. Ele abre o objetivo da tela, como ela funciona, o significado de cada campo e o que analisar. No celular, a ajuda abre em tela cheia.'],
-    ['h', 'Significado dos termos'],
-    ['p', 'Em Ajuda › Significado dos termos estão todos os nomes e abreviações das telas, por tela e com busca. O botão ? de cada tela tem o link Significado de todos os termos desta tela, e os termos também saem no fim do manual em PDF.'],
+    ['h', 'Opções do topo e termos'],
+    ['p', 'O botão ? de cada tela explica as opções do topo (por exemplo, Ver por Empresa ou Ver por Grupo) e o significado de todos os termos da tela, inclusive as abreviações. Tudo isso também sai no fim do manual em PDF.'],
     ['h', 'No celular'],
     ['lista', [['Níveis', 'mude pelo botão Mudar, porque arrastar não funciona no toque.'], ['Menu', 'abre pelo botão no canto superior esquerdo.'], ['Tabelas', 'nada rola para o lado: o que não cabe vira cartão, com o nome de cada campo.']]],
   ] },
@@ -234,8 +234,8 @@ export const AJUDA_TELAS = Object.freeze({
   '/admin/perfis': { titulo: 'Perfis', cap: 8, objetivo: 'Escolher quais telas cada perfil acessa.',
     como: ['Crie ou abra um perfil.', 'Escolha o tipo-base e marque as telas.', 'Grave e atribua o perfil em Usuários.'],
     campos: [F('Tipo-base', 'Define quais dados a pessoa vê'), F('Telas', 'O que aparece no menu')], analisar: ['Confira se o perfil abre pelo menos uma tela de trabalho.'], comuns: [F('Tela indisponível', 'Ela não serve para aquele tipo-base.')], proximo: 'Atribua o perfil em Usuários.' },
-  '/admin/parametros': { titulo: 'Parâmetros', cap: 8, objetivo: 'Ajustar prazos e limites dos alertas.',
-    como: ['Altere o valor e grave.'], campos: [F('Parâmetro', 'O que o valor controla'), F('Valor', 'Dias, quantidade ou data'), F('Última alteração', 'Quando e quem mudou')], analisar: ['Prazo muito curto gera alerta demais.'], comuns: [F('O alerta não mudou', 'Recarregue a página.')], proximo: 'Confira os alertas em Explorar pedidos.' },
+  '/admin/parametros': { titulo: 'Parâmetros', cap: 8, objetivo: 'Ajustar prazos e limites dos alertas e liberar as ondas para os representantes/vendedores.',
+    como: ['Altere o valor e grave.', 'Em Ondas liberadas, marque as ondas que o representante/vendedor pode ver e clique em Salvar.'], campos: [F('Ondas liberadas', 'Ondas da base que o representante/vendedor vê na Lista principal e no Explorar carteira; quem já foi atendido aparece sempre'), F('na lista', 'Clientes da onda ainda não atendidos'), F('Parâmetro', 'O que o valor controla'), F('Valor', 'Dias, quantidade ou data'), F('Última alteração', 'Quando e quem mudou')], analisar: ['Prazo muito curto gera alerta demais.'], comuns: [F('O alerta não mudou', 'Recarregue a página.')], proximo: 'Confira os alertas em Explorar pedidos.' },
   '/admin/feriados': { titulo: 'Feriados', cap: 8, objetivo: 'Manter os feriados usados na conta de dias úteis.',
     como: ['Escolha o ano.', 'Inclua a data, a descrição e a abrangência.', 'Marque se repete todo ano.'], campos: [F('Abrangência', 'Nacional, estadual ou municipal'), F('Local', 'UF ou cidade do feriado'), F('Origem', 'De onde veio o feriado')], analisar: ['Confira os feriados municipais das cidades da campanha.'], comuns: [F('Feriado errado', 'Remova e inclua de novo.')], proximo: 'Os dias úteis entram no painel.' },
   '/admin/erros': { titulo: 'Erros do app', cap: 8, objetivo: 'Ver as falhas registradas, para corrigir o que atrapalha o uso.',
@@ -249,9 +249,6 @@ export const AJUDA_TELAS = Object.freeze({
 const T = (termo, significado, conta = null) => Object.freeze({ termo, significado, conta });
 export const TERMOS = Object.freeze([
   { id: 'pedidos', nome: 'Explorar pedidos', tela: 'pedidos', caminho: '/pedidos', termos: [
-    T('Pedidos de venda', 'Mostra só os pedidos de venda. Pedidos de bonificação mostra só os de bonificação; Ambos, os dois.'),
-    T('Ver por Empresa', 'Cada CNPJ da base aparece separado.'),
-    T('Ver por Grupo', 'Junta as empresas pela raiz do CNPJ, incluindo as filiais que não estão na base.'),
     T('Clientes', 'Clientes diferentes com venda válida na linha. Um cliente com 10 pedidos conta uma vez.'),
     T('Válidos', 'Pedidos de venda em carteira, faturados em parte ou faturados.'),
     T('Venda válida', 'Valor dos pedidos válidos. Na hierarquia, a coluna Venda. Não inclui digitado, desistência nem bonificação.'),
@@ -273,10 +270,6 @@ export const TERMOS = Object.freeze([
     T('Rep. sem código', 'Representante sem código: o código do arquivo não está em nenhum usuário. Inclua o código em Usuários.'),
   ] },
   { id: 'acompanhamento', nome: 'Acompanhamento', tela: 'acompanhamento', caminho: '/carteira?aba=acompanhamento', termos: [
-    T('Fluxo', 'Mostra em que etapa está cada cliente, do cadastro ao pedido faturado.'),
-    T('Crédito × Pedido', 'Compara o limite de crédito liberado com os pedidos em carteira.'),
-    T('Apenas o primeiro pedido', 'Conta só o primeiro pedido válido de cada cliente: mostra os clientes conquistados.'),
-    T('Todos os pedidos', 'Conta todos os pedidos válidos: mostra o valor vendido.'),
     T('Cadastros realizados', 'Clientes com cadastro identificado no ERP. É a soma das quatro etapas seguintes. Na hierarquia, a coluna Cadastros.'),
     T('Análise financeira', 'Cadastro identificado, esperando a liberação do crédito.'),
     T('Aguardando pedido', 'Crédito liberado, ainda sem pedido válido.'),
@@ -326,16 +319,20 @@ export const TERMOS = Object.freeze([
     T('Inativos', 'CNPJs baixados ou expurgados. Não contam na base válida.'),
     T('Conversão', 'Parte dos contactados que virou venda.', 'vendas ÷ contactados × 100'),
   ] },
-  { id: 'importacoes', nome: 'Importações', tela: 'admin_credito', caminho: '/admin/importar/pedidos', termos: [
-    T('Digit.', 'Digitados: pedidos de venda digitados, ainda fora da carteira (Importar pedidos).'),
-    T('Desist.', 'Desistências: pedidos de venda cancelados (Importar pedidos).'),
+  { id: 'importar-pedidos', nome: 'Importar pedidos', tela: 'admin_erp', caminho: '/admin/importar/pedidos', termos: [
+    T('Digit.', 'Digitados: pedidos de venda digitados, ainda fora da carteira.'),
+    T('Desist.', 'Desistências: pedidos de venda cancelados.'),
+    T('Venda válida (R$)', 'Valor dos pedidos em carteira, faturados em parte ou faturados.'),
+    T('Rep. sem código', 'Representante sem código: o código do arquivo não está em nenhum usuário.'),
+  ] },
+  { id: 'importar-credito', nome: 'Cadastro e crédito (ERP)', tela: 'admin_credito', caminho: '/admin/importar/credito', termos: [
     T('Créd. Cliente', 'Crédito do cliente: limite do CNPJ. Preenchido, ele vale, mesmo 0.'),
     T('Créd. Grupo', 'Crédito do grupo: limite global da raiz, usado quando o do cliente está vazio.'),
     T('9.999.999', 'Valor do ERP que significa sem limite.'),
     T('Forma Pgto', 'Forma de pagamento, como vem do ERP.'),
     T('Dt. Cadastro', 'Data do cadastro no ERP. Obrigatória.'),
   ] },
-  { id: 'gerais', nome: 'Termos gerais', tela: null, caminho: null, termos: [
+  { id: 'gerais', nome: 'Termos gerais', tela: null, caminho: '/ajuda', termos: [
     T('CNPJ', 'Número que identifica cada empresa.'),
     T('raiz', 'Raiz do CNPJ: os 8 primeiros dígitos. A matriz e as filiais têm a mesma raiz.'),
     T('ERP', 'Sistema da empresa de onde vêm os relatórios de cadastro, crédito e pedidos.'),
@@ -344,6 +341,51 @@ export const TERMOS = Object.freeze([
     T('(R$)', 'Valores em reais.'),
   ] },
 ]);
+
+/**
+ * Opções do topo de cada tela (chaves e filtros): o que cada uma mostra. Aparecem no botão ? da tela e no PDF.
+ * Só entra opção que existe na tela: test/ajuda.test.mjs confere cada uma no código.
+ */
+const O = (nome, opcoes) => Object.freeze({ nome, opcoes: opcoes.map(([opcao, significado]) => Object.freeze({ opcao, significado })) });
+const VER_POR = O('Ver por Empresa | Ver por Grupo', [
+  ['Ver por Empresa', 'Cada CNPJ da base separado. Filial fora da base não aparece.'],
+  ['Ver por Grupo', 'Junta as empresas pela raiz do CNPJ (os 8 primeiros dígitos) e inclui as filiais que não estão na base.']]);
+export const OPCOES_TOPO = Object.freeze({
+  '/explorar': [O('Todos | Representantes | Vendedores', [
+    ['Todos', 'Toda a carteira que você vê.'], ['Representantes', 'Só as carteiras de representante (sem rota).'], ['Vendedores', 'Só as carteiras de vendedor (com rota e subrota).']])],
+  '/carteira': [
+    O('Equipe', [['Supervisor', 'Escolhe a equipe (para quem vê todas as equipes).'], ['Representante', 'Escolhe a carteira de um representante/vendedor.']]),
+    O('Local', [['UF', 'Filtra pelo estado.'], ['Cidade', 'Filtra pela cidade.'], ['Bairro', 'Filtra pelo bairro (aparece depois de escolher a cidade).']]),
+    O('Carteira', [['Onda', 'Filtra pela onda da campanha.'], ['Segmento', 'Filtra pela tipologia do cliente.']]),
+    O('Exibição', [['Agrupar por', 'Junta a lista por cidade, onda ou outra opção; Nenhum mostra a lista corrida.']]),
+    O('Situação', [['Todos', 'Todos os clientes da lista.'], ['Não contactado', 'Ainda sem nenhum contato.'], ['Em prospecção (contato da planilha)', 'Teve contato na planilha da base, ainda sem resultado no sistema.']]),
+    O('No celular: Lista | Cidade | Bairro | Onda | Rota', [['Lista', 'Os clientes um a um.'], ['Cidade', 'Agrupados por cidade.'], ['Bairro', 'Agrupados por bairro.'], ['Onda', 'Agrupados por onda.'], ['Rota', 'Agrupados por rota (só vendedor).']])],
+  '/carteira?aba=acompanhamento': [
+    O('Fluxo | Crédito × Pedido', [
+      ['Fluxo', 'Mostra em que etapa está cada cliente, do cadastro ao pedido faturado.'],
+      ['Crédito × Pedido', 'Compara o limite de crédito liberado com os pedidos em carteira: dentro do limite, acima do limite ou sem limite.']]),
+    O('Apenas o primeiro pedido | Todos os pedidos', [
+      ['Apenas o primeiro pedido', 'Conta só o primeiro pedido válido de cada cliente: mostra quantos clientes foram conquistados.'],
+      ['Todos os pedidos', 'Conta todos os pedidos válidos: mostra o valor vendido, inclusive a recompra.']]),
+    VER_POR],
+  '/pedidos': [
+    O('Pedidos de venda | Pedidos de bonificação | Ambos', [
+      ['Pedidos de venda', 'Só os pedidos de venda: a venda válida, o digitado e a desistência.'],
+      ['Pedidos de bonificação', 'Só os pedidos de bonificação, o investimento no cliente.'],
+      ['Ambos', 'Venda e bonificação juntas.']]),
+    VER_POR],
+  '/financeiro': [O('Cards do topo', [
+    ['em análise', 'Clientes aguardando a liberação do crédito.'], ['fora do prazo', 'Os que passaram do prazo da análise.'], ['liberados aguardando pedido', 'Já liberados, ainda sem pedido: para corrigir uma liberação.']])],
+  '/admin/grupos': [O('Todas | Expurgar | Manter | Decidir | Expurgados', [
+    ['Todas', 'Todas as empresas do arquivo.'], ['Expurgar', 'Sugestão de tirar da base: já era cliente e ainda não foi trabalhado.'], ['Manter', 'Sugestão de manter na base.'],
+    ['Decidir', 'Sem sugestão: precisa da sua decisão.'], ['Expurgados', 'Os que já foram tirados da base.']])],
+});
+
+/** Opções do topo da tela, pelo endereço. */
+export function opcoesDaTela(caminho, consulta = '') {
+  const c = caminho === '/carteira' && new URLSearchParams(consulta).get('aba') === 'acompanhamento' ? '/carteira?aba=acompanhamento' : caminho;
+  return OPCOES_TOPO[c] ?? [];
+}
 
 /** Grupos de termos que o usuário vê: os gerais e os das telas que o perfil dele abre. */
 export const termosDoUsuario = (usuario) => TERMOS.filter((g) => !g.tela || podeTela(usuario, g.tela));
@@ -356,9 +398,16 @@ export function grupoDeTermos(caminho, consulta = '') {
 
 /** Os termos como um capítulo a mais do manual em PDF: uma tabela por grupo. */
 export function capituloDeTermos(usuario) {
-  return { n: 9, nome: 'Significado dos termos', desc: 'Tudo o que aparece nas telas, inclusive as abreviações.',
-    blocos: termosDoUsuario(usuario).flatMap((g) => [['h', g.nome], ['tabela', ['Termo', 'Significado'], g.termos.map((t) => [t.termo, t.conta ? `${t.significado} Conta: ${t.conta}.` : t.significado])]]) };
+  const grupos = termosDoUsuario(usuario);
+  const telas = Object.entries(OPCOES_TOPO).filter(([c]) => !grupos.some((g) => g.caminho === c) && AJUDA_TELAS[c] && podeVerTela(usuario, c));
+  return { n: 9, nome: 'Opções do topo e significado dos termos', desc: 'O que cada opção do topo mostra e tudo o que aparece nas telas, inclusive as abreviações.',
+    blocos: [...grupos.flatMap((g) => [['h', g.nome], ...blocosDeOpcoes(OPCOES_TOPO[g.caminho] ?? []),
+      ['tabela', ['Termo', 'Significado'], g.termos.map((t) => [t.termo, t.conta ? `${t.significado} Conta: ${t.conta}.` : t.significado])]]),
+    ...telas.flatMap(([c, o]) => [['h', AJUDA_TELAS[c].titulo], ...blocosDeOpcoes(o)])] };
 }
+const blocosDeOpcoes = (opcoes) => (opcoes.length ? [['tabela', ['Opção do topo', 'O que mostra'], opcoes.flatMap((o) => o.opcoes.map((x) => [`${x.opcao} (${o.nome})`, x.significado]))]] : []);
+const TELA_DO_CAMINHO = { '/explorar': 'explorar', '/carteira': 'lista', '/carteira?aba=acompanhamento': 'acompanhamento', '/pedidos': 'pedidos', '/financeiro': 'credito', '/admin/grupos': 'admin_grupos' };
+const podeVerTela = (usuario, c) => !TELA_DO_CAMINHO[c] || podeTela(usuario, TELA_DO_CAMINHO[c]);
 
 /** Significado de um termo (dica do rótulo no computador), ou null. */
 export function significadoDe(termo) {
@@ -383,5 +432,3 @@ export function ajudaDaTela(caminho, consulta = '') {
 /** Telas sem botão de ajuda: a entrada e a confirmação de senha. */
 export const TELAS_SEM_AJUDA = Object.freeze(['/entrar', '/admin/acesso']);
 
-/** A Ajuda abre sozinha só no primeiro acesso de cada usuário, neste navegador. */
-export const chaveAjudaVista = (usuario) => `germani.ajudaVista.${usuario.id}`;

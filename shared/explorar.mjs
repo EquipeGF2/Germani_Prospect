@@ -3,6 +3,7 @@
 // níveis no navegador, em qualquer ordem, sem voltar ao banco a cada clique e sem ler a carteira inteira.
 // Escopo: gestão vê tudo (supervisor com "vê todas as equipes" também); supervisor só a equipe; vendedor só a carteira.
 // docs/03 §12
+import { condicaoOndas } from './ondas.mjs';
 import { veTodasEquipes } from './perfis.mjs';
 
 const colunasUsuario = `v.nome AS vendedor_nome, v.tipo_atuacao, v.perfil AS vendedor_perfil, v.codigo_erp AS vendedor_codigo,
@@ -14,7 +15,9 @@ const juntaUsuario = `JOIN usuarios v ON v.id = x.vendedor_id
 function escopo(usuario) {
   if (veTodasEquipes(usuario)) return { where: '', args: [] };
   if (usuario.perfil === 'supervisor') return { where: 'AND COALESCE(v.supervisor_id, v.id) = ?', args: [usuario.id] };
-  return { where: 'AND v.id = ?', args: [usuario.id] };
+  // representante/vendedor: só as ondas liberadas para quem ainda está na lista (0024)
+  const ondas = condicaoOndas(usuario, { status: 'x.status_atual', onda: "NULLIF(x.onda, '')" });
+  return { where: `AND v.id = ?${ondas ? ` AND ${ondas}` : ''}`, args: [usuario.id] };
 }
 
 /** Linhas do resumo no escopo do usuário (inválidos ficam: aparecem como status; a base do funil os exclui). */
