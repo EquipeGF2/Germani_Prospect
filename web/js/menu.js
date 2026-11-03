@@ -2,7 +2,7 @@
 // Ícones em SVG desenhados aqui mesmo (sem biblioteca externa).
 import { h, montar } from './ui.js';
 import { podeTela } from '../shared/perfis.mjs';
-import { ajudaDaTela, grupoDeTermos } from '../shared/ajuda.mjs';
+import { ajudaDaTela, grupoDeTermos, opcoesDaTela } from '../shared/ajuda.mjs';
 
 const CHAVE_RECOLHIDO = 'germani.menuRecolhido';
 const SVG = 'http://www.w3.org/2000/svg';
@@ -42,10 +42,6 @@ export function icone(nome) {
 
 // Grupos do menu. Cada item aparece se o perfil do usuário tem a tela (shared/perfis.mjs); grupo vazio some.
 const GRUPOS = [
-  { titulo: 'Ajuda', itens: [
-    { caminho: '/ajuda', rotulo: 'Ajuda', icone: 'ajuda' },
-    { caminho: '/ajuda?termos=todos', rotulo: 'Significado dos termos', icone: 'lista' },
-  ] },
   { titulo: 'Prospecção', itens: [
     { caminho: '/explorar', rotulo: 'Explorar carteira', icone: 'explorar', tela: 'explorar' },
     { caminho: '/carteira', rotulo: 'Lista principal', icone: 'lista', tela: 'lista' },
@@ -68,6 +64,9 @@ const GRUPOS = [
     { caminho: '/admin/feriados', rotulo: 'Feriados', icone: 'feriados', tela: 'admin_feriados' },
     { caminho: '/admin/erros', rotulo: 'Erros do app', icone: 'importacoes', tela: 'admin_parametros' },
   ] },
+  { titulo: 'Ajuda', itens: [
+    { caminho: '/ajuda', rotulo: 'Ajuda', icone: 'ajuda' },
+  ] },
 ];
 
 // Telas sem item próprio no menu: qual item fica marcado e o nome que aparece no caminho
@@ -82,7 +81,6 @@ const TELAS_INTERNAS = {
 };
 
 function itemAtivo(caminho, consulta) {
-  if (caminho === '/ajuda' && new URLSearchParams(consulta).has('termos')) return '/ajuda?termos=todos';
   if (caminho === '/carteira') return new URLSearchParams(consulta).get('aba') === 'acompanhamento' ? '/carteira?aba=acompanhamento' : '/carteira';
   return TELAS_INTERNAS[caminho]?.[0] ?? caminho;
 }
@@ -100,8 +98,9 @@ function fecharGaveta() { document.getElementById('casca').classList.remove('gav
 // ---------- botão ? e painel de ajuda da tela: acompanham a navegação e não tiram o usuário do que está fazendo ----------
 let ajudaAtual = null;
 let termosAtual = null;
+let opcoesAtual = [];
 let ajudaAberta = false;
-const secoesAbertas = new Set(['objetivo']);
+const secoesAbertas = new Set(['objetivo', 'opcoes']);
 
 function desenharAjuda() {
   const painel = document.getElementById('painel-ajuda');
@@ -121,17 +120,20 @@ function desenharAjuda() {
     h('div', { class: 'ajuda-topo' }, h('h2', {}, `Ajuda: ${a.titulo}`), h('button', { type: 'button', class: 'secundario', id: 'fechar-ajuda', 'aria-label': 'Fechar ajuda', onclick: () => { ajudaAberta = false; desenharAjuda(); } }, '×')),
     secao('objetivo', 'Objetivo', h('p', {}, a.objetivo)),
     secao('como', 'Como funciona', h('ol', {}, a.como.map((t) => h('li', {}, t)))),
-    secao('campos', 'O que significa cada campo', pares(a.campos)),
+    // opções do topo (chaves e filtros) e o significado de todos os termos da tela, inclusive as abreviações
+    opcoesAtual.length ? secao('opcoes', 'Opções do topo', opcoesAtual.map((o) => [h('p', { class: 'ajuda-opcoes' }, o.nome), pares(o.opcoes.map((x) => [x.opcao, x.significado]))])) : null,
+    secao('campos', termosAtual ? 'Significado dos termos' : 'O que significa cada campo',
+      termosAtual ? h('dl', {}, termosAtual.termos.flatMap((t) => [h('dt', {}, t.termo), h('dd', {}, t.significado, t.conta ? h('span', { class: 'ajuda-conta' }, t.conta) : null)])) : pares(a.campos)),
     secao('analisar', 'O que analisar', h('ul', {}, a.analisar.map((t) => h('li', {}, t)))),
     secao('comuns', 'Situações comuns', pares(a.comuns)),
     secao('proximo', 'Próximo passo', h('p', {}, a.proximo)),
-    termosAtual ? h('a', { class: 'ajuda-capitulo', href: `#/ajuda?termos=${termosAtual.id}`, id: 'ajuda-termos', onclick: () => { ajudaAberta = false; desenharAjuda(); } }, 'Significado de todos os termos desta tela') : null,
     h('a', { class: 'ajuda-capitulo', href: `#/ajuda?cap=${a.cap}`, id: 'ajuda-capitulo', onclick: () => { ajudaAberta = false; desenharAjuda(); } }, `Ler o capítulo ${a.cap} completo`));
 }
 
 function atualizarAjuda(usuario, caminho, consulta) {
   ajudaAtual = usuario ? ajudaDaTela(caminho, consulta) : null;
   termosAtual = usuario ? grupoDeTermos(caminho, consulta) : null;
+  opcoesAtual = usuario ? opcoesDaTela(caminho, consulta) : [];
   document.getElementById('botao-ajuda').hidden = !ajudaAtual;
   desenharAjuda();
 }

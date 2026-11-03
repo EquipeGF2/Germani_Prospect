@@ -12,6 +12,7 @@
 // Acompanhamento = visão 'status' (ou filtro de status): mostra a carteira inteira por status, inclusive
 // Aguardando cadastro, Sem interesse, Cadastrado, Venda e Inválido — para o vendedor seguir o andamento.
 // Indicadores não usam este módulo (contam tudo — shared/indicadores.mjs).
+import { condicaoOndas } from './ondas.mjs';
 import { normalizarBusca } from './texto.mjs';
 import { veTodasEquipes } from './perfis.mjs';
 
@@ -75,7 +76,8 @@ export function agrupamentosPossiveis(usuario, filtros = {}) {
 function escopo(usuario) {
   if (veTodasEquipes(usuario)) return { where: [], args: [] };
   if (usuario.perfil === 'supervisor') return { where: ['supervisor_id = ?'], args: [usuario.id] };
-  return { where: ['vendedor_id = ?'], args: [usuario.id] };
+  // representante/vendedor: só as ondas liberadas para quem ainda está na lista (0024)
+  return { where: ['vendedor_id = ?', condicaoOndas(usuario)].filter(Boolean), args: [usuario.id] };
 }
 
 /**
