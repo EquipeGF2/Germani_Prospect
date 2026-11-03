@@ -540,8 +540,8 @@ test('telas cabem no celular (sem rolagem horizontal da página)', async () => {
   await cel.waitForSelector('h1:text("Dashboard de acompanhamento")');
   for (const tela of ['#/inicio', '#/admin/usuarios', '#/carteira', '#/carteira?aba=acompanhamento', '#/carteira?visao=cidade']) {
     await cel.goto(`${base}${tela}`);
-    await cel.waitForSelector('h1');
-    const [larg, vis] = await cel.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
+    await cel.waitForFunction((t) => document.getElementById('conteudo').dataset.pronto === t, tela);
+    const [larg, vis] = await cel.evaluate(async () => { await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))); return [document.documentElement.scrollWidth, window.innerWidth]; });
     assert.ok(larg <= vis, `${tela} mais larga que a tela: ${larg} > ${vis}`);
   }
   if (FOTOS) await cel.screenshot({ path: path.join(FOTOS, '16-celular-carteira.png'), fullPage: true });

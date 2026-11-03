@@ -795,11 +795,12 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .acf-fluxo.quebra .acf-seta { display: none; }
 .acf-fluxo.quebra .acf-etapa { flex: 1 1 auto; min-width: max-content; }
 @media (max-width: 600px) {
-  .acf-fluxo.quebra { flex-direction: column; }
-  .acf-fluxo.quebra .acf-etapa { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: center; min-width: 0; padding: 8px 12px; }
-  .acf-fluxo.quebra .acf-etapa.ativa { padding: 7px 11px; }
-  .acf-fluxo.quebra .acf-etapa > * { grid-column: 1; }
-  .acf-fluxo.quebra .acf-etapa > b { grid-column: 2; grid-row: 1 / span 3; font-size: 26px; }
+  .acf-fluxo { flex-direction: column; flex-wrap: nowrap; }
+  .acf-fluxo .acf-seta { display: none; }
+  .acf-fluxo .acf-etapa { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: center; min-width: 0; padding: 8px 12px; }
+  .acf-fluxo .acf-etapa.ativa { padding: 7px 11px; }
+  .acf-fluxo .acf-etapa > * { grid-column: 1; }
+  .acf-fluxo .acf-etapa > b { grid-column: 2; grid-row: 1 / span 3; font-size: 26px; }
 }
 .acf-etapa { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 0; flex: 1 1 0; min-width: 172px; box-sizing: border-box; text-align: left; background: #fff; color: var(--texto); border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; white-space: nowrap; font-weight: 400; }
 .acf-etapa:hover { background: #fff; color: var(--texto); border-color: var(--borda-forte); }
