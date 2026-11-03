@@ -318,7 +318,9 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   assert.equal(await pagina.locator('#menu a[title="Significado dos termos"].ativo').count(), 1, 'item do menu marcado');
 
   // sem rolagem para o lado em nenhuma largura: o que não cabe vira cartão; rótulo e número nunca ficam cortados
-  const medir = () => pagina.evaluate(() => {
+  // espera dois quadros: a troca para cartões acontece antes de a tela aparecer, e o teste mede depois disso
+  const medir = () => pagina.evaluate(async () => {
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     const visivel = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
     const problemas = [];
     if (document.documentElement.scrollWidth > innerWidth) problemas.push(`página ${document.documentElement.scrollWidth} > ${innerWidth}`);
