@@ -56,8 +56,10 @@ export const CAPITULOS = Object.freeze([
     ['lista', [['Representante/vendedor', 'a própria carteira e os pedidos que fez.'], ['Supervisor', 'a equipe.'], ['Gerente e administrador', 'todas as equipes.'], ['Analista financeiro', 'o Console de crédito.']]],
     ['h', 'Botão de ajuda'],
     ['p', 'O botão ? fica no topo de todas as telas. Ele abre o objetivo da tela, como ela funciona, o significado de cada campo e o que analisar. No celular, a ajuda abre em tela cheia.'],
+    ['h', 'Significado dos termos'],
+    ['p', 'Em Ajuda › Significado dos termos estão todos os nomes e abreviações das telas, por tela e com busca. O botão ? de cada tela tem o link Significado de todos os termos desta tela, e os termos também saem no fim do manual em PDF.'],
     ['h', 'No celular'],
-    ['lista', [['Níveis', 'mude pelo botão Mudar, porque arrastar não funciona no toque.'], ['Menu', 'abre pelo botão no canto superior esquerdo.']]],
+    ['lista', [['Níveis', 'mude pelo botão Mudar, porque arrastar não funciona no toque.'], ['Menu', 'abre pelo botão no canto superior esquerdo.'], ['Tabelas', 'nada rola para o lado: o que não cabe vira cartão, com o nome de cada campo.']]],
   ] },
   { n: 3, nome: 'Prospecção', desc: 'Lista principal e registro de atendimento.', para: (u) => podeTela(u, 'lista'), blocos: [
     ['p', 'A Lista principal mostra quem ainda precisa ser procurado: os clientes Não contactados e Em prospecção. Depois do registro, o cliente sai da lista.'],
@@ -175,8 +177,8 @@ export const AJUDA_TELAS = Object.freeze({
     analisar: ['Análise vencida: cobre o financeiro.', 'Pedido não válido: veja com o cliente o que faltou.', 'Apenas o primeiro pedido × Todos os pedidos: clientes conquistados × valor vendido.', 'Acima do limite: o pedido em carteira passou do crédito liberado.'],
     comuns: [F('O cliente não aparece', 'Veja a Lista principal ou Aguardando cadastro.'), F('Pedido sem cadastro', 'Falta importar o relatório de cadastro e crédito; os pedidos já estão guardados.')], proximo: 'Com o pedido faturado, analise os valores em Explorar pedidos.' },
   '/pedidos': { titulo: 'Explorar pedidos', cap: 6, objetivo: 'Analisar o que foi vendido: valores, quem vendeu e bonificação.',
-    como: ['Escolha Pedidos de venda, Pedidos de bonificação ou Ambos.', 'Escolha Ver por Empresa ou Ver por Grupo.', 'Monte os níveis e clique numa linha: cards, gráficos e lista seguem aquela linha.', 'Use a busca para achar um pedido na lista.'],
-    campos: [F('Venda válida', 'Em carteira, parcial ou faturada'), F('Faturado', 'O que já faturou da venda válida'), F('Em carteira', 'A faturar'), F('Digitado', 'Pedido digitado, ainda fora da carteira'), F('Desistência', 'Pedido de venda cancelado'), F('Invest.', 'Bonificação: não entra na venda'), F('Próprio', 'Venda de quem é dono do cliente'), F('Outro', 'Venda de outro representante/vendedor'), F('Na lista?', 'Se o cliente é da lista de quem vendeu')],
+    como: ['Escolha Pedidos de venda, Pedidos de bonificação ou Ambos.', 'Escolha Ver por Empresa ou Ver por Grupo.', 'Monte os níveis e clique numa linha: cards, gráficos e lista seguem aquela linha.', 'Use a busca para achar um pedido na lista.', 'Sem espaço para as colunas (celular ou tela estreita), cada linha vira um cartão com os números rotulados.'],
+    campos: [F('Clientes', 'Clientes diferentes com venda válida'), F('Válidos', 'Pedidos em carteira, faturados em parte ou faturados'), F('Venda válida', 'Em carteira, parcial ou faturada'), F('Faturado', 'O que já faturou da venda válida'), F('Em carteira', 'A faturar'), F('Digitado', 'Pedido digitado, ainda fora da carteira'), F('Desistência', 'Pedido de venda cancelado'), F('Invest.', 'Bonificação: não entra na venda'), F('Invest. ÷ venda', 'Bonificação para cada real vendido, em %'), F('Próprio', 'Venda de quem é dono do cliente'), F('Outro', 'Venda de outro representante/vendedor'), F('Na lista?', 'Se o cliente é da lista de quem vendeu')],
     analisar: ['Abra a faixa de alertas: bonificação sem venda, limite do grupo e pedido parado.', 'A coluna Outro mostra quem vende fora da própria lista.'], comuns: [F('Por empresa não aparece nada', 'Pode ser pedido de filial do grupo: use Ver por Grupo.'), F('Pedido do arquivo não aparece', 'CNPJ fora da base é ignorado na importação.')], proximo: 'Veja a situação do primeiro pedido de cada cliente no Acompanhamento.' },
   '/ficha': { titulo: 'Ficha do cliente', cap: 3, objetivo: 'Reunir os dados do cliente, o status, o crédito, os pedidos e o histórico.',
     como: ['Confira o status e os dados do cliente.', 'Clique em Registrar atendimento para gravar um contato.', 'Veja no histórico tudo o que aconteceu.'],
@@ -239,6 +241,138 @@ export const AJUDA_TELAS = Object.freeze({
   '/admin/erros': { titulo: 'Erros do app', cap: 8, objetivo: 'Ver as falhas registradas, para corrigir o que atrapalha o uso.',
     como: ['Escolha o período.', 'Veja os mais frequentes.', 'Abra a lista para ver os detalhes.'], campos: [F('Código', 'Identifica o erro'), F('Tela', 'Onde aconteceu'), F('Vezes', 'Quantas vezes ocorreu'), F('Aparelho', 'Computador ou celular'), F('Versão', 'Versão do site')], analisar: ['Comece pelos mais frequentes.'], comuns: [F('O erro é de rede', 'Costuma ser a internet do aparelho.')], proximo: 'Envie o código do erro ao suporte.' },
 });
+
+/**
+ * Significado dos termos: tudo o que aparece nas telas, inclusive as abreviações. Só entra termo que existe no sistema:
+ * test/ajuda.test.mjs confere cada um no código das telas. `tela` = permissão que mostra o grupo; `caminho` = tela do botão ?.
+ */
+const T = (termo, significado, conta = null) => Object.freeze({ termo, significado, conta });
+export const TERMOS = Object.freeze([
+  { id: 'pedidos', nome: 'Explorar pedidos', tela: 'pedidos', caminho: '/pedidos', termos: [
+    T('Pedidos de venda', 'Mostra só os pedidos de venda. Pedidos de bonificação mostra só os de bonificação; Ambos, os dois.'),
+    T('Ver por Empresa', 'Cada CNPJ da base aparece separado.'),
+    T('Ver por Grupo', 'Junta as empresas pela raiz do CNPJ, incluindo as filiais que não estão na base.'),
+    T('Clientes', 'Clientes diferentes com venda válida na linha. Um cliente com 10 pedidos conta uma vez.'),
+    T('Válidos', 'Pedidos de venda em carteira, faturados em parte ou faturados.'),
+    T('Venda válida', 'Valor dos pedidos válidos. Na hierarquia, a coluna Venda. Não inclui digitado, desistência nem bonificação.'),
+    T('Faturado', 'Parte da venda válida que o ERP já faturou.', '% da venda = faturado ÷ venda válida'),
+    T('Em carteira', 'Venda válida que ainda falta faturar.', 'em carteira = venda válida − faturado'),
+    T('ticket médio', 'Valor médio de cada pedido válido.', 'ticket médio = venda válida ÷ válidos'),
+    T('Digitado', 'Pedido de venda digitado e ainda fora da carteira (situação 9, Não Fechado, no ERP). Não conta como venda.'),
+    T('Desistência', 'Pedido de venda cancelado (situação 5 no ERP). Não conta como venda.'),
+    T('Invest.', 'Investimento: valor dos pedidos de bonificação, sem os cancelados e os digitados. Fica à parte: não soma nem desconta da venda.'),
+    T('Invest. ÷ venda', 'Investimento dividido pela venda válida: quanto se deu em bonificação para cada real vendido. Ex.: 3,5% = R$ 3,50 de bonificação a cada R$ 100,00 vendidos.', 'investimento ÷ venda válida × 100'),
+    T('Próprio', 'Venda válida feita pelo representante/vendedor que tem o cliente na própria lista.'),
+    T('Outro', 'Venda válida feita por um representante/vendedor que não tem o cliente na lista. O cliente continua com o dono da carteira.'),
+    T('Na lista?', 'Se o cliente está na lista de quem vendeu: Na lista ou Fora da lista. Filial do grupo: filial fora da base, sem lista própria.'),
+    T('Ag. pedido válido', 'Aguardando pedido válido. Alerta: o cliente teve pedido digitado ou cancelado e nenhum válido, além do prazo dos Parâmetros.'),
+    T('Bonificação sem venda', 'Alerta: o cliente recebeu bonificação e não tem pedido de venda.'),
+    T('Muita desistência', 'Alerta: o cliente tem desistências demais entre os pedidos.'),
+    T('Aberto há muito tempo', 'Alerta: pedido válido em carteira há mais dias que o prazo dos Parâmetros.'),
+    T('Limite do grupo', 'Alerta: o valor em carteira do grupo passou do limite de crédito.'),
+    T('Rep. sem código', 'Representante sem código: o código do arquivo não está em nenhum usuário. Inclua o código em Usuários.'),
+  ] },
+  { id: 'acompanhamento', nome: 'Acompanhamento', tela: 'acompanhamento', caminho: '/carteira?aba=acompanhamento', termos: [
+    T('Fluxo', 'Mostra em que etapa está cada cliente, do cadastro ao pedido faturado.'),
+    T('Crédito × Pedido', 'Compara o limite de crédito liberado com os pedidos em carteira.'),
+    T('Apenas o primeiro pedido', 'Conta só o primeiro pedido válido de cada cliente: mostra os clientes conquistados.'),
+    T('Todos os pedidos', 'Conta todos os pedidos válidos: mostra o valor vendido.'),
+    T('Cadastros realizados', 'Clientes com cadastro identificado no ERP. É a soma das quatro etapas seguintes. Na hierarquia, a coluna Cadastros.'),
+    T('Análise financeira', 'Cadastro identificado, esperando a liberação do crédito.'),
+    T('Aguardando pedido', 'Crédito liberado, ainda sem pedido válido.'),
+    T('Pedido em carteira', 'O primeiro pedido válido ainda não faturou. Na hierarquia, a coluna Em carteira.'),
+    T('Pedido faturado', 'O primeiro pedido faturou, inteiro ou em parte. Na hierarquia, a coluna Faturado.'),
+    T('dos cadastros', 'Parte dos cadastros realizados que está na etapa.', 'clientes da etapa ÷ cadastros realizados × 100'),
+    T('Vencida', 'A análise financeira passou do prazo. Em Aguardando cadastro, Vencido: o cadastro passou do prazo.'),
+    T('No prazo', 'Ainda dentro do prazo da etapa.'),
+    T('Pedido não válido', 'Em Aguardando pedido: houve pedido, mas digitado ou cancelado.'),
+    T('Sem pedido', 'Em Aguardando pedido: nenhum pedido ainda.'),
+    T('Aguardando cadastro', 'Fora do fluxo: o cliente foi atendido e o cadastro ainda não apareceu no relatório do ERP.'),
+    T('Pedido sem cadastro', 'Fora do fluxo: chegou pedido de cliente sem registro de cadastro. Falta importar o relatório de cadastro e crédito.'),
+    T('Encerrados', 'Fora do fluxo: sem interesse, inválido ou expurgado.'),
+    T('Etapa atual', 'Etapa em que o cliente está hoje.'),
+    T('Ordem', 'Posição do pedido válido entre os pedidos do cliente: 1º, 2º, 3º.'),
+    T('Quem vendeu', 'Representante/vendedor que fez o pedido. Pode não ser o dono da carteira.'),
+    T('Prazo do cadastro', 'Data limite para o cadastro aparecer no ERP.'),
+    T('Prazo da análise', 'Data limite para o financeiro liberar o crédito.'),
+    T('Dias no fluxo', 'Dias desde o cadastro identificado.'),
+    T('Dias aguardando', 'Dias desde o atendimento, esperando o cadastro.'),
+    T('Dias sem cadastro', 'Dias desde o primeiro pedido de um cliente ainda sem cadastro.'),
+    T('Dias na etapa', 'Dias desde que o cliente entrou na etapa.'),
+    T('Dias em carteira', 'Dias desde o pedido, ainda sem faturar.'),
+    T('Dias do cadastro ao faturamento', 'Dias entre o cadastro identificado e o faturamento do pedido.'),
+    T('Forma e prazo', 'Forma e prazo de pagamento liberados no crédito.'),
+    T('Com pedido em carteira', 'Crédito × Pedido: clientes com pedido em carteira para comparar com o limite. Na hierarquia, a coluna Com pedido.'),
+    T('Dentro do limite', 'O valor em carteira cabe no limite de crédito.'),
+    T('Acima do limite', 'O valor em carteira passou do limite de crédito.'),
+    T('Sem limite', 'O cliente não tem limite para comparar (ou tem o valor 9.999.999 do ERP).'),
+    T('Uso do limite', 'Quanto do limite o pedido em carteira ocupa.', 'em carteira ÷ limite × 100'),
+    T('Forma liberada', 'Forma de pagamento liberada no crédito.'),
+    T('Prazo liberado', 'Prazo de pagamento liberado no crédito, em dias.'),
+  ] },
+  { id: 'carteira', nome: 'Explorar carteira', tela: 'explorar', caminho: '/explorar', termos: [
+    T('Ramo', 'Uma linha da hierarquia: um supervisor, um representante/vendedor, uma cidade e assim por diante.'),
+    T('Prospects', 'Clientes da base no ramo.'),
+    T('Contactados', 'Prospects que já tiveram contato.'),
+    T('Cobertura', 'Quanto da base já foi trabalhado. No celular, Cobert.', 'contactados (com sem interesse) ÷ base válida (sem inativos)'),
+    T('S. int. cliente', 'Sem interesse do cliente: o cliente recusou a proposta. No celular, S.I. cli.'),
+    T('S. int. repr.', 'Sem interesse do representante: o representante/vendedor não vai trabalhar o cliente. No celular, S.I. rep.'),
+    T('Ag. cadastro', 'Aguardando cadastro: o cliente foi atendido e falta o cadastro aparecer no ERP. No celular, Ag. cad.'),
+    T('Ag. financeiro', 'Aguardando financeiro: o crédito está em análise financeira. No celular, Ag. fin.'),
+    T('Ag. pedido', 'Aguardando pedido: crédito liberado, falta o pedido. No celular, Ag. ped.'),
+    T('Pedido realizado', 'Clientes com ao menos um pedido válido. No celular, Pedidos.'),
+    T('Pedidos (R$)', 'Valor da venda válida dos clientes do ramo. No celular, Valor.'),
+    T('Potencial (R$)', 'Estimativa do que os clientes em andamento podem vender.', 'em aberto × % do pipeline × valor médio dos pedidos'),
+    T('Inativos', 'CNPJs baixados ou expurgados. Não contam na base válida.'),
+    T('Conversão', 'Parte dos contactados que virou venda.', 'vendas ÷ contactados × 100'),
+  ] },
+  { id: 'importacoes', nome: 'Importações', tela: 'admin_credito', caminho: '/admin/importar/pedidos', termos: [
+    T('Digit.', 'Digitados: pedidos de venda digitados, ainda fora da carteira (Importar pedidos).'),
+    T('Desist.', 'Desistências: pedidos de venda cancelados (Importar pedidos).'),
+    T('Créd. Cliente', 'Crédito do cliente: limite do CNPJ. Preenchido, ele vale, mesmo 0.'),
+    T('Créd. Grupo', 'Crédito do grupo: limite global da raiz, usado quando o do cliente está vazio.'),
+    T('9.999.999', 'Valor do ERP que significa sem limite.'),
+    T('Forma Pgto', 'Forma de pagamento, como vem do ERP.'),
+    T('Dt. Cadastro', 'Data do cadastro no ERP. Obrigatória.'),
+  ] },
+  { id: 'gerais', nome: 'Termos gerais', tela: null, caminho: null, termos: [
+    T('CNPJ', 'Número que identifica cada empresa.'),
+    T('raiz', 'Raiz do CNPJ: os 8 primeiros dígitos. A matriz e as filiais têm a mesma raiz.'),
+    T('ERP', 'Sistema da empresa de onde vêm os relatórios de cadastro, crédito e pedidos.'),
+    T('Representante/vendedor', 'Quem atende o cliente.'),
+    T('Supervisor', 'Responsável por uma equipe de representantes/vendedores.'),
+    T('(R$)', 'Valores em reais.'),
+  ] },
+]);
+
+/** Grupos de termos que o usuário vê: os gerais e os das telas que o perfil dele abre. */
+export const termosDoUsuario = (usuario) => TERMOS.filter((g) => !g.tela || podeTela(usuario, g.tela));
+
+/** Grupo de termos da tela do botão ?, pelo endereço. */
+export function grupoDeTermos(caminho, consulta = '') {
+  const c = caminho === '/carteira' && new URLSearchParams(consulta).get('aba') === 'acompanhamento' ? '/carteira?aba=acompanhamento' : caminho;
+  return TERMOS.find((g) => g.caminho === c) ?? null;
+}
+
+/** Os termos como um capítulo a mais do manual em PDF: uma tabela por grupo. */
+export function capituloDeTermos(usuario) {
+  return { n: 9, nome: 'Significado dos termos', desc: 'Tudo o que aparece nas telas, inclusive as abreviações.',
+    blocos: termosDoUsuario(usuario).flatMap((g) => [['h', g.nome], ['tabela', ['Termo', 'Significado'], g.termos.map((t) => [t.termo, t.conta ? `${t.significado} Conta: ${t.conta}.` : t.significado])]]) };
+}
+
+/** Significado de um termo (dica do rótulo no computador), ou null. */
+export function significadoDe(termo) {
+  for (const g of TERMOS) { const t = g.termos.find((x) => x.termo === termo); if (t) return t.significado; }
+  return null;
+}
+
+/** Procura em termo e significado, sem diferença de acento e maiúscula. */
+export function buscarTermos(grupos, texto) {
+  const tira = (x) => String(x).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  const q = tira(texto ?? '').trim();
+  if (!q) return grupos;
+  return grupos.map((g) => ({ ...g, termos: g.termos.filter((t) => tira(`${t.termo} ${t.significado}`).includes(q)) })).filter((g) => g.termos.length);
+}
 
 /** Ajuda da tela pelo endereço. Sem ajuda própria: null. */
 export function ajudaDaTela(caminho, consulta = '') {

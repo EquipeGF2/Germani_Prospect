@@ -467,6 +467,10 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 
 Um único conteúdo alimenta três saídas, para não haver textos diferentes: a tela **Ajuda** (item no topo do menu, com o fluxograma e os capítulos), o botão **?** no topo de toda tela (objetivo, como funciona, campos, o que analisar, situações comuns e próximo passo) e o **manual em PDF**, gerado na hora no navegador. Cada perfil vê só os capítulos do que usa. O Explorar carteira continua como tela inicial; a Ajuda abre sozinha só no primeiro acesso de cada usuário, em cada navegador. Tela nova ou alterada: atualize `shared/ajuda.mjs`; `test/ajuda.test.mjs` falha se uma tela ficar sem ajuda.
 
+**Significado dos termos** (Ajuda › Significado dos termos, `#/ajuda?termos=todos`; o botão **?** de cada tela leva ao grupo dela; também no fim do manual em PDF): tudo o que aparece nas telas, inclusive as abreviações (Invest., Ag. fin., S.I. cli., Créd. Cliente…), por grupo e com busca. Só entra termo que existe no sistema: `test/ajuda.test.mjs` procura cada um no código das telas e falha se não achar. Rótulo novo em tela: inclua o significado em `TERMOS`.
+
+**Sem rolagem para o lado** (computador e celular): rótulos de coluna e textos de card numa linha só. Tabela, hierarquia ou fila de cards que não cabe na largura vira cartão, com o rótulo de cada campo (`semRolagem`, `web/js/ui.js`): a decisão é tomada pela largura real, então muda ao girar o celular ou recolher o menu. No celular, a hierarquia do Explorar pedidos mostra a venda e um resumo por linha (os oito números da linha escolhida ficam nos cards), e as etapas do Acompanhamento ficam uma abaixo da outra. `test-telas/pedidos.test.mjs` mede 390, 768, 1024 e 1366 px.
+
 ## 11. Perfis de acesso e telas (migração 0008 · `shared/perfis.mjs`)
 
 - **Perfil** = nome + **tipo-base** + **telas**. O tipo-base é o perfil técnico do usuário e decide **quais dados** ele vê e

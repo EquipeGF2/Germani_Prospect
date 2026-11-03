@@ -119,8 +119,11 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.waitForSelector('#analise-pedidos');
   await pagina.waitForSelector('.exp-linha.raiz.escolhida');
   await foto('p6-explorar');
+  await pagina.setViewportSize({ width: 1800, height: 900 });   // largura em que as colunas cabem
+  await pagina.waitForFunction(() => !document.querySelector('#analise-pedidos .exp-arvore.cartoes'));
   const colunas = await pagina.locator('#analise-pedidos .exp-linha').evaluateAll((ls) => ls.map((l) => [...l.children].filter((c) => c.classList.contains('num')).map((c) => Math.round(c.getBoundingClientRect().left + c.getBoundingClientRect().width / 2))));
   for (const l of colunas) assert.deepEqual(l, colunas[0], 'os números ficam sob os títulos das colunas');
+  await pagina.setViewportSize({ width: 1360, height: 900 });
   assert.equal(await pagina.locator('#menu a[title="Explorar pedidos"]').count(), 1, 'a tela se chama Explorar pedidos');
   assert.equal(await pagina.locator('button[data-aba]').count(), 0, 'sem abas');
   const vendaDe = () => pagina.locator('#analise-numeros .ped-kpi.destaque b').innerText();
@@ -130,7 +133,9 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   // como no Explorar carteira: sem listas de filtro; quem filtra é a hierarquia, e os números seguem o ramo
   assert.equal(await pagina.locator('#analise-pedidos select, #filtros-pedidos select').count(), 0, 'sem listas de filtro');
   const titulos = await pagina.locator('#analise-pedidos .exp-linha.cab span').allInnerTexts();
-  assert.ok(titulos.some((t) => /^invest\. \(r\$\)$/i.test(t)) && titulos.some((t) => /^pr[oó]prio \(r\$\)$/i.test(t)) && titulos.some((t) => /^outro \(r\$\)$/i.test(t)), `rótulos: ${titulos}`);
+  assert.ok(titulos.some((t) => /^invest\.$/i.test(t)) && titulos.some((t) => /^pr[oó]prio$/i.test(t)) && titulos.some((t) => /^outro$/i.test(t)), `rótulos: ${titulos}`);
+  assert.match(await pagina.locator('#analise-pedidos .exp-nota').innerText(), /Valores em R\$/);
+  assert.equal(await pagina.locator('#analise-numeros .ped-kpi').count(), 8, 'os oito números da linha, inclusive Próprio e Outro');
   const disponiveis = await pagina.locator('#analise-pedidos .exp-nivel.livre').evaluateAll((els) => { const z = els[0].parentElement.getBoundingClientRect(); return els.every((e) => e.getBoundingClientRect().right <= z.right + 1); });
   assert.ok(disponiveis, 'todos os níveis disponíveis ficam à vista');
   // filtro na mesma linha da chave Empresa ou Grupo
@@ -295,6 +300,64 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.waitForSelector('.ajf-figura img');
   await pagina.waitForFunction(() => { const i = document.querySelector('.ajf-figura img'); i.loading = 'eager'; return i.complete && i.naturalWidth > 0; });
   await foto('p10f-capitulo-com-imagem');
+
+  // significado dos termos: busca, grupos e o link do botão ? da tela
+  await ir('#/pedidos');
+  await pagina.click('#botao-ajuda');
+  await pagina.click('#ajuda-termos');
+  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/ajuda?termos=pedidos');
+  assert.equal(await pagina.locator('.ajt-grupos [aria-pressed="true"]').innerText(), 'Explorar pedidos', 'abre no grupo da tela');
+  assert.match(await pagina.locator('#lista-termos').innerText(), /Invest\. ÷ venda/);
+  await pagina.fill('#busca-termos', 'ag. fin');
+  assert.match(await pagina.locator('#lista-termos').innerText(), /Aguardando financeiro/, 'a busca acha a abreviação');
+  await pagina.fill('#busca-termos', 'xyz-nada');
+  await pagina.waitForSelector('#sem-termos');
+  await foto('p10g-termos');
+  const [termosPdf] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#pdf-termos')]);
+  assert.match(termosPdf.suggestedFilename(), /^termos-germani-.*\.pdf$/);
+  assert.equal(await pagina.locator('#menu a[title="Significado dos termos"].ativo').count(), 1, 'item do menu marcado');
+
+  // sem rolagem para o lado em nenhuma largura: o que não cabe vira cartão; rótulo e número nunca ficam cortados
+  const medir = () => pagina.evaluate(() => {
+    const visivel = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+    const problemas = [];
+    if (document.documentElement.scrollWidth > innerWidth) problemas.push(`página ${document.documentElement.scrollWidth} > ${innerWidth}`);
+    for (const el of document.querySelectorAll('main *')) {
+      if (!visivel(el)) continue;
+      const ox = getComputedStyle(el).overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && el.scrollWidth > el.clientWidth + 1) problemas.push(`rola para o lado: ${el.id || el.className}`);
+    }
+    const cortado = (el) => visivel(el) && el.scrollWidth > el.clientWidth + 1;
+    for (const el of document.querySelectorAll('main th, main .exp-linha.cab > span, main .exp-linha > .num, main .ped-kpi > *, main .acf-etapa > *, main .ped-chave button'))
+      if (cortado(el)) problemas.push(`cortado: "${el.textContent}"`);
+    for (const el of document.querySelectorAll('main .ped-kpi, main .acf-etapa')) if (visivel(el) && el.scrollWidth > el.clientWidth + 1) problemas.push(`card estoura: "${el.textContent}"`);
+    return { problemas, cartoes: [...document.querySelectorAll('main .cartoes')].map((e) => e.id || e.className) };
+  });
+  for (const largura of [390, 768, 1024, 1366]) {
+    await pagina.setViewportSize({ width: largura, height: 900 });
+    for (const rota of ['#/pedidos', '#/carteira?aba=acompanhamento', '#/ajuda?termos=todos']) {
+      await ir(rota);
+      await pagina.waitForTimeout(150);
+      const m = await medir();
+      assert.deepEqual(m.problemas, [], `${rota} em ${largura}px`);
+      if (rota === '#/carteira?aba=acompanhamento') {
+        await pagina.click('#visao-credito');
+        const c = await medir();
+        assert.deepEqual(c.problemas, [], `Crédito × Pedido em ${largura}px`);
+        await pagina.click('#visao-fluxo');
+      }
+      if (largura === 390 && rota === '#/pedidos') {
+        assert.ok(m.cartoes.some((c) => /exp-arvore/.test(c)), 'no celular, a hierarquia vira cartões');
+        await foto('p13a-pedidos-celular');
+      }
+      if (largura === 390 && rota === '#/carteira?aba=acompanhamento') {
+        const etapas = await pagina.locator('#acf-fluxo .acf-etapa').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
+        assert.ok(etapas.every((x) => x === etapas[0]), 'no celular, as etapas ficam uma abaixo da outra');
+        await foto('p13b-acompanhamento-celular');
+      }
+    }
+  }
+  await pagina.setViewportSize({ width: 1360, height: 900 });
 
   // imagens do manual, com dados fictícios: IMAGENS_AJUDA=web/img/ajuda npm run test:telas
   if (process.env.IMAGENS_AJUDA) {

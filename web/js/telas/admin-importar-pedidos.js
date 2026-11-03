@@ -153,7 +153,7 @@ export async function render(conteudo, ctx) {
           { titulo: 'Razão social', valor: (c) => razaoSocial({ codigo: c.cliente, razao: c.razao, doc: c.documento }), classe: 'rz' },
           { titulo: 'Válidos', valor: (c) => formatar.numero(c.validos), classe: 'num' }, { titulo: 'Digit.', valor: (c) => formatar.numero(c.digitados), classe: 'num' },
           { titulo: 'Desist.', valor: (c) => formatar.numero(c.desistencias), classe: 'num' }, { titulo: 'Venda válida (R$)', valor: (c) => valor(c.venda), classe: 'num' },
-          { titulo: 'Investimento (R$)', valor: (c) => valor(c.investimento), classe: 'num' }, { titulo: 'Representantes (cód. · nome)', valor: (c) => c.reps.map(nomeRep).join(', ') },
+          { titulo: 'Investimento (R$)', valor: (c) => valor(c.investimento), classe: 'num' }, { titulo: 'Representantes', valor: (c) => c.reps.map(nomeRep).join(', ') },
           { titulo: 'Na base?', valor: base, classe: 'cen' }, { titulo: 'Efeito', valor: efeito, classe: 'cen' }], s.clientes, { id: 'clientes-arquivo', vazio: 'Nenhum cliente deste arquivo está na base.' })),
       h('div', { class: 'acoes' }, h('button', { id: 'ir-simular', onclick: etapaSimulacao }, 'Continuar: simular'), h('button', { class: 'secundario', onclick: etapaClassificacao }, 'Voltar')));
   }

@@ -687,18 +687,33 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .confirmar-expurgo { border: 2px solid var(--vinho, #9F1D24); }
 
 /* ---------- pedidos (0022): rótulo centralizado, texto à esquerda, número centralizado, card sem quebra de linha ---------- */
-.ped-kpis { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 1fr); gap: 12px; overflow-x: auto; margin-bottom: 16px; }
+.ped-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 168px), 1fr)); gap: 12px; margin-bottom: 16px; }
 .ped-kpi { background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); box-shadow: var(--sombra); padding: 14px; white-space: nowrap; }
 .ped-kpi span { display: block; font-size: 13px; color: var(--suave); }
 .ped-kpi b { display: block; font: 700 1.3rem/1.2 "IBM Plex Sans Condensed", sans-serif; font-variant-numeric: tabular-nums; }
 .ped-kpi.destaque { border: 2px solid var(--destaque); } .ped-kpi.destaque b { color: var(--destaque); }
 .ped-kpi.investimento b { color: #1E3A8A; }
 .ped-kpi .selo { display: inline-block; margin-bottom: 8px; }
-.ped-kpis.compacto { grid-auto-columns: minmax(130px, 1fr); gap: 8px; }
+.ped-kpis.compacto { grid-template-columns: repeat(auto-fill, minmax(min(100%, 130px), 1fr)); gap: 8px; }
+@media (max-width: 600px) { .ped-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; } .ped-kpi { padding: 10px; } .ped-kpi span { font-size: 12px; } .ped-kpi b { font-size: 1.15rem; } }
 .ped-kpis.compacto .ped-kpi { padding: 10px 8px; }
 .ped-kpis.compacto .selo { padding: 2px 6px; font-size: 11px; }
-.ped-tabela th, .ped-tabela td { padding: 10px 8px; }
-.ped-tabela th { text-align: center; }
+.ped-tabela th, .ped-tabela td { padding: 10px 6px; }
+.ped-tabela th { text-align: center; white-space: nowrap; letter-spacing: 0; }
+/* tabela que não cabe na largura: cada linha vira um cartão, com o rótulo de cada campo (semRolagem, web/js/ui.js) */
+.tabela-wrap.cartoes { border: 0; box-shadow: none; background: transparent; }
+.tabela-wrap.cartoes table, .tabela-wrap.cartoes tbody, .tabela-wrap.cartoes tfoot, .tabela-wrap.cartoes tr { display: block; width: 100%; }
+.tabela-wrap.cartoes thead { display: none; }
+.tabela-wrap.cartoes tr { box-sizing: border-box; margin-bottom: 8px; padding: 8px 12px; background: #fff; border: 1px solid var(--borda); border-radius: var(--raio-p); }
+.tabela-wrap.cartoes td { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 3px 0 !important; border: 0; text-align: right !important; white-space: normal; }
+.tabela-wrap.cartoes td::before { content: attr(data-r); flex: none; color: var(--suave); font-size: 12.5px; text-align: left; white-space: nowrap; }
+.tabela-wrap.cartoes td[data-r=""]::before, .tabela-wrap.cartoes td.rz::before { content: none; }
+.tabela-wrap.cartoes td.rz { display: block; text-align: left !important; font-weight: 600; padding-bottom: 4px !important; min-width: 0; }
+.tabela-wrap.cartoes td[data-r=""] { justify-content: flex-end; }
+.tabela-wrap.cartoes tr.ped-grupo { padding: 4px 12px; background: #F9FAFB; }
+.tabela-wrap.cartoes tr.ped-grupo td { display: block; text-align: left !important; }
+.tabela-wrap.cartoes tr.ped-grupo td::before { content: none; }
+.tabela-wrap.cartoes tfoot tr { background: #F9FAFB; font-weight: 700; }
 .ped-filtros { display: grid; gap: 12px; grid-template-columns: 2fr 1fr 1fr 1fr auto; align-items: center; }
 @media (max-width: 900px) { .ped-filtros { grid-template-columns: 1fr; } }
 .ped-tabela td { text-align: left; vertical-align: middle; }
@@ -707,7 +722,7 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ped-tabela tfoot td { font-weight: 700; background: #F9FAFB; }
 .ped-tabela .doc { display: block; font-size: 12px; color: var(--suave); white-space: nowrap; }
 .ped-tabela .selo { white-space: nowrap; }
-.ped-tabela td.rz { min-width: 200px; }
+.ped-tabela td.rz { min-width: 180px; }
 .ped-fixa { table-layout: fixed; min-width: 620px; }
 .ped-fixa select { min-height: 36px; padding: 4px 8px; }
 .selo.investimento { background: #DBEAFE; color: #1E3A8A; }
@@ -722,10 +737,29 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ped-opcao input { width: auto; min-height: 0; margin-top: 4px; }
 .ped-confirma { background: #FEF3F2; border: 1px solid #FECDCA; border-radius: var(--raio); padding: 16px; margin-bottom: 16px; }
 /* todas as linhas com a mesma largura: cada linha é um grid próprio, e só assim os números ficam sob os títulos */
-.ped-exp .exp-linha { grid-template-columns: minmax(300px, 3fr) repeat(11, minmax(88px, 1fr)); width: 100%; min-width: 1320px; box-sizing: border-box; }
+.ped-exp .exp-linha { grid-template-columns: minmax(200px, 3fr) repeat(11, minmax(0, 1fr)); width: 100%; min-width: 0; box-sizing: border-box; }
 .ped-exp .exp-arvore { margin-bottom: 16px; }
-@media (max-width: 760px) { .ped-exp .exp-arvore .rolagem .exp-linha { display: grid; grid-template-columns: 200px repeat(11, 88px); width: 1168px; min-width: 1168px; }
-  .ped-exp .exp-linha .num::before { content: none; } }
+/* sem rolagem para o lado: rótulos e números numa linha só; o que não cabe vira cartão (semRolagem, web/js/ui.js) */
+.ped-exp .exp-linha.cab > span, .ped-exp .exp-linha.cab .num { white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.ped-exp .exp-linha > .num { overflow: hidden; }
+.ped-exp .exp-linha .resumo { display: none; }
+.ped-exp .exp-nota { margin: 0; padding: 8px 16px; }
+.ped-exp .exp-arvore.cartoes .exp-linha.cab { display: none; }
+/* em cartão: o nome numa linha e todos os números rotulados embaixo */
+.ped-exp .exp-arvore.cartoes .exp-linha { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 6px 8px; min-width: 0; width: 100%; padding: 8px 12px 10px calc(12px + var(--prof, 0) * 14px); font-size: 14px; }
+.ped-exp .exp-arvore.cartoes .exp-linha .ramo { grid-column: 1 / -1; padding-left: 0 !important; }
+.ped-exp .exp-arvore.cartoes .exp-linha > .num { display: block; text-align: left; font-size: 14px; background: #F9FAFB; border-radius: 6px; padding: 3px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ped-exp .exp-arvore.cartoes .exp-linha.escolhida > .num { background: rgba(255, 255, 255, .7); }
+.ped-exp .exp-arvore.cartoes .exp-linha > .num::before { content: attr(data-r); display: block; color: var(--suave); font-weight: 400; font-size: 11.5px; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+/* Explorar pedidos no celular: a venda ao lado do nome e um resumo embaixo; os oito números da linha escolhida estão nos cards */
+@media (max-width: 600px) {
+  .ped-exp:not(.acf-exp) .exp-arvore.cartoes .exp-linha { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding-bottom: 8px; }
+  .ped-exp:not(.acf-exp) .exp-arvore.cartoes .exp-linha .ramo { grid-column: 1; grid-row: 1; }
+  .ped-exp:not(.acf-exp) .exp-arvore.cartoes .exp-linha > .num { display: none; }
+  .ped-exp:not(.acf-exp) .exp-arvore.cartoes .exp-linha > .num.venda { display: block; grid-column: 2; grid-row: 1; align-self: center; text-align: right; background: none; padding: 0; font-weight: 700; }
+  .ped-exp:not(.acf-exp) .exp-arvore.cartoes .exp-linha > .num.venda::before { content: none; }
+  .ped-exp:not(.acf-exp) .exp-arvore.cartoes .exp-linha .resumo { display: block; grid-column: 1 / -1; padding-left: 32px; font-size: 12.5px; color: var(--suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
 .ped-chave { display: inline-flex; border: 1px solid var(--borda-forte); border-radius: var(--raio-p); overflow: hidden; background: #fff; flex: none; }
 .ped-chave button { border: 0; border-radius: 0; background: #fff; color: var(--texto); min-height: 42px; white-space: nowrap; }
 .ped-chave button:hover { background: var(--fundo); color: var(--destaque); }
@@ -755,7 +789,18 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .acf-topo { flex-wrap: wrap; gap: 10px 16px; }
 .acf-chaves { display: flex; flex-wrap: wrap; gap: 8px; }
 .acf-frase { margin: 0 0 14px; }
-.acf-fluxo { display: flex; gap: 6px; align-items: stretch; overflow-x: auto; margin-bottom: 12px; padding-bottom: 2px; }
+.acf-fluxo { display: flex; gap: 6px; align-items: stretch; margin-bottom: 12px; }
+/* não cabem numa linha: as etapas quebram para baixo, sem as setas; no celular, uma abaixo da outra */
+.acf-fluxo.quebra { flex-wrap: wrap; }
+.acf-fluxo.quebra .acf-seta { display: none; }
+.acf-fluxo.quebra .acf-etapa { flex: 1 1 auto; min-width: max-content; }
+@media (max-width: 600px) {
+  .acf-fluxo.quebra { flex-direction: column; }
+  .acf-fluxo.quebra .acf-etapa { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; align-items: center; min-width: 0; padding: 8px 12px; }
+  .acf-fluxo.quebra .acf-etapa.ativa { padding: 7px 11px; }
+  .acf-fluxo.quebra .acf-etapa > * { grid-column: 1; }
+  .acf-fluxo.quebra .acf-etapa > b { grid-column: 2; grid-row: 1 / span 3; font-size: 26px; }
+}
 .acf-etapa { display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 0; flex: 1 1 0; min-width: 172px; box-sizing: border-box; text-align: left; background: #fff; color: var(--texto); border: 1px solid var(--borda); border-radius: 12px; padding: 12px 14px; white-space: nowrap; font-weight: 400; }
 .acf-etapa:hover { background: #fff; color: var(--texto); border-color: var(--borda-forte); }
 .acf-etapa.ativa, .acf-etapa.ativa:hover { border: 2px solid var(--destaque); background: var(--destaque-claro); padding: 11px 13px; }
@@ -767,8 +812,13 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .acf-seta { align-self: center; flex: none; font-size: 20px; color: var(--suave); }
 .acf-fora { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
 .acf-nota { margin: 0 0 14px; }
-.ped-exp.acf-exp .exp-linha { grid-template-columns: minmax(300px, 3fr) repeat(5, minmax(96px, 1fr)); min-width: 780px; }
-@media (max-width: 760px) { .ped-exp.acf-exp .exp-arvore .rolagem .exp-linha { grid-template-columns: 200px repeat(5, 96px); width: 680px; min-width: 680px; } }
+.ped-exp.acf-exp .exp-linha { grid-template-columns: minmax(200px, 3fr) repeat(5, minmax(0, 1fr)); min-width: 0; }
+/* Acompanhamento em cartão: o nome numa linha e os cinco números rotulados embaixo, em três colunas */
+.ped-exp.acf-exp .exp-arvore.cartoes .exp-linha { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 8px; padding: 8px 12px 10px calc(12px + var(--prof, 0) * 14px); }
+.ped-exp.acf-exp .exp-arvore.cartoes .exp-linha .ramo { grid-column: 1 / -1; }
+.ped-exp.acf-exp .exp-arvore.cartoes .exp-linha > .num { display: block; text-align: left; font-size: 14px; font-weight: 600; background: #F9FAFB; border-radius: 6px; padding: 3px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ped-exp.acf-exp .exp-arvore.cartoes .exp-linha.escolhida > .num { background: rgba(255, 255, 255, .7); }
+.ped-exp.acf-exp .exp-arvore.cartoes .exp-linha > .num::before { content: attr(data-r); display: block; color: var(--suave); font-weight: 400; font-size: 11.5px; text-transform: none; letter-spacing: 0; white-space: nowrap; }
 
 /* Botão ? e painel de ajuda da tela */
 .botao-ajuda { margin-left: auto; flex: none; justify-content: center; width: 40px; height: 40px; min-height: 0; padding: 0; border: 1px solid var(--destaque); border-radius: 50%; background: #fff; color: var(--destaque); font-size: 17px; font-weight: 700; }
@@ -786,7 +836,7 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ajuda-corpo li { margin: 3px 0; }
 .ajuda-corpo dt { font-weight: 600; margin-top: 6px; }
 .ajuda-corpo dd { margin: 0; color: #374151; }
-.ajuda-capitulo { display: inline-block; margin-top: 10px; padding-top: 10px; font-size: 14px; font-weight: 600; }
+.ajuda-capitulo { display: block; margin-top: 10px; padding-top: 10px; font-size: 14px; font-weight: 600; }
 @media (max-width: 900px) { .painel-ajuda { width: 100%; border-left: 0; box-shadow: none; } .casca.com-ajuda .area { margin-right: 0; } }
 
 /* Tela Ajuda: fluxograma e capítulos */
@@ -839,3 +889,14 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ajf-figura.celular { max-width: 300px; }
 .ajf-figura figcaption { margin-top: 4px; font-size: 13px; color: var(--suave); }
 
+
+/* Significado dos termos */
+.ajt-busca { display: flex; flex-direction: column; gap: 8px; }
+.ajt-busca label { font-weight: 600; font-size: 14px; }
+.ajt-grupos { display: flex; flex-wrap: wrap; gap: 6px; }
+.ajt-grupo h2 { margin: 0 0 4px; }
+.ajt-grupo dl { margin: 0; }
+.ajt-grupo dt { font-weight: 700; padding-top: 10px; border-top: 1px solid var(--borda); margin-top: 10px; }
+.ajt-grupo dt:first-child { border-top: 0; margin-top: 0; padding-top: 4px; }
+.ajt-grupo dd { margin: 2px 0 0; color: #1F2937; font-size: 14px; }
+.ajt-conta { display: block; width: fit-content; max-width: 100%; margin-top: 4px; padding: 2px 8px; border-radius: 6px; background: #F3F4F6; color: #374151; font-size: 13px; }

@@ -1,5 +1,5 @@
 // Peças comuns das telas de pedidos: tabela no padrão (rótulo centralizado, texto à esquerda, número centralizado) e cards numa linha.
-import { h, formatar, montar, selo } from '../ui.js';
+import { h, formatar, montar, selo, semRolagem } from '../ui.js';
 import { lerComCache } from '../db.js';
 import { comVersaoPedidos, consultaVersaoPedidos } from '../../shared/pedidos.mjs';
 import { formatarCnpj } from '../../shared/cnpj.mjs';
@@ -83,10 +83,11 @@ export const seloDoPedido = (p) => (p.prospect_id === null ? selo('Filial do gru
 /** Tabela: colunas [{ titulo, valor(l) | campo, classe: 'num' | 'cen' }]; `rodape`: células do tfoot. */
 export function tabelaPedidos(colunas, linhas, { vazio = 'Nenhum registro.', rodape = null, fixa = null, id = null } = {}) {
   if (!linhas.length) return h('p', { class: 'ajuda' }, vazio);
-  return h('div', { class: 'tabela-wrap' }, h('table', { class: `ped-tabela ${fixa ? 'ped-fixa' : ''}`, id },
+  // sem rolagem para o lado: se as colunas não cabem, cada linha vira um cartão com o rótulo de cada campo
+  return semRolagem(h('div', { class: 'tabela-wrap' }, h('table', { class: `ped-tabela ${fixa ? 'ped-fixa' : ''}`, id },
     fixa ? h('colgroup', {}, fixa.map((w) => h('col', { style: `width:${w}%` }))) : null,
     h('thead', {}, h('tr', {}, colunas.map((c) => h('th', {}, c.titulo)))),
     h('tbody', {}, linhas.map((l) => l.linhaGrupo ? h('tr', { class: 'ped-grupo' }, h('td', { colspan: String(colunas.length) }, l.linhaGrupo))
-      : h('tr', {}, colunas.map((c) => h('td', { class: c.classe }, c.valor ? c.valor(l) : l[c.campo] ?? ''))))),
-    rodape ? h('tfoot', {}, h('tr', {}, rodape.map((c) => (c && typeof c === 'object' && !(c instanceof Node) ? h('td', { class: c.classe, colspan: c.colspan }, c.texto) : h('td', { class: 'num' }, c ?? ''))))) : null));
+      : h('tr', {}, colunas.map((c) => h('td', { class: c.classe, dados: { r: c.titulo } }, c.valor ? c.valor(l) : l[c.campo] ?? ''))))),
+    rodape ? h('tfoot', {}, h('tr', {}, rodape.map((c, i) => (c && typeof c === 'object' && !(c instanceof Node) ? h('td', { class: c.classe, colspan: c.colspan }, c.texto) : h('td', { class: 'num', dados: { r: colunas[i]?.titulo ?? '' } }, c ?? ''))))) : null)));
 }

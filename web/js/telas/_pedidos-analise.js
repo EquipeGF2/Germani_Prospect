@@ -2,7 +2,8 @@
 // Tudo sobre os pedidos já lidos: arrastar níveis, abrir linhas, filtrar e buscar só redesenham no navegador.
 import { agruparPorRaiz, buscarPedidos, filtrarPedidos, montarArvorePedidos, NIVEIS_PEDIDOS, niveisPedidosPossiveis, resumirPedidos, rotuloGrupo, rotuloRepresentante } from '../../shared/pedidos.mjs';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
-import { h, montar, formatar, baixarCsv } from '../ui.js';
+import { h, montar, formatar, baixarCsv, semRolagem } from '../ui.js';
+import { significadoDe } from '../../shared/ajuda.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { blocoNiveis, cartoes, moeda, valor, razaoSocial, seloSituacao, seloDoPedido, tabelaPedidos } from './_pedidos.js';
 
@@ -97,7 +98,8 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
       i < etapas.length - 1 ? h('span', { class: 'sep', 'aria-hidden': 'true' }, '›') : null]));
 
     const numeros = h('div', { id: 'analise-numeros' }, cartoes([['Venda válida', moeda(ind.venda.valor), `${n0(ind.venda.qtd)} pedidos · ${n0(ind.clientes)} clientes`, 'destaque'], ['Faturado', moeda(ind.faturado), `${pct(ind.pctFaturado)} da venda`],
-      ['Em carteira', moeda(ind.saldo), `ticket médio ${moeda(ind.ticket)}`], ['Digitado', moeda(ind.digitado.valor), `${n0(ind.digitado.qtd)} pedidos`], ['Desistência', moeda(ind.cancelado.valor), `${n0(ind.cancelado.qtd)} pedidos`], ['Investimento', moeda(ind.investimento.valor), `${n0(ind.investimento.qtd)} bonificações`, 'investimento']]));
+      ['Em carteira', moeda(ind.saldo), `ticket médio ${moeda(ind.ticket)}`], ['Digitado', moeda(ind.digitado.valor), `${n0(ind.digitado.qtd)} pedidos`], ['Desistência', moeda(ind.cancelado.valor), `${n0(ind.cancelado.qtd)} pedidos`], ['Investimento', moeda(ind.investimento.valor), `${n0(ind.investimento.qtd)} bonificações`, 'investimento'],
+      ['Próprio', moeda(ind.propria), `${pct(ind.venda.valor ? (ind.propria / ind.venda.valor) * 100 : null)} da venda`], ['Outro', moeda(ind.outra), `${pct(ind.venda.valor ? (ind.outra / ind.venda.valor) * 100 : null)} da venda`]]));
 
     const venda = barra('Da venda válida', `Como está ${moeda(ind.venda.valor)} em venda`, [['Faturado', ind.faturado, '#0F766E'], ['Em carteira, a faturar', ind.saldo, '#1D4ED8']], ind.venda.valor);
     const todos = ind.venda.valor + ind.digitado.valor + ind.cancelado.valor;
@@ -109,18 +111,23 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
       else { estado.sel = n.caminho; if (n.temFilhos) estado.abertos.add(n.caminho); }
       desenhar();
     };
-    const cab = h('div', { class: 'exp-linha cab' }, ['Hierarquia', 'Clientes', 'Válidos', 'Venda (R$)', 'Faturado (R$)', 'Em carteira (R$)', 'Digitado (R$)', 'Desistência (R$)', 'Invest. (R$)', 'Invest. ÷ venda', 'Próprio (R$)', 'Outro (R$)'].map((t, i) => h('span', { class: i ? 'num' : '' }, t)));
-    const linhas = arvore.map((n) => h('div', { class: `exp-linha${n.caminho === escolhido.caminho ? ' escolhida' : ''}${n.profundidade ? '' : ' raiz'}`, dados: { caminho: n.caminho }, onclick: () => clicarLinha(n) },
+    // rótulos numa linha só (os valores são em R$, dito abaixo da árvore); a dica do rótulo traz o significado
+    const cab = h('div', { class: 'exp-linha cab' }, ['Hierarquia', 'Clientes', 'Válidos', 'Venda', 'Faturado', 'Em carteira', 'Digitado', 'Desistência', 'Invest.', 'Invest. ÷ venda', 'Próprio', 'Outro']
+      .map((t, i) => h('span', { class: i ? 'num' : '', title: significadoDe(t === 'Venda' ? 'Venda válida' : t) }, t)));
+    const linhas = arvore.map((n) => h('div', { class: `exp-linha${n.caminho === escolhido.caminho ? ' escolhida' : ''}${n.profundidade ? '' : ' raiz'}`, dados: { caminho: n.caminho }, style: `--prof:${n.profundidade}`, onclick: () => clicarLinha(n) },
       h('span', { class: 'ramo', style: `padding-left:${n.profundidade * 24}px` },
         n.temFilhos ? h('button', { type: 'button', class: 'abre', 'aria-expanded': n.aberto ? 'true' : 'false', 'aria-label': `${n.aberto ? 'Fechar' : 'Abrir'} ${n.rotulo}`,
           onclick: (ev) => { ev.stopPropagation(); if (n.aberto) estado.abertos.delete(n.caminho); else estado.abertos.add(n.caminho); desenhar(); } }, n.aberto ? '▼' : '▶') : h('span', { class: 'abre vazio' }),
         h('button', { type: 'button', class: 'nome', title: n.rotulo }, n.rotulo)),
-      h('span', { class: 'num' }, n0(n.ind.clientes)), h('span', { class: 'num' }, n0(n.ind.venda.qtd)), h('b', { class: 'num' }, valor(n.ind.venda.valor)), h('span', { class: 'num' }, valor(n.ind.faturado)),
-      h('span', { class: 'num' }, valor(n.ind.saldo)), h('span', { class: 'num' }, valor(n.ind.digitado.valor)), h('span', { class: 'num' }, valor(n.ind.cancelado.valor)), h('span', { class: 'num' }, valor(n.ind.investimento.valor)),
-      h('span', { class: 'num' }, pct(n.ind.pctInvestimento)), h('span', { class: 'num' }, valor(n.ind.propria)), h('span', { class: 'num' }, valor(n.ind.outra))));
+      // no cartão (sem espaço para as colunas): o valor da venda ao lado do nome e um resumo embaixo
+      h('span', { class: 'resumo' }, `${n0(n.ind.clientes)} ${n.ind.clientes === 1 ? 'cliente' : 'clientes'} · ${n0(n.ind.venda.qtd)} ${n.ind.venda.qtd === 1 ? 'válido' : 'válidos'} · ${pct(n.ind.pctFaturado)} faturado`),
+      // `dados.r` = rótulo do número quando a linha vira cartão
+      ...[['Clientes', n0(n.ind.clientes)], ['Válidos', n0(n.ind.venda.qtd)], ['Venda', valor(n.ind.venda.valor), 'venda'], ['Faturado', valor(n.ind.faturado)], ['Em carteira', valor(n.ind.saldo)],
+        ['Digitado', valor(n.ind.digitado.valor)], ['Desistência', valor(n.ind.cancelado.valor)], ['Invest.', valor(n.ind.investimento.valor)], ['Invest. ÷ venda', pct(n.ind.pctInvestimento)],
+        ['Próprio', valor(n.ind.propria)], ['Outro', valor(n.ind.outra)]].map(([r, v, classe]) => h(classe ? 'b' : 'span', { class: `num${classe ? ` ${classe}` : ''}`, dados: { r } }, v))));
 
     return [...blocoNiveis({ estado, possiveis, nome, mudarNiveis, desenhar }), migalhas, numeros, h('div', { class: 'exp-quadros' }, venda, processo),
-      h('section', { class: 'cartao exp-arvore', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas)), listaDoRamo(buscarPedidos(escolhido.pedidos, estado.busca), escolhido)];
+      semRolagem(h('section', { class: 'cartao exp-arvore', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas), h('p', { class: 'ajuda exp-nota' }, 'Valores em R$.')), { cortados: '.exp-linha > .num' }), listaDoRamo(buscarPedidos(escolhido.pedidos, estado.busca), escolhido)];
   }
   desenharFiltros();
   if (!pedidos.length) {
