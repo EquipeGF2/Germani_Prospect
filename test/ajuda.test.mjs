@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { AJUDA_TELAS, ajudaDaTela, CAPITULOS, capitulosDoUsuario, DESVIOS, FLUXO, TELAS_SEM_AJUDA } from '../shared/ajuda.mjs';
+import { AJUDA_TELAS, ajudaDaTela, buscarTermos, CAPITULOS, capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO, grupoDeTermos, TELAS_SEM_AJUDA, TERMOS, termosDoUsuario } from '../shared/ajuda.mjs';
+import { readdirSync } from 'node:fs';
 
 const app = readFileSync(new URL('../web/js/app.js', import.meta.url), 'utf8');
 const menu = readFileSync(new URL('../web/js/menu.js', import.meta.url), 'utf8');
@@ -51,4 +52,38 @@ test('o fluxo aponta para capítulos que existem, e os capítulos têm conteúdo
   }
   assert.deepEqual(CAPITULOS.map((c) => c.n), [1, 2, 3, 4, 5, 6, 7, 8]);
   for (const c of CAPITULOS) assert.ok(c.blocos.length >= 2 && c.blocos.every((b) => ['p', 'h', 'lista', 'passos', 'tabela', 'img'].includes(b[0])), `capítulo ${c.n}`);
+});
+
+// código das telas e das regras, sem a própria ajuda: é onde o termo precisa aparecer
+const codigo = ['../web/js/', '../web/js/telas/', '../shared/'].flatMap((d) => readdirSync(new URL(d, import.meta.url)).filter((f) => /\.m?js$/.test(f) && f !== 'ajuda.mjs')
+  .map((f) => readFileSync(new URL(d + f, import.meta.url), 'utf8'))).join('\n');
+
+test('significado dos termos: só o que existe nas telas, sem repetir', () => {
+  const vistos = new Set();
+  for (const g of TERMOS) {
+    assert.ok(g.termos.length >= 3, `${g.nome}: termos`);
+    for (const t of g.termos) {
+      assert.ok(codigo.includes(t.termo), `"${t.termo}" (${g.nome}) não aparece em nenhuma tela`);
+      assert.ok(t.significado.length > 10, `${t.termo}: significado`);
+      const chave = `${g.id}|${t.termo}`; assert.ok(!vistos.has(chave), `repetido: ${chave}`); vistos.add(chave);
+    }
+  }
+});
+
+test('as abreviações das telas estão nos termos', () => {
+  const todos = TERMOS.flatMap((g) => g.termos.map((t) => `${t.termo} ${t.significado}`)).join(' ');
+  for (const a of ['Invest.', 'Invest. ÷ venda', 'Ag. cad.', 'Ag. fin.', 'Ag. ped.', 'S.I. cli.', 'S.I. rep.', 'Cobert.', 'Ag. pedido válido', 'Rep. sem código', 'Créd. Cliente', 'Dt. Cadastro'])
+    assert.ok(todos.includes(a), `falta ${a}`);
+});
+
+test('termos por perfil, busca sem acento e o grupo da tela do botão ?', () => {
+  assert.deepEqual(termosDoUsuario({ id: 1, perfil: 'administrador' }).map((g) => g.id), TERMOS.map((g) => g.id));
+  assert.ok(!termosDoUsuario({ id: 2, perfil: 'vendedor' }).some((g) => g.id === 'importacoes'), 'importações só para quem importa');
+  assert.equal(grupoDeTermos('/carteira', 'aba=acompanhamento').id, 'acompanhamento');
+  assert.equal(grupoDeTermos('/pedidos').id, 'pedidos');
+  assert.equal(grupoDeTermos('/admin/usuarios'), null);
+  const achados = buscarTermos(TERMOS, 'DESISTENCIA').flatMap((g) => g.termos.map((t) => t.termo));
+  assert.ok(achados.includes('Desistência'));
+  const cap = capituloDeTermos({ id: 1, perfil: 'administrador' });
+  assert.equal(cap.blocos.filter((b) => b[0] === 'tabela').length, TERMOS.length, 'uma tabela por grupo no PDF');
 });

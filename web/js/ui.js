@@ -95,6 +95,23 @@ export function baixarCsv(nomeArquivo, colunas, linhas) {
 let aoErrar = (e) => console.error(e);
 export function definirAoErrar(fn) { aoErrar = fn; }
 
+/**
+ * Sem rolagem para o lado: quando o conteúdo não cabe na largura da caixa (ou um número ficaria cortado), a caixa ganha a
+ * classe `classe` (no CSS, vira cartões). Reavalia a cada mudança de largura, como girar o celular ou recolher o menu.
+ */
+export function semRolagem(caixa, { classe = 'cartoes', cortados = null } = {}) {
+  let largura = -1;
+  const naoCabe = () => caixa.scrollWidth > caixa.clientWidth + 1 || (cortados ? [...caixa.querySelectorAll(cortados)].some((c) => c.scrollWidth > c.clientWidth + 1) : false);
+  const avaliar = () => {
+    if (!caixa.isConnected || caixa.clientWidth === largura) return;
+    largura = caixa.clientWidth;
+    caixa.classList.remove(classe);
+    if (naoCabe()) caixa.classList.add(classe);
+  };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(avaliar).observe(caixa);
+  return caixa;
+}
+
 export async function comEspera(botao, fn) {
   const texto = botao?.textContent;
   if (botao) { botao.disabled = true; botao.textContent = 'Aguarde…'; }

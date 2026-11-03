@@ -8,7 +8,7 @@ import { consultaResumo } from '../../shared/explorar.mjs';
 import { podeTela, veTodasEquipes } from '../../shared/perfis.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { STATUS_ENCERRADOS } from '../../shared/status.mjs';
-import { h, montar, formatar, selo, baixarCsv, comEspera } from '../ui.js';
+import { h, montar, formatar, selo, baixarCsv, comEspera, semRolagem } from '../ui.js';
 import { gerarPdfLista } from '../relatorio.js';
 import { nomeStatus, seloStatus } from './_carteira.js';
 import { blocoNiveis, chaveVerPor, documento, lerPedidos, lerVerPor, moeda, razaoSocial, seloSituacao, valor } from './_pedidos.js';
@@ -85,12 +85,12 @@ export async function render(conteudo, { usuario, parametros }) {
       podeTela(usuario, 'admin_credito') ? h('a', { href: '#/admin/importar/credito' }, 'relatório de cadastro e crédito') : 'relatório de cadastro e crédito',
       ': os pedidos já estão guardados, não precisam ser importados de novo, e o cliente entra no fluxo.') : null;
     const ir = (e) => () => abrirEtapa(e);
-    return [aviso, h('div', { class: 'acf-fluxo', id: 'acf-fluxo' },
+    return [aviso, semRolagem(h('div', { class: 'acf-fluxo', id: 'acf-fluxo' },
       cartao('etapa-cadastro', estado.etapa === 'cadastro', NOME_ETAPA.cadastro, n.cadastro, [['entraram no fluxo'], ['']], ir('cadastro')), seta(),
       cartao('etapa-analise', estado.etapa === 'analise', NOME_ETAPA.analise, n.analise, [[parte(n.analise)], [n.vencidas ? `${n0(n.vencidas)} vencidas` : '', true]], ir('analise')), seta(),
       cartao('etapa-pedido', estado.etapa === 'pedido', NOME_ETAPA.pedido, n.pedido, [[parte(n.pedido)], [n.naoValidos ? `${n0(n.naoValidos)} pedido não válido` : '', true]], ir('pedido')), seta(),
       cartao('etapa-carteira', estado.etapa === 'carteira', NOME_ETAPA.carteira, n.carteira, [[comPedidos(n.carteira, 'carteira')], [moeda(n.valor.carteira)]], ir('carteira')), seta(),
-      cartao('etapa-faturado', estado.etapa === 'faturado', NOME_ETAPA.faturado, n.faturado, [[comPedidos(n.faturado, 'faturado')], [moeda(n.valor.faturado)]], ir('faturado'))),
+      cartao('etapa-faturado', estado.etapa === 'faturado', NOME_ETAPA.faturado, n.faturado, [[comPedidos(n.faturado, 'faturado')], [moeda(n.valor.faturado)]], ir('faturado'))), { classe: 'quebra', cortados: '.acf-etapa' }),
     h('div', { class: 'acf-fora' }, h('span', { class: 'ajuda' }, 'Fora do fluxo:'),
       h('button', { type: 'button', id: 'etapa-antes', class: `chip-situacao${estado.etapa === 'antes' ? ' ativa' : ''}`, onclick: ir('antes') }, `${NOME_ETAPA.antes} (${n0(n.antes)})`),
       h('button', { type: 'button', id: 'etapa-sem_cadastro', class: `chip-situacao${estado.etapa === 'sem_cadastro' ? ' ativa' : ''}`, hidden: !n.sem_cadastro && estado.etapa !== 'sem_cadastro', onclick: ir('sem_cadastro') }, `${NOME_ETAPA.sem_cadastro} (${n0(n.sem_cadastro)})`),
@@ -100,11 +100,11 @@ export async function render(conteudo, { usuario, parametros }) {
   function credito(t) {
     const parte = (q) => `${t.todos ? Math.round((q / t.todos) * 100) : 0}% dos clientes`;
     const ir = (e) => () => { estado.credito = e; estado.fechados = new Set(); desenhar(); };
-    return [h('div', { class: 'acf-fluxo', id: 'acf-credito' },
+    return [semRolagem(h('div', { class: 'acf-fluxo', id: 'acf-credito' },
       cartao('credito-todos', estado.credito === 'todos', NOME_CREDITO.todos, t.todos, [['clientes comparados'], [moeda(t.saldo)]], ir('todos')),
       cartao('credito-dentro', estado.credito === 'dentro', NOME_CREDITO.dentro, t.dentro, [[parte(t.dentro)], ['pedido cabe no limite']], ir('dentro')),
       cartao('credito-acima', estado.credito === 'acima', NOME_CREDITO.acima, t.acima, [[parte(t.acima)], ['em carteira maior que o limite', true]], ir('acima')),
-      cartao('credito-sem_limite', estado.credito === 'sem_limite', NOME_CREDITO.sem_limite, t.sem_limite, [[parte(t.sem_limite)], ['sem limite a comparar']], ir('sem_limite'))),
+      cartao('credito-sem_limite', estado.credito === 'sem_limite', NOME_CREDITO.sem_limite, t.sem_limite, [[parte(t.sem_limite)], ['sem limite a comparar']], ir('sem_limite'))), { classe: 'quebra', cortados: '.acf-etapa' }),
     h('p', { class: 'ajuda acf-nota' }, 'Compara o limite com os pedidos em carteira. Títulos faturados e não pagos também consomem o limite no ERP e não vêm nos relatórios. Forma e prazo do pedido entram quando o relatório trouxer esses dados.')];
   }
 
@@ -122,14 +122,15 @@ export async function render(conteudo, { usuario, parametros }) {
       return [n0(x.todos), n0(x.dentro), n0(x.acima), n0(x.sem_limite), valor(x.saldo)];
     };
     const titulos = emFluxo ? ['Cadastros', 'Análise financeira', 'Aguardando pedido', 'Em carteira', 'Faturado'] : ['Com pedido', 'Dentro do limite', 'Acima do limite', 'Sem limite', 'Em carteira (R$)'];
-    return h('section', { class: 'cartao exp-arvore', 'aria-label': 'Hierarquia' }, h('div', { class: 'rolagem' },
+    // sem rolagem para o lado: se as colunas não cabem, cada linha vira um cartão com o rótulo de cada número
+    return semRolagem(h('section', { class: 'cartao exp-arvore', 'aria-label': 'Hierarquia' }, h('div', { class: 'rolagem' },
       h('div', { class: 'exp-linha cab' }, ['Hierarquia', ...titulos].map((t, i) => h('span', { class: i ? 'num' : '' }, t))),
-      arvore.map((n) => h('div', { class: `exp-linha${n.caminho === escolhido.caminho ? ' escolhida' : ''}${n.profundidade ? '' : ' raiz'}`, dados: { caminho: n.caminho }, onclick: () => clicarLinha(n) },
+      arvore.map((n) => h('div', { class: `exp-linha${n.caminho === escolhido.caminho ? ' escolhida' : ''}${n.profundidade ? '' : ' raiz'}`, dados: { caminho: n.caminho }, style: `--prof:${n.profundidade}`, onclick: () => clicarLinha(n) },
         h('span', { class: 'ramo', style: `padding-left:${n.profundidade * 24}px` },
           n.temFilhos ? h('button', { type: 'button', class: 'abre', 'aria-expanded': n.aberto ? 'true' : 'false', 'aria-label': `${n.aberto ? 'Recolher' : 'Reexibir'} ${n.rotulo}`,
             onclick: (ev) => { ev.stopPropagation(); if (n.aberto) estado.abertos.delete(n.caminho); else estado.abertos.add(n.caminho); desenhar(); } }, n.aberto ? '▼' : '▶') : h('span', { class: 'abre vazio' }),
           h('button', { type: 'button', class: 'nome', title: n.rotulo }, n.rotulo)),
-        celulas(n).map((v) => h('span', { class: 'num' }, v))))));
+        celulas(n).map((v, i) => h('span', { class: 'num', dados: { r: titulos[i] } }, v)))))), { cortados: '.exp-linha > .num' });
   }
 
   // ---------- grid: colunas de cada etapa, em cascata ----------
@@ -184,7 +185,7 @@ export async function render(conteudo, { usuario, parametros }) {
     const corpo = montada.slice(0, LIMITE_GRID).map((x) => (x.cabecalho
       ? h('tr', { class: 'ped-grupo', dados: { caminho: x.caminho } }, h('td', { colspan: String(colunas.length) }, h('button', { type: 'button', class: 'abre-grupo', style: `margin-left:${x.profundidade * 24}px`, 'aria-expanded': x.aberto ? 'true' : 'false',
         'aria-label': `${x.aberto ? 'Recolher' : 'Reexibir'} ${x.rotulo}`, onclick: () => alternar(x.caminho) }, `${x.aberto ? '▼' : '▶'} ${x.rotulo} · ${n0(x.qtd)}`)))
-      : h('tr', {}, colunas.map((c, i) => h('td', { class: c.classe, style: i === 0 && x.profundidade ? `padding-left:${x.profundidade * 24 + 12}px` : null }, c.valor(x.linha))))));
+      : h('tr', { style: `--prof:${x.profundidade}` }, colunas.map((c, i) => h('td', { class: c.classe, dados: { r: c.titulo }, style: i === 0 && x.profundidade ? `padding-left:${x.profundidade * 24 + 12}px` : null }, c.valor(x.linha))))));
     return h('div', { class: 'cartao' },
       h('div', { class: 'ped-lista-topo' }, h('h2', { id: 'titulo-acomp' }, `${titulo} (${n0(lidas.length)} ${unidade})`), campoBusca,
         h('button', { type: 'button', class: 'secundario pequeno', id: 'recolher-tudo', disabled: !caminhos().length, onclick: () => { estado.fechados = new Set(caminhos()); desenhar(); } }, 'Recolher tudo'),
@@ -193,7 +194,7 @@ export async function render(conteudo, { usuario, parametros }) {
         h('button', { type: 'button', class: 'secundario pequeno', id: 'csv-acomp', disabled: !lidas.length, onclick: () => baixarCsv(`acompanhamento-${hoje}.csv`, colunasCsv(colunas), lidas) }, 'Baixar CSV')),
       estado.lendo ? h('p', { class: 'ajuda' }, 'Lendo os encerrados…')
         : !lidas.length ? h('p', { class: 'ajuda', id: 'grid-vazia' }, estado.busca ? `Nada encontrado para "${estado.busca}".` : 'Nenhum cliente aqui.')
-          : h('div', { class: 'tabela-wrap' }, h('table', { class: 'ped-tabela', id: 'grid-acomp' }, h('thead', {}, h('tr', {}, colunas.map((c) => h('th', {}, c.titulo)))), h('tbody', {}, corpo))),
+          : semRolagem(h('div', { class: 'tabela-wrap' }, h('table', { class: 'ped-tabela', id: 'grid-acomp' }, h('thead', {}, h('tr', {}, colunas.map((c) => h('th', {}, c.titulo)))), h('tbody', {}, corpo)))),
       montada.length > LIMITE_GRID ? h('p', { class: 'ajuda', style: 'margin:12px 0 0' }, `Mostrando ${n0(LIMITE_GRID)} de ${n0(montada.length)} linhas. Clique numa linha da hierarquia para ver menos, ou baixe o CSV.`) : null);
   }
 

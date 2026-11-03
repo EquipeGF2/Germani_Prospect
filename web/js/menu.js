@@ -2,7 +2,7 @@
 // Ícones em SVG desenhados aqui mesmo (sem biblioteca externa).
 import { h, montar } from './ui.js';
 import { podeTela } from '../shared/perfis.mjs';
-import { ajudaDaTela } from '../shared/ajuda.mjs';
+import { ajudaDaTela, grupoDeTermos } from '../shared/ajuda.mjs';
 
 const CHAVE_RECOLHIDO = 'germani.menuRecolhido';
 const SVG = 'http://www.w3.org/2000/svg';
@@ -44,6 +44,7 @@ export function icone(nome) {
 const GRUPOS = [
   { titulo: 'Ajuda', itens: [
     { caminho: '/ajuda', rotulo: 'Ajuda', icone: 'ajuda' },
+    { caminho: '/ajuda?termos=todos', rotulo: 'Significado dos termos', icone: 'lista' },
   ] },
   { titulo: 'Prospecção', itens: [
     { caminho: '/explorar', rotulo: 'Explorar carteira', icone: 'explorar', tela: 'explorar' },
@@ -81,6 +82,7 @@ const TELAS_INTERNAS = {
 };
 
 function itemAtivo(caminho, consulta) {
+  if (caminho === '/ajuda' && new URLSearchParams(consulta).has('termos')) return '/ajuda?termos=todos';
   if (caminho === '/carteira') return new URLSearchParams(consulta).get('aba') === 'acompanhamento' ? '/carteira?aba=acompanhamento' : '/carteira';
   return TELAS_INTERNAS[caminho]?.[0] ?? caminho;
 }
@@ -97,6 +99,7 @@ function fecharGaveta() { document.getElementById('casca').classList.remove('gav
 
 // ---------- botão ? e painel de ajuda da tela: acompanham a navegação e não tiram o usuário do que está fazendo ----------
 let ajudaAtual = null;
+let termosAtual = null;
 let ajudaAberta = false;
 const secoesAbertas = new Set(['objetivo']);
 
@@ -122,11 +125,13 @@ function desenharAjuda() {
     secao('analisar', 'O que analisar', h('ul', {}, a.analisar.map((t) => h('li', {}, t)))),
     secao('comuns', 'Situações comuns', pares(a.comuns)),
     secao('proximo', 'Próximo passo', h('p', {}, a.proximo)),
+    termosAtual ? h('a', { class: 'ajuda-capitulo', href: `#/ajuda?termos=${termosAtual.id}`, id: 'ajuda-termos', onclick: () => { ajudaAberta = false; desenharAjuda(); } }, 'Significado de todos os termos desta tela') : null,
     h('a', { class: 'ajuda-capitulo', href: `#/ajuda?cap=${a.cap}`, id: 'ajuda-capitulo', onclick: () => { ajudaAberta = false; desenharAjuda(); } }, `Ler o capítulo ${a.cap} completo`));
 }
 
 function atualizarAjuda(usuario, caminho, consulta) {
   ajudaAtual = usuario ? ajudaDaTela(caminho, consulta) : null;
+  termosAtual = usuario ? grupoDeTermos(caminho, consulta) : null;
   document.getElementById('botao-ajuda').hidden = !ajudaAtual;
   desenharAjuda();
 }
