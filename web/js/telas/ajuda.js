@@ -1,5 +1,5 @@
 // Ajuda: fluxograma da operação, manual por capítulos e PDF, conforme o perfil. O conteúdo fica em shared/ajuda.mjs. docs/03 §15
-import { capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO } from '../../shared/ajuda.mjs';
+import { capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO, OPCOES_TOPO, TERMOS } from '../../shared/ajuda.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, formatar, comEspera } from '../ui.js';
 import { gerarManualPdf } from '../relatorio.js';
@@ -7,17 +7,42 @@ import { gerarManualPdf } from '../relatorio.js';
 const NOMES_PERFIL = { administrador: 'Administrador', gerente: 'Gerente comercial', supervisor: 'Supervisor', vendedor: 'Representante/vendedor', financeiro: 'Analista financeiro' };
 const item = (x) => (Array.isArray(x) ? [h('b', {}, `${x[0]}: `), x[1]] : x);
 
-/** Desenha os blocos de um capítulo. */
+const pares = (lista, classe = 'ajf-pares') => h('dl', { class: classe }, lista.flatMap(([t, d, conta]) => [h('dt', {}, t), h('dd', {}, d, conta ? h('span', { class: 'ajf-conta' }, conta) : null)]));
+const tabela = (colunas, linhas) => h('div', { class: 'tabela-wrap' }, h('table', { class: 'ped-tabela' },
+  h('thead', {}, h('tr', {}, colunas.map((t) => h('th', {}, t)))),
+  h('tbody', {}, linhas.map((l) => h('tr', {}, l.map((c, i) => h('td', { dados: { r: colunas[i] } }, i ? c : h('b', {}, c))))))));
+
+/** Desenha os blocos de um capítulo: para que serve, em 30 segundos, a tela parte por parte (recortes pequenos), opções, termos e perguntas. */
 function blocos(lista) {
+  let parte = 0;
   return lista.map((b) => {
     if (b[0] === 'p') return h('p', {}, b[1]);
     if (b[0] === 'h') return h('h2', {}, b[1]);
-    if (b[0] === 'img') return h('figure', { class: `ajf-figura${b[1].includes('celular') ? ' celular' : ''}` }, h('img', { src: `img/ajuda/${b[1]}`, alt: b[2], loading: 'lazy' }), h('figcaption', {}, b[2]));
+    if (b[0] === 'serve') return h('p', { class: 'ajf-serve' }, h('b', {}, 'Para que serve: '), b[1]);
+    if (b[0] === 'rapido') return h('section', { class: 'ajf-rapido' }, h('h2', {}, 'Em 30 segundos'), h('ol', {}, b[1].map((x) => h('li', {}, x))));
+    if (b[0] === 'parte') {
+      parte += 1;
+      const figura = h('figure', { class: 'ajf-recorte' });
+      const ampliar = h('button', { type: 'button', class: 'secundario pequeno', 'aria-expanded': 'false', onclick: () => {
+        const aberta = figura.classList.toggle('ampliada'); ampliar.textContent = aberta ? 'Diminuir imagem' : 'Ampliar imagem'; ampliar.setAttribute('aria-expanded', aberta ? 'true' : 'false'); } }, 'Ampliar imagem');
+      montar(figura, h('img', { src: `img/ajuda/${b[1]}.jpg`, alt: `${b[2]}: recorte da tela, com dados fictícios`, loading: 'lazy' }), ampliar);
+      return h('section', { class: 'ajf-parte', dados: { recorte: b[1] } }, figura,
+        h('div', { class: 'ajf-parte-texto' }, h('h3', {}, h('span', { class: 'ajf-num' }, String(parte)), b[2]), h('p', {}, b[3]), pares(b[4])));
+    }
+    if (b[0] === 'opcoes') {
+      const grupos = OPCOES_TOPO[b[1]] ?? [];
+      return grupos.length ? h('section', { class: 'ajf-bloco', dados: { bloco: 'opcoes' } }, h('h2', {}, 'Opções do topo'),
+        grupos.map((g) => [h('h3', { class: 'ajf-sub' }, g.nome), pares(g.opcoes.map((x) => [x.opcao, x.significado]))])) : null;
+    }
+    if (b[0] === 'termos') {
+      const g = TERMOS.find((x) => x.id === b[1]);
+      return g ? h('section', { class: 'ajf-bloco', dados: { bloco: 'termos' } }, h('h2', {}, `Termos: ${g.nome}`), h('p', { class: 'ajuda' }, 'Toda palavra e abreviação que aparece na tela, em linguagem simples.'),
+        pares(g.termos.map((t) => [t.termo, t.significado, t.conta]))) : null;
+    }
+    if (b[0] === 'perguntas') return h('section', { class: 'ajf-bloco', dados: { bloco: 'perguntas' } }, h('h2', {}, 'Perguntas comuns'), pares(b[1]));
     if (b[0] === 'lista') return h('ul', {}, b[1].map((x) => h('li', {}, item(x))));
     if (b[0] === 'passos') return h('ol', {}, b[1].map((x) => h('li', {}, item(x))));
-    return h('div', { class: 'tabela-wrap' }, h('table', { class: 'ped-tabela' },
-      h('thead', {}, h('tr', {}, b[1].map((t) => h('th', {}, t)))),
-      h('tbody', {}, b[2].map((l) => h('tr', {}, l.map((c, i) => h('td', {}, i ? c : h('b', {}, c))))))));
+    return tabela(b[1], b[2]);
   });
 }
 

@@ -576,6 +576,14 @@ td.pct { min-width: 96px; }
 .exp-legenda { display: grid; grid-template-columns: 14px minmax(0, 1fr) 76px 56px; gap: 10px; align-items: center; font-size: 14px; }
 .exp-legenda .ponto { width: 12px; height: 12px; border-radius: 3px; } .exp-legenda .ponto.claro { box-shadow: inset 0 0 0 1px #9CA3AF; }
 .exp-legenda small { color: var(--suave); font-size: 12px; }
+.exp-legenda .explica { display: block; font-size: 12px; color: var(--suave); }
+.exp-grafico.com-qtd .exp-legenda { grid-template-columns: 14px minmax(0, 1fr) 64px 92px 52px; }
+.exp-grafico.com-qtd .exp-legenda .qtd { text-align: center; font-variant-numeric: tabular-nums; }
+.exp-legenda.cab { font-size: 12px; font-weight: 600; color: var(--suave); }
+.exp-legenda.cab .val { text-align: right; }
+@media (max-width: 600px) { .exp-grafico.com-qtd .exp-legenda { grid-template-columns: 12px minmax(0, 1fr) 52px auto 44px; gap: 6px; } }
+.exp-legenda.sub { font-size: 13px; color: var(--suave); }
+.exp-legenda .qtd-sub { text-align: right; font-weight: 600; color: #374151; font-variant-numeric: tabular-nums; }
 .exp-legenda b, .exp-etapa b { text-align: right; font-variant-numeric: tabular-nums; }
 .exp-legenda .pct, .exp-etapa .pct { text-align: right; color: var(--suave); font-size: 13px; font-variant-numeric: tabular-nums; }
 .exp-rodape { margin: 0; padding-top: 10px; border-top: 1px solid #F3F4F6; font-size: 13px; color: #374151; }
@@ -905,3 +913,24 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 /* Parâmetros: ondas liberadas */
 .ondas-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 8px; }
 .ondas-lista .ped-opcao b { white-space: nowrap; }
+
+/* Capítulo da Ajuda: para leigos, recortes pequenos ao lado do texto que os explica */
+.ajf-serve { margin: 10px 0 0; padding: 12px 14px; border-radius: 10px; background: #EFF6FF; border: 1px solid #BFDBFE; }
+.ajf-rapido ol { margin: 6px 0 0; padding-left: 22px; } .ajf-rapido li { margin: 4px 0; }
+.ajf-parte { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; padding: 16px 0; border-top: 1px solid var(--borda); }
+.ajf-recorte { flex: 0 1 420px; min-width: 0; margin: 0; }
+.ajf-recorte img { display: block; width: 100%; max-height: 300px; object-fit: contain; object-position: left top; border: 1px solid var(--borda-forte); border-radius: 8px; background: #fff; }
+.ajf-recorte.ampliada { flex: 1 1 100%; } .ajf-recorte.ampliada img { max-height: none; }
+.ajf-recorte button { margin-top: 6px; }
+.ajf-parte-texto { flex: 1 1 260px; min-width: 0; }
+.ajf-parte-texto h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 17px; }
+.ajf-parte-texto p { margin: 0 0 6px; }
+.ajf-num { display: inline-flex; flex: none; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 50%; background: var(--destaque); color: #fff; font-size: 14px; font-weight: 700; }
+.ajf-pares { display: grid; grid-template-columns: minmax(110px, 200px) minmax(0, 1fr); margin: 0; font-size: 14px; }
+.ajf-pares dt, .ajf-pares dd { margin: 0; padding: 7px 10px; border-bottom: 1px solid #F3F4F6; }
+.ajf-pares dt { font-weight: 700; }
+.ajf-conta { display: block; width: fit-content; max-width: 100%; margin-top: 3px; padding: 1px 8px; border-radius: 6px; background: #F3F4F6; color: #374151; font-size: 13px; }
+.ajf-parte-texto .ajf-pares { grid-template-columns: 1fr; }
+.ajf-parte-texto .ajf-pares dt { border-bottom: 0; padding-bottom: 0; }
+.ajf-bloco { padding-top: 6px; } .ajf-sub { margin: 10px 0 2px; font-size: 15px; color: var(--destaque-escuro); }
+@media (max-width: 600px) { .ajf-pares { grid-template-columns: 1fr; } .ajf-pares dt { border-bottom: 0; padding-bottom: 0; } .ajf-recorte { flex-basis: 100%; } }

@@ -39,13 +39,17 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
   const mudarNiveis = (n) => { estado.niveis = n; estado.abertos = new Set(['']); estado.sel = ''; guardarNiveis(n); desenhar(); };
   const aoFiltrar = () => { estado.abertos = new Set(['']); estado.sel = ''; desenharFiltros(); desenhar(); };
 
-  function barra(titulo, subtitulo, partes, total) {
-    return h('section', { class: 'cartao exp-grafico' },
+  // partes: [nome, valor, cor, quantidade de pedidos, explicação curta]; com quantidade, ela vira uma coluna própria
+  function barra(titulo, subtitulo, partes, total, id) {
+    const comQtd = partes.some((x) => x[3] != null);
+    return h('section', { class: `cartao exp-grafico${comQtd ? ' com-qtd' : ''}`, id },
       h('div', { class: 'exp-grafico-topo' }, h('div', {}, h('span', { class: 'tit' }, titulo), h('h2', {}, subtitulo))),
       h('div', { class: 'exp-barra100', role: 'img', 'aria-label': partes.map(([n, v]) => `${n}: ${moeda(v)}`).join(', ') },
         partes.filter(([, v]) => v > 0).map(([n, v, cor]) => h('span', { title: `${n}: ${moeda(v)}`, style: `flex:${v} 1 0;background:${cor}` }))),
-      partes.map(([n, v, cor, qtd]) => h('div', { class: 'exp-legenda' }, h('span', { class: 'ponto', style: `background:${cor}` }), h('span', {}, qtd == null ? n : `${n} (${n0(qtd)})`),
-        h('b', {}, valor(v)), h('span', { class: 'pct' }, pct(total ? (v / total) * 100 : null)))));
+      comQtd ? h('div', { class: 'exp-legenda cab' }, h('span'), h('span', {}, 'Situação'), h('span', { class: 'qtd' }, 'Pedidos'), h('span', { class: 'val' }, 'Valor (R$)'), h('span', { class: 'pct' }, '%')) : null,
+      partes.map(([n, v, cor, qtd, explica]) => h('div', { class: 'exp-legenda' }, h('span', { class: 'ponto', style: `background:${cor}` }),
+        h('span', {}, n, explica ? h('small', { class: 'explica' }, explica) : null),
+        comQtd ? h('span', { class: 'qtd' }, n0(qtd)) : null, h('b', {}, valor(v)), h('span', { class: 'pct' }, pct(total ? (v / total) * 100 : null)))));
   }
 
   // a busca é o mesmo campo entre os redesenhos: quem digita não perde o foco. Ela procura só na lista de pedidos
@@ -101,10 +105,16 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
       ['Em carteira', moeda(ind.saldo), `ticket médio ${moeda(ind.ticket)}`], ['Digitado', moeda(ind.digitado.valor), `${n0(ind.digitado.qtd)} pedidos`], ['Desistência', moeda(ind.cancelado.valor), `${n0(ind.cancelado.qtd)} pedidos`], ['Investimento', moeda(ind.investimento.valor), `${n0(ind.investimento.qtd)} bonificações`, 'investimento'],
       ['Próprio', moeda(ind.propria), `${pct(ind.venda.valor ? (ind.propria / ind.venda.valor) * 100 : null)} da venda`], ['Outro', moeda(ind.outra), `${pct(ind.venda.valor ? (ind.outra / ind.venda.valor) * 100 : null)} da venda`]]));
 
-    const venda = barra('Da venda válida', `Como está ${moeda(ind.venda.valor)} em venda`, [['Faturado', ind.faturado, '#0F766E'], ['Em carteira, a faturar', ind.saldo, '#1D4ED8']], ind.venda.valor);
+    // Faturamento da venda: só a venda válida, faturado × a faturar. O que aconteceu: todos os pedidos de venda, inclusive os que não viraram venda
+    const venda = barra('Faturamento da venda', `Dos ${moeda(ind.venda.valor)} vendidos, ${moeda(ind.faturado)} já faturaram`,
+      [['Faturado', ind.faturado, '#0F766E', null, 'já saiu nota fiscal'], ['Em carteira, a faturar', ind.saldo, '#1D4ED8', null, 'pedido aceito, falta faturar']], ind.venda.valor, 'grafico-faturamento');
     const todos = ind.venda.valor + ind.digitado.valor + ind.cancelado.valor;
-    const processo = barra('Dos pedidos de venda', `${n0(ind.venda.qtd + ind.digitado.qtd + ind.cancelado.qtd)} pedidos de venda`,
-      [['Venda válida', ind.venda.valor, '#1D4ED8', ind.venda.qtd], ['Digitado, fora da carteira', ind.digitado.valor, '#B45309', ind.digitado.qtd], ['Desistência', ind.cancelado.valor, '#B42318', ind.cancelado.qtd]], todos);
+    const qtdTodos = ind.venda.qtd + ind.digitado.qtd + ind.cancelado.qtd;
+    const plural = (q, um, varios) => `${n0(q)} ${q === 1 ? um : varios}`;
+    const processo = barra('O que aconteceu com os pedidos de venda',
+      `${plural(qtdTodos, 'pedido digitado', 'pedidos digitados')}: ${plural(ind.venda.qtd, 'virou venda', 'viraram venda')}, ${plural(ind.digitado.qtd, 'está parado', 'estão parados')} e ${plural(ind.cancelado.qtd, 'foi cancelado', 'foram cancelados')}`,
+      [['Venda válida', ind.venda.valor, '#1D4ED8', ind.venda.qtd, 'em carteira ou faturado'], ['Digitado, fora da carteira', ind.digitado.valor, '#B45309', ind.digitado.qtd, 'Não Fechado no ERP: ainda não conta como venda'],
+        ['Desistência', ind.cancelado.valor, '#B42318', ind.cancelado.qtd, 'pedido cancelado']], todos, 'grafico-pedidos-venda');
 
     const clicarLinha = (n) => {
       if (n.temFilhos && n.aberto && estado.sel === n.caminho) estado.abertos.delete(n.caminho);
