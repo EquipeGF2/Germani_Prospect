@@ -476,6 +476,23 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
     await ir('#/rejeitados');
     await pagina.click('#rej-cliente');
     await recorte('rejeitados', '#rejeitados', { altura: 460 });
+    // a visão do representante: o menu e os filtros da Lista principal dele (sem equipe nem administração)
+    await pagina.click('.menu-sair');
+    await pagina.waitForSelector('#login');
+    await pagina.fill('#login', '1201');
+    await pagina.fill('#senha', 'demo1234');
+    await pagina.click('button[type=submit]');
+    await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
+    await recorte('menu-carteira', '#lateral', { altura: 640 });
+    await ir('#/carteira');
+    await pagina.waitForSelector('form.lista-filtros');
+    await recorte('lista-filtros-carteira', 'form.lista-filtros');
+    await pagina.click('.menu-sair');
+    await pagina.waitForSelector('#login');
+    await pagina.fill('#login', 'admin');
+    await pagina.fill('#senha', 'demo1234');
+    await pagina.click('button[type=submit]');
+    await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
     await limpa.evaluate((e) => e.remove());
     await pagina.setViewportSize({ width: 1360, height: 900 });
   }

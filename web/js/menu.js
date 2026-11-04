@@ -129,9 +129,10 @@ function desenharAjuda() {
 }
 
 function atualizarAjuda(usuario, caminho, consulta) {
-  ajudaAtual = usuario ? ajudaDaTela(caminho, consulta) : null;
-  termosAtual = usuario ? grupoDeTermos(caminho, consulta) : null;
-  opcoesAtual = usuario ? opcoesDaTela(caminho, consulta) : [];
+  // a ajuda segue o perfil: o representante/vendedor não vê o que é da gestão nem da administração
+  ajudaAtual = usuario ? ajudaDaTela(caminho, consulta, usuario) : null;
+  termosAtual = usuario ? grupoDeTermos(caminho, consulta, usuario) : null;
+  opcoesAtual = usuario ? opcoesDaTela(caminho, consulta, usuario) : [];
   document.getElementById('botao-ajuda').hidden = !ajudaAtual;
   desenharAjuda();
 }

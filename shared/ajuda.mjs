@@ -1,8 +1,31 @@
 // Ajuda do sistema: um único conteúdo para o fluxograma, os capítulos, o botão ? de cada tela e o manual em PDF. docs/03 §15
 // Mudou uma tela? Atualize aqui. O teste test/ajuda.test.mjs falha se uma tela do menu ficar sem ajuda.
-import { podeTela } from './perfis.mjs';
+import { podeTela, veTodasEquipes } from './perfis.mjs';
 
 const REP = 'Representante/vendedor';
+
+// ---------- quem vê cada trecho: o representante/vendedor tem uma visão reduzida (a própria carteira, sem equipe nem
+// administração), e o representante não tem rota. Um trecho marcado só aparece para quem o predicado aceita. ----------
+/** Gestão: administrador, gerente, supervisor e financeiro (escolhem equipe, veem níveis de equipe). */
+export const GESTAO = (u) => u?.perfil !== 'vendedor';
+/** Representante/vendedor: a própria carteira. */
+export const CARTEIRA = (u) => u?.perfil === 'vendedor';
+/** Quem vê todas as equipes (nível Supervisor). */
+export const TODAS_EQUIPES = (u) => veTodasEquipes(u);
+/** Quem trabalha com rota: a gestão e o vendedor (o representante não tem rota). */
+export const COM_ROTA = (u) => u?.perfil !== 'vendedor' || u?.tipo_atuacao === 'vendedor';
+/** Só administrador. */
+export const SO_ADMIN = (u) => u?.perfil === 'administrador';
+/** Texto de lista só para quem `para` aceita. */
+const P = (para, texto) => Object.freeze({ para, texto });
+/** Bloco de capítulo só para quem `para` aceita. */
+const S = (para, ...blocos) => ['so', para, blocos];
+const vale = (para, u) => !para || !u || para(u);
+/** Itens de uma lista que valem para o usuário: texto, P(para, texto) ou par/linha com o predicado no fim. Sem usuário: todos. */
+export function filtrarItens(lista, u) {
+  return (lista ?? []).filter((x) => (x?.para && !Array.isArray(x) ? vale(x.para, u) : Array.isArray(x) && typeof x.at(-1) === 'function' ? vale(x.at(-1), u) : true))
+    .map((x) => (x?.para && !Array.isArray(x) ? x.texto : Array.isArray(x) && typeof x.at(-1) === 'function' ? x.slice(0, -1) : x));
+}
 const ADM = 'Administrador';
 const FIN = 'Analista financeiro';
 
@@ -61,7 +84,8 @@ export const CAPITULOS = Object.freeze([
   { n: 2, nome: 'Acesso e navegação', desc: 'Entrar, usar o menu e o botão de ajuda.', blocos: [
     ['serve', 'Ensinar a entrar no sistema, achar as telas no menu e tirar dúvidas pelo botão ? de cada tela.'],
     ['rapido', ['Informe o login e a senha recebidos do administrador e clique em Entrar.', 'O sistema abre sempre no Explorar carteira.', 'Use o menu à esquerda para trocar de tela e o botão ? para tirar dúvidas.']],
-    ['parte', 'menu', 'O menu', 'Fica à esquerda no computador. No celular, abre pelo botão com três riscos, no canto de cima.', [['Prospecção', 'As telas do dia a dia: Explorar carteira, Lista principal, Acompanhamento e Explorar pedidos.'], ['Administração', 'Importações, usuários e parâmetros (só administrador).'], ['Ajuda', 'O último item: fluxograma e manual.'], ['Sair', 'Encerra o acesso. Use sempre em computador compartilhado.']]],
+    S(GESTAO, ['parte', 'menu', 'O menu', 'Fica à esquerda no computador. No celular, abre pelo botão com três riscos, no canto de cima.', [['Prospecção', 'As telas do dia a dia: Explorar carteira, Lista principal, Acompanhamento e Explorar pedidos.'], ['Administração', 'Importações, usuários e parâmetros (administrador); Exportar dados (gerente).', GESTAO], ['Ajuda', 'O último item: fluxograma e manual.'], ['Sair', 'Encerra o acesso. Use sempre em computador compartilhado.']]]),
+    S(CARTEIRA, ['parte', 'menu-carteira', 'O menu', 'Fica à esquerda no computador. No celular, abre pelo botão com três riscos, no canto de cima.', [['Prospecção', 'As telas do dia a dia: Explorar carteira, Lista principal, Acompanhamento e Explorar pedidos.'], ['Ajuda', 'O último item: fluxograma e manual.'], ['Sair', 'Encerra o acesso. Use sempre em celular ou computador compartilhado.']]]),
     ['parte', 'botao-ajuda', 'O botão ?', 'Fica no canto de cima, à direita, em todas as telas. Abre a ajuda daquela tela sem sair dela.', [['Opções do topo', 'O que cada opção das chaves e filtros do topo mostra.'], ['Significado dos termos', 'Toda palavra e abreviação da tela, em linguagem simples.'], ['Ler o capítulo completo', 'Abre o capítulo do manual sobre aquela tela.']]],
     ['h', 'O que cada perfil enxerga'],
     ['lista', [['Representante/vendedor', 'a própria carteira e os pedidos que fez.'], ['Supervisor', 'a equipe.'], ['Gerente e administrador', 'todas as equipes.'], ['Analista financeiro', 'o Console de crédito.']]],
@@ -71,13 +95,14 @@ export const CAPITULOS = Object.freeze([
   { n: 3, nome: 'Prospecção', desc: 'Lista principal e registro de atendimento.', para: (u) => podeTela(u, 'lista'), blocos: [
     ['serve', 'Mostrar quem ainda precisa ser procurado (clientes Não contactados e Em prospecção) e registrar o resultado de cada atendimento.'],
     ['rapido', ['Abra Prospecção › Lista principal.', 'Clique em Registrar na linha do cliente.', 'Escolha o resultado e clique em Gravar registro. O canal já vem como Visita.']],
-    ['parte', 'lista-filtros', 'Os filtros do topo', 'Escolha de quem é a carteira e onde estão os clientes. Supervisor e gestão escolhem a equipe primeiro.', [['Equipe', 'Supervisor e representante/vendedor.'], ['Local', 'UF, cidade e bairro.'], ['Carteira', 'Onda e segmento.'], ['Exibição', 'Agrupar a lista por cidade, onda ou outra opção.']]],
+    S(GESTAO, ['parte', 'lista-filtros', 'Os filtros do topo', 'Escolha de quem é a carteira e onde estão os clientes. Supervisor e gestão escolhem a equipe primeiro.', [['Equipe', 'Supervisor e representante/vendedor.'], ['Local', 'UF, cidade e bairro.'], ['Carteira', 'Onda e segmento.'], ['Exibição', 'Agrupar a lista por cidade, onda ou outra opção.']]]),
+    S(CARTEIRA, ['parte', 'lista-filtros-carteira', 'Os filtros do topo', 'A lista já abre com a sua carteira. Os filtros ajudam a achar os clientes.', [['Local', 'UF, cidade e bairro.'], ['Carteira', 'Onda e segmento. Só aparecem as ondas que o administrador liberou.'], ['Exibição', 'Agrupar a lista por cidade, onda ou outra opção.']]]),
     ['parte', 'lista-situacao', 'A situação', 'Separa a lista por status, com a quantidade de cada um. Clique para ver só aquele grupo.', [['Todos', 'A lista inteira.'], ['Não contactado', 'Ainda sem nenhum contato.'], ['Em prospecção (contato da planilha)', 'Teve contato na planilha da base, ainda sem resultado no sistema.']]],
     ['parte', 'lista-tabela', 'A lista de clientes', 'Um cliente por linha. Clique no título de uma coluna para ordenar.', [['Tentativas', 'Quantos contatos já foram registrados.'], ['1º registro em', 'Data do primeiro contato.'], ['Dias', 'Dias desde o primeiro registro.'], ['Registrar', 'Abre o registro do atendimento.']]],
     ['parte', 'registrar', 'Registrar atendimento', 'O resultado move o cliente no fluxo.', [['Canal', 'Por enquanto, sempre Visita: o campo fica fixo.'], ['Atendido', 'O cliente aceitou: vai para Aguardando cadastro.'], ['Sem interesse', 'Do cliente ou do representante/vendedor, sempre com o motivo.'], ['Reabrir: pedido identificado', 'Para quem estava em sem interesse e fez pedido.']]],
     ['opcoes', '/carteira'],
     ['termos', 'lista'],
-    ['perguntas', [['O cliente não atendeu. Registro?', 'Não. Sem atendimento não há registro: ele continua na lista.'], ['Errei o registro. Como corrijo?', 'Nada é apagado: faça um novo registro.'],
+    ['perguntas', [['Por que não vejo todos os meus clientes?', 'O administrador libera as ondas aos poucos: aparecem os clientes das ondas liberadas e todos os já atendidos.', CARTEIRA], ['O cliente não atendeu. Registro?', 'Não. Sem atendimento não há registro: ele continua na lista.'], ['Errei o registro. Como corrijo?', 'Nada é apagado: faça um novo registro.'],
       ['O cliente sumiu da lista.', 'Depois do registro ele sai da lista e passa a ser acompanhado no Acompanhamento.'], ['Como marco vários sem interesse de uma vez?', 'Marque os clientes na lista e clique em Sem interesse em lote.']]],
   ] },
   { n: 4, nome: 'Acompanhamento', desc: 'Do cadastro ao pedido faturado.', para: (u) => podeTela(u, 'acompanhamento'), blocos: [
@@ -85,8 +110,10 @@ export const CAPITULOS = Object.freeze([
     ['rapido', ['Abra Prospecção › Acompanhamento.', 'Clique numa etapa (os quadros com números): a lista embaixo mostra os clientes daquela etapa.', 'Clique no nome do cliente para abrir a ficha dele.']],
     ['parte', 'acomp-chaves', 'As opções do topo', 'Três chaves mudam o que a tela mostra. A opção em vermelho é a escolhida.', [['Fluxo', 'Em que etapa está cada cliente.'], ['Crédito × Pedido', 'Se o pedido cabe no limite de crédito liberado.'], ['Apenas o primeiro pedido', 'Conta clientes conquistados.'], ['Ver por Empresa', 'Cada CNPJ separado; Ver por Grupo junta as empresas do mesmo grupo.']]],
     ['parte', 'acomp-etapas', 'As etapas', 'Cada quadro é uma etapa, na ordem do processo. O número grande é a quantidade de clientes.', [['Cadastros realizados', 'Todos os clientes já cadastrados no ERP.'], ['Texto em vermelho', 'Pede atenção, como análises vencidas.'], ['Quadro com borda', 'É a etapa escolhida: a lista embaixo mostra os clientes dela.']]],
-    ['parte', 'acomp-hierarquia', 'A hierarquia', 'Os mesmos números, separados por supervisor e representante/vendedor.', [['▶ e ▼', 'Abrem e fecham a linha para ver quem está dentro.'], ['Linha em vermelho', 'É a linha escolhida: etapas e lista seguem ela.']]],
-    ['parte', 'acomp-lista', 'A lista de clientes', 'Os clientes da etapa escolhida, agrupados por equipe.', [['Situação', 'No prazo (verde) ou Vencida (vermelho).'], ['Registrar', 'Abre o registro de um novo atendimento.'], ['Gerar PDF e Baixar CSV', 'Levam a lista como está na tela.']]],
+    S(GESTAO, ['parte', 'acomp-hierarquia', 'A hierarquia', 'Os mesmos números, separados por supervisor e representante/vendedor.', [['▶ e ▼', 'Abrem e fecham a linha para ver quem está dentro.'], ['Linha em vermelho', 'É a linha escolhida: etapas e lista seguem ela.']]]),
+    S(CARTEIRA, ['h', 'A hierarquia'], ['p', 'Os mesmos números da sua carteira, separados pelos níveis que você escolher: cidade, segmento, onda ou mês do cadastro.'], ['lista', [['▶ e ▼', 'abrem e fecham a linha para ver o que está dentro.'], ['Linha em vermelho', 'é a linha escolhida: etapas e lista seguem ela.']]]),
+    S(GESTAO, ['parte', 'acomp-lista', 'A lista de clientes', 'Os clientes da etapa escolhida, agrupados por equipe.', [['Situação', 'No prazo (verde) ou Vencida (vermelho).'], ['Registrar', 'Abre o registro de um novo atendimento.'], ['Gerar PDF e Baixar CSV', 'Levam a lista como está na tela.']]]),
+    S(CARTEIRA, ['h', 'A lista de clientes'], ['p', 'Os seus clientes da etapa escolhida.'], ['lista', [['Situação', 'No prazo (verde) ou Vencida (vermelho).'], ['Registrar', 'abre o registro de um novo atendimento.'], ['Gerar PDF e Baixar CSV', 'levam a lista como está na tela.']]]),
     ['h', 'As etapas'],
     ETAPAS_TABELA,
     ['opcoes', '/carteira?aba=acompanhamento'],
@@ -112,7 +139,8 @@ export const CAPITULOS = Object.freeze([
     ['parte', 'pedidos-chaves', 'As opções do topo', 'Escolha que pedidos entram nos números e se as empresas aparecem separadas ou por grupo.', [['Pedidos de venda', 'Só venda. No celular, Venda.'], ['Pedidos de bonificação', 'Só bonificação. No celular, Bonificação.'], ['Ver por Grupo', 'Junta as empresas com a mesma raiz de CNPJ.']]],
     ['parte', 'pedidos-cards', 'Os números da linha escolhida', 'Oito cards com os números da linha escolhida na hierarquia.', [['Venda válida', 'Pedidos em carteira ou faturados.'], ['Faturado', 'O que já saiu nota fiscal.'], ['Investimento', 'Bonificação: fica à parte da venda.'], ['Próprio e Outro', 'Venda de quem é dono do cliente e de outro representante/vendedor.']]],
     ['parte', 'pedidos-graficos', 'Os dois gráficos', 'Faturamento da venda olha só a venda válida. O que aconteceu com os pedidos de venda olha todos, inclusive os que não viraram venda.', [['Faturado e Em carteira', 'Quanto da venda já faturou e quanto falta.'], ['Digitado, fora da carteira', 'Pedido parado: ainda não conta como venda.'], ['Desistência', 'Pedido cancelado.']]],
-    ['parte', 'pedidos-hierarquia', 'A hierarquia', 'Os números por supervisor, quem vendeu e cliente. Sem espaço para as colunas, cada linha vira um cartão.', [['▶ e ▼', 'Abrem e fecham a linha.'], ['Valores em R$', 'Todos os valores da hierarquia são em reais.']]],
+    S(GESTAO, ['parte', 'pedidos-hierarquia', 'A hierarquia', 'Os números por supervisor, quem vendeu e cliente. Sem espaço para as colunas, cada linha vira um cartão.', [['▶ e ▼', 'Abrem e fecham a linha.'], ['Valores em R$', 'Todos os valores da hierarquia são em reais.']]]),
+    S(CARTEIRA, ['h', 'A hierarquia'], ['p', 'Os seus pedidos, separados pelos níveis que você escolher: quem vendeu, cliente, cidade e outros. Sem espaço para as colunas, cada linha vira um cartão.'], ['lista', [['▶ e ▼', 'abrem e fecham a linha.'], ['Valores em R$', 'todos os valores da hierarquia são em reais.']]]),
     ['opcoes', '/pedidos'],
     ['termos', 'pedidos'],
     ['perguntas', [['Um cliente comprou de outro representante. É erro?', 'Não. O cliente fica com o dono da carteira, e a venda vai para quem vendeu: as colunas Próprio e Outro mostram isso.'],
@@ -121,16 +149,13 @@ export const CAPITULOS = Object.freeze([
   ] },
   { n: 7, nome: 'Indicadores', desc: 'Explorar carteira e os números da base.', para: (u) => podeTela(u, 'explorar'), blocos: [
     ['serve', 'Mostrar como está a base inteira (sem baixados e expurgados), do total até o cliente: quanto já foi trabalhado, quanto está sem interesse e em que etapa estão os clientes.'],
-    ['rapido', ['Abra Prospecção › Explorar carteira (é a tela inicial).', 'Arraste os níveis para montar a hierarquia: supervisor, representante/vendedor, cidade, segmento, onda.', 'Clique numa linha para ver os números daquela parte.']],
+    ['rapido', ['Abra Prospecção › Explorar carteira (é a tela inicial).', P(GESTAO, 'Arraste os níveis para montar a hierarquia: supervisor, representante/vendedor, cidade, segmento, onda.'), P(CARTEIRA, 'Arraste os níveis para montar a hierarquia da sua carteira: cidade, segmento e onda.'), 'Clique numa linha para ver os números daquela parte.']],
     ['parte', 'carteira-niveis', 'Os níveis', 'Montam a hierarquia, na ordem que você quiser. No celular, use o botão Mudar.', [['Níveis', 'Os que estão em uso, na ordem.'], ['Disponíveis', 'Clique ou arraste para incluir.']]],
     ['parte', 'carteira-graficos', 'Os gráficos', 'Da totalidade mostra como a base se divide. Dos contactados mostra em que etapa estão os que seguem no processo.', [['Rejeitados', 'No card, a base inteira: sem interesse, baixados e expurgados juntos.'], ['Prospects', 'Na hierarquia, só os válidos: sem baixados e expurgados.'], ['Cobertura', 'Quanto da base já foi trabalhado.'], ['Potencial', 'Estimativa do que os clientes em andamento podem vender.']]],
     ['parte', 'carteira-arvore', 'A hierarquia', 'Os números de cada linha. Clique numa linha para os gráficos seguirem ela.', [['Prospects', 'Clientes da base na linha.'], ['Ag. cadastro, Ag. financeiro, Ag. pedido', 'Quantos estão em cada etapa.']]],
     ['opcoes', '/explorar'],
     ['termos', 'carteira'],
-    ['h', 'Rejeitados (gerente e administrador)'],
-    ['parte', 'rejeitados', 'A tela Rejeitados', 'Quem saiu da prospecção e por quê, com a hierarquia de níveis. Escolha uma linha e um tipo: tudo abaixo segue a escolha.', [['Cards do topo', 'Baixados, expurgados, sem interesse do cliente e do representante.'], ['Motivos', 'Aparecem só para o sem interesse escolhido.'], ['Exportar', 'A planilha por tipo fica em Importações › Exportar.']]],
-    ['opcoes', '/rejeitados'],
-    ['termos', 'rejeitados'],
+    S((u) => podeTela(u, 'rejeitados'), ['h', 'Rejeitados (gerente e administrador)'], ['parte', 'rejeitados', 'A tela Rejeitados', 'Quem saiu da prospecção e por quê, com a hierarquia de níveis. Escolha uma linha e um tipo: tudo abaixo segue a escolha.', [['Cards do topo', 'Baixados, expurgados, sem interesse do cliente e do representante.'], ['Motivos', 'Aparecem só para o sem interesse escolhido.'], ['Exportar', 'A planilha por tipo fica em Importações › Exportar.']]], ['opcoes', '/rejeitados'], ['termos', 'rejeitados']),
     ['perguntas', [['Por que a soma das etapas não dá o total?', 'O total inclui os não contactados e os rejeitados, que não estão em etapa nenhuma.'],
       ['Como vejo os clientes de uma linha?', 'Escolha a linha e clique em Abrir na Lista principal.']]],
   ] },
@@ -150,24 +175,34 @@ export const CAPITULOS = Object.freeze([
 ]);
 
 /** Um capítulo em blocos simples (p, h, passos, img, tabela), para o manual em PDF. A tela desenha os blocos ricos. */
-export function blocosSimples(capitulo) {
+export function blocosSimples(capitulo, usuario = null) {
   let parte = 0;
   const conta = (t) => (t.conta ? `${t.significado} Conta: ${t.conta}.` : t.significado);
   return capitulo.blocos.flatMap((b) => {
     if (b[0] === 'serve') return [['destaque', `Para que serve: ${b[1]}`]];
     if (b[0] === 'rapido') return [['h', 'Em 30 segundos'], ['passos', b[1]]];
     if (b[0] === 'parte') { parte += 1; return [['h', `${parte}. ${b[2]}`], ['img', `${b[1]}.jpg`, b[3]], ['tabela', ['Item', 'O que é'], b[4]]]; }
-    if (b[0] === 'opcoes') { const o = OPCOES_TOPO[b[1]] ?? []; return o.length ? [['h', 'Opções do topo'], ['tabela', ['Opção', 'O que mostra'], o.flatMap((g) => g.opcoes.map((x) => [x.opcao, x.significado]))]] : []; }
-    if (b[0] === 'termos') { const g = TERMOS.find((x) => x.id === b[1]); return g ? [['h', `Termos: ${g.nome}`], ['tabela', ['Termo', 'Significado'], g.termos.map((t) => [t.termo, conta(t)])]] : []; }
+    if (b[0] === 'opcoes') { const o = opcoesPara(b[1], usuario); return o.length ? [['h', 'Opções do topo'], ['tabela', ['Opção', 'O que mostra'], o.flatMap((g) => g.opcoes.map((x) => [x.opcao, x.significado]))]] : []; }
+    if (b[0] === 'termos') { const g = termosPara(b[1], usuario); return g ? [['h', `Termos: ${g.nome}`], ['tabela', ['Termo', 'Significado'], g.termos.map((t) => [t.termo, conta(t)])]] : []; }
     if (b[0] === 'perguntas') return [['h', 'Perguntas comuns'], ['tabela', ['Pergunta', 'Resposta'], b[1]]];
     return [b];
   });
 }
 
-/** Capítulos que o usuário vê: só o que ele usa. */
-export const capitulosDoUsuario = (usuario) => CAPITULOS.filter((c) => !c.para || c.para(usuario));
+/** Os blocos de um capítulo que valem para o usuário: trechos marcados para outro perfil saem, e as listas ficam só com o que ele vê. */
+export function blocosDoUsuario(blocos, u) {
+  return blocos.flatMap((b) => (b[0] === 'so' ? (vale(b[1], u) ? blocosDoUsuario(b[2], u) : []) : [b])).map((b) => {
+    if (['lista', 'passos', 'rapido', 'perguntas'].includes(b[0])) return [b[0], filtrarItens(b[1], u)];
+    if (b[0] === 'parte') return [b[0], b[1], b[2], b[3], filtrarItens(b[4], u)];
+    if (b[0] === 'tabela') return [b[0], b[1], filtrarItens(b[2], u)];
+    return b;
+  });
+}
 
-const F = (campo, significado) => [campo, significado];
+/** Capítulos que o usuário vê: só o que ele usa, e dentro de cada um só o que vale para o perfil dele. */
+export const capitulosDoUsuario = (usuario) => CAPITULOS.filter((c) => !c.para || c.para(usuario)).map((c) => ({ ...c, blocos: blocosDoUsuario(c.blocos, usuario) }));
+
+const F = (campo, significado, para = null) => (para ? [campo, significado, para] : [campo, significado]);
 
 /** Ajuda de cada tela: objetivo, como funciona, campos, o que analisar, situações comuns e próximo passo. */
 export const AJUDA_TELAS = Object.freeze({
@@ -176,7 +211,7 @@ export const AJUDA_TELAS = Object.freeze({
     campos: [F('Fluxograma', 'As etapas do cliente, na ordem'), F('Desvios', 'O que tira o cliente do caminho principal'), F('Capítulos', 'As partes do processo que o seu perfil usa')],
     analisar: ['Comece pelo capítulo 1, se for o seu primeiro acesso.'], comuns: [F('Falta um capítulo', 'Você vê só o que o seu perfil usa.')], proximo: 'Volte às telas de trabalho pelo menu e use o botão ? quando tiver dúvida.' },
   '/explorar': { titulo: 'Explorar carteira', cap: 7, objetivo: 'Ver como está a base inteira, em todos os status, do total até o cliente.',
-    como: ['Arraste os níveis para montar a hierarquia.', 'Abra as linhas pelas setas.', 'Clique numa linha para ver os gráficos daquela parte.', 'Abra a lista daquela parte para ver os clientes.'],
+    como: [P(GESTAO, 'Arraste os níveis para montar a hierarquia: supervisor, representante/vendedor, cidade e outros.'), P(CARTEIRA, 'Arraste os níveis para montar a hierarquia da sua carteira: cidade, segmento e onda.'), 'Abra as linhas pelas setas.', 'Clique numa linha para ver os gráficos daquela parte.', 'Abra a lista daquela parte para ver os clientes.'],
     campos: [F('Prospects', 'Quantidade de clientes da base naquela linha'), F('Contactados', 'Clientes com ao menos um contato'), F('Cobertura', 'Contactados ÷ base válida'), F('S. int. cliente', 'Sem interesse por decisão do cliente'), F('Fora da base', 'Baixados e expurgados: não contam nos prospects'), F('Valor dos pedidos', 'Soma dos pedidos importados daquela parte')],
     analisar: ['Onde a cobertura está baixa, ainda há clientes a procurar.', 'Em Dos contactados, veja em que etapa os clientes estão parando.'], comuns: [F('Um nível sumiu', 'Clique nele em Disponíveis para incluir de novo.')], proximo: 'Abra a Lista principal para procurar os clientes não contactados.' },
   '/inicio': { titulo: 'Início', cap: 7, objetivo: 'Ver o painel da campanha: funil, ranking e períodos.',
@@ -184,14 +219,14 @@ export const AJUDA_TELAS = Object.freeze({
     campos: [F('Funil', 'Base, contactados, atendidos, cadastrados, crédito liberado e venda'), F('% de cada etapa', 'Sempre sobre a base de prospects'), F('Posição atual', 'Foto da carteira hoje')],
     analisar: ['Compare o funil entre equipes para ver onde a campanha trava.'], comuns: [F('A tela não está no menu', 'Os mesmos números estão no Explorar carteira.')], proximo: 'Use o Explorar carteira para descer até o cliente.' },
   '/carteira': { titulo: 'Lista principal', cap: 3, objetivo: 'Mostrar quem ainda precisa ser procurado: Não contactados e Em prospecção.',
-    como: ['Supervisor e gestão escolhem o supervisor e o representante/vendedor e clicam em Buscar.', 'Clique em Registrar para gravar o atendimento.', 'Clique no título de uma coluna para ordenar.', 'Marque clientes para o Sem interesse em lote.'],
+    como: [P(GESTAO, 'Supervisor e gestão escolhem o supervisor e o representante/vendedor e clicam em Buscar.'), P(CARTEIRA, 'A lista já abre com a sua carteira: use os filtros para achar os clientes.'), 'Clique em Registrar para gravar o atendimento.', 'Clique no título de uma coluna para ordenar.', 'Marque clientes para o Sem interesse em lote.'],
     campos: [F('Prospect', 'Razão social e CNPJ'), F('Onda', 'Grupo de trabalho da campanha'), F('Segmento', 'Tipologia do cliente'), F('Tentativas', 'Contatos já registrados'), F('1º registro em', 'Data do primeiro contato'), F('Dias', 'Dias desde o primeiro registro'), F('Agrupar por', 'Junta a lista por cidade, onda ou outra opção')],
     analisar: ['Clientes com mais dias e sem avanço pedem prioridade.', 'Use Gerar PDF para levar a lista como está na tela.'], comuns: [F('O cliente sumiu', 'Depois do registro, ele sai da lista: veja o Acompanhamento.'), F('O cliente não atendeu', 'Não gera registro: ele continua na lista.')], proximo: 'Depois do atendimento, acompanhe o cliente no Acompanhamento.' },
   '/carteira?aba=acompanhamento': { titulo: 'Acompanhamento', cap: 4, objetivo: 'Ver onde está cada cliente da base, do cadastro identificado ao pedido faturado, e o que está parado.',
-    como: ['Clique numa etapa para listar os clientes dela.', 'Use os níveis para ver por equipe, cidade ou mês do cadastro.', 'Recolha ou reexiba a cascata pelas setas.', 'Troque entre Fluxo e Crédito × Pedido no topo.', 'Clique no cliente para abrir a ficha.'],
+    como: ['Clique numa etapa para listar os clientes dela.', P(GESTAO, 'Use os níveis para ver por equipe, cidade ou mês do cadastro.'), P(CARTEIRA, 'Use os níveis para ver por cidade, segmento, onda ou mês do cadastro.'), 'Recolha ou reexiba a cascata pelas setas.', 'Troque entre Fluxo e Crédito × Pedido no topo.', 'Clique no cliente para abrir a ficha.'],
     campos: [F('Cadastros realizados', 'Soma das quatro etapas seguintes'), F('Dias na etapa', 'Dias desde a entrada do cliente na etapa'), F('Prazo da análise', 'Data limite da análise financeira'), F('Ordem', '1º, 2º, 3º pedido válido do cliente'), F('Quem vendeu', 'Representante/vendedor que fez o pedido'), F('Uso do limite', 'Pedidos em carteira ÷ limite liberado'), F('Forma e prazo', 'O que o financeiro liberou')],
     analisar: ['Análise vencida: cobre o financeiro.', 'Pedido não válido: veja com o cliente o que faltou.', 'Apenas o primeiro pedido × Todos os pedidos: clientes conquistados × valor vendido.', 'Acima do limite: o pedido em carteira passou do crédito liberado.'],
-    comuns: [F('O cliente não aparece', 'Veja a Lista principal ou Aguardando cadastro.'), F('Pedido sem cadastro', 'Falta importar o relatório de cadastro e crédito; os pedidos já estão guardados.')], proximo: 'Com o pedido faturado, analise os valores em Explorar pedidos.' },
+    comuns: [F('O cliente não aparece', 'Veja a Lista principal ou Aguardando cadastro.'), F('Pedido sem cadastro', 'Falta importar o relatório de cadastro e crédito; os pedidos já estão guardados.', GESTAO), F('Pedido sem cadastro', 'Avise o administrador: falta importar o relatório de cadastro e crédito. Os pedidos já estão guardados.', CARTEIRA)], proximo: 'Com o pedido faturado, analise os valores em Explorar pedidos.' },
   '/pedidos': { titulo: 'Explorar pedidos', cap: 6, objetivo: 'Analisar o que foi vendido: valores, quem vendeu e bonificação.',
     como: ['Escolha Pedidos de venda, Pedidos de bonificação ou Ambos.', 'Escolha Ver por Empresa ou Ver por Grupo.', 'Monte os níveis e clique numa linha: cards, gráficos e lista seguem aquela linha.', 'Use a busca para achar um pedido na lista.', 'Sem espaço para as colunas (celular ou tela estreita), cada linha vira um cartão com os números rotulados.'],
     campos: [F('Clientes', 'Clientes diferentes com venda válida'), F('Válidos', 'Pedidos em carteira, faturados em parte ou faturados'), F('Venda válida', 'Em carteira, parcial ou faturada'), F('Faturado', 'O que já faturou da venda válida'), F('Em carteira', 'A faturar'), F('Digitado', 'Pedido digitado, ainda fora da carteira'), F('Desistência', 'Pedido de venda cancelado'), F('Invest.', 'Bonificação: não entra na venda'), F('Invest. ÷ venda', 'Bonificação para cada real vendido, em %'), F('Próprio', 'Venda de quem é dono do cliente'), F('Outro', 'Venda de outro representante/vendedor'), F('Na lista?', 'Se o cliente é da lista de quem vendeu')],
@@ -272,7 +307,7 @@ export const AJUDA_TELAS = Object.freeze({
  * Significado dos termos: tudo o que aparece nas telas, inclusive as abreviações. Só entra termo que existe no sistema:
  * test/ajuda.test.mjs confere cada um no código das telas. `tela` = permissão que mostra o grupo; `caminho` = tela do botão ?.
  */
-const T = (termo, significado, conta = null) => Object.freeze({ termo, significado, conta });
+const T = (termo, significado, conta = null, para = null) => Object.freeze({ termo, significado, conta, para });
 export const TERMOS = Object.freeze([
   { id: 'pedidos', nome: 'Explorar pedidos', tela: 'pedidos', caminho: '/pedidos', termos: [
     T('Clientes', 'Clientes diferentes com venda válida na linha. Um cliente com 10 pedidos conta uma vez.'),
@@ -295,7 +330,7 @@ export const TERMOS = Object.freeze([
     T('Muita desistência', 'Alerta: o cliente tem desistências demais entre os pedidos.'),
     T('Aberto há muito tempo', 'Alerta: pedido válido em carteira há mais dias que o prazo dos Parâmetros.'),
     T('Limite do grupo', 'Alerta: o valor em carteira do grupo passou do limite de crédito.'),
-    T('Rep. sem código', 'Representante sem código: o código do arquivo não está em nenhum usuário. Inclua o código em Usuários.'),
+    T('Rep. sem código', 'Representante sem código: o código do arquivo não está em nenhum usuário. Inclua o código em Usuários.', null, SO_ADMIN),
   ] },
   { id: 'lista', nome: 'Lista principal', tela: 'lista', caminho: '/carteira', termos: [
     T('Prospect', 'Cliente da base: razão social e CNPJ.'),
@@ -369,7 +404,8 @@ export const TERMOS = Object.freeze([
     T('Prazo liberado', 'Prazo de pagamento liberado no crédito, em dias.'),
   ] },
   { id: 'carteira', nome: 'Explorar carteira', tela: 'explorar', caminho: '/explorar', termos: [
-    T('Ramo', 'Uma linha da hierarquia: um supervisor, um representante/vendedor, uma cidade e assim por diante.'),
+    T('Ramo', 'Uma linha da hierarquia: um supervisor, um representante/vendedor, uma cidade e assim por diante.', null, GESTAO),
+    T('Ramo', 'Uma linha da hierarquia: uma cidade, um segmento, uma onda e assim por diante.', null, CARTEIRA),
     T('Prospects', 'Coluna da hierarquia: clientes válidos da linha, sem os baixados e os expurgados.'),
     T('Contactados', 'Prospects que já tiveram contato.'),
     T('Cobertura', 'Quanto da base já foi trabalhado. No celular, Cobert.', 'contactados (com sem interesse) ÷ prospects válidos (sem baixados e expurgados)'),
@@ -414,20 +450,20 @@ export const TERMOS = Object.freeze([
  * Opções do topo de cada tela (chaves e filtros): o que cada uma mostra. Aparecem no botão ? da tela e no PDF.
  * Só entra opção que existe na tela: test/ajuda.test.mjs confere cada uma no código.
  */
-const O = (nome, opcoes) => Object.freeze({ nome, opcoes: opcoes.map(([opcao, significado]) => Object.freeze({ opcao, significado })) });
+const O = (nome, opcoes, para = null) => Object.freeze({ nome, para, opcoes: opcoes.map(([opcao, significado, paraOpcao = null]) => Object.freeze({ opcao, significado, para: paraOpcao })) });
 const VER_POR = O('Ver por Empresa | Ver por Grupo', [
   ['Ver por Empresa', 'Cada CNPJ da base separado. Filial fora da base não aparece.'],
   ['Ver por Grupo', 'Junta as empresas pela raiz do CNPJ (os 8 primeiros dígitos) e inclui as filiais que não estão na base.']]);
 export const OPCOES_TOPO = Object.freeze({
   '/explorar': [O('Todos | Representantes | Vendedores', [
-    ['Todos', 'Toda a carteira que você vê.'], ['Representantes', 'Só as carteiras de representante (sem rota).'], ['Vendedores', 'Só as carteiras de vendedor (com rota e subrota).']])],
+    ['Todos', 'Toda a carteira que você vê.'], ['Representantes', 'Só as carteiras de representante (sem rota).'], ['Vendedores', 'Só as carteiras de vendedor (com rota e subrota).']], GESTAO)],
   '/carteira': [
-    O('Equipe', [['Supervisor', 'Escolhe a equipe (para quem vê todas as equipes).'], ['Representante', 'Escolhe a carteira de um representante/vendedor.']]),
+    O('Equipe', [['Supervisor', 'Escolhe a equipe (para quem vê todas as equipes).', TODAS_EQUIPES], ['Representante', 'Escolhe a carteira de um representante/vendedor.']], GESTAO),
     O('Local', [['UF', 'Filtra pelo estado.'], ['Cidade', 'Filtra pela cidade.'], ['Bairro', 'Filtra pelo bairro (aparece depois de escolher a cidade).']]),
-    O('Carteira', [['Onda', 'Filtra pela onda da campanha.'], ['Segmento', 'Filtra pela tipologia do cliente.']]),
+    O('Carteira', [['Onda', 'Filtra pela onda da campanha.', GESTAO], ['Onda', 'Filtra pela onda da campanha. Só aparecem as ondas que o administrador liberou.', CARTEIRA], ['Segmento', 'Filtra pela tipologia do cliente.']]),
     O('Exibição', [['Agrupar por', 'Junta a lista por cidade, onda ou outra opção; Nenhum mostra a lista corrida.']]),
     O('Situação', [['Todos', 'Todos os clientes da lista.'], ['Não contactado', 'Ainda sem nenhum contato.'], ['Em prospecção (contato da planilha)', 'Teve contato na planilha da base, ainda sem resultado no sistema.']]),
-    O('No celular: Lista | Cidade | Bairro | Onda | Rota', [['Lista', 'Os clientes um a um.'], ['Cidade', 'Agrupados por cidade.'], ['Bairro', 'Agrupados por bairro.'], ['Onda', 'Agrupados por onda.'], ['Rota', 'Agrupados por rota (só vendedor).']])],
+    O('No celular: Lista | Cidade | Bairro | Onda | Rota', [['Lista', 'Os clientes um a um.'], ['Cidade', 'Agrupados por cidade.'], ['Bairro', 'Agrupados por bairro.'], ['Onda', 'Agrupados por onda.'], ['Rota', 'Agrupados por rota (só vendedor).', COM_ROTA]])],
   '/carteira?aba=acompanhamento': [
     O('Fluxo | Crédito × Pedido', [
       ['Fluxo', 'Mostra em que etapa está cada cliente, do cadastro ao pedido faturado.'],
@@ -470,18 +506,29 @@ function chaveDaTela(caminho, consulta) {
   return caminho;
 }
 
-export function opcoesDaTela(caminho, consulta = '') {
-  const proprias = OPCOES_TOPO[chaveDaTela(caminho, consulta)] ?? [];
-  return caminho === '/importacoes' ? [...OPCOES_TOPO['/importacoes'], ...proprias] : proprias;
+/** Opções do topo de uma tela que valem para o usuário (sem usuário: todas). */
+export function opcoesPara(chave, usuario = null) {
+  return (OPCOES_TOPO[chave] ?? []).filter((g) => vale(g.para, usuario)).map((g) => ({ ...g, opcoes: g.opcoes.filter((o) => vale(o.para, usuario)) })).filter((g) => g.opcoes.length);
+}
+/** Grupo de termos que vale para o usuário (sem usuário: todos os termos). */
+export function termosPara(id, usuario = null) {
+  const g = TERMOS.find((x) => x.id === id);
+  return g ? { ...g, termos: g.termos.filter((t) => vale(t.para, usuario)) } : null;
 }
 
-/** Grupos de termos que o usuário vê: os gerais e os das telas que o perfil dele abre. */
-export const termosDoUsuario = (usuario) => TERMOS.filter((g) => !g.tela || podeTela(usuario, g.tela));
+export function opcoesDaTela(caminho, consulta = '', usuario = null) {
+  const proprias = opcoesPara(chaveDaTela(caminho, consulta), usuario);
+  return caminho === '/importacoes' ? [...opcoesPara('/importacoes', usuario), ...proprias] : proprias;
+}
+
+/** Grupos de termos que o usuário vê: os gerais e os das telas que o perfil dele abre, só com os termos do perfil dele. */
+export const termosDoUsuario = (usuario) => TERMOS.filter((g) => !g.tela || podeTela(usuario, g.tela)).map((g) => termosPara(g.id, usuario));
 
 /** Grupo de termos da tela do botão ?, pelo endereço. */
-export function grupoDeTermos(caminho, consulta = '') {
+export function grupoDeTermos(caminho, consulta = '', usuario = null) {
   const c = chaveDaTela(caminho, consulta);
-  return TERMOS.find((g) => g.caminho === c) ?? null;
+  const g = TERMOS.find((x) => x.caminho === c);
+  return g ? termosPara(g.id, usuario) : null;
 }
 
 /** Os termos como um capítulo a mais do manual em PDF: uma tabela por grupo. */
@@ -489,9 +536,9 @@ export function capituloDeTermos(usuario) {
   const grupos = termosDoUsuario(usuario);
   const telas = Object.entries(OPCOES_TOPO).filter(([c]) => !grupos.some((g) => g.caminho === c) && AJUDA_TELAS[c] && podeVerTela(usuario, c));
   return { n: 9, nome: 'Opções do topo e significado dos termos', desc: 'O que cada opção do topo mostra e tudo o que aparece nas telas, inclusive as abreviações.',
-    blocos: [...grupos.flatMap((g) => [['h', g.nome], ...blocosDeOpcoes(OPCOES_TOPO[g.caminho] ?? []),
+    blocos: [...grupos.flatMap((g) => [['h', g.nome], ...blocosDeOpcoes(opcoesPara(g.caminho, usuario)),
       ['tabela', ['Termo', 'Significado'], g.termos.map((t) => [t.termo, t.conta ? `${t.significado} Conta: ${t.conta}.` : t.significado])]]),
-    ...telas.flatMap(([c, o]) => [['h', AJUDA_TELAS[c].titulo], ...blocosDeOpcoes(o)])] };
+    ...telas.flatMap(([c]) => [['h', AJUDA_TELAS[c].titulo], ...blocosDeOpcoes(opcoesPara(c, usuario))])] };
 }
 const blocosDeOpcoes = (opcoes) => (opcoes.length ? [['tabela', ['Opção do topo', 'O que mostra'], opcoes.flatMap((o) => o.opcoes.map((x) => [`${x.opcao} (${o.nome})`, x.significado]))]] : []);
 const TELA_DO_CAMINHO = { '/importacoes': 'admin_importacoes', '/rejeitados': 'rejeitados', '/explorar': 'explorar', '/carteira': 'lista', '/carteira?aba=acompanhamento': 'acompanhamento', '/pedidos': 'pedidos', '/financeiro': 'credito', '/admin/grupos': 'admin_grupos' };
@@ -512,8 +559,10 @@ export function buscarTermos(grupos, texto) {
 }
 
 /** Ajuda da tela pelo endereço. Sem ajuda própria: null. */
-export function ajudaDaTela(caminho, consulta = '') {
-  return AJUDA_TELAS[chaveDaTela(caminho, consulta)] ?? null;
+export function ajudaDaTela(caminho, consulta = '', usuario = null) {
+  const a = AJUDA_TELAS[chaveDaTela(caminho, consulta)];
+  if (!a) return null;
+  return { ...a, como: filtrarItens(a.como, usuario), campos: filtrarItens(a.campos, usuario), analisar: filtrarItens(a.analisar, usuario), comuns: filtrarItens(a.comuns, usuario) };
 }
 
 /** Telas sem botão de ajuda: a entrada e a confirmação de senha. */
