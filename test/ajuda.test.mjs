@@ -5,6 +5,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { AJUDA_TELAS, ajudaDaTela, blocosSimples, buscarTermos, CAPITULOS, capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO, grupoDeTermos, OPCOES_TOPO, opcoesDaTela, TELAS_SEM_AJUDA, TERMOS, termosDoUsuario } from '../shared/ajuda.mjs';
 import { readdirSync } from 'node:fs';
 
+const ADMIN_T = { id: 1, perfil: 'administrador' };
+const REPRESENTANTE = { id: 2, perfil: 'vendedor', tipo_atuacao: 'representante' };
+const VENDEDOR = { id: 3, perfil: 'vendedor', tipo_atuacao: 'vendedor' };
 const app = readFileSync(new URL('../web/js/app.js', import.meta.url), 'utf8');
 const menu = readFileSync(new URL('../web/js/menu.js', import.meta.url), 'utf8');
 const rotas = [...app.matchAll(/\{ caminho: '([^']+)'/g)].map((m) => m[1]);
@@ -25,13 +28,15 @@ test('toda tela tem ajuda: objetivo, como funciona, campos, o que analisar, situ
 });
 
 test('os recortes dos capítulos existem, e todo capítulo tem para que serve, em 30 segundos e perguntas', () => {
-  const recortes = CAPITULOS.flatMap((c) => c.blocos).filter((b) => b[0] === 'parte');
+  // todos os perfis: o administrador vê o que é da gestão, o representante vê os recortes dele
+  const todos = [ADMIN_T, REPRESENTANTE, VENDEDOR].flatMap((u) => capitulosDoUsuario(u)).flatMap((c) => c.blocos);
+  const recortes = todos.filter((b) => b[0] === 'parte');
   assert.ok(recortes.length >= 20);
   for (const b of recortes) { assert.ok(existsSync(new URL(`../web/img/ajuda/${b[1]}.jpg`, import.meta.url)), `falta o recorte ${b[1]}`); assert.ok(b[2] && b[3] && b[4].length, `${b[1]}: título, resumo e itens`); }
   for (const c of CAPITULOS) for (const tipo of ['serve', 'rapido', 'perguntas']) assert.ok(c.blocos.some((b) => b[0] === tipo), `capítulo ${c.n}: ${tipo}`);
-  for (const b of CAPITULOS.flatMap((c) => c.blocos).filter((x) => x[0] === 'termos')) assert.ok(TERMOS.some((g) => g.id === b[1]), `grupo de termos ${b[1]}`);
-  for (const b of CAPITULOS.flatMap((c) => c.blocos).filter((x) => x[0] === 'opcoes')) assert.ok(OPCOES_TOPO[b[1]], `opções de ${b[1]}`);
-  const simples = blocosSimples(CAPITULOS[3]);
+  for (const b of todos.filter((x) => x[0] === 'termos')) assert.ok(TERMOS.some((g) => g.id === b[1]), `grupo de termos ${b[1]}`);
+  for (const b of todos.filter((x) => x[0] === 'opcoes')) assert.ok(OPCOES_TOPO[b[1]], `opções de ${b[1]}`);
+  const simples = blocosSimples(capitulosDoUsuario(ADMIN_T)[3], ADMIN_T);
   assert.ok(simples.every((b) => ['p', 'h', 'lista', 'passos', 'tabela', 'img', 'destaque'].includes(b[0])), 'o PDF recebe só blocos simples');
 });
 
@@ -56,7 +61,7 @@ test('o fluxo aponta para capítulos que existem, e os capítulos têm conteúdo
     assert.ok(CAPITULOS.some((c) => c.n === e.cap), `${e.id}: capítulo ${e.cap}`);
   }
   assert.deepEqual(CAPITULOS.map((c) => c.n), [1, 2, 3, 4, 5, 6, 7, 8]);
-  for (const c of CAPITULOS) assert.ok(c.blocos.length >= 2 && c.blocos.every((b) => ['p', 'h', 'lista', 'passos', 'tabela', 'serve', 'rapido', 'parte', 'opcoes', 'termos', 'perguntas'].includes(b[0])), `capítulo ${c.n}`);
+  for (const c of CAPITULOS) assert.ok(c.blocos.length >= 2 && c.blocos.every((b) => ['p', 'h', 'lista', 'passos', 'tabela', 'serve', 'rapido', 'parte', 'opcoes', 'termos', 'perguntas', 'so'].includes(b[0])), `capítulo ${c.n}`);
 });
 
 // código das telas e das regras, sem a própria ajuda: é onde o termo precisa aparecer
@@ -70,7 +75,7 @@ test('significado dos termos: só o que existe nas telas, sem repetir', () => {
     for (const t of g.termos) {
       assert.ok(codigo.includes(t.termo), `"${t.termo}" (${g.nome}) não aparece em nenhuma tela`);
       assert.ok(t.significado.length > 10, `${t.termo}: significado`);
-      const chave = `${g.id}|${t.termo}`; assert.ok(!vistos.has(chave), `repetido: ${chave}`); vistos.add(chave);
+      const chave = `${g.id}|${t.termo}|${t.para ? t.para.name || 'perfil' : ''}`;   // o mesmo termo pode ter uma explicação por perfil assert.ok(!vistos.has(chave), `repetido: ${chave}`); vistos.add(chave);
     }
   }
 });
@@ -122,4 +127,21 @@ test('tela Importações: cada aba usa a ajuda da importação que traz; as abas
   assert.equal(grupoDeTermos('/importacoes', 'aba=pedidos').id, 'importar-pedidos');
   assert.equal(opcoesDaTela('/importacoes', 'aba=grupos')[0].nome, 'Abas da tela');
   assert.ok(opcoesDaTela('/importacoes', 'aba=grupos').length >= 2, 'e as opções da aba Grupos');
+});
+
+test('ajuda do representante/vendedor: só o que ele vê e usa, sem gestão nem administração', () => {
+  const texto = (u) => JSON.stringify([capitulosDoUsuario(u),
+    ...['/explorar', '/carteira', '/pedidos', '/ficha', '/registrar', '/lote', '/ajuda'].map((c) => [ajudaDaTela(c, '', u), opcoesDaTela(c, '', u), grupoDeTermos(c, '', u)]),
+    ajudaDaTela('/carteira', 'aba=acompanhamento', u), opcoesDaTela('/carteira', 'aba=acompanhamento', u), grupoDeTermos('/carteira', 'aba=acompanhamento', u), capituloDeTermos(u)]);
+  const rep = texto(REPRESENTANTE);
+  for (const fora of ['Todos | Representantes | Vendedores', 'Supervisor e gestão escolhem', '"Equipe"', 'Rejeitados (gerente', 'A tela Rejeitados', 'Rep. sem código', 'Importações, usuários e parâmetros',
+    'separados por supervisor e representante', 'Agrupados por rota', 'arquivos do ERP, exportar'])
+    assert.ok(!rep.includes(fora), `o representante não deveria ver: ${fora}`);
+  for (const dentro of ['A lista já abre com a sua carteira', 'menu-carteira', 'lista-filtros-carteira', 'Os mesmos números da sua carteira', 'Por que não vejo todos os meus clientes?'])
+    assert.ok(rep.includes(dentro), `o representante deveria ver: ${dentro}`);
+  assert.ok(texto(VENDEDOR).includes('Agrupados por rota'), 'o vendedor tem rota');
+  const adm = texto(ADMIN_T);
+  for (const dentro of ['Todos | Representantes | Vendedores', 'Supervisor e gestão escolhem', 'A tela Rejeitados', 'Rep. sem código', 'separados por supervisor e representante'])
+    assert.ok(adm.includes(dentro), `a gestão deveria ver: ${dentro}`);
+  assert.ok(!adm.includes('menu-carteira'), 'a gestão vê o recorte do menu dela');
 });

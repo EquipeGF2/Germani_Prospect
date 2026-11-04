@@ -1,5 +1,5 @@
 // Ajuda: fluxograma da operação, manual por capítulos e PDF, conforme o perfil. O conteúdo fica em shared/ajuda.mjs. docs/03 §15
-import { capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO, OPCOES_TOPO, TERMOS } from '../../shared/ajuda.mjs';
+import { capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO, opcoesPara, termosPara } from '../../shared/ajuda.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, formatar, comEspera } from '../ui.js';
 import { gerarManualPdf } from '../relatorio.js';
@@ -13,7 +13,7 @@ const tabela = (colunas, linhas) => h('div', { class: 'tabela-wrap' }, h('table'
   h('tbody', {}, linhas.map((l) => h('tr', {}, l.map((c, i) => h('td', { dados: { r: colunas[i] } }, i ? c : h('b', {}, c))))))));
 
 /** Desenha os blocos de um capítulo: para que serve, em 30 segundos, a tela parte por parte (recortes pequenos), opções, termos e perguntas. */
-function blocos(lista) {
+function blocos(lista, usuario) {
   let parte = 0;
   return lista.map((b) => {
     if (b[0] === 'p') return h('p', {}, b[1]);
@@ -30,12 +30,12 @@ function blocos(lista) {
         h('div', { class: 'ajf-parte-texto' }, h('h3', {}, h('span', { class: 'ajf-num' }, String(parte)), b[2]), h('p', {}, b[3]), pares(b[4])));
     }
     if (b[0] === 'opcoes') {
-      const grupos = OPCOES_TOPO[b[1]] ?? [];
+      const grupos = opcoesPara(b[1], usuario);
       return grupos.length ? h('section', { class: 'ajf-bloco', dados: { bloco: 'opcoes' } }, h('h2', {}, 'Opções do topo'),
         grupos.map((g) => [h('h3', { class: 'ajf-sub' }, g.nome), pares(g.opcoes.map((x) => [x.opcao, x.significado]))])) : null;
     }
     if (b[0] === 'termos') {
-      const g = TERMOS.find((x) => x.id === b[1]);
+      const g = termosPara(b[1], usuario);
       return g ? h('section', { class: 'ajf-bloco', dados: { bloco: 'termos' } }, h('h2', {}, `Termos: ${g.nome}`), h('p', { class: 'ajuda' }, 'Toda palavra e abreviação que aparece na tela, em linguagem simples.'),
         pares(g.termos.map((t) => [t.termo, t.significado, t.conta]))) : null;
     }
@@ -52,7 +52,7 @@ export async function render(conteudo, { usuario, parametros }) {
   const capitulo = capitulos.find((c) => c.n === pedido);
   const hoje = hojeSaoPaulo();
   const perfil = NOMES_PERFIL[usuario.perfil] ?? usuario.perfil;
-  const baixar = (lista, nome) => (ev) => comEspera(ev.currentTarget, () => gerarManualPdf({ capitulos: lista, perfil, emissao: formatar.data(hoje), nomeArquivo: nome }));
+  const baixar = (lista, nome) => (ev) => comEspera(ev.currentTarget, () => gerarManualPdf({ capitulos: lista, perfil, usuario, emissao: formatar.data(hoje), nomeArquivo: nome }));
   const termos = capituloDeTermos(usuario);
 
   if (capitulo) {
@@ -65,7 +65,7 @@ export async function render(conteudo, { usuario, parametros }) {
       h('article', { class: 'cartao ajf-texto', id: 'capitulo-ajuda' },
         h('div', { class: 'ajf-topo' }, h('h1', {}, nomeCap(capitulo)),
           h('button', { type: 'button', class: 'secundario pequeno', id: 'pdf-capitulo', onclick: baixar([capitulo], `manual-capitulo-${capitulo.n}-${hoje}.pdf`) }, 'Baixar este capítulo em PDF')),
-        blocos(capitulo.blocos),
+        blocos(capitulo.blocos, usuario),
         h('div', { class: 'ajf-navega' }, anterior ? h('a', { class: 'botao secundario', href: `#/ajuda?cap=${anterior.n}` }, `‹ ${nomeCap(anterior)}`) : h('span'),
           seguinte ? h('a', { class: 'botao secundario', href: `#/ajuda?cap=${seguinte.n}` }, `${nomeCap(seguinte)} ›`) : h('span')))));
   }

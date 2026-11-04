@@ -134,8 +134,8 @@ async function imagemDaAjuda(arquivo) {
  * Manual em PDF, gerado na hora a partir do conteúdo da Ajuda (shared/ajuda.mjs): A4 retrato, logotipo no cabeçalho, capa, sumário
  * e "Página X de N". Com um capítulo só, vai sem capa nem sumário.
  */
-export async function gerarManualPdf({ capitulos: originais, perfil, emissao, nomeArquivo }) {
-  const capitulos = originais.map((c) => ({ ...c, blocos: blocosSimples(c) }));   // blocos ricos da tela viram p, h, img e tabela
+export async function gerarManualPdf({ capitulos: originais, perfil, usuario = null, emissao, nomeArquivo }) {
+  const capitulos = originais.map((c) => ({ ...c, blocos: blocosSimples(c, usuario) }));   // blocos ricos da tela viram p, h, img e tabela
   const [JsPDF, logo] = await Promise.all([bibliotecaPdf(), logotipo().catch(() => null)]);
   const doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const L = 210; const A = 297; const M = 18; const util = L - 2 * M; const FIM = A - 20; const TOPO = 30;
