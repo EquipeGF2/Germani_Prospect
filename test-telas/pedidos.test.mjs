@@ -129,7 +129,10 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   const vendaDe = () => pagina.locator('#analise-numeros .ped-kpi.destaque b').innerText();
   assert.match(await vendaDe(), /1\.580,00/);
   assert.ok(await pagina.locator('#analise-pedidos .exp-nivel[draggable="true"]').count() >= 3, 'níveis arrastáveis');
-  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 6, 'todo pedido de cliente da base, qualquer que seja a situação');
+  // sem lista na tela: os pedidos da linha saem no botão Excel, com a quantidade
+  const qtdExcel = async () => Number((await pagina.locator('#excel-pedidos').innerText()).match(/· (\d+)/)[1]);
+  assert.equal(await pagina.locator('#pedidos-do-ramo').count(), 0, 'sem a lista de pedidos embaixo');
+  assert.equal(await qtdExcel(), 6, 'todo pedido de cliente da base, qualquer que seja a situação');
   // como no Explorar carteira: sem listas de filtro; quem filtra é a hierarquia, e os números seguem o ramo
   assert.equal(await pagina.locator('#analise-pedidos select, #filtros-pedidos select').count(), 0, 'sem listas de filtro');
   const titulos = await pagina.locator('#analise-pedidos .exp-linha.cab span').allInnerTexts();
@@ -143,19 +146,20 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   const caixaFiltro = await pagina.locator('#filtros-pedidos').boundingBox();
   assert.ok(caixaFiltro.y < caixaChave.y + caixaChave.height && caixaChave.y < caixaFiltro.y + caixaFiltro.height, 'na mesma linha da chave');
   await pagina.click('#tipo-investimento');
-  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 1, 'só bonificação');
+  assert.equal(await qtdExcel(), 1, 'só bonificação');
   assert.match(await vendaDe(), /R\$\s?0,00/, 'bonificação não é venda');
   await pagina.click('#tipo-venda');
-  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 5, 'só pedidos de venda');
+  assert.equal(await qtdExcel(), 5, 'só pedidos de venda');
   await pagina.click('#tipo-ambos');
   assert.equal(await pagina.locator('#varios-sim').count(), 0, 'sem o filtro de mais de um representante');
-  // a lista diz de qual linha são os pedidos; a busca procura só nela, sem perder o foco ao digitar
-  assert.match(await pagina.locator('#titulo-pedidos').innerText(), /^Todos os pedidos \(6\)$/);
-  await pagina.locator('#busca-pedidos').pressSequentially('70005');
-  assert.equal(await pagina.inputValue('#busca-pedidos'), '70005');
-  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 1);
-  assert.match(await vendaDe(), /1\.580,00/, 'a busca não muda os números de cima');
-  await pagina.fill('#busca-pedidos', '');
+  // Excel dos pedidos da linha escolhida
+  const [excelPed] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#excel-pedidos')]);
+  assert.match(excelPed.suggestedFilename(), /^pedidos-.*\.xlsx$/);
+  const caminhoPed = path.join(tmp, 'pedidos.xlsx');
+  await excelPed.saveAs(caminhoPed);
+  const { linhas: doExcelPed } = await lerPlanilha(caminhoPed);
+  assert.equal(doExcelPed.length - 1, 6);
+  for (const col of ['Pedido', 'Razão social', 'Quem vendeu', 'Dono da carteira', 'Na lista?', 'Situação', 'Pedido (R$)']) assert.ok(doExcelPed[0].includes(col), `coluna ${col}`);
   // níveis: incluir e tirar; ramo escolhido
   await pagina.locator('#analise-pedidos .exp-nivel[data-livre="situacao"]').click();
   assert.equal(await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="situacao"]').count(), 1, 'incluir nível com um clique');
@@ -165,13 +169,15 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.locator('#analise-pedidos .exp-linha.raiz').click();
   // chave: por grupo, as empresas da mesma raiz ficam numa linha que abre (A e a loja 2)
   await pagina.click('#ver-grupo');
-  await pagina.waitForSelector('#pedidos-do-ramo .ped-grupo .abre-grupo');
-  assert.equal(await pagina.locator('#pedidos-do-ramo .ped-grupo').count(), 1, 'um grupo: o cliente A e a loja 2');
-  await pagina.click('.ped-grupo .abre-grupo');
-  await pagina.waitForSelector('.ped-grupo .abre-grupo[aria-expanded="true"]');
-  assert.equal(await pagina.locator('#pedidos-do-ramo tbody tr').count(), 8, 'o grupo aberto, com os 5 pedidos (inclusive o da filial fora da base), e os 2 sem grupo');
+  await pagina.waitForFunction(() => /· 7 pedidos/.test(document.getElementById('excel-pedidos')?.textContent ?? ''));
+  assert.equal(await qtdExcel(), 7, 'os 6 da base e o da filial fora da base');
   assert.match(await vendaDe(), /1\.660,00/, 'Ver por Grupo soma a filial fora da base');
-  assert.ok(await pagina.locator('#pedidos-do-ramo .selo', { hasText: 'Filial do grupo' }).count() === 1);
+  const [excelGrupo] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#excel-pedidos')]);
+  const caminhoGrupo = path.join(tmp, 'pedidos-grupo.xlsx');
+  await excelGrupo.saveAs(caminhoGrupo);
+  const { linhas: doGrupo } = await lerPlanilha(caminhoGrupo);
+  const iLista = doGrupo[0].indexOf('Na lista?');
+  assert.equal(doGrupo.slice(1).filter((l) => l[iLista] === 'Filial do grupo').length, 1, 'a filial do grupo vem marcada');
   await foto('p6c-explorar-grupo');
   await pagina.click('#ver-empresa');
   // alertas numa faixa, que abre ao clicar
@@ -534,11 +540,10 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await ir('#/explorar');
   assert.equal(await pagina.locator('#ver-grupo').count(), 0, 'Explorar carteira não muda');
 
-  await ir('#/pedidos');
-  await pagina.waitForSelector('#pedidos-do-ramo');
-
-  // ficha do cliente com pedidos
-  await pagina.locator('#pedidos-do-ramo tbody tr', { hasText: '70001' }).locator('a').click();
+  // ficha do cliente com pedidos (o cliente A, do pedido 70001)
+  const versaoDb = await pagina.evaluate(() => new URL(document.querySelector('script[type=module]').src).search);
+  const idClienteA = await pagina.evaluate(async ([cnpj, v]) => { const { bancoApp } = await import(`./js/db.js${v}`); return Number((await (await bancoApp()).execute({ sql: 'SELECT id FROM prospects WHERE cnpj = ?', args: [cnpj] })).rows[0].id); }, [a, versaoDb]);
+  await ir(`#/ficha?id=${idClienteA}`);
   await pagina.waitForSelector('#pedidos-cliente');
   await pagina.waitForSelector('#pedidos-grupo >> text=Filiais fora da base');
   await foto('p10-ficha');

@@ -14,6 +14,9 @@ export const CARTEIRA = (u) => u?.perfil === 'vendedor';
 export const TODAS_EQUIPES = (u) => veTodasEquipes(u);
 /** Quem trabalha com rota: a gestão e o vendedor (o representante não tem rota). */
 export const COM_ROTA = (u) => u?.perfil !== 'vendedor' || u?.tipo_atuacao === 'vendedor';
+/** Quem vê no filtro só as ondas liberadas (0024): representante/vendedor e supervisor. */
+export const ONDAS_LIBERADAS = (u) => ['vendedor', 'supervisor'].includes(u?.perfil);
+const ONDAS_TODAS = (u) => !ONDAS_LIBERADAS(u);
 /** Só administrador. */
 export const SO_ADMIN = (u) => u?.perfil === 'administrador';
 /** Texto de lista só para quem `para` aceita. */
@@ -139,7 +142,7 @@ export const CAPITULOS = Object.freeze([
     ['parte', 'pedidos-chaves', 'As opções do topo', 'Escolha que pedidos entram nos números e se as empresas aparecem separadas ou por grupo.', [['Pedidos de venda', 'Só venda. No celular, Venda.'], ['Pedidos de bonificação', 'Só bonificação. No celular, Bonificação.'], ['Ver por Grupo', 'Junta as empresas com a mesma raiz de CNPJ.']]],
     ['parte', 'pedidos-cards', 'Os números da linha escolhida', 'Oito cards com os números da linha escolhida na hierarquia.', [['Venda válida', 'Pedidos em carteira ou faturados.'], ['Faturado', 'O que já saiu nota fiscal.'], ['Investimento', 'Bonificação: fica à parte da venda.'], ['Próprio e Outro', 'Venda de quem é dono do cliente e de outro representante/vendedor.']]],
     ['parte', 'pedidos-graficos', 'Os dois gráficos', 'Faturamento da venda olha só a venda válida. O que aconteceu com os pedidos de venda olha todos, inclusive os que não viraram venda.', [['Faturado e Em carteira', 'Quanto da venda já faturou e quanto falta.'], ['Digitado, fora da carteira', 'Pedido parado: ainda não conta como venda.'], ['Desistência', 'Pedido cancelado.']]],
-    S(GESTAO, ['parte', 'pedidos-hierarquia', 'A hierarquia', 'Os números por supervisor, quem vendeu e cliente. Sem espaço para as colunas, cada linha vira um cartão.', [['▶ e ▼', 'Abrem e fecham a linha.'], ['Valores em R$', 'Todos os valores da hierarquia são em reais.']]]),
+    S(GESTAO, ['parte', 'pedidos-hierarquia', 'A hierarquia', 'Os números por supervisor, quem vendeu e cliente. Sem espaço para as colunas, cada linha vira um cartão.', [['▶ e ▼', 'Abrem e fecham a linha.'], ['Valores em R$', 'Todos os valores da hierarquia são em reais.'], ['Excel', 'Baixa os pedidos da linha escolhida.']]]),
     S(CARTEIRA, ['h', 'A hierarquia'], ['p', 'Os seus pedidos, separados pelos níveis que você escolher: quem vendeu, cliente, cidade e outros. Sem espaço para as colunas, cada linha vira um cartão.'], ['lista', [['▶ e ▼', 'abrem e fecham a linha.'], ['Valores em R$', 'todos os valores da hierarquia são em reais.']]]),
     ['opcoes', '/pedidos'],
     ['termos', 'pedidos'],
@@ -228,7 +231,7 @@ export const AJUDA_TELAS = Object.freeze({
     analisar: ['Análise vencida: cobre o financeiro.', 'Pedido não válido: veja com o cliente o que faltou.', 'Apenas o primeiro pedido × Todos os pedidos: clientes conquistados × valor vendido.', 'Acima do limite: o pedido em carteira passou do crédito liberado.'],
     comuns: [F('O cliente não aparece', 'Veja a Lista principal ou Aguardando cadastro.'), F('Pedido sem cadastro', 'Falta importar o relatório de cadastro e crédito; os pedidos já estão guardados.', GESTAO), F('Pedido sem cadastro', 'Avise o administrador: falta importar o relatório de cadastro e crédito. Os pedidos já estão guardados.', CARTEIRA)], proximo: 'Com o pedido faturado, analise os valores em Explorar pedidos.' },
   '/pedidos': { titulo: 'Explorar pedidos', cap: 6, objetivo: 'Analisar o que foi vendido: valores, quem vendeu e bonificação.',
-    como: ['Escolha Pedidos de venda, Pedidos de bonificação ou Ambos.', 'Escolha Ver por Empresa ou Ver por Grupo.', 'Monte os níveis e clique numa linha: cards, gráficos e lista seguem aquela linha.', 'Use a busca para achar um pedido na lista.', 'Sem espaço para as colunas (celular ou tela estreita), cada linha vira um cartão com os números rotulados.'],
+    como: ['Escolha Pedidos de venda, Pedidos de bonificação ou Ambos.', 'Escolha Ver por Empresa ou Ver por Grupo.', 'Monte os níveis e clique numa linha: cards, gráficos e lista seguem aquela linha.', 'Clique em Excel para baixar os pedidos da linha escolhida (do tipo marcado no topo).', 'Sem espaço para as colunas (celular ou tela estreita), cada linha vira um cartão com os números rotulados.'],
     campos: [F('Clientes', 'Clientes diferentes com venda válida'), F('Válidos', 'Pedidos em carteira, faturados em parte ou faturados'), F('Venda válida', 'Em carteira, parcial ou faturada'), F('Faturado', 'O que já faturou da venda válida'), F('Em carteira', 'A faturar'), F('Digitado', 'Pedido digitado, ainda fora da carteira'), F('Desistência', 'Pedido de venda cancelado'), F('Invest.', 'Bonificação: não entra na venda'), F('Invest. ÷ venda', 'Bonificação para cada real vendido, em %'), F('Próprio', 'Venda de quem é dono do cliente'), F('Outro', 'Venda de outro representante/vendedor'), F('Na lista?', 'Se o cliente é da lista de quem vendeu')],
     analisar: ['Abra a faixa de alertas: bonificação sem venda, limite do grupo e pedido parado.', 'A coluna Outro mostra quem vende fora da própria lista.'], comuns: [F('Por empresa não aparece nada', 'Pode ser pedido de filial do grupo: use Ver por Grupo.'), F('Pedido do arquivo não aparece', 'CNPJ fora da base é ignorado na importação.')], proximo: 'Veja a situação do primeiro pedido de cada cliente no Acompanhamento.' },
   '/importacoes?aba=exportar': { titulo: 'Exportar', cap: 8, objetivo: 'Baixar em Excel os rejeitados (por tipo), a base de prospects e os pedidos.',
@@ -460,7 +463,7 @@ export const OPCOES_TOPO = Object.freeze({
   '/carteira': [
     O('Equipe', [['Supervisor', 'Escolhe a equipe (para quem vê todas as equipes).', TODAS_EQUIPES], ['Representante', 'Escolhe a carteira de um representante/vendedor.']], GESTAO),
     O('Local', [['UF', 'Filtra pelo estado.'], ['Cidade', 'Filtra pela cidade.'], ['Bairro', 'Filtra pelo bairro (aparece depois de escolher a cidade).']]),
-    O('Carteira', [['Onda', 'Filtra pela onda da campanha.', GESTAO], ['Onda', 'Filtra pela onda da campanha. Só aparecem as ondas que o administrador liberou.', CARTEIRA], ['Segmento', 'Filtra pela tipologia do cliente.']]),
+    O('Carteira', [['Onda', 'Filtra pela onda da campanha.', ONDAS_TODAS], ['Onda', 'Filtra pela onda da campanha. Só aparecem as ondas que o administrador liberou.', ONDAS_LIBERADAS], ['Segmento', 'Filtra pela tipologia do cliente.']]),
     O('Exibição', [['Agrupar por', 'Junta a lista por cidade, onda ou outra opção; Nenhum mostra a lista corrida.']]),
     O('Situação', [['Todos', 'Todos os clientes da lista.'], ['Não contactado', 'Ainda sem nenhum contato.'], ['Em prospecção (contato da planilha)', 'Teve contato na planilha da base, ainda sem resultado no sistema.']]),
     O('No celular: Lista | Cidade | Bairro | Onda | Rota', [['Lista', 'Os clientes um a um.'], ['Cidade', 'Agrupados por cidade.'], ['Bairro', 'Agrupados por bairro.'], ['Onda', 'Agrupados por onda.'], ['Rota', 'Agrupados por rota (só vendedor).', COM_ROTA]])],

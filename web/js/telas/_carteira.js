@@ -2,6 +2,7 @@
 import { h, selo } from '../ui.js';
 import { ORDENACOES } from '../../shared/carteira.mjs';
 import { consultaResumo, opcoesEmCascata } from '../../shared/explorar.mjs';
+import { consultaOndasLiberadas, ondasDoFiltro } from '../../shared/ondas.mjs';
 import { lerComCache } from '../db.js';
 
 const FILTROS = ['cidadeBusca', 'uf', 'bairroBusca', 'onda', 'segmento', 'rota', 'subrota', 'status', 'supervisorId', 'vendedorId', 'somenteRetornos', 'dataDe', 'dataAte'];
@@ -66,8 +67,10 @@ export function endereco(e, muda = {}) {
 // Opções dos filtros em cascata: vêm do resumo pronto (resumo_carteira, o mesmo do Explorar e em cache), nunca da
 // carteira inteira — cada filtro mostra só o que existe com os outros escolhidos (shared/explorar.mjs).
 export async function opcoesDosFiltros(db, usuario, filtros) {
-  const linhas = (await lerComCache(db, consultaResumo({ usuario }), 300)).rows;
-  return opcoesEmCascata(linhas, filtros);
+  const [linhas, liberadas] = await Promise.all([lerComCache(db, consultaResumo({ usuario }), 300).then((r) => r.rows),
+    lerComCache(db, consultaOndasLiberadas(), 300).then((r) => r.rows[0]?.valor ?? 'todas')]);
+  const opcoes = opcoesEmCascata(linhas, filtros);
+  return { ...opcoes, ondas: ondasDoFiltro(opcoes.ondas, usuario, liberadas) };   // ondas não liberadas fora do filtro do representante e do supervisor
 }
 
 export const papelDoAgente = (v) => (v.perfil === 'supervisor' ? 'Supervisor' : v.tipo_atuacao === 'vendedor' ? 'Vendedor' : 'Representante');

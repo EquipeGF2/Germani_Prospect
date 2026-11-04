@@ -1,15 +1,13 @@
-// Corpo de Explorar pedidos: hierarquia de níveis, cards, gráficos, árvore e os pedidos da linha escolhida, como no Explorar carteira.
-// Tudo sobre os pedidos já lidos: arrastar níveis, abrir linhas, filtrar e buscar só redesenham no navegador.
-import { agruparPorRaiz, buscarPedidos, filtrarPedidos, montarArvorePedidos, NIVEIS_PEDIDOS, niveisPedidosPossiveis, resumirPedidos, rotuloGrupo, rotuloRepresentante } from '../../shared/pedidos.mjs';
+// Corpo de Explorar pedidos: hierarquia de níveis, cards, gráficos e árvore, como no Explorar carteira. Os pedidos da linha escolhida
+// saem no botão Excel, sem lista na tela. Tudo sobre os pedidos já lidos: arrastar níveis, abrir linhas e filtrar só redesenham no navegador.
+import { filtrarPedidos, montarArvorePedidos, NIVEIS_PEDIDOS, niveisPedidosPossiveis } from '../../shared/pedidos.mjs';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
-import { h, montar, formatar, baixarCsv, semRolagem } from '../ui.js';
+import { h, montar, formatar, comEspera, aviso, semRolagem } from '../ui.js';
 import { significadoDe } from '../../shared/ajuda.mjs';
-import { hojeSaoPaulo } from '../../shared/datas.mjs';
-import { blocoNiveis, textoChave, cartoes, moeda, valor, razaoSocial, seloSituacao, seloDoPedido, tabelaPedidos } from './_pedidos.js';
+import { blocoNiveis, textoChave, cartoes, moeda, valor } from './_pedidos.js';
+import { baixarPedidos } from './_pedidos-excel.js';
 
 const CHAVE_NIVEIS = 'germani.pedidosNiveis';
-const LIMITE_RAMO = 100;
-const NOME_TIPO = { venda: 'Venda', investimento: 'Bonificação', ignorar: 'Não considerado' };
 const n0 = (x) => formatar.numero(Math.round(Number(x) || 0));
 const pct = (v) => (v == null ? '—' : `${v.toFixed(1).replace('.', ',')}%`);
 
@@ -30,7 +28,7 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
   const pedidos = porGrupo ? todosPedidos : todosPedidos.filter((p) => p.prospect_id !== null);
   const possiveis = niveisPedidosPossiveis(usuario);
   const raiz = veTodasEquipes(usuario) ? 'Todos os pedidos' : usuario.perfil === 'supervisor' ? 'Pedidos da minha equipe' : 'Meus pedidos';
-  if (!memoria.has(destino)) memoria.set(destino, { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cliente']), abertos: new Set(['']), sel: '', editarNiveis: false, busca: '', tipo: 'ambos', gruposAbertos: new Set() });
+  if (!memoria.has(destino)) memoria.set(destino, { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cliente']), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'ambos' });
   const estado = memoria.get(destino);
   const area = h('div', { id: 'analise-pedidos', class: 'ped-exp' });
   montar(destino, area);
@@ -52,9 +50,12 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
         comQtd ? h('span', { class: 'qtd' }, n0(qtd)) : null, h('b', {}, valor(v)), h('span', { class: 'pct' }, pct(total ? (v / total) * 100 : null)))));
   }
 
-  // a busca é o mesmo campo entre os redesenhos: quem digita não perde o foco. Ela procura só na lista de pedidos
-  const campoBusca = h('input', { type: 'search', id: 'busca-pedidos', value: estado.busca, 'aria-label': 'Buscar pedido', placeholder: 'Pedido, cliente, CNPJ ou representante',
-    oninput: () => { estado.busca = campoBusca.value; desenhar(); campoBusca.focus(); } });
+  // Excel dos pedidos da linha escolhida (e do tipo marcado no topo): os pedidos já estão lidos, nada volta ao banco
+  let pedidosDaLinha = [];
+  const botaoExcel = h('button', { type: 'button', id: 'excel-pedidos', onclick: () => comEspera(botaoExcel, async () => {
+    await baixarPedidos(pedidosDaLinha);
+    aviso(`Excel gerado: ${n0(pedidosDaLinha.length)} pedidos.`);
+  }) });
 
   // filtro na mesma linha da chave Empresa ou Grupo
   function desenharFiltros() {
@@ -62,33 +63,6 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
     montar(slotFiltros,
       h('div', { class: 'ped-chave ped-seg', role: 'group', 'aria-label': 'Tipo de pedido' },
         [['venda', 'Pedidos de venda', 'Venda'], ['investimento', 'Pedidos de bonificação', 'Bonificação'], ['ambos', 'Ambos']].map(([v, t, curto]) => opcao(`tipo-${v}`, estado.tipo === v, textoChave(t, curto), () => { estado.tipo = v; }))));
-  }
-
-  function listaDoRamo(doRamo, escolhido) {
-    const colunas = [{ titulo: 'Pedido', campo: 'numero', classe: 'num' }, { titulo: 'Data', valor: (x) => formatar.data(x.data_situacao), classe: 'num' },
-      { titulo: 'Razão social', valor: (x) => razaoSocial({ codigo: x.codigo_cliente, razao: x.razao_social, doc: x.cpf_cnpj, prospectId: x.prospect_id }), classe: 'rz' }, { titulo: 'Representante', valor: rotuloRepresentante },
-      { titulo: 'Tipo', valor: (x) => NOME_TIPO[x.tipo] ?? x.tipo, classe: 'cen' }, { titulo: 'Situação', valor: seloSituacao, classe: 'cen' }, { titulo: 'Pedido (R$)', valor: (x) => valor(x.valor_pedido), classe: 'num' },
-      { titulo: 'Faturado (R$)', valor: (x) => valor(x.valor_faturado), classe: 'num' }, { titulo: 'Na lista?', valor: seloDoPedido, classe: 'cen' }];
-    const csv = [{ titulo: 'Pedido', campo: 'numero' }, { titulo: 'Data', texto: (x) => formatar.data(x.data_situacao) }, { titulo: 'Código', campo: 'codigo_cliente' }, { titulo: 'Razão social', campo: 'razao_social' }, { titulo: 'CPF/CNPJ', campo: 'cpf_cnpj' },
-      { titulo: 'Representante', texto: rotuloRepresentante }, { titulo: 'Tipo', texto: (x) => NOME_TIPO[x.tipo] ?? x.tipo }, { titulo: 'Situação', campo: 'situacao_descricao' }, { titulo: 'Pedido', texto: (x) => valor(x.valor_pedido) }, { titulo: 'Faturado', texto: (x) => valor(x.valor_faturado) }];
-    // Ver por Grupo: uma linha por grupo, que abre os pedidos das empresas; empresa sem grupo fica solta, depois dos grupos
-    let exibidos = doRamo;
-    if (porGrupo) {
-      const { grupos, soltas } = agruparPorRaiz(doRamo, (x) => x.cpf_cnpj);
-      exibidos = [];
-      for (const g of grupos.sort((a, b) => String(a.linhas[0].razao_social).localeCompare(String(b.linhas[0].razao_social), 'pt-BR'))) {
-        const aberto = estado.gruposAbertos.has(g.raiz);
-        exibidos.push({ linhaGrupo: h('button', { type: 'button', class: 'abre-grupo', dados: { raiz: g.raiz }, 'aria-expanded': aberto ? 'true' : 'false', onclick: () => { if (aberto) estado.gruposAbertos.delete(g.raiz); else estado.gruposAbertos.add(g.raiz); desenhar(); } },
-          `${aberto ? '▼' : '▶'} ${rotuloGrupo(g)} · ${n0(g.linhas.length)} pedidos · venda ${moeda(resumirPedidos(g.linhas).venda.valor)}`) });
-        if (aberto) exibidos.push(...g.linhas);
-      }
-      exibidos.push(...soltas);
-    }
-    return h('div', { class: 'cartao' },
-      h('div', { class: 'ped-lista-topo' }, h('h2', { id: 'titulo-pedidos' }, `${escolhido.caminho ? `Pedidos de ${escolhido.rotulo}` : 'Todos os pedidos'} (${n0(doRamo.length)})`), campoBusca,
-        h('button', { class: 'secundario pequeno', id: 'csv-pedidos', onclick: () => baixarCsv(`pedidos-${hojeSaoPaulo()}.csv`, csv, doRamo) }, 'Baixar CSV')),
-      tabelaPedidos(colunas, exibidos.slice(0, LIMITE_RAMO), { id: 'pedidos-do-ramo', vazio: estado.busca ? `Nenhum pedido para "${estado.busca}".` : 'Nenhum pedido com esses filtros.' }),
-      exibidos.length > LIMITE_RAMO ? h('p', { class: 'ajuda', style: 'margin:12px 0 0' }, `Mostrando ${LIMITE_RAMO} de ${n0(exibidos.length)}. Clique numa linha da hierarquia para ver menos, ou baixe o CSV.`) : null);
   }
 
   function tela() {
@@ -136,8 +110,12 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
         ['Digitado', valor(n.ind.digitado.valor)], ['Desistência', valor(n.ind.cancelado.valor)], ['Invest.', valor(n.ind.investimento.valor)], ['Invest. ÷ venda', pct(n.ind.pctInvestimento)],
         ['Próprio', valor(n.ind.propria)], ['Outro', valor(n.ind.outra)]].map(([r, v, classe]) => h(classe ? 'b' : 'span', { class: `num${classe ? ` ${classe}` : ''}`, dados: { r } }, v))));
 
-    return [...blocoNiveis({ estado, possiveis, nome, mudarNiveis, desenhar }), migalhas, numeros, h('div', { class: 'exp-quadros' }, venda, processo),
-      semRolagem(h('section', { class: 'cartao exp-arvore', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas), h('p', { class: 'ajuda exp-nota' }, 'Valores em R$.')), { cortados: '.exp-linha > .num' }), listaDoRamo(buscarPedidos(escolhido.pedidos, estado.busca), escolhido)];
+    pedidosDaLinha = escolhido.pedidos;
+    botaoExcel.disabled = !pedidosDaLinha.length;
+    botaoExcel.textContent = `Excel · ${n0(pedidosDaLinha.length)} ${pedidosDaLinha.length === 1 ? 'pedido' : 'pedidos'}`;
+    botaoExcel.title = `Pedidos de ${escolhido.rotulo}`;
+    return [...blocoNiveis({ estado, possiveis, nome, mudarNiveis, desenhar }), h('div', { class: 'rej-barra' }, migalhas, botaoExcel), numeros, h('div', { class: 'exp-quadros' }, venda, processo),
+      semRolagem(h('section', { class: 'cartao exp-arvore', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas), h('p', { class: 'ajuda exp-nota' }, 'Valores em R$.')), { cortados: '.exp-linha > .num' })];
   }
   desenharFiltros();
   if (!pedidos.length) {

@@ -4,15 +4,15 @@ import { bancoApp, lerComCache } from '../db.js';
 import { consultaExportarBase } from '../../shared/administracao.mjs';
 import { consultaResumoRejeitados, NOME_TIPO_REJEICAO, prepararRejeitado, TIPOS_REJEICAO } from '../../shared/rejeitados.mjs';
 import { exportarRejeitados } from './_rejeitados-excel.js';
-import { consultaPedidos, rotuloRepresentante } from '../../shared/pedidos.mjs';
+import { baixarPedidos } from './_pedidos-excel.js';
+import { consultaPedidos } from '../../shared/pedidos.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, formatar, comEspera, aviso } from '../ui.js';
 import { baixarXlsx } from '../planilhas.js';
-import { documento, lerPedidos, valor } from './_pedidos.js';
+import { lerPedidos } from './_pedidos.js';
 
 const n0 = (x) => formatar.numero(Math.round(Number(x) || 0));
 const representante = (codigo, nome) => [codigo, nome].filter(Boolean).join(' - ');
-const NOME_TIPO_PEDIDO = { venda: 'Venda', investimento: 'Bonificação', ignorar: 'Não considerado' };
 
 export async function render(conteudo, { usuario }) {
   const db = await bancoApp();
@@ -60,12 +60,7 @@ export async function render(conteudo, { usuario }) {
   const botaoPed = h('button', { type: 'button', id: 'exportar-pedidos', onclick: () => comEspera(botaoPed, async () => {
     const todos = (await lerPedidos(db, consultaPedidos({ usuario, limite: 50000 }))).rows.filter((p) => p.prospect_id !== null);
     const lista = todos.filter((p) => !tipoPedido.value || p.tipo === tipoPedido.value);
-    await baixarXlsx(`pedidos-${hojeSaoPaulo()}.xlsx`, [
-      { titulo: 'Pedido', valor: (p) => p.numero, largura: 12 }, { titulo: 'Data', valor: (p) => formatar.data(p.data_situacao), largura: 12 },
-      { titulo: 'Código', valor: (p) => p.codigo_cliente ?? '', largura: 10 }, { titulo: 'Razão social', valor: (p) => p.razao_social, largura: 40 }, { titulo: 'CNPJ', valor: (p) => documento(p.cpf_cnpj), largura: 20 },
-      { titulo: 'Representante', valor: rotuloRepresentante, largura: 30 }, { titulo: 'Tipo', valor: (p) => NOME_TIPO_PEDIDO[p.tipo] ?? p.tipo, largura: 14 },
-      { titulo: 'Situação', valor: (p) => p.situacao_descricao ?? '', largura: 18 }, { titulo: 'Pedido (R$)', valor: (p) => valor(p.valor_pedido), largura: 14 }, { titulo: 'Faturado (R$)', valor: (p) => valor(p.valor_faturado), largura: 14 },
-    ], lista, { aba: 'Pedidos' });
+    await baixarPedidos(lista);
     aviso(`Pedidos exportados: ${n0(lista.length)}.`);
   }) }, 'Exportar Excel');
 

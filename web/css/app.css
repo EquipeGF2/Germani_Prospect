@@ -969,3 +969,8 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .imp-extra summary { cursor: pointer; font-weight: 600; min-height: 32px; } .imp-extra[open] summary { margin-bottom: 12px; }
 .rej-barra { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .rej-barra .exp-caminho { margin: 0; }
+
+/* Explorar carteira: a coluna do nome com a largura do nome mais longo aberto (sem cortar), no computador */
+@media (min-width: 701px) {
+  #arvore-carteira .exp-linha { grid-template-columns: var(--largura-ramo, minmax(170px, 240px)) repeat(3, minmax(84px, 1fr)) repeat(6, minmax(66px, 1fr)) repeat(2, minmax(96px, 1fr)); min-width: calc(var(--largura-ramo, 240px) + 960px); }
+}

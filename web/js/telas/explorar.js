@@ -57,7 +57,17 @@ export async function render(conteudo, { usuario }) {
 
   const area = h('div', { class: 'explorar' });
   montar(conteudo, area);
-  const desenhar = () => montar(area, ...tela());
+  // a coluna do nome fica com a largura do nome mais longo aberto (com o recuo do nível): nenhum nome cortado
+  const larguraDoNome = () => {
+    const arvore = area.querySelector('#arvore-carteira');
+    if (!arvore) return;
+    const precisa = Math.max(0, ...[...arvore.querySelectorAll('.exp-linha:not(.cab) .ramo')].map((r) => {
+      const nome = r.querySelector('.nome');
+      return nome ? nome.offsetLeft - r.offsetLeft + nome.scrollWidth + 8 : 0;
+    }));
+    arvore.style.setProperty('--largura-ramo', `${Math.min(Math.max(precisa, 200), 420)}px`);
+  };
+  const desenhar = () => { montar(area, ...tela()); requestAnimationFrame(larguraDoNome); };
 
   function mudarNiveis(n) { estado.niveis = n; estado.abertos = new Set(['']); estado.sel = ''; guardarNiveis(n); desenhar(); }
 
@@ -178,7 +188,7 @@ export async function render(conteudo, { usuario }) {
     };
     const linhas = arvore.map((n) => h('div', { class: `exp-linha${n.caminho === escolhido.caminho ? ' escolhida' : ''}${n.profundidade ? '' : ' raiz'}`, dados: { caminho: n.caminho },
       style: `--prof:${n.profundidade}`, onclick: () => clicarLinha(n) },
-      h('span', { class: 'ramo', style: `padding-left:${n.profundidade * 24}px` },
+      h('span', { class: 'ramo', style: `padding-left:${n.profundidade * 14}px` },
         n.temFilhos ? h('button', { type: 'button', class: 'abre', 'aria-expanded': n.aberto ? 'true' : 'false', 'aria-label': `${n.aberto ? 'Fechar' : 'Abrir'} ${n.rotulo}`,
           onclick: (ev) => { ev.stopPropagation(); if (n.aberto) estado.abertos.delete(n.caminho); else estado.abertos.add(n.caminho); desenhar(); } }, n.aberto ? '▼' : '▶') : h('span', { class: 'abre vazio' }),
         h('button', { type: 'button', class: 'nome', title: n.rotulo }, n.rotulo)),
@@ -200,7 +210,7 @@ export async function render(conteudo, { usuario }) {
       h('p', { class: 'ajuda exp-sub' }, 'Do total até o cliente: escolha e ordene os níveis, abra os ramos; os números de cima seguem o ramo escolhido.'),
       niveis, niveisCelular, migalhas,
       h('div', { class: 'exp-quadros' }, totalidade, doProcesso),
-      h('section', { class: 'cartao exp-arvore', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas)),
+      h('section', { class: 'cartao exp-arvore', id: 'arvore-carteira', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas)),
       h('p', { class: 'ajuda' }, 'Números do resumo pronto no banco (atualizado a cada registro e importação) — a tela não lê a carteira inteira.'),
     ];
   }

@@ -5,7 +5,7 @@ import { bancoTeste, criarEquipe, criarProspect, registrarContato } from './auxi
 import { consultaCarteira } from '../shared/carteira.mjs';
 import { consultaResumo } from '../shared/explorar.mjs';
 import { alterarParametro } from '../shared/administracao.mjs';
-import { condicaoOndas, consultaOndasDaBase, lerOndas, valorOndas } from '../shared/ondas.mjs';
+import { condicaoOndas, consultaOndasDaBase, lerOndas, ondasDoFiltro, valorOndas } from '../shared/ondas.mjs';
 
 let db;
 const REP = { id: 2, perfil: 'vendedor', tipo_atuacao: 'representante' };
@@ -57,4 +57,13 @@ test('valor do parâmetro e ondas da base', async () => {
   assert.equal(condicaoOndas(SUP), null);
   const ondas = (await db.execute(consultaOndasDaBase())).rows.map((r) => [r.onda, Number(r.qtd), Number(r.na_lista)]);
   assert.deepEqual(ondas, [['', 1, 1], ['1', 1, 1], ['2', 2, 1]]);
+});
+
+test('filtro de onda: representante/vendedor e supervisor só veem as ondas liberadas; a gestão vê todas', () => {
+  const ondas = ['1', '2', '3'];
+  assert.deepEqual(ondasDoFiltro(ondas, REP, '["1","3"]'), ['1', '3']);
+  assert.deepEqual(ondasDoFiltro(ondas, SUP, '["2"]'), ['2']);
+  assert.deepEqual(ondasDoFiltro(ondas, { id: 9, perfil: 'gerente' }, '["2"]'), ondas);
+  assert.deepEqual(ondasDoFiltro(ondas, { id: 4, perfil: 'administrador' }, '["2"]'), ondas);
+  assert.deepEqual(ondasDoFiltro(ondas, REP, 'todas'), ondas);
 });
