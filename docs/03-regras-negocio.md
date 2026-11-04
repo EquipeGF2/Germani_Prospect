@@ -181,6 +181,11 @@ vendedor, supervisor, cidade, bairro, onda e UF. O agrupamento por **rota consid
 > Mudança em relação à especificação original: "conversão declarada" (venda informada pelo vendedor)
 > deixou de existir — a venda só é registrada pelo arquivo de pedidos do ERP.
 
+**Voltar à tela como estava** (`web/js/memoria.js`): nesta aba do navegador, a Lista principal volta com os últimos filtros (ao
+voltar da ficha, do lote ou pelo menu) e a lista já lida vem do cache (`lerComCache`, 5 minutos; qualquer gravação do aparelho
+limpa), sem ler o banco de novo. "Limpar filtros" abre a lista limpa (`?limpo=1`). Explorar carteira, Explorar pedidos,
+Acompanhamento e Rejeitados voltam com a linha escolhida, as linhas abertas e o tipo/etapa.
+
 **Municípios em maiúsculas** (0027): o nome do município fica sempre em maiúsculas, com acento, inclusive dos baixados; a importação da base já grava assim. **Segmento:** "Atacado Perueiro" passa a ser "Atacado" (também nas próximas importações).
 
 ## 6. Lista de prospects e acompanhamento — representante × vendedor

@@ -1,6 +1,7 @@
 // Lista principal (Não contactado / Em prospecção). O Acompanhamento vai para acompanhamento.js. docs/03 §6
 // Computador: _lista.js (sempre em tabela, filtros em grupos, ficha ao lado). Aqui: o CELULAR, layout de sempre —
 // visões lista, cidade, bairro, onda, status e (só vendedor) rota; busca sem acento.
+import { memoriaDaTela } from '../memoria.js';
 import { bancoApp, lerComCache } from '../db.js';
 import { consultaCarteira, precisaFiltro, visoesPermitidas } from '../../shared/carteira.mjs';
 import { h, montar, mensagem, formatar } from '../ui.js';
@@ -35,6 +36,12 @@ export async function render(conteudo, ctx) {
   const db = await bancoApp();
   const e = lerEstado(parametros);
   if (e.aba === 'acompanhamento') return renderAcompanhamento(conteudo, ctx);
+  // ao voltar à Lista principal (Voltar à lista, menu), ela abre com os últimos filtros desta aba do navegador; a lista
+  // já lida vem do cache, sem ler o banco de novo. Limpar os filtros (ou mudar e buscar) passa a valer como os últimos.
+  const ultimos = memoriaDaTela('lista', usuario);
+  const doEndereco = parametros.toString();
+  if (!doEndereco) { const salvo = ultimos.ler(); if (salvo) return ctx.irPara(`/carteira?${salvo}`); }
+  else ultimos.guardar(doEndereco);
   const permitidas = visoesPermitidas(usuario);
   if (!permitidas.includes(e.visao)) e.visao = 'lista';
   const podeRegistrar = usuario.perfil !== 'financeiro';
@@ -59,7 +66,7 @@ export async function render(conteudo, ctx) {
   const gestao = usuario.perfil !== 'vendedor';
   // opções e atalhos de cidade saem do resumo pronto (em cache), nunca da carteira
   const [linhas, opcoes, resumo] = await Promise.all([
-    aguardaFiltro ? [] : db.execute(consulta).then((r) => r.rows),
+    aguardaFiltro ? [] : lerComCache(db, consulta, 300).then((r) => r.rows),
     opcoesDosFiltros(db, usuario, e.filtros),
     aguardaFiltro && !gestao ? lerComCache(db, consultaResumo({ usuario }), 300).then((r) => r.rows) : []]);
   const { supervisores, vendedores } = opcoes;

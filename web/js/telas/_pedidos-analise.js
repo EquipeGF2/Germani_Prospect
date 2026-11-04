@@ -6,6 +6,7 @@ import { h, montar, formatar, comEspera, aviso, semRolagem } from '../ui.js';
 import { significadoDe } from '../../shared/ajuda.mjs';
 import { blocoNiveis, textoChave, cartoes, moeda, valor } from './_pedidos.js';
 import { baixarPedidos } from './_pedidos-excel.js';
+import { memoriaDaTela } from '../memoria.js';
 
 const CHAVE_NIVEIS = 'germani.pedidosNiveis';
 const n0 = (x) => formatar.numero(Math.round(Number(x) || 0));
@@ -28,11 +29,18 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
   const pedidos = porGrupo ? todosPedidos : todosPedidos.filter((p) => p.prospect_id !== null);
   const possiveis = niveisPedidosPossiveis(usuario);
   const raiz = veTodasEquipes(usuario) ? 'Todos os pedidos' : usuario.perfil === 'supervisor' ? 'Pedidos da minha equipe' : 'Meus pedidos';
-  if (!memoria.has(destino)) memoria.set(destino, { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cliente']), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'ambos' });
+  // ao voltar à tela, a linha escolhida, as abertas e o tipo continuam como estavam (nesta aba do navegador)
+  const lembranca = memoriaDaTela(`pedidos${porGrupo ? '-grupo' : ''}`, usuario);
+  if (!memoria.has(destino)) {
+    const inicial = { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cliente']), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'ambos' };
+    const salvo = lembranca.ler();
+    if (salvo && JSON.stringify(salvo.niveis) === JSON.stringify(inicial.niveis)) Object.assign(inicial, { sel: salvo.sel ?? '', abertos: new Set(salvo.abertos ?? ['']), tipo: salvo.tipo ?? 'ambos' });
+    memoria.set(destino, inicial);
+  }
   const estado = memoria.get(destino);
   const area = h('div', { id: 'analise-pedidos', class: 'ped-exp' });
   montar(destino, area);
-  const desenhar = () => montar(area, ...tela());
+  const desenhar = () => { montar(area, ...tela()); lembranca.guardar({ niveis: estado.niveis, sel: estado.sel, abertos: [...estado.abertos], tipo: estado.tipo }); };
   const nome = (n) => NIVEIS_PEDIDOS[n].nome;
   const mudarNiveis = (n) => { estado.niveis = n; estado.abertos = new Set(['']); estado.sel = ''; guardarNiveis(n); desenhar(); };
   const aoFiltrar = () => { estado.abertos = new Set(['']); estado.sel = ''; desenharFiltros(); desenhar(); };
