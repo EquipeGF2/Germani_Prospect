@@ -1,18 +1,18 @@
 // Grupos de CNPJ — base × arquivo do ERP pela raiz do CNPJ, com sugestão e expurgo (docs/03 §13 · 0021).
 import { bancoAdmin } from '../db.js';
 import { lerArquivo } from '../arquivo.js';
-import { analisarGrupos, comandosExpurgo, EXPURGAVEIS, MOTIVOS_EXPURGO } from '../../shared/grupos.mjs';
+import { analisarGrupos, comandosExpurgo, EXPURGAVEIS, MOTIVOS_EXPURGO, motivoAutomatico } from '../../shared/grupos.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, numeros, comEspera, aviso, formatar, baixarCsv } from '../ui.js';
 import { seloStatus } from './_carteira.js';
 
-const NOMES_SUGESTAO = { expurgar: 'Expurgar', manter: 'Manter', decidir: 'Decidir', expurgado: 'Expurgado' };
+const NOMES_SUGESTAO = { expurgar: 'Expurgar', manter: 'Manter', expurgado: 'Expurgado' };
 const LIMITE_TELA = 400;
 
 export async function render(conteudo, ctx) {
   const db = await bancoAdmin();
   const area = h('div');
-  const arquivo = h('input', { type: 'file', accept: '.xlsx,.csv', id: 'arquivo-grupos' });
+  const arquivo = h('input', { type: 'file', accept: '.xlsx,.xls,.csv', id: 'arquivo-grupos' });
   let planilha = null;
   const bLer = h('button', { onclick: async () => {
     planilha = await comEspera(bLer, () => lerArquivo(arquivo.files[0]));
@@ -102,12 +102,15 @@ export async function render(conteudo, ctx) {
       const todos = grupos.flatMap((g) => g.prospects);
       const porSituacao = new Map();
       for (const p of todos) if (acao.get(p.id) === 'expurgar') porSituacao.set(p.status_nome, (porSituacao.get(p.status_nome) ?? 0) + 1);
-      const motivo = h('select', { id: 'motivo-expurgo' }, MOTIVOS_EXPURGO.map((m) => h('option', { value: m }, m)));
+      // automático: "mesmo CNPJ" para quem está no arquivo, "filial de grupo" para as outras empresas do grupo
+      const motivo = h('select', { id: 'motivo-expurgo' }, h('option', { value: '' }, 'Automático: mesmo CNPJ ou filial de grupo'), MOTIVOS_EXPURGO.map((m) => h('option', { value: m }, m)));
       const bOk = h('button', { onclick: async () => {
         const ok = await comEspera(bOk, async () => {
           const data = hojeSaoPaulo();
-          const ids = (a) => todos.filter((p) => acao.get(p.id) === a).map((p) => p.id);
-          const cmds = [...comandosExpurgo({ usuario: ctx.usuario, prospectIds: ids('expurgar'), acao: 'expurgar', motivo: motivo.value, data }),
+          const ids = (a, f = () => true) => todos.filter((p) => acao.get(p.id) === a && f(p)).map((p) => p.id);
+          const expurgos = motivo.value ? comandosExpurgo({ usuario: ctx.usuario, prospectIds: ids('expurgar'), acao: 'expurgar', motivo: motivo.value, data })
+            : MOTIVOS_EXPURGO.slice(0, 2).flatMap((m) => { const lista = ids('expurgar', (p) => motivoAutomatico(p) === m); return lista.length ? comandosExpurgo({ usuario: ctx.usuario, prospectIds: lista, acao: 'expurgar', motivo: m, data }) : []; });
+          const cmds = [...expurgos,
             ...(ids('desfazer').length ? comandosExpurgo({ usuario: ctx.usuario, prospectIds: ids('desfazer'), acao: 'desfazer', motivo: 'Desfeito em Grupos de CNPJ', data }) : [])];
           for (let i = 0; i < cmds.length; i += 200) await db.batch(cmds.slice(i, i + 200), 'write');
           return true;
@@ -128,7 +131,7 @@ export async function render(conteudo, ctx) {
     }
 
     const chips = h('div', { class: 'visoes', role: 'group', 'aria-label': 'Sugestão' },
-      [['', 'Todas'], ['expurgar', 'Expurgar'], ['manter', 'Manter'], ['decidir', 'Decidir'], ['expurgado', 'Expurgados']].map(([v, t]) =>
+      [['', 'Todas'], ['expurgar', 'Expurgar'], ['manter', 'Manter'], ['expurgado', 'Expurgados']].map(([v, t]) =>
         h('a', { href: '#', class: v === filtro.sugestao ? 'ativa' : '', dados: { sugestao: v || 'todas' }, onclick: (ev) => {
           ev.preventDefault(); filtro.sugestao = v; [...chips.children].forEach((c) => c.classList.toggle('ativa', c === ev.currentTarget)); desenharTabela();
         } }, t)));
@@ -147,14 +150,13 @@ export async function render(conteudo, ctx) {
       h('div', { class: 'acoes' }, h('button', { class: 'secundario', onclick: baixar }, 'Baixar relatório (CSV)'), bAplicar),
       painel, tabelaArea,
       h('div', { class: 'cartao ajuda' },
-        h('p', {}, h('b', {}, 'Expurgar (sugestão): '), 'mesmo CNPJ no arquivo, cadastro anterior ao início da campanha e ainda não trabalhado — já era cliente.'),
-        h('p', {}, h('b', {}, 'Manter (sugestão): '), 'cadastro feito na campanha (é conversão) ou prospect já trabalhado.'),
-        h('p', {}, h('b', {}, 'Decidir: '), 'filial nova de um grupo que já é cliente, ainda sem atendimento — oportunidade ou duplicidade.')));
+        h('p', {}, h('b', {}, 'Expurgar (sugestão): '), 'cadastrado no ERP, pelo mesmo CNPJ ou por outra empresa do mesmo grupo, e ainda não trabalhado — já é cliente.'),
+        h('p', {}, h('b', {}, 'Manter (sugestão): '), 'cadastro do mesmo CNPJ feito na campanha (é conversão) ou prospect já trabalhado.')));
     desenharTabela();
   }
 
   montar(area, h('div', { class: 'cartao' },
-    h('div', { class: 'campo' }, h('label', { for: 'arquivo-grupos' }, 'Arquivo (.xlsx ou .csv)'), arquivo),
+    h('div', { class: 'campo' }, h('label', { for: 'arquivo-grupos' }, 'Arquivo (.xlsx, .xls ou .csv)'), arquivo),
     h('p', { class: 'ajuda' }, 'O arquivo precisa ter a coluna CPF / CNPJ. O relatório de cadastro do ERP serve (as colunas Cliente, Razão Social, Dt. Cadastro e Créd. Grupo, se houver, entram no relatório). O arquivo é lido no navegador; nada é gravado até você aplicar.'),
     bLer));
   montar(conteudo, ctx.embutido ? null : h('h1', {}, 'Grupos de CNPJ — base × arquivo do ERP'),

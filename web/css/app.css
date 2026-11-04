@@ -686,7 +686,6 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .tabela-grupos tr.grupo-raiz td { background: #FDF2F2; border-top: 1px solid #F3E1E2; }
 .selo.sugestao-expurgar { background: #FDE8E8; color: #8A1A20; }
 .selo.sugestao-manter { background: #E7F6EC; color: #05603A; }
-.selo.sugestao-decidir { background: #FEF3C7; color: #78350F; }
 .selo.sugestao-expurgado { background: #E7E5E4; color: #44403C; }
 .filtros-grupos { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .filtros-grupos select, .filtros-grupos input { width: auto; flex: 0 1 auto; margin: 0; }

@@ -210,6 +210,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const doGrupo = linhas.slice(10, 20).map((l) => analisarCnpj(l[0]).cnpj).filter(Boolean);
   await writeFile(grupos, 'Cliente;CPF / CNPJ;Razão Social;Dt. Cadastro\n' + doGrupo.map((c, i) => `${500 + i};${c};GRUPO ${i};14/03/2019`).join('\n') + '\n');
   await abaImportacoes('grupos');
+  assert.equal(await pagina.getAttribute('#arquivo-grupos', 'accept'), '.xlsx,.xls,.csv', 'aceita o cadastro do ERP em .xls');
   await pagina.setInputFiles('#arquivo-grupos', grupos);
   await pagina.click('button:text("Ler arquivo")');
   await pagina.waitForSelector('text=raízes em comum');
@@ -219,6 +220,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('08d-grupos-cnpj');
   await aplicar.click();
   await pagina.waitForSelector('[aria-label="Confirmar expurgo"]');
+  assert.equal(await pagina.locator('#motivo-expurgo').inputValue(), '', 'motivo automático: mesmo CNPJ ou filial de grupo');
   await pagina.click(`button:text("Expurgar ${qtdExpurgo}")`);
   await pagina.waitForSelector(`text=Pronto: ${qtdExpurgo} expurgado(s)`);
   await pagina.waitForSelector('text=já expurgados');
