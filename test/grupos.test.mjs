@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, cnpjTeste, prospect, registrarContato } from './auxiliar.mjs';
-import { analisarGrupos, comandosExpurgo, sugerir } from '../shared/grupos.mjs';
+import { gruposDoArquivo, analisarGrupos, comandosExpurgo, sugerir } from '../shared/grupos.mjs';
 import { consultaLinhaTempo } from '../shared/carteira.mjs';
 
 const CAB = ['Cliente', 'CPF / CNPJ', 'Razão Social', 'Cond. Pgto', 'Descrição', 'Forma Pgto', 'Descrição', null, 'Créd. Cliente', 'Créd. Grupo', 'Dt. Cadastro'];
@@ -63,4 +63,15 @@ test('expurgo: só administrador, só não trabalhado; sai da carteira válida, 
   await assert.rejects(db.execute('UPDATE expurgos SET motivo = \'x\''), /somente inclusão/);
   await assert.rejects(db.execute('DELETE FROM expurgos'), /somente inclusão/);
   assert.equal((await db.execute(consultaLinhaTempo({ prospectId: p.antigo }))).rows.filter((m) => m.tipo.startsWith('expurgo')).length, 2);
+});
+
+test('cadastro do ERP com CNPJ/CPF em número e em texto: o CNPJ que começa com 000 não vira CPF', () => {
+  const linhas = [['Cliente', 'Nome', 'CNPJ/CPF', 'Tipo', 'CNPJ/CPF'],
+    [6162, 'SUPERMERCADO M B LTDA', 87756000110, 'J', '00087756000110'],
+    [9043, 'ZZONE', 57299028000199, 'J', '57299028000199'],
+    [1, 'PESSOA', 12345678909, 'F', '12345678909']];
+  const { grupos, ignoradas } = gruposDoArquivo(linhas);
+  assert.ok(grupos.get('00087756')?.cnpjs.has('00087756000110'), 'o CNPJ com zeros na frente é lido inteiro');
+  assert.ok(grupos.get('57299028')?.cnpjs.has('57299028000199'));
+  assert.equal(ignoradas, 1, 'só o CPF fica fora');
 });

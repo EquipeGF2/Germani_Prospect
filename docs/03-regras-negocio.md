@@ -535,6 +535,9 @@ Um único conteúdo alimenta três saídas, para não haver textos diferentes: a
 
 ## 13. Grupos de CNPJ e expurgo (migração 0021 · `shared/grupos.mjs`)
 
+- Arquivo com a coluna CNPJ/CPF repetida (o cadastro do ERP traz uma em número e outra em texto): vale a em texto, que guarda os
+  zeros da frente. Em número, 00.087.756/0001-10 vira 87756000110 e seria tomado por CPF.
+
 - Tela **Administração → Grupos de CNPJ** (só administrador): carrega um arquivo do ERP com a coluna **CPF / CNPJ** (o
   relatório de cadastro serve) e cruza com a base **só pela raiz do CNPJ** (8 primeiros dígitos). CPF e CNPJ inválido do
   arquivo ficam fora. O arquivo é lido no navegador; nada é gravado até aplicar.

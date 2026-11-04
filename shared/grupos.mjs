@@ -33,6 +33,8 @@ export function colunasDoArquivo(cabecalho) {
     if (i !== undefined) indices[campo] = i;
   }
   if (indices.cnpj === undefined) throw new Error('o arquivo precisa da coluna CPF / CNPJ (ou CNPJ)');
+  // o cadastro do ERP traz CNPJ/CPF duas vezes: uma em número (perde os zeros da frente) e outra em texto; todas são lidas
+  indices.cnpjs = chaves.flatMap((c, i) => (COLUNAS.cnpj.some((n) => chaveCabecalho(n) === c) ? [i] : []));
   return indices;
 }
 
@@ -45,7 +47,8 @@ export function gruposDoArquivo(linhas) {
   for (const l of corpo) {
     if (linhaVazia(l)) continue;
     lidas++;
-    const bruto = l[ix.cnpj];
+    // a coluna em texto guarda o CNPJ inteiro (00.087.756/0001-10 em número vira 87756000110, que parece CPF)
+    const bruto = ix.cnpjs.map((i) => l[i]).find((v) => typeof v === 'string' && v.trim()) ?? l[ix.cnpj];
     const digitos = somenteDigitos(String(bruto ?? '').replace(/\.0+$/, ''));
     if (!digitos || digitos.length <= 11) { ignoradas++; continue; }   // vazio ou CPF
     const { cnpj, erro } = analisarCnpj(bruto);
