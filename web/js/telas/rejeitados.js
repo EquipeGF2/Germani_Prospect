@@ -8,6 +8,7 @@ import { consultaResumoRejeitados, contarMotivos, montarArvoreRejeitados, naLinh
 import { h, montar, formatar, comEspera, aviso, semRolagem } from '../ui.js';
 import { blocoNiveis } from './_pedidos.js';
 import { exportarRejeitados } from './_rejeitados-excel.js';
+import { memoriaDaTela } from '../memoria.js';
 
 const CHAVE_NIVEIS = 'germani.rejeitadosNiveis';
 const n0 = (x) => formatar.numero(Math.round(Number(x) || 0));
@@ -26,6 +27,9 @@ export async function render(conteudo, { usuario }) {
   const possiveis = Object.keys(NIVEIS_REJEITADOS);
   const nome = (n) => NIVEIS_REJEITADOS[n].nome;
   const estado = { niveis: lerNiveis(possiveis), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'todos' };
+  const memoria = memoriaDaTela('rejeitados', usuario);   // ao voltar, a linha, as abertas e o tipo continuam como estavam
+  const salvo = memoria.ler();
+  if (salvo && JSON.stringify(salvo.niveis) === JSON.stringify(estado.niveis)) Object.assign(estado, { sel: salvo.sel ?? '', abertos: new Set(salvo.abertos ?? ['']), tipo: salvo.tipo ?? 'todos' });
   const area = h('div', { id: 'rejeitados', class: 'ped-exp acf-exp rej-exp' });
   const mudarNiveis = (n) => { estado.niveis = n; estado.abertos = new Set(['']); estado.sel = ''; try { localStorage.setItem(CHAVE_NIVEIS, JSON.stringify(n)); } catch { /* só nesta visita */ } desenhar(); };
   // Excel do que está na tela: a linha escolhida na hierarquia e o tipo do card (Rejeitados = os quatro tipos, uma aba cada)
@@ -77,6 +81,7 @@ export async function render(conteudo, { usuario }) {
   let escolhido = null;
 
   function desenhar() {
+    memoria.guardar({ niveis: estado.niveis, sel: estado.sel, abertos: [...estado.abertos], tipo: estado.tipo });
     const arvore = montarArvoreRejeitados({ clientes, base, niveis: estado.niveis, abertos: estado.abertos });
     escolhido = arvore.find((n) => n.caminho === estado.sel) ?? arvore[0];
     const etapas = arvore.filter((n) => estado.sel === n.caminho || estado.sel.startsWith(`${n.caminho}/`) || n.caminho === '').sort((a, b) => a.profundidade - b.profundidade);

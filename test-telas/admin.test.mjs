@@ -431,12 +431,12 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const cnpjAtendido = (await pagina.locator('.dado:has(span:text-is("CNPJ")) b').innerText()).replace(/\D/g, '');
 
   // 9. o atendido saiu da lista principal; "sem interesse" em lote para 2 prospects
-  await pagina.goto(`${base}#/carteira`);
+  await pagina.goto(`${base}#/carteira?limpo=1`);
   await pagina.waitForSelector('.lista-tabela tbody tr');
   await pagina.fill('#busca', cnpjAtendido);
   await pagina.click('.lista-busca button[type=submit]');
   await pagina.waitForSelector(`text=Nada encontrado para "${cnpjAtendido}"`);   // atendido saiu da lista principal
-  await pagina.goto(`${base}#/carteira`);
+  await pagina.goto(`${base}#/carteira?limpo=1`);
   await pagina.waitForSelector('.lista-tabela tbody tr');
   await pagina.check('.lista-tabela input[data-lote] >> nth=0');
   await pagina.check('.lista-tabela input[data-lote] >> nth=1');

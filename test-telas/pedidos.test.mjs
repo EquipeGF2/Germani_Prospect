@@ -465,7 +465,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
     await recorte('credito-pedido', '#acf-credito');
     await pagina.click('#visao-fluxo');
     await pagina.click('#so-primeiro');
-    await ir('#/carteira');
+    await ir('#/carteira?limpo=1');
     await pagina.selectOption('#filtro-supervisor', { index: 1 });
     await pagina.selectOption('#filtro-vendedor', { index: 1 });
     await pagina.click('#aplicar-filtros');
@@ -505,7 +505,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
     await pagina.click('button[type=submit]');
     await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
     await recorte('menu-carteira', '#lateral', { altura: 640 });
-    await ir('#/carteira');
+    await ir('#/carteira?limpo=1');
     await pagina.waitForSelector('form.lista-filtros');
     await recorte('lista-filtros-carteira', 'form.lista-filtros');
     await pagina.click('.menu-sair');
@@ -535,10 +535,24 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await foto('p10f-capitulo-com-imagem');
 
   // a Lista principal não ganhou a chave
-  await ir('#/carteira');
+  await ir('#/carteira?limpo=1');
   assert.equal(await pagina.locator('#ver-grupo').count(), 0, 'Lista principal não muda');
   await ir('#/explorar');
   assert.equal(await pagina.locator('#ver-grupo').count(), 0, 'Explorar carteira não muda');
+
+  // ao voltar, as telas continuam como estavam: a linha escolhida no Explorar carteira e os filtros da Lista principal
+  await pagina.locator('#arvore-carteira .exp-linha:not(.cab):not(.raiz)').first().click();
+  const escolhidaAntes = await pagina.locator('#arvore-carteira .exp-linha.escolhida').getAttribute('data-caminho');
+  assert.ok(escolhidaAntes, 'uma linha escolhida');
+  await pagina.click('#abrir-lista');
+  await pagina.waitForFunction(() => location.hash.startsWith('#/carteira?') && document.getElementById('conteudo').dataset.pronto === location.hash);
+  const listaComFiltro = await pagina.evaluate(() => location.hash);
+  await ir('#/explorar');
+  assert.equal(await pagina.locator('#arvore-carteira .exp-linha.escolhida').getAttribute('data-caminho'), escolhidaAntes, 'o Explorar volta na mesma linha');
+  await pagina.click('#menu a[title="Lista principal"]');
+  await pagina.waitForFunction((alvo) => location.hash === alvo && document.getElementById('conteudo').dataset.pronto === alvo, listaComFiltro);
+  await pagina.click('a.limpar');
+  await pagina.waitForFunction(() => location.hash === '#/carteira?limpo=1');
 
   // ficha do cliente com pedidos (o cliente A, do pedido 70001)
   const versaoDb = await pagina.evaluate(() => new URL(document.querySelector('script[type=module]').src).search);

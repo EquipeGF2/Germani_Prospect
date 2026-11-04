@@ -46,7 +46,7 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
   // própria carteira. As opções dos filtros saem do resumo pronto (em cache) e mudam no navegador, sem ir ao banco.
   const ler = (e.ver || usuario.perfil === 'vendedor') && !falta.length;
   const [lidas, resumo, liberadas] = await Promise.all([
-    ler ? db.execute(consulta).then((r) => r.rows) : [],
+    ler ? lerComCache(db, consulta, 300).then((r) => r.rows) : [],   // voltar à lista não lê de novo (gravação limpa o cache)
     lerComCache(db, consultaResumo({ usuario }), 300).then((r) => r.rows),
     lerComCache(db, consultaOndasLiberadas(), 300).then((r) => r.rows[0]?.valor ?? 'todas'),
   ]);

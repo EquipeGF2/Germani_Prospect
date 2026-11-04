@@ -10,6 +10,7 @@ import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { STATUS_ENCERRADOS } from '../../shared/status.mjs';
 import { h, montar, formatar, selo, baixarCsv, comEspera, semRolagem } from '../ui.js';
 import { gerarPdfLista } from '../relatorio.js';
+import { memoriaDaTela } from '../memoria.js';
 import { nomeStatus, seloStatus } from './_carteira.js';
 import { blocoNiveis, textoChave, chaveVerPor, documento, lerPedidos, lerVerPor, moeda, razaoSocial, seloSituacao, valor } from './_pedidos.js';
 
@@ -46,6 +47,13 @@ export async function render(conteudo, { usuario, parametros }) {
 
   const estado = { visao: 'fluxo', porGrupo: lerVerPor() === 'grupo', soPrimeiro: lerGuardado(CHAVE_PEDIDOS) !== 'todos', etapa: etapaDoStatus(parametros?.get('status')), credito: 'todos',
     niveis: lerNiveis(possiveis, ['supervisor', 'representante']), abertos: new Set(['']), sel: '', editarNiveis: false, busca: parametros?.get('busca') ?? '', fechados: new Set(), encerrados: null, lendo: false };
+  // ao voltar à tela (da ficha, do registro…), visão, etapa, linha escolhida e abertas continuam como estavam
+  const memoria = memoriaDaTela('acompanhamento', usuario);
+  const salvo = memoria.ler();
+  if (salvo && JSON.stringify(salvo.niveis) === JSON.stringify(estado.niveis)) {
+    Object.assign(estado, { visao: salvo.visao ?? 'fluxo', credito: salvo.credito ?? 'todos', sel: salvo.sel ?? '', abertos: new Set(salvo.abertos ?? ['']) });
+    if (!parametros?.get('status') && salvo.etapa) estado.etapa = salvo.etapa;
+  }
   const campoBusca = h('input', { type: 'search', id: 'busca-acomp', value: estado.busca, 'aria-label': 'Buscar na lista', placeholder: 'Cliente, CNPJ, pedido ou representante',
     oninput: () => { estado.busca = campoBusca.value; desenhar(); campoBusca.focus(); } });
 
@@ -215,6 +223,7 @@ export async function render(conteudo, { usuario, parametros }) {
   }
 
   function desenhar() {
+    memoria.guardar({ niveis: estado.niveis, visao: estado.visao, etapa: estado.etapa, credito: estado.credito, sel: estado.sel, abertos: [...estado.abertos] });
     const base = todos();
     const arvore = montarArvoreAcomp({ clientes: base, niveis: estado.niveis, abertos: estado.abertos, rotuloRaiz: raiz });
     const escolhido = arvore.find((n) => n.caminho === estado.sel) ?? arvore[0];

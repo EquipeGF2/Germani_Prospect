@@ -58,6 +58,8 @@ export function endereco(e, muda = {}) {
   for (const [k, v] of Object.entries(n.filtros)) if (v != null && v !== '' && v !== false) q.set(k, v === true ? '1' : v);
   if (n.ordem) { q.set('ordem', n.ordem); if (n.desc) q.set('dir', 'desc'); }
   if (n.pagina) q.set('pagina', n.pagina);
+  // lista sem nenhum filtro: marcada como limpa, para não voltar aos últimos filtros guardados (carteira.js)
+  if (!q.toString() && n.aba !== 'acompanhamento') q.set('limpo', '1');
   const s = q.toString();
   return `#/carteira${s ? '?' + s : ''}`;
 }

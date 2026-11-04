@@ -1,6 +1,7 @@
 // Explorar carteira — árvore de níveis livres sobre o resumo pronto do banco (shared/explorar.mjs, migração 0012).
 // Lê o resumo e os pedidos uma vez (com cache curto) e redesenha só no navegador: arrastar níveis, abrir ramos, escolher
 // representante × vendedor não voltam ao banco. A Lista principal abre só com um ramo escolhido (nunca a base inteira).
+import { memoriaDaTela } from '../memoria.js';
 import { bancoApp, lerComCache, leitorComCache } from '../db.js';
 import { consultaPedidosResumo, consultaResumo, montarArvore, NIVEIS, niveisPossiveis } from '../../shared/explorar.mjs';
 import { lerParametrosPainel } from '../../shared/painel.mjs';
@@ -51,6 +52,10 @@ export async function render(conteudo, { usuario }) {
   const tudo = veTodasEquipes(usuario);
   const raiz = tudo ? 'Toda a base' : usuario.perfil === 'supervisor' ? 'Minha equipe' : 'Minha carteira';
   const estado = { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cidade', 'segmento']), abertos: new Set(['']), sel: '', tipo: '', editarNiveis: false };
+  // ao voltar à tela (da Lista principal, da ficha…), a linha escolhida e as abertas continuam como estavam
+  const memoria = memoriaDaTela('explorar', usuario);
+  const salvo = memoria.ler();
+  if (salvo && JSON.stringify(salvo.niveis) === JSON.stringify(estado.niveis)) Object.assign(estado, { sel: salvo.sel ?? '', abertos: new Set(salvo.abertos ?? ['']), tipo: salvo.tipo ?? '' });
   // Explorar é a página inicial e já abre no escopo de quem entrou (a raiz é a carteira do representante, a equipe do
   // supervisor ou a base toda). Supervisor que vê todas as equipes (ex.: Julio) abre como o gerente: a base toda,
   // e escolhe a equipe dele no 1º nível (Supervisor) quando quiser.
@@ -67,7 +72,10 @@ export async function render(conteudo, { usuario }) {
     }));
     arvore.style.setProperty('--largura-ramo', `${Math.min(Math.max(precisa, 200), 420)}px`);
   };
-  const desenhar = () => { montar(area, ...tela()); requestAnimationFrame(larguraDoNome); };
+  const desenhar = () => {
+    montar(area, ...tela()); requestAnimationFrame(larguraDoNome);
+    memoria.guardar({ niveis: estado.niveis, sel: estado.sel, abertos: [...estado.abertos], tipo: estado.tipo });
+  };
 
   function mudarNiveis(n) { estado.niveis = n; estado.abertos = new Set(['']); estado.sel = ''; guardarNiveis(n); desenhar(); }
 

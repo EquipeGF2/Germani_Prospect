@@ -60,7 +60,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await foto('22-exemplo-equipe');
 
   // a escolha da visualização fica guardada no navegador
-  await pagina.goto(`${base}#/carteira`);
+  await pagina.goto(`${base}#/carteira?limpo=1`);
   await telaPronta();
   await pagina.goto(`${base}#/inicio`);
   await pagina.waitForSelector('.vis-equipe');
@@ -87,7 +87,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await foto('23-exemplo-periodo');
 
   // lista principal no computador: sempre em tabela, filtros em grupos; a gestão escolhe a equipe antes de ler
-  await pagina.goto(`${base}#/carteira`);
+  await pagina.goto(`${base}#/carteira?limpo=1`);
   await telaPronta();
   await pagina.waitForSelector('#lista-falta');
   assert.equal(await pagina.locator('.lista-tabela').count(), 0, 'nada lido antes da equipe');
@@ -213,7 +213,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.click('#etapa-pedido');
   await pagina.waitForFunction(() => document.getElementById('titulo-acomp')?.textContent.startsWith('Aguardando pedido'));
   // filtros em cascata continuam na Lista principal: escolher a cidade deixa só os representantes dela
-  await pagina.goto(`${base}#/carteira`);
+  await pagina.goto(`${base}#/carteira?limpo=1`);
   await telaPronta();
   const opcoesDe = (id) => pagina.locator(`#${id} option`).evaluateAll((os) => os.slice(1).map((o) => o.value));
   const repsTodos = await opcoesDe('filtro-vendedor');
