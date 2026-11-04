@@ -161,9 +161,29 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   assert.equal(doExcelPed.length - 1, 6);
   for (const col of ['Pedido', 'Razão social', 'Representante do pedido', 'Representante da carteira', 'Venda na própria carteira?', 'Situação', 'Pedido (R$)']) assert.ok(doExcelPed[0].includes(col), `coluna ${col}`);
   // níveis: incluir e tirar; ramo escolhido
-  await pagina.locator('#analise-pedidos .exp-nivel[data-livre="situacao"]').click();
-  assert.equal(await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="situacao"]').count(), 1, 'incluir nível com um clique');
-  await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="situacao"] .tirar').click();
+  // os mesmos níveis do Explorar carteira
+  const doTopo = await pagina.locator('#analise-pedidos .exp-niveis .exp-nivel').allInnerTexts();
+  assert.deepEqual(doTopo.map((t) => t.replace(/[⋮×\d.\s]+/g, ' ').trim()).sort(), ['Cidade', 'Cliente', 'Onda', 'Rep', 'Rota', 'Segmento', 'Subrota', 'Supervisor'].sort(), `níveis: ${doTopo}`);
+  await pagina.locator('#analise-pedidos .exp-nivel[data-livre="cidade"]').click();
+  assert.equal(await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="cidade"]').count(), 1, 'incluir nível com um clique');
+  await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="cidade"] .tirar').click();
+  // Vendas fora da carteira: Rep. do pedido › Rep. da carteira › Cliente, sem Próprio e Outro
+  const qtdFora = Number((await pagina.locator('#ver-fora').innerText()).match(/· (\d+)/)[1]);
+  assert.ok(qtdFora >= 1, 'há venda fora da carteira nos dados de teste');
+  await pagina.click('#ver-fora');
+  await pagina.waitForSelector('#fora-niveis');
+  assert.match(await pagina.locator('#fora-niveis').innerText(), /Rep\. do pedido › Rep\. da carteira › Cliente/);
+  assert.equal(await qtdExcel(), qtdFora, 'o Excel traz só os pedidos fora da carteira');
+  assert.equal(await pagina.locator('#analise-numeros .ped-kpi').count(), 6, 'sem os cards Próprio e Outro');
+  const titFora = await pagina.locator('#analise-pedidos .exp-linha.cab span').allInnerTexts();
+  assert.ok(!titFora.some((t) => /^(pr[oó]prio|outro)$/i.test(t)), `sem as colunas Próprio e Outro: ${titFora}`);
+  await pagina.locator('#analise-pedidos .exp-linha:not(.cab):not(.raiz)').first().locator('.abre').click();
+  const ramosFora = await pagina.locator('#analise-pedidos .exp-linha:not(.cab):not(.raiz)').count();
+  assert.ok(ramosFora >= 2, 'abaixo de quem vendeu, o dono da carteira');
+  await foto('p6d-fora-da-carteira');
+  await pagina.click('#ver-fora');
+  await pagina.waitForSelector('#analise-pedidos .exp-niveis');
+  assert.match(await pagina.locator('#ver-fora').innerText(), /^Vendas fora da carteira/);
   await pagina.locator('#analise-pedidos .exp-linha:not(.cab):not(.raiz)').first().click();
   await pagina.waitForSelector('.exp-caminho button.atual');
   await pagina.locator('#analise-pedidos .exp-linha.raiz').click();

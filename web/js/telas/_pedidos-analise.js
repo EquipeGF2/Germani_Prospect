@@ -1,6 +1,6 @@
 // Corpo de Explorar pedidos: hierarquia de níveis, cards, gráficos e árvore, como no Explorar carteira. Os pedidos da linha escolhida
 // saem no botão Excel, sem lista na tela. Tudo sobre os pedidos já lidos: arrastar níveis, abrir linhas e filtrar só redesenham no navegador.
-import { filtrarPedidos, montarArvorePedidos, NIVEIS_PEDIDOS, niveisPedidosPossiveis } from '../../shared/pedidos.mjs';
+import { filtrarPedidos, montarArvorePedidos, NIVEIS_FORA, NIVEIS_PEDIDOS, niveisPedidosPossiveis, pedidosForaDaCarteira } from '../../shared/pedidos.mjs';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { h, montar, formatar, comEspera, aviso, semRolagem } from '../ui.js';
 import { significadoDe } from '../../shared/ajuda.mjs';
@@ -32,15 +32,15 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
   // ao voltar à tela, a linha escolhida, as abertas e o tipo continuam como estavam (nesta aba do navegador)
   const lembranca = memoriaDaTela(`pedidos${porGrupo ? '-grupo' : ''}`, usuario);
   if (!memoria.has(destino)) {
-    const inicial = { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cliente']), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'ambos' };
+    const inicial = { niveis: lerNiveis(possiveis, ['supervisor', 'representante', 'cliente']), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'ambos', fora: false };
     const salvo = lembranca.ler();
-    if (salvo && JSON.stringify(salvo.niveis) === JSON.stringify(inicial.niveis)) Object.assign(inicial, { sel: salvo.sel ?? '', abertos: new Set(salvo.abertos ?? ['']), tipo: salvo.tipo ?? 'ambos' });
+    if (salvo && JSON.stringify(salvo.niveis) === JSON.stringify(inicial.niveis)) Object.assign(inicial, { sel: salvo.sel ?? '', abertos: new Set(salvo.abertos ?? ['']), tipo: salvo.tipo ?? 'ambos', fora: salvo.fora === true });
     memoria.set(destino, inicial);
   }
   const estado = memoria.get(destino);
   const area = h('div', { id: 'analise-pedidos', class: 'ped-exp' });
   montar(destino, area);
-  const desenhar = () => { montar(area, ...tela()); lembranca.guardar({ niveis: estado.niveis, sel: estado.sel, abertos: [...estado.abertos], tipo: estado.tipo }); };
+  const desenhar = () => { montar(area, ...tela()); lembranca.guardar({ niveis: estado.niveis, sel: estado.sel, abertos: [...estado.abertos], tipo: estado.tipo, fora: estado.fora }); };
   const nome = (n) => NIVEIS_PEDIDOS[n].nome;
   const mudarNiveis = (n) => { estado.niveis = n; estado.abertos = new Set(['']); estado.sel = ''; guardarNiveis(n); desenhar(); };
   const aoFiltrar = () => { estado.abertos = new Set(['']); estado.sel = ''; desenharFiltros(); desenhar(); };
@@ -73,9 +73,16 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
         [['venda', 'Pedidos de venda', 'Venda'], ['investimento', 'Pedidos de bonificação', 'Bonificação'], ['ambos', 'Ambos']].map(([v, t, curto]) => opcao(`tipo-${v}`, estado.tipo === v, textoChave(t, curto), () => { estado.tipo = v; }))));
   }
 
+  // Vendas fora da carteira: só os pedidos em que quem vendeu não é o dono do cliente, por Rep. do pedido › Rep. da carteira › Cliente
+  const botaoFora = h('button', { type: 'button', id: 'ver-fora', class: 'secundario', onclick: () => { estado.fora = !estado.fora; estado.abertos = new Set(['']); estado.sel = ''; desenhar(); } });
+  const faixaFora = () => h('div', { class: 'cartao ped-fora', id: 'fora-niveis' }, h('span', { class: 'tit' }, 'Vendas fora da carteira'),
+    h('span', {}, 'Pedidos em que quem vendeu não é o dono da carteira do cliente: ', h('b', {}, NIVEIS_FORA.map(nome).join(' › '))));
+
   function tela() {
-    const vistos = filtrarPedidos(pedidos, { tipo: estado.tipo });
-    const arvore = montarArvorePedidos({ pedidos: vistos, niveis: estado.niveis, abertos: estado.abertos, rotuloRaiz: raiz, porGrupo });
+    const doTipo = filtrarPedidos(pedidos, { tipo: estado.tipo });
+    const fora = pedidosForaDaCarteira(doTipo);
+    const vistos = estado.fora ? fora : doTipo;
+    const arvore = montarArvorePedidos({ pedidos: vistos, niveis: estado.fora ? NIVEIS_FORA : estado.niveis, abertos: estado.abertos, rotuloRaiz: estado.fora ? 'Vendas fora da carteira' : raiz, porGrupo });
     const escolhido = arvore.find((n) => n.caminho === estado.sel) ?? arvore[0];
     const ind = escolhido.ind;
     const etapas = arvore.filter((n) => estado.sel === n.caminho || estado.sel.startsWith(`${n.caminho}/`) || n.caminho === '').sort((a, b) => a.profundidade - b.profundidade);
@@ -85,7 +92,7 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
 
     const numeros = h('div', { id: 'analise-numeros' }, cartoes([['Venda válida', moeda(ind.venda.valor), `${n0(ind.venda.qtd)} pedidos · ${n0(ind.clientes)} clientes`, 'destaque'], ['Faturado', moeda(ind.faturado), `${pct(ind.pctFaturado)} da venda`],
       ['Em carteira', moeda(ind.saldo), `ticket médio ${moeda(ind.ticket)}`], ['Digitado', moeda(ind.digitado.valor), `${n0(ind.digitado.qtd)} pedidos`], ['Desistência', moeda(ind.cancelado.valor), `${n0(ind.cancelado.qtd)} pedidos`], ['Investimento', moeda(ind.investimento.valor), `${n0(ind.investimento.qtd)} bonificações`, 'investimento'],
-      ['Próprio', moeda(ind.propria), `${pct(ind.venda.valor ? (ind.propria / ind.venda.valor) * 100 : null)} da venda`], ['Outro', moeda(ind.outra), `${pct(ind.venda.valor ? (ind.outra / ind.venda.valor) * 100 : null)} da venda`]]));
+      ...(estado.fora ? [] : [['Próprio', moeda(ind.propria), `${pct(ind.venda.valor ? (ind.propria / ind.venda.valor) * 100 : null)} da venda`], ['Outro', moeda(ind.outra), `${pct(ind.venda.valor ? (ind.outra / ind.venda.valor) * 100 : null)} da venda`]])]));
 
     // Faturamento da venda: só a venda válida, faturado × a faturar. O que aconteceu: todos os pedidos de venda, inclusive os que não viraram venda
     const venda = barra('Faturamento da venda', `Dos ${moeda(ind.venda.valor)} vendidos, ${moeda(ind.faturado)} já faturaram`,
@@ -104,7 +111,8 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
       desenhar();
     };
     // rótulos numa linha só (os valores são em R$, dito abaixo da árvore); a dica do rótulo traz o significado
-    const cab = h('div', { class: 'exp-linha cab' }, ['Hierarquia', 'Clientes', 'Válidos', 'Venda', 'Faturado', 'Em carteira', 'Digitado', 'Desistência', 'Invest.', 'Invest. ÷ venda', 'Próprio', 'Outro']
+    // em Vendas fora da carteira, tudo é Outro: as colunas Próprio e Outro saem
+    const cab = h('div', { class: 'exp-linha cab' }, ['Hierarquia', 'Clientes', 'Válidos', 'Venda', 'Faturado', 'Em carteira', 'Digitado', 'Desistência', 'Invest.', 'Invest. ÷ venda', ...(estado.fora ? [] : ['Próprio', 'Outro'])]
       .map((t, i) => h('span', { class: i ? 'num' : '', title: significadoDe(t === 'Venda' ? 'Venda válida' : t) }, t)));
     const linhas = arvore.map((n) => h('div', { class: `exp-linha${n.caminho === escolhido.caminho ? ' escolhida' : ''}${n.profundidade ? '' : ' raiz'}`, dados: { caminho: n.caminho }, style: `--prof:${n.profundidade}`, onclick: () => clicarLinha(n) },
       h('span', { class: 'ramo', style: `padding-left:${n.profundidade * 24}px` },
@@ -116,13 +124,17 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
       // `dados.r` = rótulo do número quando a linha vira cartão
       ...[['Clientes', n0(n.ind.clientes)], ['Válidos', n0(n.ind.venda.qtd)], ['Venda', valor(n.ind.venda.valor), 'venda'], ['Faturado', valor(n.ind.faturado)], ['Em carteira', valor(n.ind.saldo)],
         ['Digitado', valor(n.ind.digitado.valor)], ['Desistência', valor(n.ind.cancelado.valor)], ['Invest.', valor(n.ind.investimento.valor)], ['Invest. ÷ venda', pct(n.ind.pctInvestimento)],
-        ['Próprio', valor(n.ind.propria)], ['Outro', valor(n.ind.outra)]].map(([r, v, classe]) => h(classe ? 'b' : 'span', { class: `num${classe ? ` ${classe}` : ''}`, dados: { r } }, v))));
+        ...(estado.fora ? [] : [['Próprio', valor(n.ind.propria)], ['Outro', valor(n.ind.outra)]])].map(([r, v, classe]) => h(classe ? 'b' : 'span', { class: `num${classe ? ` ${classe}` : ''}`, dados: { r } }, v))));
 
     pedidosDaLinha = escolhido.pedidos;
     botaoExcel.disabled = !pedidosDaLinha.length;
     botaoExcel.textContent = `Excel · ${n0(pedidosDaLinha.length)} ${pedidosDaLinha.length === 1 ? 'pedido' : 'pedidos'}`;
     botaoExcel.title = `Pedidos de ${escolhido.rotulo}`;
-    return [...blocoNiveis({ estado, possiveis, nome, mudarNiveis, desenhar }), h('div', { class: 'rej-barra' }, migalhas, botaoExcel), numeros, h('div', { class: 'exp-quadros' }, venda, processo),
+    botaoFora.textContent = estado.fora ? 'Voltar à hierarquia' : `Vendas fora da carteira · ${n0(fora.length)} ${fora.length === 1 ? 'pedido' : 'pedidos'}`;
+    botaoFora.setAttribute('aria-pressed', estado.fora ? 'true' : 'false');
+    botaoFora.disabled = !estado.fora && !fora.length;
+    area.classList.toggle('fora', estado.fora);
+    return [...(estado.fora ? [faixaFora()] : blocoNiveis({ estado, possiveis, nome, mudarNiveis, desenhar })), h('div', { class: 'rej-barra' }, migalhas, h('div', { class: 'ped-botoes' }, botaoFora, botaoExcel)), numeros, h('div', { class: 'exp-quadros' }, venda, processo),
       semRolagem(h('section', { class: 'cartao exp-arvore', 'aria-label': 'Árvore' }, h('div', { class: 'rolagem' }, cab, linhas), h('p', { class: 'ajuda exp-nota' }, 'Valores em R$.')), { cortados: '.exp-linha > .num' })];
   }
   desenharFiltros();

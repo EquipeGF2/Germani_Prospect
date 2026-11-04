@@ -28,7 +28,8 @@ export function consultaPedidos({ usuario, prospectId = null, limite = 5000, inc
                    COALESCE(v.dono_id, g.vendedor_id) AS dono_id, COALESCE(v.dono_nome, gd.nome) AS dono_nome, COALESCE(v.dono_codigo, gd.codigo_erp) AS dono_codigo,
                    COALESCE(v.dono_supervisor_id, gd.supervisor_id) AS dono_supervisor_id,
                    CASE WHEN v.prospect_id IS NOT NULL THEN v.relacao WHEN v.rep_id = g.vendedor_id THEN 'propria' ELSE 'outra' END AS relacao,
-                   p.cidade, p.uf, COALESCE(p.tipologia_gtm, g.tipologia_gtm) AS tipologia_gtm, COALESCE(p.onda, g.onda) AS onda, p.rota, sup.nome AS supervisor_nome
+                   p.cidade, p.uf, COALESCE(p.tipologia_gtm, g.tipologia_gtm) AS tipologia_gtm, COALESCE(p.onda, g.onda) AS onda, COALESCE(p.rota, g.rota) AS rota,
+                   COALESCE(p.subrota, g.subrota) AS subrota, sup.nome AS supervisor_nome
               FROM vw_pedidos v
               LEFT JOIN prospects p ON p.id = v.prospect_id
               LEFT JOIN prospects g ON v.prospect_id IS NULL AND length(v.cpf_cnpj) = 14 AND g.id = (SELECT MIN(x.id) FROM prospects x WHERE x.cnpj_raiz = v.raiz)
@@ -200,27 +201,38 @@ export function consultaMotivosPedidoValido() {
 
 // ---------- Análise: árvore de níveis livres, como o Explorar carteira, sobre os pedidos já lidos (nada volta ao banco) ----------
 const texto = (v, vazio) => (v == null || v === '' ? vazio : String(v));
-const NOME_TIPO = { venda: 'Venda', investimento: 'Bonificação', ignorar: 'Não considerado' };
-const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
-/** Níveis possíveis. `chave` agrupa; `rotulo` mostra. O nome diz de onde vem a informação: do pedido, do cliente ou da carteira. */
+/**
+ * Níveis. `chave` agrupa; `rotulo` mostra. Os de escolher são os mesmos do Explorar carteira (Supervisor e Rep. são os da
+ * carteira do cliente); `vendeu` e `carteira` montam só a visão Vendas fora da carteira (NIVEIS_FORA).
+ */
+const nomeDono = (p) => [p.dono_codigo, p.dono_nome].filter(Boolean).join(' · ') || 'sem dono';
 export const NIVEIS_PEDIDOS = Object.freeze({
-  supervisor: { nome: 'Supervisor da carteira', chave: (p) => texto(p.dono_supervisor_id, ''), rotulo: (p) => texto(p.supervisor_nome, 'sem supervisor') },
-  representante: { nome: 'Rep. do pedido', chave: (p) => texto(p.rep_codigo, ''), rotulo: nomeRep },
-  carteira: { nome: 'Rep. da carteira', chave: (p) => texto(p.dono_id, ''), rotulo: (p) => [p.dono_codigo, p.dono_nome].filter(Boolean).join(' · ') || 'sem dono' },
-  lista: { nome: 'Venda na própria carteira?', chave: (p) => p.relacao, rotulo: (p) => (p.relacao === 'propria' ? 'Sim: cliente da carteira de quem vendeu' : 'Não: cliente de outra carteira') },
-  cidade: { nome: 'Cidade do cliente', chave: (p) => `${texto(p.cidade, '')}|${texto(p.uf, '')}`, rotulo: (p) => (p.cidade ? `${p.cidade}${p.uf ? '/' + p.uf : ''}` : 'sem cidade') },
-  segmento: { nome: 'Segmento do cliente', chave: (p) => texto(p.tipologia_gtm, ''), rotulo: (p) => texto(p.tipologia_gtm, 'sem segmento') },
-  onda: { nome: 'Onda do cliente', chave: (p) => texto(p.onda, ''), rotulo: (p) => (p.onda ? `Onda ${p.onda}` : 'sem onda') },
-  grupo: { nome: 'Grupo de CNPJ', chave: (p) => texto(p.raiz, ''), rotulo: (p) => `${texto(p.razao_social, '')} · raiz ${texto(p.raiz, '')}` },
+  supervisor: { nome: 'Supervisor', chave: (p) => texto(p.dono_supervisor_id, ''), rotulo: (p) => texto(p.supervisor_nome, 'sem supervisor') },
+  representante: { nome: 'Rep.', chave: (p) => texto(p.dono_id, ''), rotulo: nomeDono },
+  cidade: { nome: 'Cidade', chave: (p) => `${texto(p.cidade, '')}|${texto(p.uf, '')}`, rotulo: (p) => (p.cidade ? `${p.cidade}${p.uf ? '/' + p.uf : ''}` : 'sem cidade') },
+  segmento: { nome: 'Segmento', chave: (p) => texto(p.tipologia_gtm, ''), rotulo: (p) => texto(p.tipologia_gtm, 'sem segmento') },
+  onda: { nome: 'Onda', chave: (p) => texto(p.onda, ''), rotulo: (p) => (p.onda ? `Onda ${p.onda}` : 'sem onda') },
+  rota: { nome: 'Rota', chave: (p) => texto(p.rota, ''), rotulo: (p) => texto(p.rota, 'sem rota') },
+  subrota: { nome: 'Subrota', chave: (p) => `${texto(p.rota, '')}|${texto(p.subrota, '')}`, rotulo: (p) => (p.subrota ? `${texto(p.rota, '—')} / ${p.subrota}` : 'sem subrota') },
   cliente: { nome: 'Cliente', chave: (p) => p.cpf_cnpj, rotulo: (p) => `${texto(p.codigo_cliente, '—')} - ${texto(p.razao_social, '')}` },
-  tipo: { nome: 'Tipo de pedido', chave: (p) => p.tipo, rotulo: (p) => NOME_TIPO[p.tipo] ?? p.tipo },
-  situacao: { nome: 'Situação do pedido', chave: (p) => p.situacao_codigo, rotulo: (p) => texto(p.situacao_descricao, p.situacao_codigo) },
-  mes: { nome: 'Mês do pedido', chave: (p) => String(p.data_primeira ?? '').slice(0, 7), rotulo: (p) => (p.data_primeira ? `${MESES[Number(p.data_primeira.slice(5, 7)) - 1]}/${p.data_primeira.slice(0, 4)}` : 'sem data') },
+  grupo: { nome: 'Grupo de CNPJ', chave: (p) => texto(p.raiz, ''), rotulo: (p) => `${texto(p.razao_social, '')} · raiz ${texto(p.raiz, '')}` },
+  vendeu: { nome: 'Rep. do pedido', chave: (p) => texto(p.rep_codigo, ''), rotulo: nomeRep },
+  carteira: { nome: 'Rep. da carteira', chave: (p) => texto(p.dono_id, ''), rotulo: nomeDono },
 });
 
-/** Níveis que o usuário pode usar: quem não vê todas as equipes não tem o nível Supervisor. */
-export const niveisPedidosPossiveis = (usuario) => Object.keys(NIVEIS_PEDIDOS).filter((n) => n !== 'supervisor' || veTodasEquipes(usuario));
+/** Vendas fora da carteira: quem vendeu › dono da carteira do cliente › cliente. */
+export const NIVEIS_FORA = Object.freeze(['vendeu', 'carteira', 'cliente']);
+/** Pedidos em que quem vendeu não é o dono da carteira do cliente. */
+export const pedidosForaDaCarteira = (pedidos) => pedidos.filter((p) => p.relacao === 'outra');
+
+/** Níveis de escolher, como no Explorar carteira: supervisor não tem Supervisor; vendedor não tem Supervisor nem Rep. */
+export function niveisPedidosPossiveis(usuario) {
+  const todos = ['supervisor', 'representante', 'cidade', 'segmento', 'onda', 'rota', 'subrota', 'cliente'];
+  if (veTodasEquipes(usuario)) return todos;
+  if (usuario.perfil === 'supervisor') return todos.filter((n) => n !== 'supervisor');
+  return todos.filter((n) => n !== 'supervisor' && n !== 'representante');
+}
 
 /** Indicadores de um ramo: os seis valores, clientes distintos com venda e ticket médio. */
 export function indicadoresRamo(pedidos, { porGrupo = false } = {}) {

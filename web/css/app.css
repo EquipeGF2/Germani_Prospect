@@ -748,6 +748,11 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 /* todas as linhas com a mesma largura: cada linha é um grid próprio, e só assim os números ficam sob os títulos */
 .ped-exp .exp-linha { grid-template-columns: minmax(200px, 3fr) repeat(11, minmax(0, 1fr)); width: 100%; min-width: 0; box-sizing: border-box; }
 .ped-exp .exp-arvore { margin-bottom: 16px; }
+/* Vendas fora da carteira: sem as colunas Próprio e Outro; no lugar dos níveis, a faixa que diz o que se vê */
+.ped-exp.fora .exp-linha { grid-template-columns: minmax(200px, 3fr) repeat(9, minmax(0, 1fr)); }
+.ped-fora { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; padding: 12px 14px; margin-bottom: 14px; font-size: 14px; }
+.ped-fora .tit { font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.ped-botoes { display: flex; flex-wrap: wrap; gap: 8px; }
 /* sem rolagem para o lado: rótulos e números numa linha só; o que não cabe vira cartão (semRolagem, web/js/ui.js) */
 .ped-exp .exp-linha.cab > span, .ped-exp .exp-linha.cab .num { white-space: nowrap; overflow: hidden; text-overflow: clip; }
 .ped-exp .exp-linha > .num { overflow: hidden; }

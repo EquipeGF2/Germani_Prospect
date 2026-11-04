@@ -5,7 +5,7 @@ import { bancoTeste, cnpjTeste, criarEquipe, criarProspect, evento, prospect, re
 import { lerBiff2 } from '../shared/biff.mjs';
 import { lerPlanilhaDeBytes } from '../shared/planilha.mjs';
 import { apagarArquivoPedidos, conferirExclusao, gravarPedidos, listarArquivosPedidos, simularPedidos, statusDepois } from '../shared/importar-pedidos.mjs';
-import { agruparPorRaiz, alertasPedidos, buscarPedidos, clientesDistintos, consultaPedidos, comVersaoPedidos, consultaPedidosGrupo, consultaSaldoFiliais, consultaVersaoPedidos, filtrarPedidos, indicadoresRamo, montarArvorePedidos, niveisPedidosPossiveis, porRepresentante, resumirPedidos, rotuloGrupo } from '../shared/pedidos.mjs';
+import { agruparPorRaiz, alertasPedidos, buscarPedidos, clientesDistintos, consultaPedidos, comVersaoPedidos, consultaPedidosGrupo, consultaSaldoFiliais, consultaVersaoPedidos, filtrarPedidos, indicadoresRamo, montarArvorePedidos, NIVEIS_FORA, niveisPedidosPossiveis, pedidosForaDaCarteira, porRepresentante, resumirPedidos, rotuloGrupo } from '../shared/pedidos.mjs';
 import { consultaPedidosResumo } from '../shared/explorar.mjs';
 import { consultaCarteira } from '../shared/carteira.mjs';
 import { STATUS_ENCERRADOS } from '../shared/status.mjs';
@@ -338,13 +338,24 @@ test('análise: níveis livres, cada ramo soma o que está abaixo dele e abre at
   assert.deepEqual(fechada[0].ind.venda, { qtd: 3, valor: 450 });
   assert.equal(fechada[0].ind.clientes, 2);
   assert.equal(fechada[0].ind.investimento.valor, 7, 'bonificação à parte');
-  const aberta = montarArvorePedidos({ pedidos, niveis: ['representante', 'cliente'], abertos: new Set(['', '/representante=11']) });
+  const aberta = montarArvorePedidos({ pedidos, niveis: ['vendeu', 'cliente'], abertos: new Set(['', '/vendeu=11']) });
   assert.deepEqual(aberta.map((n) => [n.profundidade, n.rotulo, n.ind.venda.valor]), [[0, 'Todos os pedidos', 450], [1, '11 · Vend Onze', 350], [2, `100 - Empresa 2`, 300], [2, `100 - Empresa 1`, 50], [1, '10 · Vend Dez', 100]], 'do maior para o menor');
   const reps = aberta.filter((n) => n.profundidade === 1);
   assert.equal(reps.reduce((s, n) => s + n.ind.venda.valor, 0), aberta[0].ind.venda.valor, 'os filhos somam o pai');
   assert.equal(reps.reduce((s, n) => s + n.pedidos.length, 0), pedidos.length);
-  const porCidade = montarArvorePedidos({ pedidos, niveis: ['cidade', 'lista', 'situacao'], abertos: new Set(['']) });
+  const porCidade = montarArvorePedidos({ pedidos, niveis: ['cidade', 'onda'], abertos: new Set(['']) });
   assert.deepEqual(porCidade.slice(1).map((n) => n.rotulo), ['Estrela/RS', 'Lajeado/RS']);
+  // Rep. é o dono da carteira do cliente (como no Explorar carteira); Vendas fora da carteira cruza quem vendeu × dono
+  const porDono = montarArvorePedidos({ pedidos, niveis: ['representante'], abertos: new Set(['']) }).slice(1);
+  assert.equal(porDono.length, 2, 'um por dono de carteira, não por quem vendeu');
+  assert.ok(porDono.every((n) => n.pedidos.every((p) => p.dono_id === n.pedidos[0].dono_id)));
+  assert.equal(porDono.reduce((t, n) => t + n.pedidos.length, 0), pedidos.length);
+  const fora = pedidosForaDaCarteira(pedidos);
+  assert.ok(fora.length && fora.every((p) => p.rep_id !== p.dono_id), 'fora da carteira: quem vendeu não é o dono');
+  const cruz = montarArvorePedidos({ pedidos: fora, niveis: NIVEIS_FORA, abertos: new Set(['', ...fora.map((p) => `/vendeu=${p.rep_codigo}`)]) });
+  assert.ok(cruz.filter((n) => n.nivel === 'carteira').every((n) => n.pedidos.every((p) => String(p.dono_id) === n.caminho.split('carteira=')[1])), 'abaixo de quem vendeu, o dono da carteira');
+  assert.deepEqual(niveisPedidosPossiveis({ perfil: 'vendedor' }), ['cidade', 'segmento', 'onda', 'rota', 'subrota', 'cliente']);
+  assert.equal(niveisPedidosPossiveis({ perfil: 'supervisor' }).includes('supervisor'), false);
   assert.equal(niveisPedidosPossiveis({ perfil: 'vendedor' }).includes('supervisor'), false);
   assert.equal(niveisPedidosPossiveis(adm).includes('supervisor'), true);
 });
@@ -364,8 +375,8 @@ test('ver por grupo: empresas da mesma raiz numa linha que abre, sem mudar os va
   assert.match(arv[1].rotulo, /^Grupo .* · 2 empresas$/);
   assert.equal(arv[2].temFilhos, false, 'a empresa é a última folha');
   assert.equal(arv[0].ind.clientes, 2);
-  const comSituacao = montarArvorePedidos({ pedidos, niveis: ['cliente', 'situacao'], abertos: new Set(['', `/grupo=${raiz}`, `/grupo=${raiz}/cliente=${f}`]), porGrupo: true });
-  assert.ok(comSituacao.some((n) => n.nivel === 'situacao' && n.profundidade === 3), 'abre o nível seguinte dentro do grupo');
+  const comSituacao = montarArvorePedidos({ pedidos, niveis: ['cliente', 'vendeu'], abertos: new Set(['', `/grupo=${raiz}`, `/grupo=${raiz}/cliente=${f}`]), porGrupo: true });
+  assert.ok(comSituacao.some((n) => n.nivel === 'vendeu' && n.profundidade === 3), 'abre o nível seguinte dentro do grupo');
   const emp = montarArvorePedidos({ pedidos, niveis: ['cliente'], abertos: new Set(['']) });
   assert.equal(emp.filter((n) => n.profundidade === 1).length, 3, 'por empresa, sem grupo');
   assert.equal(emp[0].ind.venda.valor, arv[0].ind.venda.valor, 'a chave não muda os valores');
