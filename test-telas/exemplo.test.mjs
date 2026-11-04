@@ -166,11 +166,15 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.ok(supervisores >= 2, `supervisores: ${supervisores}`);
   await pagina.click('.exp-linha:not(.raiz):not(.cab) b.num >> nth=0');         // clicar em qualquer parte da linha escolhe e abre
   assert.ok(await pagina.locator('.exp-linha:not(.raiz):not(.cab)').count() > supervisores, 'abriu os representantes');
-  // da totalidade: 5 partes (sem interesse do cliente e do representante separados) que somam o total do ramo; dos contactados: as 4 etapas do processo
-  const partesTotal = await pagina.locator('#grafico-totalidade .exp-legenda b').allInnerTexts();
-  const totalRamo = Number((await pagina.locator('#grafico-totalidade .exp-total b').innerText()).replace(/\./g, ''));
-  assert.equal(partesTotal.length, 5);
-  assert.equal(partesTotal.reduce((t, x) => t + Number(x.replace(/\./g, '')), 0), totalRamo, 'as 5 partes somam o total');
+  // da totalidade: 3 partes (contactados, não contactados e rejeitados) que somam o total do ramo; os 4 tipos de rejeitados somam os rejeitados
+  const num = (x) => Number(x.replace(/\./g, ''));
+  const partesTotal = await pagina.locator('#grafico-totalidade .exp-legenda:not(.sub) > b').allInnerTexts();
+  const totalRamo = num(await pagina.locator('#grafico-totalidade .exp-total b').innerText());
+  assert.equal(partesTotal.length, 3);
+  assert.equal(partesTotal.reduce((t, x) => t + num(x), 0), totalRamo, 'as 3 partes somam o total');
+  const tiposRejeitados = await pagina.locator('#grafico-totalidade .exp-legenda.sub .qtd-sub').allInnerTexts();
+  assert.equal(tiposRejeitados.length, 4);
+  assert.equal(tiposRejeitados.reduce((t, x) => t + num(x), 0), num(partesTotal[2]), 'sem interesse do cliente e do representante, baixados e expurgados somam os rejeitados');
   assert.equal(await pagina.locator('#grafico-contactados .exp-etapa').count(), 5);
   assert.equal(await pagina.locator('.exp-linha.cab span').count(), 12, 'colunas: ramo, prospects, contactados, cobertura, sem interesse do cliente e do representante, 3 etapas, pedido realizado, R$');
   await pagina.locator('.exp-nivel[data-nivel="cidade"]').dragTo(pagina.locator('.exp-nivel[data-nivel="supervisor"]'));

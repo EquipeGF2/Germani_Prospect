@@ -1,6 +1,8 @@
 // Relatório da Lista (Lista principal / Acompanhamento) e manual da Ajuda em PDF. O relatório vai para o representante — layout aprovado no mockup:
 // A4 paisagem, logotipo, resumo numa linha, rótulos das colunas centralizados e repetidos em cada página,
 // "Página X de N" e rodapé de uso interno. jsPDF + AutoTable (~450 KB) carregados só ao gerar, com a versão (?v=) do site.
+import { blocosSimples } from '../shared/ajuda.mjs';
+
 const versao = new URL(import.meta.url).search;
 let carregando = null;
 
@@ -118,7 +120,7 @@ export async function gerarPdfLista({ titulo, representante, supervisor, emissao
   return nomeArquivo;
 }
 
-const MAX_ALTURA_IMAGEM = 130;   // mm
+const MAX_ALTURA_IMAGEM = 80;    // mm: os recortes da Ajuda saem pequenos, ao lado do texto que os explica
 /** Imagem de uma tela, com o tamanho. Se faltar, o manual sai sem ela. */
 async function imagemDaAjuda(arquivo) {
   const r = await fetch(`img/ajuda/${arquivo}`).catch(() => null);
@@ -132,7 +134,8 @@ async function imagemDaAjuda(arquivo) {
  * Manual em PDF, gerado na hora a partir do conteúdo da Ajuda (shared/ajuda.mjs): A4 retrato, logotipo no cabeçalho, capa, sumário
  * e "Página X de N". Com um capítulo só, vai sem capa nem sumário.
  */
-export async function gerarManualPdf({ capitulos, perfil, emissao, nomeArquivo }) {
+export async function gerarManualPdf({ capitulos: originais, perfil, emissao, nomeArquivo }) {
+  const capitulos = originais.map((c) => ({ ...c, blocos: blocosSimples(c) }));   // blocos ricos da tela viram p, h, img e tabela
   const [JsPDF, logo] = await Promise.all([bibliotecaPdf(), logotipo().catch(() => null)]);
   const doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const L = 210; const A = 297; const M = 18; const util = L - 2 * M; const FIM = A - 20; const TOPO = 30;
@@ -170,10 +173,11 @@ export async function gerarManualPdf({ capitulos, perfil, emissao, nomeArquivo }
     escrever(`${c.n}. ${c.nome}`, { tam: 20, estilo: 'bold', depois: 5 });
     for (const b of c.blocos) {
       if (b[0] === 'p') escrever(b[1], { depois: 4 });
+      else if (b[0] === 'destaque') escrever(b[1], { estilo: 'bold', cor: [30, 58, 138], depois: 5 });
       else if (b[0] === 'img') {
         const img = imagens.get(b[1]);
         if (!img) continue;
-        const largura = Math.min(util, (MAX_ALTURA_IMAGEM * img.largura) / img.altura);
+        const largura = Math.min(util * 0.8, (MAX_ALTURA_IMAGEM * img.largura) / img.altura);
         const altura = (largura * img.altura) / img.largura;
         cabe(altura + 8);
         doc.addImage(img.dados, 'JPEG', M + (util - largura) / 2, y, largura, altura);

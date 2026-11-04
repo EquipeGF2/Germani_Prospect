@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { AJUDA_TELAS, ajudaDaTela, buscarTermos, CAPITULOS, capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO, grupoDeTermos, OPCOES_TOPO, opcoesDaTela, TELAS_SEM_AJUDA, TERMOS, termosDoUsuario } from '../shared/ajuda.mjs';
+import { AJUDA_TELAS, ajudaDaTela, blocosSimples, buscarTermos, CAPITULOS, capituloDeTermos, capitulosDoUsuario, DESVIOS, FLUXO, grupoDeTermos, OPCOES_TOPO, opcoesDaTela, TELAS_SEM_AJUDA, TERMOS, termosDoUsuario } from '../shared/ajuda.mjs';
 import { readdirSync } from 'node:fs';
 
 const app = readFileSync(new URL('../web/js/app.js', import.meta.url), 'utf8');
@@ -24,10 +24,15 @@ test('toda tela tem ajuda: objetivo, como funciona, campos, o que analisar, situ
   }
 });
 
-test('as imagens dos capítulos existem', () => {
-  const imagens = CAPITULOS.flatMap((c) => c.blocos).filter((b) => b[0] === 'img');
-  assert.ok(imagens.length >= 10);
-  for (const b of imagens) { assert.ok(existsSync(new URL(`../web/img/ajuda/${b[1]}`, import.meta.url)), `falta a imagem ${b[1]}`); assert.ok(b[2], `${b[1]}: legenda`); }
+test('os recortes dos capítulos existem, e todo capítulo tem para que serve, em 30 segundos e perguntas', () => {
+  const recortes = CAPITULOS.flatMap((c) => c.blocos).filter((b) => b[0] === 'parte');
+  assert.ok(recortes.length >= 20);
+  for (const b of recortes) { assert.ok(existsSync(new URL(`../web/img/ajuda/${b[1]}.jpg`, import.meta.url)), `falta o recorte ${b[1]}`); assert.ok(b[2] && b[3] && b[4].length, `${b[1]}: título, resumo e itens`); }
+  for (const c of CAPITULOS) for (const tipo of ['serve', 'rapido', 'perguntas']) assert.ok(c.blocos.some((b) => b[0] === tipo), `capítulo ${c.n}: ${tipo}`);
+  for (const b of CAPITULOS.flatMap((c) => c.blocos).filter((x) => x[0] === 'termos')) assert.ok(TERMOS.some((g) => g.id === b[1]), `grupo de termos ${b[1]}`);
+  for (const b of CAPITULOS.flatMap((c) => c.blocos).filter((x) => x[0] === 'opcoes')) assert.ok(OPCOES_TOPO[b[1]], `opções de ${b[1]}`);
+  const simples = blocosSimples(CAPITULOS[3]);
+  assert.ok(simples.every((b) => ['p', 'h', 'lista', 'passos', 'tabela', 'img', 'destaque'].includes(b[0])), 'o PDF recebe só blocos simples');
 });
 
 test('o Acompanhamento tem ajuda própria, separada da Lista principal', () => {
@@ -51,7 +56,7 @@ test('o fluxo aponta para capítulos que existem, e os capítulos têm conteúdo
     assert.ok(CAPITULOS.some((c) => c.n === e.cap), `${e.id}: capítulo ${e.cap}`);
   }
   assert.deepEqual(CAPITULOS.map((c) => c.n), [1, 2, 3, 4, 5, 6, 7, 8]);
-  for (const c of CAPITULOS) assert.ok(c.blocos.length >= 2 && c.blocos.every((b) => ['p', 'h', 'lista', 'passos', 'tabela', 'img'].includes(b[0])), `capítulo ${c.n}`);
+  for (const c of CAPITULOS) assert.ok(c.blocos.length >= 2 && c.blocos.every((b) => ['p', 'h', 'lista', 'passos', 'tabela', 'serve', 'rapido', 'parte', 'opcoes', 'termos', 'perguntas'].includes(b[0])), `capítulo ${c.n}`);
 });
 
 // código das telas e das regras, sem a própria ajuda: é onde o termo precisa aparecer

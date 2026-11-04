@@ -125,25 +125,27 @@ export async function render(conteudo, { usuario }) {
             h('button', { type: 'button', class: 'secundario pequeno', 'aria-label': `Descer ${NIVEIS[nivel].nome}`, disabled: i === estado.niveis.length - 1, onclick: () => mover(nivel, 1) }, '↓')) : null);
       })) : null);
 
-    // Da totalidade: uma barra de 100% em 4 partes que somam todos os prospects do ramo
+    // Da totalidade: uma barra de 100% em 3 partes que somam todos os prospects do ramo; Rejeitados abre nos 4 tipos
     const contSemSI = ind.contactados - ind.semInteresse;   // contactados que seguem no processo (sem os sem interesse)
+    const rejeitados = ind.semInteresse + ind.inativos;
     const partes = [
-      ['contactados', 'Contactados', contSemSI, '#1D4ED8'],
-      ['si_cliente', 'Sem interesse do cliente', ind.siCliente, '#3F3F46'],
-      ['si_representante', 'Sem interesse do representante', ind.siRepresentante, '#B45309'],
+      ['contactados', 'Contactados, seguem no processo', contSemSI, '#1D4ED8'],
       ['nao_contactados', 'Não contactados', ind.status.nao_contactado, '#9CA3AF'],
-      ['inativos', 'Inativos (baixados / expurgados)', ind.inativos, '#E5E7EB'],
+      ['rejeitados', 'Rejeitados', rejeitados, '#9F1D24'],
     ];
+    const tiposRejeitados = [['si_cliente', 'Sem interesse do cliente', ind.siCliente], ['si_representante', 'Sem interesse do representante', ind.siRepresentante],
+      ['baixados', 'Baixados', ind.status.invalido ?? 0], ['expurgados', 'Expurgados (já eram clientes)', ind.status.expurgado ?? 0]];
     const totalidade = h('section', { class: 'cartao exp-grafico', id: 'grafico-totalidade' },
       h('div', { class: 'exp-grafico-topo' }, h('div', {}, h('span', { class: 'tit' }, 'Da totalidade'), h('h2', {}, escolhido.rotulo)),
         h('div', { class: 'exp-total' }, h('b', {}, n0(ind.qtd)), h('span', {}, 'prospects'))),
       h('div', { class: 'exp-barra100', role: 'img', 'aria-label': partes.map(([, nome, q]) => `${nome}: ${n0(q)}`).join(', ') },
         partes.filter(([, , q]) => q > 0).map(([chave, nome, q, cor]) => h('span', { dados: { parte: chave }, title: `${nome}: ${n0(q)}`, style: `flex:${q} 1 0;background:${cor}` }))),
       partes.map(([chave, nome, q, cor]) => h('div', { class: 'exp-legenda', dados: { parte: chave } },
-        h('span', { class: `ponto${chave === 'inativos' ? ' claro' : ''}`, style: `background:${cor}` }), h('span', {}, nome),
+        h('span', { class: 'ponto', style: `background:${cor}` }), h('span', {}, chave === 'rejeitados' ? h('b', {}, nome) : nome),
         h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(ind.qtd ? (q / ind.qtd) * 100 : null)))),
+      tiposRejeitados.map(([chave, nome, q]) => h('div', { class: 'exp-legenda sub', dados: { parte: chave } }, h('span'), h('span', {}, nome), h('span', { class: 'qtd-sub' }, n0(q)), h('span'))),
       h('p', { class: 'exp-rodape' }, h('b', {}, `Cobertura ${pct(ind.cobertura)}`),
-        ` = contactados com sem interesse (${n0(ind.contactados)}) ÷ base válida (${n0(ind.base)}, sem inativos)`));
+        ` = contactados com sem interesse (${n0(ind.contactados)}) ÷ base válida (${n0(ind.base)}, sem baixados e expurgados)`));
 
     // Dos contactados: onde estão os que seguem no processo (% sobre os contactados sem os sem interesse)
     const etapasProcesso = [['Aguardando cadastro', ind.status.aguardando_cadastro, status.aguardando_cadastro?.cor ?? '#6D28D9'],
@@ -179,7 +181,7 @@ export async function render(conteudo, { usuario }) {
         n.temFilhos ? h('button', { type: 'button', class: 'abre', 'aria-expanded': n.aberto ? 'true' : 'false', 'aria-label': `${n.aberto ? 'Fechar' : 'Abrir'} ${n.rotulo}`,
           onclick: (ev) => { ev.stopPropagation(); if (n.aberto) estado.abertos.delete(n.caminho); else estado.abertos.add(n.caminho); desenhar(); } }, n.aberto ? '▼' : '▶') : h('span', { class: 'abre vazio' }),
         h('button', { type: 'button', class: 'nome', title: n.rotulo }, n.rotulo)),
-      // `dados.r` = rótulo do número no cartão do celular; `cel` = ordem nele (grade 4 × 2); inativos só aparecem no celular
+      // `dados.r` = rótulo do número no cartão do celular; `cel` = ordem nele (grade 4 × 2); rejeitados só aparecem no celular
       h('b', { class: 'num qtd' }, n0(n.ind.qtd)), h('span', { class: 'quebra', 'aria-hidden': 'true' }),
       h('span', { class: 'num contact' }, n0(n.ind.contactados)),
       h('span', { class: 'num cobertura', dados: { r: 'Cobert.', cel: 9 } }, pct(n.ind.cobertura)),
@@ -190,7 +192,7 @@ export async function render(conteudo, { usuario }) {
       h('span', { class: 'num', dados: { r: 'Ag. ped.', cel: 3 } }, n0(n.ind.aguardandoPedido)),
       h('b', { class: 'num', dados: { r: 'Pedidos', cel: 4 } }, n0(n.ind.vendas)),
       h('span', { class: 'num', dados: { r: 'Valor', cel: 8 } }, reais(n.ind.valorPedidos)), h('span', { class: 'num potencial' }, reais(n.ind.potencial)),
-      h('span', { class: 'num so-celular', dados: { r: 'Inativos', cel: 7 } }, n0(n.ind.inativos))));
+      h('span', { class: 'num so-celular', dados: { r: 'Rejeitados', cel: 7 } }, n0(n.ind.semInteresse + n.ind.inativos))));
 
     return [
       h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar carteira'), tipos),

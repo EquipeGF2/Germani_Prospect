@@ -439,9 +439,10 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
   (TIPOLOGIA GTM), Onda, Rota, Subrota. Os níveis são cartões **arrastáveis** (ordenar, incluir, tirar); a ordem fica
   guardada no navegador. Cada nível aberto mostra **todos** os itens, do maior para o menor.
 - O ramo escolhido mostra dois gráficos (no lugar dos cards, de "Clientes por status" e do funil):
-  - **Da totalidade**: barra de 100% em 4 partes que somam os prospects do ramo — Contactados (sem os sem interesse),
-    Sem interesse, Não contactados e Inativos (inválidos/baixados) — e a **Cobertura** = contactados (com os sem
-    interesse) ÷ base válida (sem inativos), com os números.
+  - **Da totalidade**: barra de 100% em 3 partes que somam os prospects do ramo — Contactados que seguem no processo,
+    Não contactados e **Rejeitados** (sem interesse do cliente, sem interesse do representante, baixados e expurgados, com a
+    quantidade de cada um) — e a **Cobertura** = contactados (com os sem interesse) ÷ base válida (sem baixados e
+    expurgados), com os números. No celular, o número rotulado Rejeitados da hierarquia soma os mesmos quatro tipos.
   - **Dos contactados**: onde estão os que seguem no processo (contactados sem os sem interesse) — Aguardando cadastro,
     Aguardando financeiro, Aguardando pedido e Pedido realizado, cada um com % — e Valor dos pedidos, Potencial (em
     aberto × % do pipeline × valor médio) e Conversão (vendas ÷ contactados). "Em prospecção" (contato da planilha,
@@ -454,7 +455,7 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
   **Mudar** abre a lista de todos os níveis possíveis: marcar liga/desliga, ↑ ↓ mudam a ordem. Tudo no navegador.
 - **Celular**: os dois gráficos ocupam a largura do cartão (etapas com a barra abaixo do nome; Valor dos pedidos, Potencial
   e Conversão um por linha, valor à direita) e a grade vira **um cartão por ramo**: nome e prospects na 1ª linha;
-  abaixo, uma grade 4 × 2 rotulada — Ag. cadastro, Ag. financeiro, Ag. pedido, Pedidos / Sem interesse, Inativos,
+  abaixo, uma grade 4 × 2 rotulada — Ag. cadastro, Ag. financeiro, Ag. pedido, Pedidos / Sem interesse, Rejeitados,
   Cobertura, Valor dos pedidos — sem rolagem para o lado. O potencial de cada ramo aparece no gráfico ao escolher o ramo.
 - Escopo: gestão vê tudo (supervisor com "vê todas as equipes" também); **supervisor só a própria equipe, sem o nível
   Supervisor**; vendedor só a própria carteira (sem Supervisor nem Representante).
@@ -473,9 +474,11 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 
 Um único conteúdo alimenta três saídas, para não haver textos diferentes: a tela **Ajuda** (último item do menu, com o fluxograma e os capítulos), o botão **?** no topo de toda tela (objetivo, como funciona, campos, o que analisar, situações comuns e próximo passo) e o **manual em PDF**, gerado na hora no navegador. Cada perfil vê só os capítulos do que usa. O Explorar carteira é a tela inicial: ao entrar, o sistema abre sempre nela. Tela nova ou alterada: atualize `shared/ajuda.mjs`; `test/ajuda.test.mjs` falha se uma tela ficar sem ajuda.
 
+**Capítulos** (`CAPITULOS`), escritos para quem não é da área de tecnologia: Para que serve, Em 30 segundos, A tela parte por parte (recortes pequenos de cada parte da tela, com o botão Ampliar imagem, e o que é cada item), Opções do topo, Termos e Perguntas comuns. Os recortes ficam em `web/img/ajuda`, com dados fictícios, e são gerados de novo por `IMAGENS_AJUDA=web/img/ajuda npm run test:telas`; no PDF, os mesmos blocos saem como texto, recorte e tabela (`blocosSimples`).
+
 **Opções do topo e significado dos termos**, no botão **?** de cada tela (e no fim do manual em PDF): cada opção das chaves e filtros do topo (`OPCOES_TOPO`: Fluxo | Crédito × Pedido, Ver por Empresa | Ver por Grupo…) e tudo o que aparece na tela, inclusive as abreviações (`TERMOS`: Invest., Ag. fin., S.I. cli., Créd. Cliente…). Não há tela separada no menu. Só entra o que existe no sistema: `test/ajuda.test.mjs` procura cada termo e cada opção no código das telas. Rótulo ou opção nova em tela: inclua o significado. Ao entrar, o sistema abre sempre na página inicial (Explorar carteira).
 
-**Sem rolagem para o lado** (computador e celular): rótulos de coluna e textos de card numa linha só. Tabela, hierarquia ou fila de cards que não cabe na largura vira cartão, com o rótulo de cada campo (`semRolagem`, `web/js/ui.js`): a decisão é tomada pela largura real, então muda ao girar o celular ou recolher o menu. No celular, a hierarquia do Explorar pedidos mostra a venda e um resumo por linha (os oito números da linha escolhida ficam nos cards), e as etapas do Acompanhamento ficam uma abaixo da outra. `test-telas/pedidos.test.mjs` mede 390, 768, 1024 e 1366 px.
+**Sem rolagem para o lado** (computador e celular): rótulos de coluna e textos de card numa linha só. Tabela, hierarquia ou fila de cards que não cabe na largura vira cartão, com o rótulo de cada campo (`semRolagem`, `web/js/ui.js`): a decisão é tomada pela largura real, então muda ao girar o celular ou recolher o menu. No celular, a hierarquia do Explorar pedidos mostra a venda e um resumo por linha (os oito números da linha escolhida ficam nos cards), e as etapas do Acompanhamento ficam uma abaixo da outra. `test-telas/pedidos.test.mjs` mede 360, 390, 768, 1024 e 1366 px. No celular, as chaves do topo ocupam a linha toda, com texto curto (Venda | Bonificação | Ambos; Primeiro pedido).
 
 ## 11. Perfis de acesso e telas (migração 0008 · `shared/perfis.mjs`)
 
@@ -534,13 +537,13 @@ Um único conteúdo alimenta três saídas, para não haver textos diferentes: a
     sem interesse…);
   - **Decidir** — filial nova de grupo que já é cliente, ainda sem atendimento.
 - **Expurgo**: nada é apagado. O prospect passa à situação **Expurgado (já cliente)** — fora da carteira válida e das contas
-  (como o inválido: `conta_carteira = 0`; no Explorar entra em "Inativos"), sem aceitar registro. Fica em `expurgos`
+  (como o inválido: `conta_carteira = 0`; no Explorar entra em "Rejeitados"), sem aceitar registro. Fica em `expurgos`
   (somente inclusão) com quem, quando e o motivo, e aparece no histórico da ficha. **Desfazer** (na mesma tela) devolve a
   situação anterior. O banco só aceita expurgar quem não foi trabalhado e só pelo administrador.
 
 ## 14. Pedidos do ERP (migração 0022 · `shared/importar-pedidos.mjs`, `shared/pedidos.mjs`)
 
-Importação: docs/05 §6. Tela: **Explorar pedidos** (`#/pedidos`), o que foi vendido, numa tela só, sem abas.
+Importação: docs/05 §6. Tela: **Explorar pedidos** (`#/pedidos`), o que foi vendido, numa tela só, sem abas. Dois gráficos: **Faturamento da venda** (só a venda válida: faturado × em carteira, a faturar) e **O que aconteceu com os pedidos de venda** (todos os pedidos de venda: venda válida, digitado e desistência, com as colunas Pedidos, Valor e %).
 
 **Cada tela responde a uma pergunta.** Explorar carteira: como está a base? · Lista principal: quem procurar? · Acompanhamento: o que está em andamento? · Explorar pedidos: o que foi vendido?
 
