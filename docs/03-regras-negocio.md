@@ -186,7 +186,9 @@ voltar da ficha, do lote ou pelo menu) e a lista já lida vem do cache (`lerComC
 limpa), sem ler o banco de novo. "Limpar filtros" abre a lista limpa (`?limpo=1`). Explorar carteira, Explorar pedidos,
 Acompanhamento e Rejeitados voltam com a linha escolhida, as linhas abertas e o tipo/etapa.
 
-**Municípios em maiúsculas** (0027): o nome do município fica sempre em maiúsculas, com acento, inclusive dos baixados; a importação da base já grava assim. **Segmento:** "Atacado Perueiro" passa a ser "Atacado" (também nas próximas importações).
+**Níveis da hierarquia** (Explorar carteira, Explorar pedidos, Acompanhamento e Rejeitados): Níveis e Disponíveis numa linha só, lado a lado; os níveis ficam numa linha (até 70% da largura) e, se faltar espaço, os disponíveis quebram dentro da parte deles, sem rolagem para o lado.
+
+**Municípios, rota e subrota em maiúsculas** (0027, 0028): ficam sempre em maiúsculas, com acento, inclusive nos baixados; a importação da base já grava assim. **Segmento:** "Atacado Perueiro" passa a ser "Atacado" (também nas próximas importações).
 
 ## 6. Lista de prospects e acompanhamento — representante × vendedor
 

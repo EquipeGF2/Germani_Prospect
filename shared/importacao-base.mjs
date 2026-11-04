@@ -222,8 +222,8 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje, considerarDatas = 
         tipologia_gtm: segmento(campos.tipologia_gtm),
         onda: codigo(campos.onda),
         tipo: limparTexto(campos.tipo),
-        rota: codigo(campos.rota),
-        subrota: codigo(campos.subrota),
+        rota: codigo(campos.rota)?.toLocaleUpperCase('pt-BR') ?? null,   // rota e subrota sempre em maiúsculas (0028)
+        subrota: codigo(campos.subrota)?.toLocaleUpperCase('pt-BR') ?? null,   // rota e subrota sempre em maiúsculas (0028)
         obs_planilha: limparTexto(campos.obs),
         dt_entrada_base: dtEntrada,
         busca: normalizarBusca([razao, nomeFantasia, cnpj, cidade, bairro].filter(Boolean).join(' ')),

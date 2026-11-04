@@ -550,3 +550,17 @@ test('0027: municípios em maiúsculas (com acento), Atacado Perueiro vira Ataca
   const r = (await db.execute({ sql: "SELECT cidade FROM resumo_carteira WHERE cidade_busca = 'VENANCIO AIRES' AND qtd > 0", args: [] })).rows;
   assert.ok(r.every((l) => l.cidade === 'VENÂNCIO AIRES'), 'o resumo da carteira acompanha');
 });
+
+test('0028: rota e subrota em maiúsculas (com acento), inclusive no baixado, e a trava do baixado volta', async () => {
+  const { readFileSync } = await import('node:fs');
+  const a = await criarProspect(db, { n: 280, rota: 'r1 centro', subrota: 'sub-a' });
+  const b = await criarProspect(db, { n: 281, rota: 'Região Norte', subrota: 'São José' });
+  await evento(db, { prospectId: b, tipo: 'baixa', data: '2026-10-10' });
+  await db.executeMultiple(readFileSync(new URL('../db/migrations/0028_rotas_maiusculas.sql', import.meta.url), 'utf8'));
+  const pa = await prospect(db, a); const pb = await prospect(db, b);
+  assert.deepEqual([pa.rota, pa.subrota], ['R1 CENTRO', 'SUB-A']);
+  assert.deepEqual([pb.rota, pb.subrota, pb.status_atual], ['REGIÃO NORTE', 'SÃO JOSÉ', 'invalido']);
+  await assert.rejects(db.execute({ sql: "UPDATE prospects SET rota = 'X' WHERE id = ?", args: [b] }), /congelado/);
+  const r = (await db.execute("SELECT DISTINCT rota FROM resumo_carteira WHERE qtd > 0 AND rota <> ''")).rows.map((l) => l.rota);
+  assert.ok(r.every((x) => x === x.toLocaleUpperCase('pt-BR')), `o resumo da carteira acompanha: ${r}`);
+});
