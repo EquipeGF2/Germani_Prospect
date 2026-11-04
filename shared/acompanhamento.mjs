@@ -164,7 +164,7 @@ const texto = (v, vazio) => (v == null || v === '' ? vazio : String(v));
 /** Níveis possíveis. `chave` agrupa; `rotulo` mostra. Representante = dono da carteira. */
 export const NIVEIS_ACOMP = Object.freeze({
   supervisor: { nome: 'Supervisor', chave: (c) => texto(c.supervisor_id, ''), rotulo: (c) => texto(c.supervisor_nome, 'sem supervisor') },
-  representante: { nome: 'Representante', chave: (c) => texto(c.vendedor_id, ''), rotulo: nomeRepresentante },
+  representante: { nome: 'Rep.', chave: (c) => texto(c.vendedor_id, ''), rotulo: nomeRepresentante },
   cliente: { nome: 'Cliente', chave: (c) => c.cnpj, rotulo: (c) => `${texto(c.codigo_cliente_erp, '—')} - ${texto(c.razao_social, '')}` },
   cidade: { nome: 'Cidade', chave: (c) => `${texto(c.cidade, '')}|${texto(c.uf, '')}`, rotulo: (c) => (c.cidade ? `${c.cidade}${c.uf ? '/' + c.uf : ''}` : 'sem cidade') },
   segmento: { nome: 'Segmento', chave: (c) => texto(c.tipologia_gtm, ''), rotulo: (c) => texto(c.tipologia_gtm, 'sem segmento') },

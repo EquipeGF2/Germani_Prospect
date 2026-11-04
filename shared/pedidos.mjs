@@ -206,8 +206,8 @@ const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'o
 /** Níveis possíveis. `chave` agrupa; `rotulo` mostra. O nome diz de onde vem a informação: do pedido, do cliente ou da carteira. */
 export const NIVEIS_PEDIDOS = Object.freeze({
   supervisor: { nome: 'Supervisor da carteira', chave: (p) => texto(p.dono_supervisor_id, ''), rotulo: (p) => texto(p.supervisor_nome, 'sem supervisor') },
-  representante: { nome: 'Representante do pedido', chave: (p) => texto(p.rep_codigo, ''), rotulo: nomeRep },
-  carteira: { nome: 'Representante da carteira', chave: (p) => texto(p.dono_id, ''), rotulo: (p) => [p.dono_codigo, p.dono_nome].filter(Boolean).join(' · ') || 'sem dono' },
+  representante: { nome: 'Rep. do pedido', chave: (p) => texto(p.rep_codigo, ''), rotulo: nomeRep },
+  carteira: { nome: 'Rep. da carteira', chave: (p) => texto(p.dono_id, ''), rotulo: (p) => [p.dono_codigo, p.dono_nome].filter(Boolean).join(' · ') || 'sem dono' },
   lista: { nome: 'Venda na própria carteira?', chave: (p) => p.relacao, rotulo: (p) => (p.relacao === 'propria' ? 'Sim: cliente da carteira de quem vendeu' : 'Não: cliente de outra carteira') },
   cidade: { nome: 'Cidade do cliente', chave: (p) => `${texto(p.cidade, '')}|${texto(p.uf, '')}`, rotulo: (p) => (p.cidade ? `${p.cidade}${p.uf ? '/' + p.uf : ''}` : 'sem cidade') },
   segmento: { nome: 'Segmento do cliente', chave: (p) => texto(p.tipologia_gtm, ''), rotulo: (p) => texto(p.tipologia_gtm, 'sem segmento') },
