@@ -166,18 +166,18 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.ok(supervisores >= 2, `supervisores: ${supervisores}`);
   await pagina.click('.exp-linha:not(.raiz):not(.cab) b.num >> nth=0');         // clicar em qualquer parte da linha escolhe e abre
   assert.ok(await pagina.locator('.exp-linha:not(.raiz):not(.cab)').count() > supervisores, 'abriu os representantes');
-  // da totalidade: os prospects sem baixados e expurgados, em 3 partes (contactados, não contactados e sem interesse); os 2 sem interesse somam a parte
+  // da totalidade: a base inteira em 3 partes (contactados, não contactados e rejeitados); rejeitados junta sem interesse, baixados e expurgados
   const num = (x) => Number(x.replace(/\./g, ''));
   const partesTotal = await pagina.locator('#grafico-totalidade .exp-legenda:not(.sub) > b').allInnerTexts();
   const totalRamo = num(await pagina.locator('#grafico-totalidade .exp-total b').innerText());
   assert.equal(partesTotal.length, 3);
   assert.equal(partesTotal.reduce((t, x) => t + num(x), 0), totalRamo, 'as 3 partes somam o total');
   const tiposRejeitados = await pagina.locator('#grafico-totalidade .exp-legenda.sub .qtd-sub').allInnerTexts();
-  assert.equal(tiposRejeitados.length, 2);
-  assert.equal(tiposRejeitados.reduce((t, x) => t + num(x), 0), num(partesTotal[2]), 'sem interesse do cliente e do representante somam o sem interesse');
-  assert.match(await pagina.locator('#fora-da-base').innerText(), /Fora da base: \d+ = baixados \(\d+\) e expurgados \(\d+\)/);
-  const prospectsRaiz = num(await pagina.locator('.exp-linha.raiz .num.qtd').innerText());
-  assert.ok(prospectsRaiz >= totalRamo, 'a coluna Prospects também é sem baixados e expurgados');
+  assert.equal(tiposRejeitados.length, 4);
+  assert.equal(tiposRejeitados.reduce((t, x) => t + num(x), 0), num(partesTotal[2]), 'sem interesse do cliente e do representante, baixados e expurgados somam os rejeitados');
+  // a grade mostra só os válidos: o total do card menos baixados e expurgados
+  const linhaEscolhida = num(await pagina.locator('.exp-linha.escolhida .num.qtd').innerText());
+  assert.equal(linhaEscolhida, totalRamo - num(tiposRejeitados[2]) - num(tiposRejeitados[3]), 'Prospects da grade = base sem baixados e expurgados');
   assert.equal(await pagina.locator('#grafico-contactados .exp-etapa').count(), 5);
   assert.equal(await pagina.locator('.exp-linha.cab span').count(), 12, 'colunas: ramo, prospects, contactados, cobertura, sem interesse do cliente e do representante, 3 etapas, pedido realizado, R$');
   await pagina.locator('.exp-nivel[data-nivel="cidade"]').dragTo(pagina.locator('.exp-nivel[data-nivel="supervisor"]'));

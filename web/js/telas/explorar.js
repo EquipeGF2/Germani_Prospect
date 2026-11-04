@@ -125,28 +125,28 @@ export async function render(conteudo, { usuario }) {
             h('button', { type: 'button', class: 'secundario pequeno', 'aria-label': `Descer ${NIVEIS[nivel].nome}`, disabled: i === estado.niveis.length - 1, onclick: () => mover(nivel, 1) }, '↓')) : null);
       })) : null);
 
-    // Da totalidade: os prospects da base, sem baixados e expurgados (que ficam fora da base, em Rejeitados), numa barra de 100%:
-    // contactados que seguem no processo, não contactados e sem interesse (do cliente e do representante)
+    // Da totalidade: a base inteira do ramo (inclusive baixados e expurgados) numa barra de 100%: contactados que seguem no processo,
+    // não contactados e Rejeitados, que junta sem interesse do cliente e do representante, baixados e expurgados.
+    // A grade (coluna Prospects) mostra só os válidos: sem baixados e expurgados.
     const contSemSI = ind.contactados - ind.semInteresse;   // contactados que seguem no processo (sem os sem interesse)
     const partes = [
       ['contactados', 'Contactados, seguem no processo', contSemSI, '#1D4ED8'],
       ['nao_contactados', 'Não contactados', ind.status.nao_contactado, '#9CA3AF'],
-      ['sem_interesse', 'Sem interesse', ind.semInteresse, '#9F1D24'],
+      ['rejeitados', 'Rejeitados', ind.semInteresse + ind.inativos, '#9F1D24'],
     ];
-    const tiposRejeitados = [['si_cliente', 'Sem interesse do cliente', ind.siCliente], ['si_representante', 'Sem interesse do representante', ind.siRepresentante]];
+    const tiposRejeitados = [['si_cliente', 'Sem interesse do cliente', ind.siCliente], ['si_representante', 'Sem interesse do representante', ind.siRepresentante],
+      ['baixados', 'Baixados', ind.status.invalido ?? 0], ['expurgados', 'Expurgados (já eram clientes)', ind.status.expurgado ?? 0]];
     const totalidade = h('section', { class: 'cartao exp-grafico', id: 'grafico-totalidade' },
       h('div', { class: 'exp-grafico-topo' }, h('div', {}, h('span', { class: 'tit' }, 'Da totalidade'), h('h2', {}, escolhido.rotulo)),
-        h('div', { class: 'exp-total' }, h('b', {}, n0(ind.base)), h('span', {}, 'prospects'))),
+        h('div', { class: 'exp-total' }, h('b', {}, n0(ind.qtd)), h('span', {}, 'na base'))),
       h('div', { class: 'exp-barra100', role: 'img', 'aria-label': partes.map(([, nome, q]) => `${nome}: ${n0(q)}`).join(', ') },
         partes.filter(([, , q]) => q > 0).map(([chave, nome, q, cor]) => h('span', { dados: { parte: chave }, title: `${nome}: ${n0(q)}`, style: `flex:${q} 1 0;background:${cor}` }))),
       partes.map(([chave, nome, q, cor]) => h('div', { class: 'exp-legenda', dados: { parte: chave } },
-        h('span', { class: 'ponto', style: `background:${cor}` }), h('span', {}, nome),
-        h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(ind.base ? (q / ind.base) * 100 : null)))),
+        h('span', { class: 'ponto', style: `background:${cor}` }), h('span', {}, chave === 'rejeitados' ? h('b', {}, nome) : nome),
+        h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(ind.qtd ? (q / ind.qtd) * 100 : null)))),
       tiposRejeitados.map(([chave, nome, q]) => h('div', { class: 'exp-legenda sub', dados: { parte: chave } }, h('span'), h('span', {}, nome), h('span', { class: 'qtd-sub' }, n0(q)), h('span'))),
       h('p', { class: 'exp-rodape' }, h('b', {}, `Cobertura ${pct(ind.cobertura)}`),
-        ` = contactados com sem interesse (${n0(ind.contactados)}) ÷ prospects (${n0(ind.base)})`),
-      h('p', { class: 'exp-rodape', id: 'fora-da-base' }, h('b', {}, `Fora da base: ${n0(ind.inativos)}`),
-        ` = baixados (${n0(ind.status.invalido ?? 0)}) e expurgados (${n0(ind.status.expurgado ?? 0)}). Não entram nos prospects nem nos percentuais.`));
+        ` = contactados com sem interesse (${n0(ind.contactados)}) ÷ prospects válidos (${n0(ind.base)}, sem baixados e expurgados)`));
 
     // Dos contactados: onde estão os que seguem no processo (% sobre os contactados sem os sem interesse)
     const etapasProcesso = [['Aguardando cadastro', ind.status.aguardando_cadastro, status.aguardando_cadastro?.cor ?? '#6D28D9'],
