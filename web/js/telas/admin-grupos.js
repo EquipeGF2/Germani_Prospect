@@ -154,10 +154,10 @@ export async function render(conteudo, ctx) {
   }
 
   montar(area, h('div', { class: 'cartao' },
-    h('div', { class: 'campo' }, h('label', { for: 'arquivo-grupos' }, 'Arquivo do ERP (.xlsx ou .csv) com a coluna CPF / CNPJ'), arquivo),
-    h('p', { class: 'ajuda' }, 'O relatório de cadastro do ERP serve (as colunas Cliente, Razão Social, Dt. Cadastro e Créd. Grupo, se houver, entram no relatório). O arquivo é lido no navegador; nada é gravado até você aplicar.'),
+    h('div', { class: 'campo' }, h('label', { for: 'arquivo-grupos' }, 'Arquivo (.xlsx ou .csv)'), arquivo),
+    h('p', { class: 'ajuda' }, 'O arquivo precisa ter a coluna CPF / CNPJ. O relatório de cadastro do ERP serve (as colunas Cliente, Razão Social, Dt. Cadastro e Créd. Grupo, se houver, entram no relatório). O arquivo é lido no navegador; nada é gravado até você aplicar.'),
     bLer));
-  montar(conteudo, h('h1', {}, 'Grupos de CNPJ — base × arquivo do ERP'),
+  montar(conteudo, ctx.embutido ? null : h('h1', {}, 'Grupos de CNPJ — base × arquivo do ERP'),
     h('p', { class: 'ajuda' }, 'Compara só a raiz do CNPJ (8 primeiros dígitos): o que a base de prospects tem de cada grupo que já está no arquivo, com uma sugestão por empresa. Você escolhe manter ou expurgar e aplica.'),
     area);
 }

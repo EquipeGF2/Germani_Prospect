@@ -625,3 +625,24 @@ base que saíram da prospecção, por tipo:
   social, CNPJ, telefone, cidade, UF, onda, segmento, representante e supervisor.
 - Com a 0025, o sem interesse do representante **não vai mais para o E-commerce**: o cliente fica com o dono da carteira e sai
   por esta tela.
+
+## 17. Tela Importações (`web/js/telas/importar.js`, migração 0026)
+
+Uma tela só (**Administração › Importações**, `#/importacoes`), com uma aba por arquivo, na ordem do processo, e o mesmo
+passo a passo (arquivo → colunas → simulação → gravação):
+
+| Aba | O que faz | Tela de antes |
+|---|---|---|
+| 1. Base de prospects | os clientes a trabalhar | Base de prospects |
+| 2. Grupos de CNPJ | sugere quem expurgar (§13) | Grupos de CNPJ |
+| 3. Cadastro e crédito | cadastro e crédito do ERP; recolhido embaixo, o arquivo **só de cadastro** (sem crédito → Análise financeira) | Cadastro e crédito (ERP) |
+| 4. Pedidos | arquivo de pedidos (§14) | Importar pedidos |
+| 5. Baixados | CNPJs baixados (§3) | Pedidos · Baixados (ERP) |
+| Exportar | Rejeitados (um ou mais tipos, com supervisor, representante e onda), base de prospects e pedidos, em Excel | — (estava em Rejeitados e Base de prospects) |
+| Histórico | o que foi importado; apagar o arquivo de pedidos mais novo | Importações |
+
+- Cada aba já sabe o tipo do arquivo: não há como importar baixados como cadastro.
+- As abas de importação são **só no computador** (escolha de arquivo); no celular aparece o aviso. Exportar e Histórico abrem em qualquer tela.
+- **Exportar** é também do **gerente** (tela `exportar`, 0026); para ele o menu mostra "Exportar dados" e a tela só essa aba.
+- Os endereços antigos (`#/admin/importar/base`, `/admin/grupos`, `/admin/importar/credito`, `/admin/importar/pedidos`,
+  `/admin/importar/erp`, `/admin/importacoes`) levam à aba correspondente.

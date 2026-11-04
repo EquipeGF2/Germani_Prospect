@@ -117,7 +117,7 @@ test('padronizar acessos: supervisor pelo primeiro nome (repetido ganha inicial)
   assert.ok(aud.every((a) => Object.keys(JSON.parse(a.detalhes)).every((k) => k === 'login' || k === 'senha_inicial')), 'a auditoria nunca guarda a senha');
 });
 
-test('exportar base: CNPJ, razão social, cidade e UF de todos os prospects', async () => {
+test('exportar base: todos os prospects, com status, representante e onda', async () => {
   const { consultaExportarBase } = await import('../shared/administracao.mjs');
   const { bancoTeste, criarEquipe, criarProspect } = await import('./auxiliar.mjs');
   const db = await bancoTeste();
@@ -126,5 +126,7 @@ test('exportar base: CNPJ, razão social, cidade e UF de todos os prospects', as
   await criarProspect(db, { n: 1, razao: 'Alfa', cidade: 'Lajeado' });
   const r = (await db.execute(consultaExportarBase())).rows;
   assert.deepEqual(r.map((l) => [l.razao_social, l.cidade, l.uf]), [['Alfa', 'Lajeado', 'RS'], ['Beta', 'Santa Cruz do Sul', 'RS']]);
-  assert.deepEqual(Object.keys(r[0]), ['cnpj', 'razao_social', 'cidade', 'uf']);
+  assert.deepEqual(Object.keys(r[0]), ['cnpj', 'razao_social', 'cidade', 'uf', 'onda', 'tipologia_gtm', 'status_nome', 'status_descricao', 'vendedor_codigo', 'vendedor_nome', 'supervisor_nome']);
+  assert.equal(r[0].status_nome, 'Não contactado');
+  assert.equal(r[0].vendedor_nome, 'Vend Dez');
 });

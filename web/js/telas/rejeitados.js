@@ -3,11 +3,10 @@
 // Lê os rejeitados e o resumo da carteira uma vez (em cache); níveis, cards, busca e exportação só redesenham no navegador.
 import { bancoApp, lerComCache } from '../db.js';
 import { consultaResumo } from '../../shared/explorar.mjs';
-import { buscarRejeitados, consultaRejeitados, contarMotivos, montarArvoreRejeitados, NIVEIS_REJEITADOS, NOME_TIPO_REJEICAO, paraExportar, prepararRejeitado, SELO_TIPO_REJEICAO, TIPOS_REJEICAO } from '../../shared/rejeitados.mjs';
-import { hojeSaoPaulo } from '../../shared/datas.mjs';
-import { h, montar, formatar, selo, comEspera, semRolagem } from '../ui.js';
-import { baixarXlsx } from '../planilhas.js';
-import { blocoNiveis, documento, razaoSocial, tabelaPedidos } from './_pedidos.js';
+import { buscarRejeitados, consultaRejeitados, contarMotivos, montarArvoreRejeitados, NIVEIS_REJEITADOS, NOME_TIPO_REJEICAO, prepararRejeitado, SELO_TIPO_REJEICAO, TIPOS_REJEICAO } from '../../shared/rejeitados.mjs';
+import { podeTela } from '../../shared/perfis.mjs';
+import { h, montar, formatar, selo, semRolagem } from '../ui.js';
+import { blocoNiveis, razaoSocial, tabelaPedidos } from './_pedidos.js';
 
 const CHAVE_NIVEIS = 'germani.rejeitadosNiveis';
 const LIMITE_LISTA = 300;
@@ -27,7 +26,7 @@ export async function render(conteudo, { usuario }) {
   const clientes = linhas.map(prepararRejeitado);
   const possiveis = Object.keys(NIVEIS_REJEITADOS);
   const nome = (n) => NIVEIS_REJEITADOS[n].nome;
-  const estado = { niveis: lerNiveis(possiveis), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'todos', busca: '', exportar: new Set(TIPOS_REJEICAO) };
+  const estado = { niveis: lerNiveis(possiveis), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'todos', busca: '' };
   const area = h('div', { id: 'rejeitados', class: 'ped-exp acf-exp rej-exp' });
   const mudarNiveis = (n) => { estado.niveis = n; estado.abertos = new Set(['']); estado.sel = ''; try { localStorage.setItem(CHAVE_NIVEIS, JSON.stringify(n)); } catch { /* só nesta visita */ } desenhar(); };
   const campoBusca = h('input', { type: 'search', id: 'busca-rejeitados', 'aria-label': 'Buscar', placeholder: 'Cliente, CNPJ, cidade ou representante',
@@ -72,25 +71,9 @@ export async function render(conteudo, { usuario }) {
     { cortados: '.exp-linha > .num' });
   }
 
-  function exportar(e) {
-    const marcados = () => TIPOS_REJEICAO.filter((t) => estado.exportar.has(t));
-    const total = paraExportar(e.clientes, marcados()).length;
-    const botao = h('button', { type: 'button', id: 'exportar-rejeitados', disabled: !total, onclick: async () => {
-      const lista = paraExportar(e.clientes, marcados());
-      await comEspera(botao, () => baixarXlsx(`rejeitados-${hojeSaoPaulo()}.xlsx`, [
-        { titulo: 'Tipo', valor: (l) => NOME_TIPO_REJEICAO[l.tipo], largura: 30 }, { titulo: 'Motivo', valor: (l) => l.motivo, largura: 40 }, { titulo: 'Data', valor: (l) => formatar.data(l.data), largura: 12 },
-        { titulo: 'Código', valor: (l) => l.codigo_cliente_erp ?? '', largura: 10 }, { titulo: 'Razão social', valor: (l) => l.razao_social, largura: 40 }, { titulo: 'CNPJ', valor: (l) => documento(l.cnpj), largura: 20 },
-        { titulo: 'Telefone', valor: (l) => l.telefone ?? '', largura: 16 }, { titulo: 'Cidade', valor: (l) => l.cidade, largura: 22 }, { titulo: 'UF', valor: (l) => l.uf, largura: 6 },
-        { titulo: 'Onda', valor: (l) => l.onda, largura: 8 }, { titulo: 'Segmento', valor: (l) => l.tipologia_gtm, largura: 22 },
-        { titulo: 'Representante', valor: (l) => [l.vendedor_codigo, l.vendedor_nome].filter(Boolean).join(' - '), largura: 30 }, { titulo: 'Supervisor', valor: (l) => l.supervisor_nome ?? '', largura: 24 },
-      ], lista, { aba: 'Rejeitados' }));
-    } }, `Exportar Excel · ${n0(total)} clientes`);
-    return h('section', { class: 'cartao', id: 'rej-exportar' }, h('h2', {}, 'Exportar a base de rejeitados'),
-      h('p', { class: 'ajuda', style: 'margin:0 0 10px' }, `Vai no arquivo o que está escolhido na hierarquia (${escolhido.rotulo}), nos tipos marcados. Marque um ou mais.`),
-      h('div', { class: 'rej-tipos' }, TIPOS_REJEICAO.map((t) => h('label', { class: 'ped-opcao' },
-        h('input', { type: 'checkbox', dados: { tipo: t }, checked: estado.exportar.has(t), onchange: (ev) => { if (ev.target.checked) estado.exportar.add(t); else estado.exportar.delete(t); desenhar(); } }),
-        h('span', {}, `${NOME_TIPO_REJEICAO[t]} (${n0(e.cont[t])})`))), botao));
-  }
+  // exportar fica na tela Importações (aba Exportar), junto com a base e os pedidos
+  const atalhoExportar = () => (podeTela(usuario, 'exportar')
+    ? h('p', { class: 'ajuda', id: 'rej-atalho-exportar', style: 'margin:0' }, 'Para baixar esta base em Excel, por tipo: ', h('a', { href: '#/importacoes?aba=exportar' }, 'Importações › Exportar'), '.') : null);
   let escolhido = null;
 
   function lista(e) {
@@ -113,7 +96,7 @@ export async function render(conteudo, { usuario }) {
     const migalhas = h('nav', { class: 'exp-caminho', 'aria-label': 'Linha escolhida' }, etapas.flatMap((n, i) => [
       h('button', { type: 'button', class: n.caminho === escolhido.caminho ? 'atual' : '', title: n.rotulo, onclick: () => { estado.sel = n.caminho; desenhar(); } }, n.profundidade ? `${nome(n.nivel)}: ${n.rotulo}` : n.rotulo),
       i < etapas.length - 1 ? h('span', { class: 'sep', 'aria-hidden': 'true' }, '›') : null]));
-    montar(area, ...blocoNiveis({ estado, possiveis, nome, mudarNiveis, desenhar }), migalhas, cards(escolhido), motivos(escolhido), arvoreNaTela(arvore, escolhido), exportar(escolhido), lista(escolhido));
+    montar(area, ...blocoNiveis({ estado, possiveis, nome, mudarNiveis, desenhar }), migalhas, cards(escolhido), motivos(escolhido), arvoreNaTela(arvore, escolhido), atalhoExportar(), lista(escolhido));
   }
 
   desenhar();

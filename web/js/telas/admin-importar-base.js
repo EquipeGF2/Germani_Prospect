@@ -116,7 +116,7 @@ export async function render(conteudo, ctx) {
   }
 
   montar(area, passos(ETAPAS, 0), h('div', { class: 'cartao' },
-    h('div', { class: 'campo' }, h('label', { for: 'arquivo-base' }, 'Planilha base (.xlsx ou .csv)'), arquivo),
+    h('div', { class: 'campo' }, h('label', { for: 'arquivo-base' }, 'Arquivo (.xlsx ou .csv)'), arquivo),
     h('p', { class: 'ajuda' }, 'Layout: CNPJ, Razão social, Nome Fantasia, Endereço, Bairro, Cidade, Estado, Código Postal, Latitude, Longitude, TIPOLOGIA GTM, Telefone, ONDA, CNPJ, TIPO, COD SUP, SUPERVISOR, COD, NOME, ROTA, SUBROTA, OBS, DT 1o.contato, DT 2o.contato, Status Atual, # Dias Corridos.'),
     bLer,
     h('p', { class: 'ajuda', style: 'margin-top:12px' }, 'Para testar: ', h('a', { href: 'exemplos/base-ficticia.xlsx', download: true }, 'baixe a planilha fictícia'), '.')));
@@ -132,8 +132,8 @@ export async function render(conteudo, ctx) {
     ], linhas, { aba: 'Base de prospects' });
     aviso(`Base exportada: ${formatar.numero(linhas.length)} prospects.`);
   }) }, 'Exportar base (Excel)');
-  montar(conteudo, h('h1', {}, 'Base de prospects'),
-    ja ? mensagem(`A base já tem ${formatar.numero(ja)} prospects. Reimportar só atualiza dados cadastrais — status, histórico e vendedor não mudam.`, 'info') : null,
-    ja ? h('div', { class: 'cartao' }, h('p', { style: 'margin-top:0' }, 'Exportar a base inteira em Excel: CNPJ, razão social, cidade e UF.'), bExportar) : null,
+  montar(conteudo, ctx.embutido ? null : h('h1', {}, 'Base de prospects'),
+    ja ? mensagem(`A base já tem ${formatar.numero(ja)} prospects. Reimportar só atualiza dados cadastrais — status, histórico e vendedor não mudam. Para baixar a base, use a aba Exportar.`, 'info') : null,
+    ctx.embutido || !ja ? null : h('div', { class: 'cartao' }, h('p', { style: 'margin-top:0' }, 'Exportar a base inteira em Excel: CNPJ, razão social, cidade e UF.'), bExportar),
     area);
 }

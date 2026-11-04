@@ -117,3 +117,10 @@ test('supervisor que vê todas as equipes (migração 0009): lê tudo, registra 
   await rc(db, { prospectId: deOutra, usuarioId: 5, resultado: 'atendido', data: '2026-10-01' });
 });
 
+
+test('exportar dados: gerente e administrador; supervisor, vendedor e financeiro não', async () => {
+  const { podeTela: pode } = await import('../shared/perfis.mjs');
+  assert.ok(pode({ id: 1, perfil: 'administrador' }, 'exportar'));
+  assert.ok(pode({ id: 2, perfil: 'gerente' }, 'exportar'));
+  for (const perfil of ['supervisor', 'vendedor', 'financeiro']) assert.ok(!pode({ id: 3, perfil, telas: ['exportar'] }, 'exportar'), perfil);
+});
