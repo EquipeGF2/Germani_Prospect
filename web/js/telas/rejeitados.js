@@ -1,18 +1,17 @@
 // Rejeitados: baixados, expurgados e sem interesse (do cliente e do representante), com hierarquia de níveis, motivos e
-// exportação em Excel por tipo. Só gerente e administrador. docs/03 §16
-// Lê os rejeitados e o resumo da carteira uma vez (em cache); níveis, cards, busca e exportação só redesenham no navegador.
+// o botão Excel do que está na tela. Só gerente e administrador. docs/03 §16
+// A tela lê só as contagens (por chave dos níveis, tipo, motivo e mês) e o resumo da carteira, em cache; os dados de cada
+// cliente são lidos só ao exportar.
 import { bancoApp, lerComCache } from '../db.js';
 import { consultaResumo } from '../../shared/explorar.mjs';
-import { buscarRejeitados, consultaRejeitados, contarMotivos, montarArvoreRejeitados, NIVEIS_REJEITADOS, NOME_TIPO_REJEICAO, prepararRejeitado, SELO_TIPO_REJEICAO, TIPOS_REJEICAO } from '../../shared/rejeitados.mjs';
-import { podeTela } from '../../shared/perfis.mjs';
-import { h, montar, formatar, selo, semRolagem } from '../ui.js';
-import { blocoNiveis, razaoSocial, tabelaPedidos } from './_pedidos.js';
+import { consultaResumoRejeitados, contarMotivos, montarArvoreRejeitados, naLinha, NIVEIS_REJEITADOS, NOME_TIPO_REJEICAO, prepararRejeitado, TIPOS_REJEICAO } from '../../shared/rejeitados.mjs';
+import { h, montar, formatar, comEspera, aviso, semRolagem } from '../ui.js';
+import { blocoNiveis } from './_pedidos.js';
+import { exportarRejeitados } from './_rejeitados-excel.js';
 
 const CHAVE_NIVEIS = 'germani.rejeitadosNiveis';
-const LIMITE_LISTA = 300;
 const n0 = (x) => formatar.numero(Math.round(Number(x) || 0));
 const pct = (a, b) => (b ? `${((a / b) * 100).toFixed(1).replace('.', ',')}%` : '—');
-const CLASSE_SELO = { baixado: '', expurgado: 'investimento', cliente: 'erro', representante: 'alerta' };
 const DETALHE = { baixado: 'CNPJ baixado na Receita', expurgado: 'já eram clientes (grupo)', cliente: 'o cliente recusou', representante: 'o representante não vai trabalhar' };
 
 function lerNiveis(possiveis) {
@@ -22,15 +21,19 @@ function lerNiveis(possiveis) {
 
 export async function render(conteudo, { usuario }) {
   const db = await bancoApp();
-  const [linhas, base] = (await Promise.all([lerComCache(db, consultaRejeitados(), 300), lerComCache(db, consultaResumo({ usuario }), 300)])).map((r) => r.rows);
+  const [linhas, base] = (await Promise.all([lerComCache(db, consultaResumoRejeitados(), 300), lerComCache(db, consultaResumo({ usuario }), 300)])).map((r) => r.rows);
   const clientes = linhas.map(prepararRejeitado);
   const possiveis = Object.keys(NIVEIS_REJEITADOS);
   const nome = (n) => NIVEIS_REJEITADOS[n].nome;
-  const estado = { niveis: lerNiveis(possiveis), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'todos', busca: '' };
+  const estado = { niveis: lerNiveis(possiveis), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'todos' };
   const area = h('div', { id: 'rejeitados', class: 'ped-exp acf-exp rej-exp' });
   const mudarNiveis = (n) => { estado.niveis = n; estado.abertos = new Set(['']); estado.sel = ''; try { localStorage.setItem(CHAVE_NIVEIS, JSON.stringify(n)); } catch { /* só nesta visita */ } desenhar(); };
-  const campoBusca = h('input', { type: 'search', id: 'busca-rejeitados', 'aria-label': 'Buscar', placeholder: 'Cliente, CNPJ, cidade ou representante',
-    oninput: () => { estado.busca = campoBusca.value; desenhar(); campoBusca.focus(); } });
+  // Excel do que está na tela: a linha escolhida na hierarquia e o tipo do card (Rejeitados = os quatro tipos, uma aba cada)
+  const botaoExcel = h('button', { type: 'button', id: 'excel-rejeitados', onclick: () => comEspera(botaoExcel, async () => {
+    const tipos = estado.tipo === 'todos' ? [...TIPOS_REJEICAO] : [estado.tipo];
+    const n = await exportarRejeitados(db, { tipos, filtro: (l) => naLinha(escolhido.caminho, l) });
+    aviso(`Excel gerado: ${n0(n)} clientes.`);
+  }) });
 
   function cards(e) {
     const c = e.cont;
@@ -71,23 +74,7 @@ export async function render(conteudo, { usuario }) {
     { cortados: '.exp-linha > .num' });
   }
 
-  // exportar fica na tela Importações (aba Exportar), junto com a base e os pedidos
-  const atalhoExportar = () => (podeTela(usuario, 'exportar')
-    ? h('p', { class: 'ajuda', id: 'rej-atalho-exportar', style: 'margin:0' }, 'Para baixar esta base em Excel, por tipo: ', h('a', { href: '#/importacoes?aba=exportar' }, 'Importações › Exportar'), '.') : null);
   let escolhido = null;
-
-  function lista(e) {
-    const vistos = buscarRejeitados(e.clientes.filter((l) => estado.tipo === 'todos' || l.tipo === estado.tipo), estado.busca)
-      .sort((a, b) => String(b.data ?? '').localeCompare(String(a.data ?? '')) || String(a.razao_social).localeCompare(String(b.razao_social), 'pt-BR'));
-    const colunas = [{ titulo: 'Razão social', valor: (l) => razaoSocial({ codigo: l.codigo_cliente_erp, razao: l.razao_social, doc: l.cnpj, prospectId: l.id }), classe: 'rz' },
-      { titulo: 'Tipo', valor: (l) => selo(SELO_TIPO_REJEICAO[l.tipo], CLASSE_SELO[l.tipo]), classe: 'cen' }, { titulo: 'Motivo', valor: (l) => l.motivo },
-      { titulo: 'Data', valor: (l) => formatar.data(l.data) || '—', classe: 'cen' }, { titulo: 'Representante', valor: (l) => [l.vendedor_codigo, l.vendedor_nome].filter(Boolean).join(' - ') },
-      { titulo: 'Cidade', valor: (l) => (l.cidade ? `${l.cidade}${l.uf ? '/' + l.uf : ''}` : '—'), classe: 'cen' }, { titulo: 'Onda', valor: (l) => l.onda || '—', classe: 'cen' }];
-    return h('div', { class: 'cartao' },
-      h('div', { class: 'ped-lista-topo' }, h('h2', { id: 'titulo-rejeitados' }, `${estado.tipo === 'todos' ? 'Todos os rejeitados' : NOME_TIPO_REJEICAO[estado.tipo]} · ${e.rotulo} (${n0(vistos.length)})`), campoBusca),
-      tabelaPedidos(colunas, vistos.slice(0, LIMITE_LISTA), { id: 'lista-rejeitados', vazio: estado.busca ? `Nada encontrado para "${estado.busca}".` : 'Nenhum cliente aqui.' }),
-      vistos.length > LIMITE_LISTA ? h('p', { class: 'ajuda', style: 'margin:12px 0 0' }, `Mostrando ${n0(LIMITE_LISTA)} de ${n0(vistos.length)}. Escolha uma linha na hierarquia para ver menos, ou exporte.`) : null);
-  }
 
   function desenhar() {
     const arvore = montarArvoreRejeitados({ clientes, base, niveis: estado.niveis, abertos: estado.abertos });
@@ -96,7 +83,11 @@ export async function render(conteudo, { usuario }) {
     const migalhas = h('nav', { class: 'exp-caminho', 'aria-label': 'Linha escolhida' }, etapas.flatMap((n, i) => [
       h('button', { type: 'button', class: n.caminho === escolhido.caminho ? 'atual' : '', title: n.rotulo, onclick: () => { estado.sel = n.caminho; desenhar(); } }, n.profundidade ? `${nome(n.nivel)}: ${n.rotulo}` : n.rotulo),
       i < etapas.length - 1 ? h('span', { class: 'sep', 'aria-hidden': 'true' }, '›') : null]));
-    montar(area, ...blocoNiveis({ estado, possiveis, nome, mudarNiveis, desenhar }), migalhas, cards(escolhido), motivos(escolhido), arvoreNaTela(arvore, escolhido), atalhoExportar(), lista(escolhido));
+    const qtd = estado.tipo === 'todos' ? escolhido.cont.total : escolhido.cont[estado.tipo];
+    botaoExcel.disabled = !qtd;
+    botaoExcel.textContent = `Excel · ${n0(qtd)} ${qtd === 1 ? 'cliente' : 'clientes'}`;
+    botaoExcel.title = `${estado.tipo === 'todos' ? 'Os quatro tipos, uma aba cada' : NOME_TIPO_REJEICAO[estado.tipo]} · ${escolhido.rotulo}`;
+    montar(area, ...blocoNiveis({ estado, possiveis, nome, mudarNiveis, desenhar }), h('div', { class: 'rej-barra' }, migalhas, botaoExcel), cards(escolhido), motivos(escolhido), arvoreNaTela(arvore, escolhido));
   }
 
   desenhar();

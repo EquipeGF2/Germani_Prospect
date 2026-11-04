@@ -967,3 +967,5 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .exp-filtros .campo { margin: 0; } .exp-filtros select { min-width: 180px; }
 .exp-filtros button { margin-left: auto; }
 .imp-extra summary { cursor: pointer; font-weight: 600; min-height: 32px; } .imp-extra[open] summary { margin-bottom: 12px; }
+.rej-barra { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.rej-barra .exp-caminho { margin: 0; }

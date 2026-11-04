@@ -623,8 +623,13 @@ base que saíram da prospecção, por tipo:
   Rejeitados e % da base. Pelo mês da rejeição não há Na base (a base não tem mês).
 - **Cards** filtram por tipo. Os **motivos** aparecem só com Sem interesse do cliente ou do representante escolhido; baixado e
   expurgado não mostram motivos, para não confundir a leitura.
-- **Exportar Excel**: um ou mais tipos marcados, da linha escolhida na hierarquia. Colunas: tipo, motivo, data, código, razão
-  social, CNPJ, telefone, cidade, UF, onda, segmento, representante e supervisor.
+- **Leitura:** a tela lê só as **contagens** (por chave dos níveis, tipo, motivo e mês, `consultaResumoRejeitados`), sem os dados
+  de cada cliente, e não tem lista embaixo. Os dados de cada cliente (`consultaRejeitados`) são lidos só ao exportar.
+- **Botão Excel** (ao lado do caminho): baixa o que está na tela — a linha escolhida na hierarquia e o tipo do card
+  (Rejeitados = os quatro). **Uma aba por tipo** (Baixados, Expurgados, Sem interesse do cliente, Sem interesse do representante),
+  com os dados cadastrais completos: rejeição, motivo, observação do registro, data, código, razão social, nome fantasia, CNPJ,
+  endereço, bairro, cidade, UF, CEP, telefone, segmento, onda, rota, subrota, representante, supervisor, tentativas e 1º contato.
+  O mesmo Excel sai da aba Exportar da tela Importações (§17), com filtro de supervisor, representante e onda.
 - Com a 0025, o sem interesse do representante **não vai mais para o E-commerce**: o cliente fica com o dono da carteira e sai
   por esta tela.
 

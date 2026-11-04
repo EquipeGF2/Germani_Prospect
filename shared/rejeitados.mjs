@@ -8,28 +8,58 @@ export const NOME_TIPO_REJEICAO = Object.freeze({ baixado: 'Baixados', expurgado
 /** Nome curto do tipo na lista e no selo (os mesmos rótulos das colunas da hierarquia). */
 export const SELO_TIPO_REJEICAO = Object.freeze({ baixado: 'Baixado', expurgado: 'Expurgado', cliente: 'Sem int. cliente', representante: 'Sem int. repr.' });
 
-/** Rejeitados com o tipo, o motivo e a data da rejeição. Chaves no mesmo formato do resumo (vazio = ''), para os níveis valerem nos dois. */
-export function consultaRejeitados() {
-  return {
-    sql: `SELECT x.id, x.codigo_cliente_erp, x.razao_social, x.cnpj, x.telefone, COALESCE(x.cidade, '') AS cidade, COALESCE(x.cidade_busca, '') AS cidade_busca,
-                 COALESCE(x.uf, '') AS uf, COALESCE(x.onda, '') AS onda, COALESCE(x.tipologia_gtm, '') AS tipologia_gtm, COALESCE(x.rota, '') AS rota,
-                 COALESCE(x.subrota, '') AS subrota, x.vendedor_id, x.status_atual, m.descricao AS motivo_sem_interesse, m.origem,
-                 x.dt_ultimo_contato, x.dt_baixa, e.data_expurgo, e.motivo AS motivo_expurgo, ${colunasUsuario}
-            FROM prospects x
+// tipo, motivo e data da rejeição, calculados no banco (iguais na leitura da tela e na da exportação)
+const TIPO = `CASE WHEN x.status_atual = 'invalido' THEN 'baixado' WHEN x.status_atual = 'expurgado' THEN 'expurgado'
+                WHEN COALESCE(m.origem, 'cliente') = 'representante' THEN 'representante' ELSE 'cliente' END`;
+const MOTIVO = `CASE x.status_atual WHEN 'invalido' THEN 'CNPJ baixado' WHEN 'expurgado' THEN COALESCE(e.motivo, 'Já é cliente')
+                  ELSE COALESCE(m.descricao, 'Não informado') END`;
+const DATA = `CASE x.status_atual WHEN 'invalido' THEN x.dt_baixa WHEN 'expurgado' THEN e.data_expurgo ELSE x.dt_ultimo_contato END`;
+const DE_REJEITADOS = `FROM prospects x
             LEFT JOIN motivos_sem_interesse m ON m.id = x.motivo_sem_interesse_id
             LEFT JOIN expurgos e ON e.id = (SELECT MAX(id) FROM expurgos WHERE prospect_id = x.id AND acao = 'expurgar')
             ${juntaUsuario}
-           WHERE x.status_atual IN ('sem_interesse', 'invalido', 'expurgado')`,
+           WHERE x.status_atual IN ('sem_interesse', 'invalido', 'expurgado')`;
+
+/**
+ * Contagem dos rejeitados pelas chaves dos níveis, tipo, motivo e mês: é o que a tela lê (poucas linhas, sem os dados de
+ * cada cliente). Chaves no mesmo formato do resumo da carteira (vazio = ''), para os níveis valerem nos dois.
+ */
+export function consultaResumoRejeitados() {
+  return {
+    sql: `SELECT tipo, motivo, substr(data, 1, 7) || '-01' AS data, vendedor_id, onda, tipologia_gtm, cidade_busca, uf, rota, COUNT(*) AS qtd,
+                 MAX(cidade) AS cidade, MAX(vendedor_nome) AS vendedor_nome, MAX(vendedor_codigo) AS vendedor_codigo, MAX(supervisor_id) AS supervisor_id, MAX(supervisor_nome) AS supervisor_nome
+            FROM (SELECT ${TIPO} AS tipo, ${MOTIVO} AS motivo, ${DATA} AS data, x.vendedor_id, COALESCE(x.onda, '') AS onda, COALESCE(x.tipologia_gtm, '') AS tipologia_gtm,
+                         COALESCE(x.cidade_busca, '') AS cidade_busca, COALESCE(x.uf, '') AS uf, COALESCE(x.rota, '') AS rota, COALESCE(x.cidade, '') AS cidade, ${colunasUsuario}
+                    ${DE_REJEITADOS})
+           GROUP BY tipo, motivo, substr(data, 1, 7), vendedor_id, onda, tipologia_gtm, cidade_busca, uf, rota`,
     args: [],
   };
 }
 
-/** Uma linha da consulta com tipo, motivo e data prontos. */
-export function prepararRejeitado(l) {
-  const tipo = l.status_atual === 'invalido' ? 'baixado' : l.status_atual === 'expurgado' ? 'expurgado' : l.origem === 'representante' ? 'representante' : 'cliente';
-  const motivo = tipo === 'baixado' ? 'CNPJ baixado' : tipo === 'expurgado' ? (l.motivo_expurgo ?? 'Já é cliente') : (l.motivo_sem_interesse ?? 'Não informado');
-  const data = tipo === 'baixado' ? l.dt_baixa : tipo === 'expurgado' ? l.data_expurgo : l.dt_ultimo_contato;
-  return { ...l, tipo, motivo, data: data ?? null, qtd: 1 };
+/** Rejeitados com todos os dados cadastrais, o tipo, o motivo, a observação do registro e a data: só na exportação. */
+export function consultaRejeitados() {
+  return {
+    sql: `SELECT x.id, x.codigo_cliente_erp, x.razao_social, x.nome_fantasia, x.cnpj, x.endereco, x.bairro, x.cep, x.telefone, COALESCE(x.cidade, '') AS cidade,
+                 COALESCE(x.cidade_busca, '') AS cidade_busca, COALESCE(x.uf, '') AS uf, COALESCE(x.onda, '') AS onda, COALESCE(x.tipologia_gtm, '') AS tipologia_gtm,
+                 COALESCE(x.rota, '') AS rota, COALESCE(x.subrota, '') AS subrota, x.vendedor_id, x.status_atual, x.tentativas, x.dt_primeiro_contato,
+                 ${TIPO} AS tipo, ${MOTIVO} AS motivo, ${DATA} AS data,
+                 CASE WHEN x.status_atual = 'sem_interesse' THEN (SELECT c.observacao FROM contatos c WHERE c.prospect_id = x.id AND c.resultado = 'sem_interesse' ORDER BY c.id DESC LIMIT 1) END AS observacao,
+                 ${colunasUsuario}
+            ${DE_REJEITADOS}`,
+    args: [],
+  };
+}
+
+/** Linha lida (detalhe ou contagem) pronta para as contas: `qtd` = clientes que ela representa. */
+export const prepararRejeitado = (l) => ({ ...l, data: l.data ?? null, qtd: Number(l.qtd ?? 1) });
+
+/** O cliente (ou a contagem) está na linha escolhida da hierarquia? `caminho` = '/nivel=chave/...'. */
+export function naLinha(caminho, l) {
+  return String(caminho ?? '').split('/').filter(Boolean).every((parte) => {
+    const i = parte.indexOf('=');
+    const def = NIVEIS_REJEITADOS[parte.slice(0, i)];
+    return !def || def.chave(l) === parte.slice(i + 1);
+  });
 }
 
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -41,8 +71,8 @@ export const NIVEIS_REJEITADOS = Object.freeze({
 
 /** Contagens de um conjunto de rejeitados: um número por tipo e o total. */
 export function contarRejeitados(clientes) {
-  const c = { baixado: 0, expurgado: 0, cliente: 0, representante: 0, total: clientes.length };
-  for (const l of clientes) c[l.tipo] += 1;
+  const c = { baixado: 0, expurgado: 0, cliente: 0, representante: 0, total: 0 };
+  for (const l of clientes) { const q = Number(l.qtd ?? 1); c[l.tipo] += q; c.total += q; }
   return c;
 }
 
@@ -66,7 +96,8 @@ export function montarArvoreRejeitados({ clientes, base = [], niveis, abertos, r
       if (!grupos.has(k)) grupos.set(k, { lista: [], exemplo: l });
       grupos.get(k).lista.push(l);
     }
-    [...grupos.entries()].sort((a, b) => b[1].lista.length - a[1].lista.length || def.rotulo(a[1].exemplo).localeCompare(def.rotulo(b[1].exemplo), 'pt-BR'))
+    const total = (lista) => lista.reduce((t, l) => t + Number(l.qtd ?? 1), 0);
+    [...grupos.entries()].sort((a, b) => total(b[1].lista) - total(a[1].lista) || def.rotulo(a[1].exemplo).localeCompare(def.rotulo(b[1].exemplo), 'pt-BR'))
       .forEach(([k, g]) => visitar(`${caminho}/${codigo}=${k}`, profundidade + 1, g.lista, rowsBase && !def.soRejeitados ? rowsBase.filter((r) => def.chave(r) === k) : null, def.rotulo(g.exemplo), codigo));
   };
   visitar('', 0, clientes, base, rotuloRaiz, null);
@@ -76,7 +107,7 @@ export function montarArvoreRejeitados({ clientes, base = [], niveis, abertos, r
 /** Motivos de um tipo de sem interesse, do mais frequente ao menos. */
 export function contarMotivos(clientes, tipo) {
   const m = new Map();
-  for (const l of clientes) if (l.tipo === tipo) m.set(l.motivo, (m.get(l.motivo) ?? 0) + 1);
+  for (const l of clientes) if (l.tipo === tipo) m.set(l.motivo, (m.get(l.motivo) ?? 0) + Number(l.qtd ?? 1));
   return [...m.entries()].map(([motivo, qtd]) => ({ motivo, qtd })).sort((a, b) => b.qtd - a.qtd || a.motivo.localeCompare(b.motivo, 'pt-BR'));
 }
 
