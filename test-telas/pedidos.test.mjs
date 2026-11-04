@@ -540,6 +540,15 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await ir('#/explorar');
   assert.equal(await pagina.locator('#ver-grupo').count(), 0, 'Explorar carteira não muda');
 
+  // níveis e disponíveis numa linha só, como no Explorar carteira, em todas as telas com hierarquia
+  for (const rota of ['#/explorar', '#/pedidos', '#/carteira?aba=acompanhamento', '#/rejeitados']) {
+    await ir(rota);
+    const topos = await pagina.locator('.exp-niveis .zona').evaluateAll((zs) => zs.map((z) => Math.round(z.getBoundingClientRect().top)));
+    assert.equal(topos.length, 2, `${rota}: níveis e disponíveis`);
+    assert.equal(topos[0], topos[1], `${rota}: numa linha só`);
+    assert.ok(await pagina.locator('.exp-niveis .zona').evaluateAll((zs) => zs.every((z) => z.scrollWidth <= z.clientWidth + 1)), `${rota}: sem rolagem para o lado`);
+  }
+  await ir('#/explorar');
   // ao voltar, as telas continuam como estavam: a linha escolhida no Explorar carteira e os filtros da Lista principal
   await pagina.locator('#arvore-carteira .exp-linha:not(.cab):not(.raiz)').first().click();
   const escolhidaAntes = await pagina.locator('#arvore-carteira .exp-linha.escolhida').getAttribute('data-caminho');
