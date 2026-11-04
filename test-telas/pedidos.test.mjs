@@ -79,8 +79,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
     [905, 'PESSOA', '12345678909', 100, 0, 70007, 1, 'Aberto Total', '90100', 'Pedido de Venda', 9002],
   ]));
 
-  await ir('#/admin/importar/erp');
-  await pagina.click('#importar-pedidos');
+  await ir('#/importacoes?aba=pedidos');
   await pagina.waitForSelector('#arquivo-pedidos');
   await pagina.setInputFiles('#arquivo-pedidos', arquivo);
   await pagina.fill('#data-arquivo', '2026-10-31');
@@ -327,17 +326,23 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await foto('p14a-rejeitados');
   await pagina.click('#rej-baixado');
   assert.equal(await pagina.locator('#rej-motivos').count(), 0, 'baixado não tem motivo de sem interesse');
-  for (const t of ['baixado', 'expurgado', 'representante']) await pagina.locator(`#rej-exportar input[data-tipo="${t}"]`).uncheck();
-  assert.match(await pagina.locator('#exportar-rejeitados').innerText(), new RegExp(`· ${(await qtdCard('cliente')).toLocaleString('pt-BR')} clientes`));
+  // a exportação fica em Importações › Exportar; a tela Rejeitados tem o atalho
+  const qtdCliente = await qtdCard('cliente');
+  await pagina.click('#rej-atalho-exportar a');
+  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/importacoes?aba=exportar');
+  for (const t of ['baixado', 'expurgado', 'representante']) await pagina.locator(`#exportar-bloco-rejeitados input[data-tipo="${t}"]`).uncheck();
+  assert.match(await pagina.locator('#exportar-rejeitados').innerText(), new RegExp(`· ${qtdCliente.toLocaleString('pt-BR')} clientes`));
+  await foto('p14b-exportar');
   const [planilha] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#exportar-rejeitados')]);
   assert.match(planilha.suggestedFilename(), /^rejeitados-.*\.xlsx$/);
   const caminhoXlsx = path.join(tmp, 'rejeitados.xlsx');
   await planilha.saveAs(caminhoXlsx);
   const { linhas: doExcel } = await lerPlanilha(caminhoXlsx);
   assert.equal(doExcel[0][0], 'Tipo');
-  assert.equal(doExcel.length - 1, await qtdCard('cliente'), 'uma linha por cliente do tipo marcado');
+  assert.equal(doExcel.length - 1, qtdCliente, 'uma linha por cliente do tipo marcado');
   assert.ok(doExcel.slice(1).every((l) => l[0] === 'Sem interesse do cliente'));
-  for (const t of ['baixado', 'expurgado', 'representante']) await pagina.locator(`#rej-exportar input[data-tipo="${t}"]`).check();
+  const [doPedidos] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#exportar-pedidos')]);
+  assert.match(doPedidos.suggestedFilename(), /^pedidos-.*\.xlsx$/);
 
   // ondas liberadas: o administrador escolhe as ondas em Parâmetros
   await ir('#/admin/parametros');
@@ -381,7 +386,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   });
   for (const largura of [360, 390, 768, 1024, 1366]) {
     await pagina.setViewportSize({ width: largura, height: 900 });
-    for (const rota of ['#/pedidos', '#/carteira?aba=acompanhamento', '#/ajuda', '#/rejeitados']) {
+    for (const rota of ['#/pedidos', '#/carteira?aba=acompanhamento', '#/ajuda', '#/rejeitados', '#/importacoes?aba=exportar', '#/importacoes?aba=pedidos']) {
       await ir(rota);
       await pagina.waitForTimeout(150);
       const m = await medir();
@@ -462,7 +467,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
     await recorte('carteira-niveis', '.exp-niveis');
     await recorte('carteira-graficos', '.exp-quadros');
     await recorte('carteira-arvore', '.exp-arvore', { altura: 360 });
-    await ir('#/admin/importacoes');
+    await ir('#/importacoes?aba=baixados');
     await recorte('admin-importacoes', '#conteudo', { altura: 420 });
     await ir('#/admin/usuarios');
     await recorte('admin-usuarios', '#conteudo', { altura: 420 });
@@ -507,7 +512,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await foto('p10-ficha');
 
   // apagar: tira os dados e volta os status
-  await ir('#/admin/importacoes');
+  await ir('#/importacoes?aba=historico');
   await pagina.waitForSelector('#arquivos-pedidos');
   await foto('p11-importacoes');
   await pagina.locator('#arquivos-pedidos a[data-apagar]').click();

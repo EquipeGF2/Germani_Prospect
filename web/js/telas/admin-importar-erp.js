@@ -6,34 +6,20 @@ import { h, montar, mensagem, passos, comEspera, aviso } from '../ui.js';
 import { blocoResultado } from './_resultado.js';
 import { seletorColuna } from './admin-importar-tipos.js';
 
+// cada aba da tela Importações usa um tipo: Baixados (padrão) ou, dentro de Cadastro e crédito, o arquivo só de cadastro
 const TIPOS = {
-  cadastro: { titulo: 'Cadastro de clientes', descricao: 'CNPJs cadastrados no ERP (data e código do cliente).', efeito: 'Análise financeira', documento: 'Código do cliente', data: 'Data do cadastro',
-    icone: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 15l2 2 4-4' },
-  baixa: { titulo: 'CNPJs baixados', descricao: 'Empresas com CNPJ baixado na Receita.', efeito: 'Inválido (congelado)', documento: null, data: 'Data da baixa',
-    icone: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM4.9 4.9l14.2 14.2' },
+  cadastro: { titulo: 'Cadastro de clientes', descricao: 'CNPJs cadastrados no ERP (data e código do cliente), sem crédito.', efeito: 'Análise financeira', documento: 'Código do cliente', data: 'Data do cadastro',
+    colunas: 'a coluna CNPJ, a data do cadastro e, se houver, o código do cliente' },
+  baixa: { titulo: 'CNPJs baixados', descricao: 'Empresas com CNPJ baixado na Receita.', efeito: 'Baixado (congelado)', documento: null, data: 'Data da baixa',
+    colunas: 'a coluna CNPJ; sem coluna de data, informe a data da baixa para todas as linhas' },
 };
 
-function iconeSvg(d) {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('class', 'icone');
-  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  p.setAttribute('d', d);
-  svg.append(p);
-  return svg;
-}
-const ETAPAS = ['Tipo e arquivo', 'Colunas', 'Simulação', 'Gravação'];
+const ETAPAS = ['Arquivo', 'Coluna e data', 'Simulação', 'Gravação'];
 
 export async function render(conteudo, ctx) {
   const db = await bancoAdmin();
   const area = h('div');
-  // tipo do arquivo escolhido por cards (rádio); `tipo.value` lê o marcado
-  const tipo = { get value() { return cards.querySelector('input[name="tipo-erp"]:checked')?.value ?? 'cadastro'; } };   // cards continua em memória nas etapas seguintes
-  const cards = h('div', { class: 'cards-tipo', role: 'radiogroup', 'aria-label': 'Tipo de arquivo' }, Object.entries(TIPOS).map(([v, t], i) =>
-    h('label', { class: 'card-tipo', dados: { tipo: v } },
-      h('input', { type: 'radio', name: 'tipo-erp', value: v, checked: i === 0 }),
-      h('span', { class: 'ic' }, iconeSvg(t.icone)),
-      h('span', {}, h('b', {}, t.titulo), h('small', {}, t.descricao), h('span', { class: 'efeito' }, `→ ${t.efeito}`)))));
+  const tipo = { value: ctx.tipoFixo ?? 'baixa' };
   const arquivo = h('input', { type: 'file', accept: '.xlsx,.xls,.csv', id: 'arquivo-erp' });
   let planilha = null;
   const bLer = h('button', { onclick: async () => { planilha = await comEspera(bLer, () => lerArquivo(arquivo.files[0])); if (planilha) colunas(); } }, 'Ler arquivo');
@@ -72,13 +58,10 @@ export async function render(conteudo, ctx) {
   }
 
   montar(area, passos(ETAPAS, 0), h('div', { class: 'cartao' },
-    h('label', {}, 'Tipo de arquivo'), cards,
-    h('div', { class: 'campo' }, h('label', { for: 'arquivo-erp' }, 'Arquivo (.xlsx ou .csv — o .xlsx malformado do Senior é corrigido automaticamente)'), arquivo),
+    h('p', { class: 'imp-efeito' }, h('b', {}, 'Efeito: '), TIPOS[tipo.value].efeito, ` · o arquivo precisa ter ${TIPOS[tipo.value].colunas}.`),
+    h('div', { class: 'campo' }, h('label', { for: 'arquivo-erp' }, 'Arquivo (.xlsx ou .csv)'), arquivo),
     bLer));
-  montar(conteudo, h('h1', {}, 'Pedidos · Baixados (ERP)'),
-    h('p', { class: 'ajuda' }, 'Os arquivos do ERP prevalecem: valem para qualquer cliente da base, inclusive Sem interesse. Tudo entra no histórico de movimentação.'),
-    h('div', { class: 'cartao' }, h('h2', {}, 'Pedidos'),
-      h('p', { class: 'ajuda' }, 'Relatório de pedidos do ERP: classifica cada pedido, liga ao cliente, simula o efeito e guarda de qual arquivo veio, para poder apagar depois.'),
-      h('a', { class: 'botao', id: 'importar-pedidos', href: '#/admin/importar/pedidos' }, 'Importar arquivo de pedidos')),
+  montar(conteudo, ctx.embutido ? null : h('h1', {}, TIPOS[tipo.value].titulo),
+    tipo.value === 'baixa' ? h('p', { class: 'ajuda' }, 'O arquivo de baixados prevalece: vale para qualquer cliente da base, inclusive Sem interesse. O cliente fica congelado e vai para Rejeitados › Baixados. Tudo entra no histórico de movimentação.') : null,
     area);
 }

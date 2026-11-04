@@ -128,16 +128,17 @@ export const CAPITULOS = Object.freeze([
     ['opcoes', '/explorar'],
     ['termos', 'carteira'],
     ['h', 'Rejeitados (gerente e administrador)'],
-    ['parte', 'rejeitados', 'A tela Rejeitados', 'Quem saiu da prospecção e por quê, com a hierarquia de níveis. Escolha uma linha e um tipo: tudo abaixo segue a escolha.', [['Cards do topo', 'Baixados, expurgados, sem interesse do cliente e do representante.'], ['Motivos', 'Aparecem só para o sem interesse escolhido.'], ['Exportar Excel', 'Marque um ou mais tipos e baixe a planilha.']]],
+    ['parte', 'rejeitados', 'A tela Rejeitados', 'Quem saiu da prospecção e por quê, com a hierarquia de níveis. Escolha uma linha e um tipo: tudo abaixo segue a escolha.', [['Cards do topo', 'Baixados, expurgados, sem interesse do cliente e do representante.'], ['Motivos', 'Aparecem só para o sem interesse escolhido.'], ['Exportar', 'A planilha por tipo fica em Importações › Exportar.']]],
     ['opcoes', '/rejeitados'],
     ['termos', 'rejeitados'],
     ['perguntas', [['Por que a soma das etapas não dá o total?', 'O total inclui os não contactados e os rejeitados, que não estão em etapa nenhuma.'],
       ['Como vejo os clientes de uma linha?', 'Escolha a linha e clique em Abrir na Lista principal.']]],
   ] },
   { n: 8, nome: 'Administração', desc: 'Importações, usuários, perfis e parâmetros.', para: (u) => u.perfil === 'administrador', blocos: [
-    ['serve', 'Trazer para o sistema os arquivos do ERP, cadastrar as pessoas e ajustar prazos, alertas e as ondas liberadas.'],
-    ['rapido', ['Importe na ordem: Base de prospects, Cadastro e crédito (ERP) e Pedidos · Baixados (ERP).', 'Confira a simulação de cada importação: nada é gravado antes da confirmação.', 'Cadastre as pessoas em Usuários e ajuste os Parâmetros.']],
-    ['parte', 'admin-importacoes', 'Importações', 'Tudo o que foi importado. Os arquivos de pedidos podem ser apagados, do mais novo ao mais antigo.', [['Lidas', 'Linhas do arquivo.'], ['Aceitas', 'Linhas gravadas.'], ['Rejeitadas', 'Linhas com erro, com o motivo.']]],
+    ['serve', 'Trazer para o sistema os arquivos do ERP, exportar as bases em Excel, cadastrar as pessoas e ajustar prazos, alertas e as ondas liberadas.'],
+    ['rapido', ['Abra Administração › Importações, no computador.', 'Siga as abas numeradas, na ordem: Base de prospects, Grupos de CNPJ, Cadastro e crédito, Pedidos e Baixados.', 'Em cada aba, confira a simulação: nada é gravado antes da confirmação.']],
+    ['parte', 'admin-importacoes', 'A tela Importações', 'Uma aba por arquivo, na ordem do processo, mais Exportar e Histórico. Cada aba já sabe o tipo do arquivo. As abas de importação são só no computador.', [['Abas numeradas', 'Os 5 passos da importação, na ordem.'], ['Exportar', 'Rejeitados por tipo, a base e os pedidos em Excel (também para o gerente).'], ['Histórico', 'Tudo o que foi importado; o arquivo de pedidos mais novo pode ser apagado.']]],
+    ['opcoes', '/importacoes'],
     ['parte', 'admin-usuarios', 'Usuários', 'Cadastro das pessoas, senhas e perfis.', [['Código do ERP', 'Liga o usuário ao representante dos arquivos de pedidos.'], ['Perfil', 'O que a pessoa acessa.']]],
     ['parte', 'admin-ondas', 'Ondas liberadas', 'Em Parâmetros: as ondas que o representante/vendedor vê para prospectar. Quem já foi atendido aparece sempre.', [['Na lista', 'Clientes da onda ainda não atendidos.'], ['Marcar todas', 'Libera a base inteira.']]],
     ['p', 'Se os pedidos chegarem antes do cadastro, nada se perde: os pedidos ficam guardados, e o relatório de cadastro e crédito completa o cliente depois, sem reimportar.'],
@@ -195,12 +196,16 @@ export const AJUDA_TELAS = Object.freeze({
     como: ['Escolha Pedidos de venda, Pedidos de bonificação ou Ambos.', 'Escolha Ver por Empresa ou Ver por Grupo.', 'Monte os níveis e clique numa linha: cards, gráficos e lista seguem aquela linha.', 'Use a busca para achar um pedido na lista.', 'Sem espaço para as colunas (celular ou tela estreita), cada linha vira um cartão com os números rotulados.'],
     campos: [F('Clientes', 'Clientes diferentes com venda válida'), F('Válidos', 'Pedidos em carteira, faturados em parte ou faturados'), F('Venda válida', 'Em carteira, parcial ou faturada'), F('Faturado', 'O que já faturou da venda válida'), F('Em carteira', 'A faturar'), F('Digitado', 'Pedido digitado, ainda fora da carteira'), F('Desistência', 'Pedido de venda cancelado'), F('Invest.', 'Bonificação: não entra na venda'), F('Invest. ÷ venda', 'Bonificação para cada real vendido, em %'), F('Próprio', 'Venda de quem é dono do cliente'), F('Outro', 'Venda de outro representante/vendedor'), F('Na lista?', 'Se o cliente é da lista de quem vendeu')],
     analisar: ['Abra a faixa de alertas: bonificação sem venda, limite do grupo e pedido parado.', 'A coluna Outro mostra quem vende fora da própria lista.'], comuns: [F('Por empresa não aparece nada', 'Pode ser pedido de filial do grupo: use Ver por Grupo.'), F('Pedido do arquivo não aparece', 'CNPJ fora da base é ignorado na importação.')], proximo: 'Veja a situação do primeiro pedido de cada cliente no Acompanhamento.' },
+  '/importacoes?aba=exportar': { titulo: 'Exportar', cap: 8, objetivo: 'Baixar em Excel os rejeitados (por tipo), a base de prospects e os pedidos.',
+    como: ['Em Rejeitados, marque um ou mais tipos e, se quiser, o supervisor, o representante e a onda.', 'Clique em Exportar Excel no bloco que quer baixar.'],
+    campos: [F('Rejeitados', 'Baixados, expurgados e sem interesse do cliente e do representante'), F('Base de prospects', 'Todos os clientes, com status, representante e onda'), F('Pedidos', 'Os pedidos dos clientes da base')],
+    analisar: ['O número no botão mostra quantos clientes vão no arquivo.'], comuns: [F('O botão está apagado', 'Nenhum cliente com os tipos e filtros marcados.')], proximo: 'Abra o arquivo no Excel.' },
   '/rejeitados': { titulo: 'Rejeitados', cap: 7, objetivo: 'Ver quem saiu da prospecção (baixados, expurgados e sem interesse), por que saiu, e exportar essa base em Excel.',
-    como: ['Monte os níveis da hierarquia, como no Explorar carteira.', 'Clique numa linha da hierarquia e num card de tipo: tudo abaixo segue a escolha.', 'Marque um ou mais tipos e clique em Exportar Excel.'],
+    como: ['Monte os níveis da hierarquia, como no Explorar carteira.', 'Clique numa linha da hierarquia e num card de tipo: tudo abaixo segue a escolha.', 'Para baixar em Excel, use Importações › Exportar.'],
     campos: [F('Na base', 'Todos os prospects da linha'), F('Rejeitados', 'Baixados, expurgados e sem interesse'), F('% da base', 'Rejeitados ÷ Na base')],
     analisar: ['Onde o sem interesse do representante é alto, veja os motivos antes de liberar outra onda.', 'Motivos de preço e prazo repetidos pedem conversa com o comercial.'],
     comuns: [F('Não aparecem os motivos', 'Eles só aparecem com o card Sem interesse do cliente ou do representante escolhido.'), F('Na base aparece —', 'Pelo mês da rejeição não há Na base: a base não tem mês.')],
-    proximo: 'Exporte a base e combine com o comercial o que fazer com cada tipo.' },
+    proximo: 'Exporte a base em Importações › Exportar e combine com o comercial o que fazer com cada tipo.' },
   '/ficha': { titulo: 'Ficha do cliente', cap: 3, objetivo: 'Reunir os dados do cliente, o status, o crédito, os pedidos e o histórico.',
     como: ['Confira o status e os dados do cliente.', 'Clique em Registrar atendimento para gravar um contato.', 'Veja no histórico tudo o que aconteceu.'],
     campos: [F('Carteira', 'Representante/vendedor dono do cliente'), F('Dias corridos', 'Dias desde o primeiro registro'), F('Prazo para o cadastro', 'Data limite em Aguardando cadastro'), F('Limite', 'Crédito liberado'), F('Filiais fora da base', 'Empresas do mesmo grupo que não estão na base')],
@@ -317,7 +322,6 @@ export const TERMOS = Object.freeze([
     T('Sem int. repr.', 'Sem interesse do representante: o representante/vendedor não vai trabalhar o cliente.'),
     T('% da base', 'Parte da linha que foi rejeitada.', 'rejeitados ÷ na base × 100'),
     T('Mês da rejeição', 'Nível da hierarquia: o mês do sem interesse, da baixa ou do expurgo.'),
-    T('Exportar Excel', 'Baixa uma planilha com os clientes dos tipos marcados, da linha escolhida.'),
   ] },
   { id: 'credito', nome: 'Console de crédito', tela: 'credito', caminho: '/financeiro', termos: [
     T('Cadastro ERP', 'Data em que o cliente foi cadastrado no ERP.'),
@@ -438,6 +442,10 @@ export const OPCOES_TOPO = Object.freeze({
       ['Pedidos de bonificação', 'Só os pedidos de bonificação, o investimento no cliente. No celular, Bonificação.'],
       ['Ambos', 'Venda e bonificação juntas.']]),
     VER_POR],
+  '/importacoes': [O('Abas da tela', [
+    ['Base de prospects', '1º passo: os clientes a trabalhar, cada um na carteira de um representante/vendedor.'], ['Grupos de CNPJ', '2º passo: sugere quem expurgar por já ser cliente.'],
+    ['Cadastro e crédito', '3º passo: cadastro no ERP e crédito liberado.'], ['Pedidos', '4º passo: pedidos do ERP, ligados a cada cliente.'], ['Baixados', '5º passo: CNPJs baixados na Receita.'],
+    ['Exportar', 'Rejeitados, base de prospects e pedidos em Excel.'], ['Histórico', 'Tudo o que foi importado; o arquivo de pedidos mais novo pode ser apagado.']])],
   '/rejeitados': [O('Cards do topo', [
     ['Rejeitados', 'Todos os tipos juntos.'], ['Baixados', 'CNPJ baixado na Receita: não pode mais ser faturado.'], ['Expurgados', 'Tirados da base por já serem clientes (grupo de CNPJ).'],
     ['Sem interesse do cliente', 'O cliente recusou a proposta. Mostra os motivos.'], ['Sem interesse do representante', 'O representante/vendedor não vai trabalhar o cliente. Mostra os motivos.']])],
@@ -449,9 +457,22 @@ export const OPCOES_TOPO = Object.freeze({
 });
 
 /** Opções do topo da tela, pelo endereço. */
+/**
+ * Chave da ajuda de um endereço. Acompanhamento é uma aba da Lista principal; cada aba da tela Importações usa a ajuda
+ * da importação que ela traz (a mesma de quando eram telas separadas).
+ */
+const AJUDA_DA_ABA = Object.freeze({ base: '/admin/importar/base', grupos: '/admin/grupos', credito: '/admin/importar/credito', pedidos: '/admin/importar/pedidos',
+  baixados: '/admin/importar/erp', exportar: '/importacoes?aba=exportar', historico: '/admin/importacoes' });
+function chaveDaTela(caminho, consulta) {
+  const aba = new URLSearchParams(consulta).get('aba');
+  if (caminho === '/carteira' && aba === 'acompanhamento') return '/carteira?aba=acompanhamento';
+  if (caminho === '/importacoes') return AJUDA_DA_ABA[aba] ?? AJUDA_DA_ABA.base;
+  return caminho;
+}
+
 export function opcoesDaTela(caminho, consulta = '') {
-  const c = caminho === '/carteira' && new URLSearchParams(consulta).get('aba') === 'acompanhamento' ? '/carteira?aba=acompanhamento' : caminho;
-  return OPCOES_TOPO[c] ?? [];
+  const proprias = OPCOES_TOPO[chaveDaTela(caminho, consulta)] ?? [];
+  return caminho === '/importacoes' ? [...OPCOES_TOPO['/importacoes'], ...proprias] : proprias;
 }
 
 /** Grupos de termos que o usuário vê: os gerais e os das telas que o perfil dele abre. */
@@ -459,7 +480,7 @@ export const termosDoUsuario = (usuario) => TERMOS.filter((g) => !g.tela || pode
 
 /** Grupo de termos da tela do botão ?, pelo endereço. */
 export function grupoDeTermos(caminho, consulta = '') {
-  const c = caminho === '/carteira' && new URLSearchParams(consulta).get('aba') === 'acompanhamento' ? '/carteira?aba=acompanhamento' : caminho;
+  const c = chaveDaTela(caminho, consulta);
   return TERMOS.find((g) => g.caminho === c) ?? null;
 }
 
@@ -473,7 +494,7 @@ export function capituloDeTermos(usuario) {
     ...telas.flatMap(([c, o]) => [['h', AJUDA_TELAS[c].titulo], ...blocosDeOpcoes(o)])] };
 }
 const blocosDeOpcoes = (opcoes) => (opcoes.length ? [['tabela', ['Opção do topo', 'O que mostra'], opcoes.flatMap((o) => o.opcoes.map((x) => [`${x.opcao} (${o.nome})`, x.significado]))]] : []);
-const TELA_DO_CAMINHO = { '/rejeitados': 'rejeitados', '/explorar': 'explorar', '/carteira': 'lista', '/carteira?aba=acompanhamento': 'acompanhamento', '/pedidos': 'pedidos', '/financeiro': 'credito', '/admin/grupos': 'admin_grupos' };
+const TELA_DO_CAMINHO = { '/importacoes': 'admin_importacoes', '/rejeitados': 'rejeitados', '/explorar': 'explorar', '/carteira': 'lista', '/carteira?aba=acompanhamento': 'acompanhamento', '/pedidos': 'pedidos', '/financeiro': 'credito', '/admin/grupos': 'admin_grupos' };
 const podeVerTela = (usuario, c) => !TELA_DO_CAMINHO[c] || podeTela(usuario, TELA_DO_CAMINHO[c]);
 
 /** Significado de um termo (dica do rótulo no computador), ou null. */
@@ -492,8 +513,7 @@ export function buscarTermos(grupos, texto) {
 
 /** Ajuda da tela pelo endereço. Sem ajuda própria: null. */
 export function ajudaDaTela(caminho, consulta = '') {
-  if (caminho === '/carteira' && new URLSearchParams(consulta).get('aba') === 'acompanhamento') return AJUDA_TELAS['/carteira?aba=acompanhamento'];
-  return AJUDA_TELAS[caminho] ?? null;
+  return AJUDA_TELAS[chaveDaTela(caminho, consulta)] ?? null;
 }
 
 /** Telas sem botão de ajuda: a entrada e a confirmação de senha. */

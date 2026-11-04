@@ -947,3 +947,23 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .rej-tipos .ped-opcao input { margin-top: 0; }
 #rejeitados h2 { margin: 0 0 4px; font-size: 18px; }
 @media (max-width: 600px) { .rej-motivo { grid-template-columns: minmax(0, 1fr) 44px 52px; } .rej-motivo .trilho, .rej-motivo.cab > span:nth-child(2) { display: none; } .rej-tipos .ped-opcao { width: 100%; white-space: normal; } }
+
+/* Importações: uma tela, uma aba por arquivo; rótulo do arquivo e o campo numa linha só */
+.imp-abas { display: flex; flex-wrap: wrap; border-bottom: 2px solid var(--borda); margin-bottom: 16px; }
+.imp-abas a { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 16px; border-bottom: 3px solid transparent; margin-bottom: -2px; color: #374151; font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.imp-abas a:hover { color: var(--destaque); }
+.imp-abas a.ativa { color: var(--destaque); border-bottom-color: var(--destaque); }
+.imp-abas .n { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 50%; background: #E5E7EB; color: #374151; font-size: 12px; }
+.imp-abas a.ativa .n { background: var(--destaque); color: #fff; }
+.imp-aba .campo:has(> input[type="file"]) { display: flex; flex-direction: row; align-items: center; gap: 12px; }
+.imp-aba .campo:has(> input[type="file"]) > label { margin: 0; white-space: nowrap; font-weight: 600; }
+.imp-aba .campo > input[type="file"] { flex: 1 1 auto; min-width: 0; box-sizing: border-box; height: 44px; margin: 0; padding: 6px 10px; border: 1px solid var(--borda-forte); border-radius: 8px; background: #fff; line-height: 30px; }
+.imp-efeito { margin: 0 0 12px; padding: 8px 12px; border-radius: 8px; background: var(--destaque-claro); color: var(--destaque-escuro); font-size: 14px; }
+.exp-bloco { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.exp-bloco > div:first-child { flex: 1 1 420px; min-width: 0; }
+.exp-bloco h2 { margin: 0; font-size: 19px; } .exp-bloco p.ajuda { margin: 2px 0 0; }
+#exportar-bloco-rejeitados { flex-direction: column; align-items: stretch; }
+.exp-filtros { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; }
+.exp-filtros .campo { margin: 0; } .exp-filtros select { min-width: 180px; }
+.exp-filtros button { margin-left: auto; }
+.imp-extra summary { cursor: pointer; font-weight: 600; min-height: 32px; } .imp-extra[open] summary { margin-bottom: 12px; }

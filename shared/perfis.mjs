@@ -27,6 +27,7 @@ export const TELAS = Object.freeze([
   { codigo: 'admin_usuarios', rotulo: 'Usuários e perfis', grupo: 'Administração', bases: ['administrador'] },
   { codigo: 'admin_parametros', rotulo: 'Parâmetros', grupo: 'Administração', bases: ['administrador'] },
   { codigo: 'admin_feriados', rotulo: 'Feriados', grupo: 'Administração', bases: ['administrador'] },
+  { codigo: 'exportar', rotulo: 'Exportar dados (Excel)', grupo: 'Administração', bases: ['administrador', 'gerente'] },
 ]);
 const CODIGOS = TELAS.map((t) => t.codigo);
 

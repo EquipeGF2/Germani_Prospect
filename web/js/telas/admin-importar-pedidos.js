@@ -40,7 +40,7 @@ export async function render(conteudo, ctx) {
     montar(area, passos(ETAPAS, 0), h('div', { class: 'cartao' },
       h('h2', {}, 'Arquivo e data'),
       h('p', { class: 'ajuda' }, 'Nada é gravado até a confirmação na simulação.'),
-      h('div', { class: 'campo' }, h('label', { for: 'arquivo-pedidos' }, 'Relatório de pedidos do ERP (.xls, .xlsx ou .csv)'), arquivo),
+      h('div', { class: 'campo' }, h('label', { for: 'arquivo-pedidos' }, 'Arquivo (.xls, .xlsx ou .csv)'), arquivo),
       h('label', {}, 'Frequência desta importação'),
       h('div', { class: 'linha-campos', style: 'margin-bottom:14px' },
         h('label', { class: 'ped-opcao' }, diaria, h('span', {}, h('b', {}, 'Diária'), h('br'), 'O arquivo entra com a data do dia. Cada mudança de situação fica com o dia certo.')),
@@ -205,5 +205,5 @@ export async function render(conteudo, ctx) {
   }
 
   etapaArquivo();
-  montar(conteudo, h('p', {}, h('a', { href: '#/admin/importar/erp' }, '← Pedidos · Baixados (ERP)')), h('h1', {}, 'Importar arquivo de pedidos'), area);
+  montar(conteudo, ctx.embutido ? null : h('h1', {}, 'Importar arquivo de pedidos'), area);
 }

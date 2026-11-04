@@ -17,9 +17,9 @@ export async function render(conteudo, ctx) {
       { titulo: 'Data', valor: (a) => formatar.data(a.data_referencia), classe: 'num' }, { titulo: 'Arquivo', campo: 'arquivo_nome' }, { titulo: 'Importado por', campo: 'executado_por' },
       { titulo: 'Linhas', valor: (a) => formatar.numero(a.linhas_lidas), classe: 'num' }, { titulo: 'Clientes afetados', valor: (a) => formatar.numero(a.apagada_em ? a.apagados_clientes : a.clientes_afetados), classe: 'num' },
       { titulo: 'Situação', valor: (a) => (a.apagada_em ? selo(`Apagada em ${formatar.dataHora(a.apagada_em)} por ${a.apagada_por}`, 'erro') : selo(a.situacao, a.situacao)), classe: 'cen' },
-      { titulo: 'Ação', valor: (a) => (a.apagada_em ? '—' : a.pode_apagar ? h('a', { class: 'botao secundario pequeno', dados: { apagar: a.id }, href: `#/admin/importacoes?apagar=${a.id}` }, 'Apagar') : h('button', { class: 'secundario pequeno', disabled: true }, 'Apague o mais novo antes')), classe: 'cen' }], arquivos),
+      { titulo: 'Ação', valor: (a) => (a.apagada_em ? '—' : a.pode_apagar ? h('a', { class: 'botao secundario pequeno', dados: { apagar: a.id }, href: `#/importacoes?aba=historico&apagar=${a.id}` }, 'Apagar') : h('button', { class: 'secundario pequeno', disabled: true }, 'Apague o mais novo antes')), classe: 'cen' }], arquivos),
     h('p', { class: 'ajuda', style: 'margin:12px 0 0' }, 'Apaga-se do mais novo para o mais antigo, porque um arquivo posterior pode ter mudado a situação dos mesmos pedidos.')) : null;
-  montar(conteudo, h('h1', {}, 'Importações'), blocoArquivos,
+  montar(conteudo, ctx.embutido ? null : h('h1', {}, 'Importações'), blocoArquivos,
     tabela([
       { titulo: 'Nº', campo: 'id', classe: 'num' },
       { titulo: 'Tipo', valor: (i) => NOMES_IMPORTACAO[i.tipo] ?? i.tipo },
@@ -30,7 +30,7 @@ export async function render(conteudo, ctx) {
       { titulo: 'Aceitas', valor: (i) => formatar.numero(i.linhas_aceitas), classe: 'num' },
       { titulo: 'Rejeitadas', valor: (i) => formatar.numero(i.linhas_rejeitadas), classe: 'num' },
       { titulo: 'Ignoradas', valor: (i) => formatar.numero(i.linhas_ignoradas), classe: 'num' },
-      { titulo: '', valor: (i) => h('a', { href: `#/admin/importacoes?id=${i.id}` }, 'Ver linhas') },
+      { titulo: '', valor: (i) => h('a', { href: `#/importacoes?aba=historico&id=${i.id}` }, 'Ver linhas') },
     ], lista, { vazio: 'Nenhuma importação ainda.' }));
 }
 
@@ -52,7 +52,7 @@ async function detalhe(conteudo, db, id) {
   filtro.addEventListener('change', carregar);
   const bCsv = h('button', { class: 'secundario pequeno', onclick: () => comEspera(bCsv, async () => baixarCsv(`importacao-${id}.csv`, colunas, linhas)) }, 'Baixar CSV');
   montar(conteudo,
-    h('p', {}, h('a', { href: '#/admin/importacoes' }, '← Importações')),
+    h('p', {}, h('a', { href: '#/importacoes?aba=historico' }, '← Histórico')),
     h('h1', {}, `Importação nº ${id}${imp ? ' · ' + (NOMES_IMPORTACAO[imp.tipo] ?? imp.tipo) : ''}`),
     imp ? h('p', { class: 'ajuda' }, `${imp.arquivo_nome} · ${formatar.dataHora(imp.iniciado_em)} · ${imp.executado_por} · ${imp.linhas_lidas} lidas = ${imp.linhas_aceitas} aceitas + ${imp.linhas_rejeitadas} rejeitadas + ${imp.linhas_ignoradas} ignoradas`) : null,
     h('div', { class: 'acoes', style: 'margin:0 0 12px' }, filtro, bCsv), area);
@@ -62,7 +62,7 @@ async function detalhe(conteudo, db, id) {
 /** Conferência antes de apagar os dados de um arquivo de pedidos. A regra está no banco (0022). */
 async function confirmarExclusao(conteudo, db, id, ctx) {
   const arquivo = (await listarArquivosPedidos(db)).find((a) => Number(a.id) === id);
-  const voltar = h('p', {}, h('a', { href: '#/admin/importacoes' }, '← Importações'));
+  const voltar = h('p', {}, h('a', { href: '#/importacoes?aba=historico' }, '← Histórico'));
   if (!arquivo || !arquivo.pode_apagar) return montar(conteudo, voltar, mensagem('Este arquivo não pode ser apagado: só o arquivo de pedidos mais novo, ainda não apagado.', 'erro'));
   const c = await conferirExclusao(db, id);
   const confirma = h('input', { id: 'confirma-arquivo', placeholder: arquivo.arquivo_nome, 'aria-label': 'Nome do arquivo para confirmar', oninput: () => { bApagar.disabled = confirma.value.trim() !== arquivo.arquivo_nome; } });
@@ -70,7 +70,7 @@ async function confirmarExclusao(conteudo, db, id, ctx) {
     const ok = await comEspera(bApagar, async () => { await apagarArquivoPedidos(db, { importacaoId: id, usuarioId: ctx.usuario.id }); return true; });
     if (!ok) return;
     aviso('Os dados do arquivo foram apagados.');
-    location.hash = '#/admin/importacoes';
+    location.hash = '#/importacoes?aba=historico';
   } }, 'Apagar os dados deste arquivo');
   montar(conteudo, voltar, h('h1', {}, 'Apagar os dados de um arquivo importado'),
     h('p', { class: 'ajuda' }, `${arquivo.arquivo_nome} · importado em ${formatar.dataHora(arquivo.iniciado_em)} por ${arquivo.executado_por}. Apagar um arquivo tira só o que ele trouxe.`),

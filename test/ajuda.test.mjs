@@ -113,3 +113,13 @@ test('Ajuda é o último item do menu, sem tela separada de termos', () => {
   assert.equal(grupos.at(-1), 'Ajuda');
   assert.ok(!menu.includes('termos=todos'));
 });
+
+test('tela Importações: cada aba usa a ajuda da importação que traz; as abas são as opções do topo', () => {
+  assert.equal(ajudaDaTela('/importacoes', 'aba=credito').titulo, AJUDA_TELAS['/admin/importar/credito'].titulo);
+  assert.equal(ajudaDaTela('/importacoes', 'aba=exportar').titulo, 'Exportar');
+  assert.equal(ajudaDaTela('/importacoes', 'aba=historico').titulo, 'Importações');
+  assert.equal(ajudaDaTela('/importacoes').titulo, AJUDA_TELAS['/admin/importar/base'].titulo);
+  assert.equal(grupoDeTermos('/importacoes', 'aba=pedidos').id, 'importar-pedidos');
+  assert.equal(opcoesDaTela('/importacoes', 'aba=grupos')[0].nome, 'Abas da tela');
+  assert.ok(opcoesDaTela('/importacoes', 'aba=grupos').length >= 2, 'e as opções da aba Grupos');
+});

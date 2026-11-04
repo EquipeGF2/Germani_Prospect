@@ -29,6 +29,13 @@ async function foto(nome) { if (FOTOS) await pagina.screenshot({ path: path.join
 const texto = () => pagina.locator('main').innerText();
 // espera a tela do endereço atual terminar de desenhar (o roteador marca main[data-pronto])
 const telaPronta = () => pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === location.hash);
+// tela Importações: uma aba por arquivo, mais Exportar e Histórico
+const abaImportacoes = async (aba) => {
+  await pagina.click('#menu a[title="Importações"]');
+  await telaPronta();
+  await pagina.click(`.imp-abas a[data-aba="${aba}"]`);
+  await pagina.waitForFunction((a) => document.getElementById('conteudo').dataset.pronto === `#/importacoes?aba=${a}`, aba);
+};
 
 test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 180000 }, async () => {
   await pagina.goto(base);
@@ -49,7 +56,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('02-inicio-vazio');
 
   // 1. base de prospects
-  await pagina.click('#menu a[title="Base de prospects"]');
+  await abaImportacoes('base');
+  assert.deepEqual(await pagina.locator('.imp-abas a').evaluateAll((els) => els.map((e) => e.dataset.aba)), ['base', 'grupos', 'credito', 'pedidos', 'baixados', 'exportar', 'historico'], 'abas na ordem do processo');
   await pagina.setInputFiles('#arquivo-base', 'exemplos/base-ficticia.xlsx');
   await pagina.click('button:text("Ler arquivo")');
   await pagina.waitForSelector('text=Datas de contato da planilha');
@@ -143,19 +151,20 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const cnpjs = linhas.slice(1, 3).map((l) => analisarCnpj(l[0]).cnpj);
   const cadastro = path.join(tmp, 'cadastro.csv');
   await writeFile(cadastro, `CNPJ;Data Cadastro;Codigo\n${cnpjs[0]};15/10/2026;C1\n${cnpjs[1]};16/10/2026;C2\n11222333000181;16/10/2026;C3\n`);
-  await pagina.click('#menu a[title="Pedidos · Baixados (ERP)"]');
-  await pagina.waitForSelector('#importar-pedidos');
-  await pagina.click('label.card-tipo[data-tipo="baixa"]');
-  await pagina.click('label.card-tipo[data-tipo="cadastro"]');             // escolha por cards
-  assert.ok(await pagina.isChecked('input[name="tipo-erp"][value="cadastro"]'));
-  await foto('08a-erp-cards');
+  // o arquivo só de cadastro (sem crédito) fica recolhido na aba Cadastro e crédito; a aba Baixados importa só baixados
+  await abaImportacoes('baixados');
+  assert.match(await pagina.locator('#aba-baixados .imp-efeito').innerText(), /Baixado \(congelado\)/);
+  await abaImportacoes('credito');
+  await pagina.click('#so-cadastro summary');
+  assert.match(await pagina.locator('#so-cadastro .imp-efeito').innerText(), /Análise financeira/);
+  await foto('08a-so-cadastro');
   await pagina.setInputFiles('#arquivo-erp', cadastro);
-  await pagina.click('button:text("Ler arquivo")');
+  await pagina.click('#so-cadastro button:text("Ler arquivo")');
   await pagina.selectOption('#col-data', 'Data Cadastro');
   await pagina.selectOption('#col-doc', 'Codigo');
-  await pagina.click('button:text("Simular")');
+  await pagina.click('#so-cadastro button:text("Simular")');
   await pagina.waitForSelector('text=Resultado da simulação');
-  await pagina.click('button:text("Confirmar e gravar")');
+  await pagina.click('#so-cadastro button:text("Confirmar e gravar")');
   await pagina.waitForSelector('text=2 movimento(s) gravado(s)');
   await foto('08-cadastro-erp');
 
@@ -167,7 +176,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
     + `C1;${cnpjs[0]};X;28B;21/28/35 DD BOLETO;1;Boleto;;15.000,00;;15/10/2026\n`
     + `C9;${cnpj3};Y;00A;A VISTA;9;Pix;;0;;16/10/2026\n`
     + `C5;12345678901;Z;00A;A VISTA;4;A vista;;0;;16/10/2026\n`);
-  await pagina.click('#menu a[title="Cadastro e crédito (ERP)"]');
+  await abaImportacoes('credito');
   await pagina.setInputFiles('#arquivo-credito', credito);
   await pagina.click('button:text("Ler arquivo")');
   await pagina.waitForSelector('text=Forma de pagamento do ERP → filtro rápido');
@@ -200,7 +209,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const grupos = path.join(tmp, 'grupos.csv');
   const doGrupo = linhas.slice(10, 20).map((l) => analisarCnpj(l[0]).cnpj).filter(Boolean);
   await writeFile(grupos, 'Cliente;CPF / CNPJ;Razão Social;Dt. Cadastro\n' + doGrupo.map((c, i) => `${500 + i};${c};GRUPO ${i};14/03/2019`).join('\n') + '\n');
-  await pagina.click('#menu a[title="Grupos de CNPJ"]');
+  await abaImportacoes('grupos');
   await pagina.setInputFiles('#arquivo-grupos', grupos);
   await pagina.click('button:text("Ler arquivo")');
   await pagina.waitForSelector('text=raízes em comum');
@@ -228,8 +237,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.locator('button', { hasText: new RegExp(`^Expurgar 0 · desfazer ${qtdExpurgo - 1}$`) }).click();
   await pagina.waitForSelector(`text=${qtdExpurgo - 1} desfeito(s)`);
 
-  // exportar a base inteira em Excel (CNPJ, razão social, cidade, UF)
-  await pagina.click('#menu a[title="Base de prospects"]');
+  // exportar a base inteira em Excel (aba Exportar): com status, representante e onda
+  await abaImportacoes('exportar');
   const baixandoBase = pagina.waitForEvent('download');
   await pagina.click('#exportar-base');
   const baseXlsx = await baixandoBase;
@@ -237,7 +246,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const livro = new ExcelJS.Workbook();
   await livro.xlsx.readFile(await baseXlsx.path());
   const folha = livro.worksheets[0];
-  assert.deepEqual(folha.getRow(1).values.slice(1), ['CNPJ', 'Razão social', 'Cidade', 'UF']);
+  assert.deepEqual(folha.getRow(1).values.slice(1), ['CNPJ', 'Razão social', 'Cidade', 'UF', 'Onda', 'Segmento', 'Status', 'Representante', 'Supervisor']);
   assert.ok(folha.rowCount > 100, `linhas: ${folha.rowCount}`);
 
   // erros do app: tela do administrador abre (lista vazia no banco de demonstração)
@@ -321,8 +330,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await foto('09d-lista-filtros-gestao');
 
   // 6. histórico de importações
-  await pagina.click('#menu a[title="Importações"]');
-  await pagina.waitForSelector('h1:text-is("Importações")');               // a tela de parâmetros também tem tabela
+  await abaImportacoes('historico');
+  await pagina.waitForSelector('h1:text-is("Importações")');
   await pagina.waitForSelector('td:has-text("Cadastro (ERP)")');
   await pagina.click('a:text("Ver linhas") >> nth=0');
   await pagina.waitForSelector('text=Importação nº 4'); // a mais recente: relatório de crédito

@@ -20,6 +20,7 @@ const ROTAS = [
   { caminho: '/lote', tela: () => import('./telas/lote.js'), telas: ['registrar'] },
   { caminho: '/financeiro', tela: () => import('./telas/financeiro.js'), telas: ['credito'] },
   { caminho: '/financeiro/liberar', tela: () => import('./telas/financeiro-liberar.js'), telas: ['credito'] },
+  { caminho: '/importacoes', tela: () => import('./telas/importar.js'), telas: ['admin_base', 'admin_grupos', 'admin_credito', 'admin_erp', 'admin_importacoes', 'exportar'] },
   { caminho: '/admin/acesso', tela: () => import('./telas/admin-acesso.js'), perfis: ['administrador'], semToken: true },
   { caminho: '/admin/importar/base', tela: () => import('./telas/admin-importar-base.js'), telas: ['admin_base'] },
   { caminho: '/admin/importar/tipos', tela: () => import('./telas/admin-importar-tipos.js'), telas: ['admin_tipos'] },
@@ -44,6 +45,8 @@ const ehPaginaInicial = (caminho) => caminho === '' || caminho === '/';
 
 export const NOMES_PERFIL = { administrador: 'Administrador', gerente: 'Gerente comercial', supervisor: 'Supervisor', vendedor: 'Vendedor', financeiro: 'Analista financeiro' };
 
+const ABA_DO_ENDERECO_ANTIGO = { '/admin/importar/base': 'base', '/admin/grupos': 'grupos', '/admin/importar/credito': 'credito', '/admin/importar/pedidos': 'pedidos', '/admin/importar/erp': 'baixados', '/admin/importacoes': 'historico' };
+
 export function irPara(caminho) {
   location.hash = `#${caminho}`;
 }
@@ -65,6 +68,8 @@ async function navegar() {
   atualizarCasca({ usuario, caminho, consulta, papel: usuario ? papelDe(usuario) : '', aoSair: () => { sair(); irPara('/entrar'); } });
   // endereço vazio, "/" ou desconhecido: página inicial (Explorar carteira) — ou a entrada, sem login
   if (!ROTAS.some((r) => r.caminho === caminho) || ehPaginaInicial(caminho)) return irPara(usuario ? telaInicial(usuario) : '/entrar');
+  // as telas de importação de antes viraram abas da tela Importações: o endereço antigo leva à aba
+  if (ABA_DO_ENDERECO_ANTIGO[caminho]) return irPara(`/importacoes?aba=${ABA_DO_ENDERECO_ANTIGO[caminho]}${consulta ? `&${consulta}` : ''}`);
   const rota = ROTAS.find((r) => r.caminho === caminho);
   if (!rota || (!rota.publica && !usuario)) return irPara('/entrar');
   const telasRota = typeof rota.telas === 'function' ? rota.telas(new URLSearchParams(consulta)) : rota.telas;

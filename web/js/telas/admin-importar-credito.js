@@ -92,10 +92,10 @@ export async function render(conteudo, ctx) {
   }
 
   montar(area, passos(ETAPAS, 0), h('div', { class: 'cartao' },
-    h('div', { class: 'campo' }, h('label', { for: 'arquivo-credito' }, 'Relatório de cadastro do ERP (.xlsx ou .csv)'), arquivo),
+    h('div', { class: 'campo' }, h('label', { for: 'arquivo-credito' }, 'Arquivo (.xlsx ou .csv)'), arquivo),
     h('p', { class: 'ajuda' }, 'Colunas: Cliente · CPF / CNPJ · Razão Social · Cond. Pgto · Descrição · Forma Pgto · Descrição · Créd. Cliente · Créd. Grupo · Dt. Cadastro.'),
     bLer));
-  montar(conteudo, h('h1', {}, 'Relatório de cadastro e crédito'),
+  montar(conteudo, ctx.embutido ? null : h('h1', {}, 'Relatório de cadastro e crédito'),
     h('p', { class: 'ajuda' }, 'Um relatório só: cadastro do cliente e crédito liberado. Só os CNPJs da base de prospects recebem os dados (CPF e fora da base são ignorados). O cliente passa para Aguardando pedido; sem cadastro ainda, o cadastro é registrado pelo próprio relatório (Dt. Cadastro e código do cliente). Limite: vale o Créd. Cliente; vazio, o Créd. Grupo — o mesmo valor para todas as empresas da raiz do CNPJ. 9.999.999 = sem limite; 0 = sem crédito (à vista ou antecipado). Condição e forma de pagamento ficam gravadas como vieram do ERP. O console do analista continua disponível para casos pontuais.'),
     area);
 }

@@ -56,11 +56,8 @@ const GRUPOS = [
   { titulo: 'Administração', itens: [
     // importações na ordem do processo: base → cadastro e crédito → pedidos. Representantes e vendedores são
     // cadastrados em Usuários (a importação por arquivo segue em #/admin/importar/tipos, fora do menu)
-    { caminho: '/admin/importar/base', rotulo: 'Base de prospects', icone: 'base', tela: 'admin_base' },
-    { caminho: '/admin/importar/credito', rotulo: 'Cadastro e crédito (ERP)', icone: 'credito', tela: 'admin_credito' },
-    { caminho: '/admin/importar/erp', rotulo: 'Pedidos · Baixados (ERP)', icone: 'erp', tela: 'admin_erp' },
-    { caminho: '/admin/grupos', rotulo: 'Grupos de CNPJ', icone: 'base', tela: 'admin_grupos' },
-    { caminho: '/admin/importacoes', rotulo: 'Importações', icone: 'importacoes', tela: 'admin_importacoes' },
+    // uma tela só para importar (base, grupos, cadastro e crédito, pedidos, baixados), exportar e o histórico; quem só exporta (gerente) vê "Exportar dados"
+    { caminho: '/importacoes', rotulo: 'Importações', rotuloSoExportar: 'Exportar dados', icone: 'importacoes', telas: ['admin_base', 'admin_grupos', 'admin_credito', 'admin_erp', 'admin_importacoes', 'exportar'] },
     { caminho: '/admin/usuarios', rotulo: 'Usuários', icone: 'usuarios', tela: 'admin_usuarios' },
     { caminho: '/admin/parametros', rotulo: 'Parâmetros', icone: 'parametros', tela: 'admin_parametros' },
     { caminho: '/admin/feriados', rotulo: 'Feriados', icone: 'feriados', tela: 'admin_feriados' },
@@ -76,7 +73,6 @@ const TELAS_INTERNAS = {
   '/ficha': ['/carteira', 'Ficha do cliente'],
   '/registrar': ['/carteira', 'Registrar atendimento'],
   '/lote': ['/carteira', 'Sem interesse em lote'],
-  '/admin/importar/pedidos': ['/admin/importar/erp', 'Importar pedidos'],
   '/financeiro/liberar': ['/financeiro', 'Liberar crédito'],
   '/admin/acesso': ['', 'Confirmar senha'],
   '/admin/perfis': ['/admin/usuarios', 'Perfis'],
@@ -170,7 +166,9 @@ export function atualizarCasca({ usuario, caminho, consulta, papel, aoSair }) {
   const ativo = itemAtivo(caminho, consulta);
   let grupoAtivo = null;
   let itemDoTopo = null;
-  const visiveis = GRUPOS.map((g) => ({ ...g, itens: g.itens.filter((i) => !i.tela || podeTela(usuario, i.tela)) })).filter((g) => g.itens.length);
+  const soExporta = !['admin_base', 'admin_grupos', 'admin_credito', 'admin_erp', 'admin_importacoes'].some((t) => podeTela(usuario, t));
+  const visiveis = GRUPOS.map((g) => ({ ...g, itens: g.itens.filter((i) => (!i.tela || podeTela(usuario, i.tela)) && (!i.telas || i.telas.some((t) => podeTela(usuario, t))))
+    .map((i) => (i.rotuloSoExportar && soExporta ? { ...i, rotulo: i.rotuloSoExportar } : i)) })).filter((g) => g.itens.length);
   montar(menu, visiveis.map((g) => h('div', { class: 'menu-grupo' },
     h('div', { class: 'menu-titulo' }, g.titulo),
     g.itens.map((i) => {
