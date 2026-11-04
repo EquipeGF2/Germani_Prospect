@@ -437,11 +437,11 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
   (TIPOLOGIA GTM), Onda, Rota, Subrota. Os níveis são cartões **arrastáveis** (ordenar, incluir, tirar); a ordem fica
   guardada no navegador. Cada nível aberto mostra **todos** os itens, do maior para o menor.
 - O ramo escolhido mostra dois gráficos (no lugar dos cards, de "Clientes por status" e do funil):
-  - **Da totalidade**: os **prospects** do ramo **sem baixados e expurgados** (que ficam fora da base) numa barra de 100%, em 3
-    partes — Contactados que seguem no processo, Não contactados e Sem interesse (do cliente e do representante, com a quantidade
-    de cada um) — e a **Cobertura** = contactados (com os sem interesse) ÷ prospects. Abaixo, **Fora da base**: baixados e
-    expurgados, que não entram nos prospects nem nos percentuais (estão na tela Rejeitados, §16). A coluna Prospects da
-    hierarquia e o botão Abrir na Lista principal usam o mesmo número; no celular, o número rotulado Fora da base.
+  - **Da totalidade**: a **base inteira** do ramo ("na base", inclusive baixados e expurgados) numa barra de 100%, em 3 partes —
+    Contactados que seguem no processo, Não contactados e **Rejeitados**, que junta sem interesse do cliente, sem interesse do
+    representante, baixados e expurgados, com a quantidade de cada um — e a **Cobertura** = contactados (com os sem interesse) ÷
+    prospects válidos (sem baixados e expurgados). Já a **grade** (coluna Prospects) e o botão Abrir na Lista principal mostram só
+    os **válidos**, sem baixados e expurgados; no celular, a hierarquia mostra à parte o número rotulado Fora da base.
   - **Dos contactados**: onde estão os que seguem no processo (contactados sem os sem interesse) — Aguardando cadastro,
     Aguardando financeiro, Aguardando pedido e Pedido realizado, cada um com % — e Valor dos pedidos, Potencial (em
     aberto × % do pipeline × valor médio) e Conversão (vendas ÷ contactados). "Em prospecção" (contato da planilha,
