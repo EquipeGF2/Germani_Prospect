@@ -2,12 +2,12 @@
 // Compara só a RAIZ do CNPJ (8 primeiros dígitos): para cada grupo do arquivo que também está na base, mostra as empresas
 // da base e sugere o que fazer. Nada é gravado aqui; o expurgo é feito por comandosExpurgo (tabela expurgos, 0021).
 //
-// Sugestão (o administrador decide caso a caso):
-//   Expurgar — o MESMO CNPJ está no arquivo, cadastro anterior ao início da campanha (ou sem data) e o prospect ainda
-//              não foi trabalhado (Não contactado / Em prospecção, sem atendimento): já era cliente, não é prospect.
-//   Manter   — cadastro feito na campanha (é conversão) ou prospect já trabalhado (atendido, cadastro, crédito, pedido,
-//              sem interesse…): o trabalho do representante fica.
-//   Decidir  — filial nova de um grupo que já é cliente (CNPJ fora do arquivo) e ainda não trabalhada.
+// Basta o cadastro no ERP, pelo mesmo CNPJ ou pela raiz (o grupo), para ser "já cliente" — não se olha faturamento.
+// Sugestão (o administrador pode trocar caso a caso):
+//   Expurgar — prospect ainda não trabalhado (Não contactado / Em prospecção, sem atendimento) com o mesmo CNPJ no arquivo
+//              ou com outra empresa do mesmo grupo no arquivo: já é cliente, não é prospect.
+//   Manter   — cadastro do mesmo CNPJ feito na campanha (é conversão) ou prospect já trabalhado (atendido, cadastro,
+//              crédito, pedido, sem interesse…): o trabalho do representante fica.
 // Já expurgado: aparece com a opção de desfazer.
 import { analisarCnpj, raizCnpj } from './cnpj.mjs';
 import { analisarData } from './datas.mjs';
@@ -73,8 +73,7 @@ export function sugerir(p, noArquivo, inicioCampanha) {
   if (p.status_atual === 'expurgado') return 'expurgado';
   const trabalhado = !EXPURGAVEIS.includes(p.status_atual) || Boolean(p.dt_atendido);
   if (trabalhado) return 'manter';
-  if (!noArquivo) return 'decidir';
-  if (noArquivo.dataCadastro && inicioCampanha && noArquivo.dataCadastro >= inicioCampanha) return 'manter';
+  if (noArquivo?.dataCadastro && inicioCampanha && noArquivo.dataCadastro >= inicioCampanha) return 'manter';
   return 'expurgar';
 }
 
@@ -125,7 +124,7 @@ export async function analisarGrupos(db, { linhas }) {
       raizesEmComum: grupos.length, prospects: todos.length,
       mesmoCnpj: conta((p) => p.noArquivo), filialNova: conta((p) => !p.noArquivo),
       expurgar: conta((p) => p.sugestao === 'expurgar'), manter: conta((p) => p.sugestao === 'manter'),
-      decidir: conta((p) => p.sugestao === 'decidir'), expurgados: conta((p) => p.sugestao === 'expurgado'),
+      expurgados: conta((p) => p.sugestao === 'expurgado'),
     },
   };
 }
@@ -143,3 +142,5 @@ export function comandosExpurgo({ usuario, prospectIds, acao = 'expurgar', motiv
 }
 
 export const MOTIVOS_EXPURGO = Object.freeze(['Já é cliente no ERP (mesmo CNPJ)', 'Filial de grupo que já é cliente', 'Cadastro duplicado na base']);
+/** Motivo do expurgo de cada prospect quando a escolha é automática: mesmo CNPJ no arquivo ou filial do grupo. */
+export const motivoAutomatico = (p) => (p.noArquivo ? MOTIVOS_EXPURGO[0] : MOTIVOS_EXPURGO[1]);

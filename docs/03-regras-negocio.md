@@ -543,12 +543,15 @@ Um único conteúdo alimenta três saídas, para não haver textos diferentes: a
   arquivo ficam fora. O arquivo é lido no navegador; nada é gravado até aplicar.
 - Para cada grupo do arquivo que também está na base: as empresas da base (CNPJ, situação, carteira) e, de cada uma, se o
   **mesmo CNPJ** está no arquivo (código e data de cadastro) ou se é **filial nova** do grupo. Relatório completo em CSV.
-- **Sugestão** por empresa (o administrador decide):
-  - **Expurgar** — mesmo CNPJ no arquivo, cadastro anterior ao início da campanha (ou sem data) e ainda não trabalhado
-    (Não contactado / Em prospecção, sem atendimento): já era cliente, não é prospect;
-  - **Manter** — cadastro feito na campanha (conversão) ou prospect já trabalhado (atendido, cadastro, crédito, pedido,
-    sem interesse…);
-  - **Decidir** — filial nova de grupo que já é cliente, ainda sem atendimento.
+- **Já cliente = cadastrado no ERP**, pelo mesmo CNPJ ou por outra empresa do mesmo grupo (raiz). Não se olha faturamento,
+  situação nem se é fornecedor (decisão de 2026-11-04).
+- **Sugestão** por empresa (o administrador pode trocar):
+  - **Expurgar** — ainda não trabalhado (Não contactado / Em prospecção, sem atendimento), com o mesmo CNPJ no arquivo
+    (cadastro anterior ao início da campanha, ou sem data) ou filial de um grupo que está no arquivo;
+  - **Manter** — cadastro do mesmo CNPJ feito na campanha (conversão) ou prospect já trabalhado (atendido, cadastro,
+    crédito, pedido, sem interesse…).
+- **Motivo** automático: "Já é cliente no ERP (mesmo CNPJ)" ou "Filial de grupo que já é cliente". Aceita o cadastro do ERP
+  em .xls.
 - **Expurgo**: nada é apagado. O prospect passa à situação **Expurgado (já cliente)** — fora da carteira válida e das contas
   (como o inválido: `conta_carteira = 0`; no Explorar entra em "Rejeitados"), sem aceitar registro. Fica em `expurgos`
   (somente inclusão) com quem, quando e o motivo, e aparece no histórico da ficha. **Desfazer** (na mesma tela) devolve a

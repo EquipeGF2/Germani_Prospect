@@ -283,10 +283,10 @@ export const AJUDA_TELAS = Object.freeze({
   '/admin/importar/tipos': { titulo: 'Representantes e vendedores', cap: 8, objetivo: 'Definir por lista quem é representante e quem é vendedor.',
     como: ['Escolha o arquivo ou cole a lista com o cabeçalho.', 'Confira a simulação e grave.'],
     campos: [F('Representante', 'Sem rota'), F('Vendedor', 'Com rota e subrota')], analisar: ['Confira quem ficou sem tipo.'], comuns: [F('A tela não está no menu', 'O cadastro do dia a dia fica em Usuários.')], proximo: 'Veja o resultado em Usuários.' },
-  '/admin/grupos': { titulo: 'Grupos de CNPJ', cap: 8, objetivo: 'Cruzar a base com um arquivo do ERP pela raiz do CNPJ e decidir quem expurgar.',
+  '/admin/grupos': { titulo: 'Grupos de CNPJ', cap: 8, objetivo: 'Cruzar a base com o cadastro do ERP pelo CNPJ e pela raiz, e expurgar quem já é cliente.',
     como: ['Carregue o arquivo com a coluna CPF / CNPJ.', 'Veja a sugestão de cada empresa.', 'Escolha a ação, informe o motivo e aplique.'],
-    campos: [F('Raiz', 'Os 8 primeiros dígitos do CNPJ'), F('Sugestão', 'Expurgar, Manter ou Decidir'), F('No arquivo', 'Se o mesmo CNPJ está no arquivo'), F('Cadastro no ERP', 'Data do cadastro')],
-    analisar: ['Expurgar serve a quem já era cliente e ainda não foi trabalhado.'], comuns: [F('Expurguei errado', 'Use Desfazer, na mesma tela: nada é apagado.')], proximo: 'O expurgado sai da carteira válida e das contas.' },
+    campos: [F('Raiz', 'Os 8 primeiros dígitos do CNPJ'), F('Sugestão', 'Expurgar ou Manter'), F('No arquivo', 'Se o mesmo CNPJ está no arquivo'), F('Cadastro no ERP', 'Data do cadastro')],
+    analisar: ['Basta estar cadastrado no ERP, pelo mesmo CNPJ ou pelo grupo: não se olha faturamento. Quem já foi trabalhado fica.'], comuns: [F('Expurguei errado', 'Use Desfazer, na mesma tela: nada é apagado.')], proximo: 'O expurgado sai da carteira válida e das contas.' },
   '/admin/importacoes': { titulo: 'Importações', cap: 8, objetivo: 'Ver o que foi importado e apagar um arquivo de pedidos, se precisar.',
     como: ['Veja a lista de importações.', 'Abra uma para ver as linhas.', 'Em Arquivos de pedidos, apague do mais novo ao mais antigo.'],
     campos: [F('Lidas', 'Linhas do arquivo'), F('Aceitas', 'Linhas gravadas'), F('Ignoradas', 'Fora da base, por exemplo, ou sem mudança'), F('Rejeitadas', 'Linhas com erro'), F('Clientes afetados', 'Quem muda ao apagar o arquivo')],
@@ -494,9 +494,9 @@ export const OPCOES_TOPO = Object.freeze({
     ['Sem interesse do cliente', 'O cliente recusou a proposta. Mostra os motivos.'], ['Sem interesse do representante', 'O representante/vendedor não vai trabalhar o cliente. Mostra os motivos.']])],
   '/financeiro': [O('Cards do topo', [
     ['em análise', 'Clientes aguardando a liberação do crédito.'], ['fora do prazo', 'Os que passaram do prazo da análise.'], ['liberados aguardando pedido', 'Já liberados, ainda sem pedido: para corrigir uma liberação.']])],
-  '/admin/grupos': [O('Todas | Expurgar | Manter | Decidir | Expurgados', [
-    ['Todas', 'Todas as empresas do arquivo.'], ['Expurgar', 'Sugestão de tirar da base: já era cliente e ainda não foi trabalhado.'], ['Manter', 'Sugestão de manter na base.'],
-    ['Decidir', 'Sem sugestão: precisa da sua decisão.'], ['Expurgados', 'Os que já foram tirados da base.']])],
+  '/admin/grupos': [O('Todas | Expurgar | Manter | Expurgados', [
+    ['Todas', 'Todas as empresas do arquivo.'], ['Expurgar', 'Sugestão de tirar da base: cadastrado no ERP (mesmo CNPJ ou mesmo grupo) e ainda não trabalhado.'], ['Manter', 'Sugestão de manter na base.'],
+    ['Expurgados', 'Os que já foram tirados da base.']])],
 });
 
 /** Opções do topo da tela, pelo endereço. */

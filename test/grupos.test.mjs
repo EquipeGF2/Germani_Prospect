@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, cnpjTeste, prospect, registrarContato } from './auxiliar.mjs';
-import { gruposDoArquivo, analisarGrupos, comandosExpurgo, sugerir } from '../shared/grupos.mjs';
+import { gruposDoArquivo, motivoAutomatico, analisarGrupos, comandosExpurgo, sugerir } from '../shared/grupos.mjs';
 import { consultaLinhaTempo } from '../shared/carteira.mjs';
 
 const CAB = ['Cliente', 'CPF / CNPJ', 'Razão Social', 'Cond. Pgto', 'Descrição', 'Forma Pgto', 'Descrição', null, 'Créd. Cliente', 'Créd. Grupo', 'Dt. Cadastro'];
@@ -14,7 +14,7 @@ async function cenario() {
   const p = {
     antigo: await criarProspect(db, { n: 10 }),                              // mesmo CNPJ, cliente desde 2019 → expurgar
     novo: await criarProspect(db, { n: 11 }),                                // mesmo CNPJ, cadastro na campanha → manter
-    filial: await criarProspect(db, { n: 12, cnpj: cnpjTeste(10, 2) }),      // filial nova do grupo 10 → decidir
+    filial: await criarProspect(db, { n: 12, cnpj: cnpjTeste(10, 2) }),      // filial do grupo 10 no cadastro → expurgar
     atendido: await criarProspect(db, { n: 13, cnpj: cnpjTeste(10, 3) }),    // já trabalhado → manter
     fora: await criarProspect(db, { n: 14 }),                                // raiz fora do arquivo: não aparece
   };
@@ -33,10 +33,13 @@ test('grupos de CNPJ: cruza só pela raiz, com sugestão por empresa', async () 
   const { grupos, resumo } = await analisarGrupos(db, { linhas });
   assert.deepEqual(grupos.map((g) => [g.raiz, g.arquivoQtd, g.credGrupo, g.prospects.length]), [['00000010', 2, 5000, 3], ['00000011', 1, null, 1]]);
   const sug = Object.fromEntries(grupos.flatMap((g) => g.prospects).map((x) => [x.id, x.sugestao]));
-  assert.deepEqual([sug[p.antigo], sug[p.novo], sug[p.filial], sug[p.atendido], sug[p.fora]], ['expurgar', 'manter', 'decidir', 'manter', undefined]);
+  assert.deepEqual([sug[p.antigo], sug[p.novo], sug[p.filial], sug[p.atendido], sug[p.fora]], ['expurgar', 'manter', 'expurgar', 'manter', undefined]);
   assert.deepEqual([resumo.raizesArquivo, resumo.raizesEmComum, resumo.prospects, resumo.mesmoCnpj, resumo.filialNova, resumo.expurgar, resumo.ignoradasArquivo],
-    [2, 2, 4, 2, 2, 1, 1]);
+    [2, 2, 4, 2, 2, 2, 1]);
   assert.equal(sugerir({ status_atual: 'nao_contactado' }, { dataCadastro: null }, '2026-10-01'), 'expurgar', 'sem data de cadastro: já era cliente');
+  assert.equal(sugerir({ status_atual: 'nao_contactado' }, undefined, '2026-10-01'), 'expurgar', 'filial de grupo cadastrado no ERP: já é cliente');
+  assert.equal(motivoAutomatico({ noArquivo: { codigo: '1' } }), 'Já é cliente no ERP (mesmo CNPJ)');
+  assert.equal(motivoAutomatico({ noArquivo: null }), 'Filial de grupo que já é cliente');
 });
 
 test('expurgo: só administrador, só não trabalhado; sai da carteira válida, fica no histórico e pode ser desfeito', async () => {
