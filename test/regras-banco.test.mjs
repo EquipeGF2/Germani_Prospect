@@ -504,30 +504,16 @@ test('0019: erros do app — somente inclusão; listagem dos frequentes por mens
   await assert.rejects(ins('x'.repeat(1001), 'ana'), /CHECK/);
 });
 
-test('0020: sem interesse do representante leva o cliente ao E-commerce (como está); do cliente não', async () => {
-  const ec = Number((await db.execute("INSERT INTO usuarios (perfil, nome, nome_busca, login, supervisor_id) VALUES ('vendedor', 'E-commerce', 'E-COMMERCE', 'ecommerce', 1) RETURNING id")).rows[0].id);
+test('0025: sem interesse do representante não vai mais para o E-commerce: o cliente fica com o dono da carteira', async () => {
   const a = await criarProspect(db, { n: 80 });
-  const b = await criarProspect(db, { n: 81 });
-  const c = await criarProspect(db, { n: 82 });
-  // desligado (0): nada muda
-  await registrarContato(db, { prospectId: c, resultado: 'sem_interesse', motivo: 'REP_FORA_ROTA', data: '2026-10-05' });
-  assert.equal(Number((await prospect(db, c)).vendedor_id), 2);
-
-  await db.execute({ sql: "UPDATE parametros SET valor = ? WHERE chave = 'vendedor_ecommerce_id'", args: [String(ec)] });
   await registrarContato(db, { prospectId: a, resultado: 'sem_interesse', motivo: 'REP_FORA_ROTA', data: '2026-10-06' });
-  await registrarContato(db, { prospectId: b, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-06' });
-  let p = await prospect(db, a);
-  assert.deepEqual([Number(p.vendedor_id), p.status_atual, p.status_descricao], [ec, 'sem_interesse', 'Sem interesse · representante']);
-  const mv = (await db.execute({ sql: "SELECT detalhe, data_evento FROM movimentacoes WHERE prospect_id = ? AND tipo = 'transferencia'", args: [a] })).rows[0];
-  assert.equal(mv.data_evento, '2026-10-06');
-  assert.match(mv.detalhe, /→ E-commerce: sem interesse do representante \(Fora da rota/);
-  assert.equal(Number((await prospect(db, b)).vendedor_id), 2, 'sem interesse do cliente fica com o representante');
-
-  // o E-commerce marcando sem interesse do representante não transfere de novo
-  await registrarContato(db, { prospectId: a, usuarioId: ec, resultado: 'sem_interesse', motivo: 'REP_VOLUME_BAIXO', data: '2026-10-07' });
-  assert.equal(Number((await prospect(db, a)).vendedor_id), ec);
-  // a exceção da validação vale só para a ida automática: o vendedor não transfere outro cliente ao E-commerce na mão
-  await assert.rejects(db.execute({ sql: "INSERT INTO transferencias (prospect_id, de_vendedor_id, para_vendedor_id, data_transferencia, motivo, usuario_id) VALUES (?, 2, ?, '2026-10-07', 'x', 2)", args: [b, ec] }), /sem permissão/);
+  const p = await prospect(db, a);
+  assert.deepEqual([Number(p.vendedor_id), p.status_atual, p.status_descricao], [2, 'sem_interesse', 'Sem interesse · representante']);
+  assert.equal((await db.execute({ sql: 'SELECT COUNT(*) AS n FROM transferencias WHERE prospect_id = ?', args: [a] })).rows[0].n, 0);
+  assert.equal((await db.execute("SELECT COUNT(*) AS n FROM parametros WHERE chave = 'vendedor_ecommerce_id'")).rows[0].n, 0, 'parâmetro removido');
+  // o vendedor continua sem poder transferir; administrador pode
+  const b = await criarProspect(db, { n: 81 });
+  await assert.rejects(db.execute({ sql: "INSERT INTO transferencias (prospect_id, de_vendedor_id, para_vendedor_id, data_transferencia, motivo, usuario_id) VALUES (?, 2, 3, '2026-10-07', 'x', 2)", args: [b] }), /sem permissão/);
 });
 
 test('crédito depois do pedido: registra sem mudar o status; inválido continua recusado (0023)', async () => {

@@ -934,3 +934,16 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ajf-parte-texto .ajf-pares dt { border-bottom: 0; padding-bottom: 0; white-space: normal; }
 .ajf-bloco { padding-top: 6px; } .ajf-sub { margin: 10px 0 2px; font-size: 15px; color: var(--destaque-escuro); }
 @media (max-width: 600px) { .ajf-pares { grid-template-columns: 1fr; } .ajf-pares dt { border-bottom: 0; padding-bottom: 0; white-space: normal; } .ajf-recorte { flex-basis: 100%; } }
+
+/* Rejeitados: hierarquia de 8 colunas, cards dos tipos, motivos e exportação */
+.ped-exp.acf-exp.rej-exp .exp-linha { grid-template-columns: minmax(200px, 3fr) repeat(7, minmax(0, 1fr)); }
+.rej-motivo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(80px, 200px) 56px 60px; gap: 10px; align-items: center; padding: 5px 0; font-size: 14px; border-bottom: 1px solid #F3F4F6; }
+.rej-motivo.cab { font-size: 12px; font-weight: 600; color: var(--suave); }
+.rej-motivo .nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rej-motivo .n { text-align: right; font-variant-numeric: tabular-nums; }
+.rej-motivo .trilho { height: 10px; border-radius: 5px; background: #F3F4F6; overflow: hidden; } .rej-motivo .trilho span { display: block; height: 100%; border-radius: 5px; }
+.rej-tipos { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rej-tipos .ped-opcao { white-space: nowrap; min-height: 44px; box-sizing: border-box; align-items: center; padding: 0 12px; }
+.rej-tipos .ped-opcao input { margin-top: 0; }
+#rejeitados h2 { margin: 0 0 4px; font-size: 18px; }
+@media (max-width: 600px) { .rej-motivo { grid-template-columns: minmax(0, 1fr) 44px 52px; } .rej-motivo .trilho, .rej-motivo.cab > span:nth-child(2) { display: none; } .rej-tipos .ped-opcao { width: 100%; white-space: normal; } }

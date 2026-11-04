@@ -6,10 +6,10 @@
 import { condicaoOndas } from './ondas.mjs';
 import { veTodasEquipes } from './perfis.mjs';
 
-const colunasUsuario = `v.nome AS vendedor_nome, v.tipo_atuacao, v.perfil AS vendedor_perfil, v.codigo_erp AS vendedor_codigo,
+export const colunasUsuario = `v.nome AS vendedor_nome, v.tipo_atuacao, v.perfil AS vendedor_perfil, v.codigo_erp AS vendedor_codigo,
        COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END) AS supervisor_id,
        COALESCE(sup.nome, v.nome) AS supervisor_nome, COALESCE(sup.codigo_erp, v.codigo_erp) AS supervisor_codigo`;
-const juntaUsuario = `JOIN usuarios v ON v.id = x.vendedor_id
+export const juntaUsuario = `JOIN usuarios v ON v.id = x.vendedor_id
        LEFT JOIN usuarios sup ON sup.id = COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END)`;
 
 function escopo(usuario) {

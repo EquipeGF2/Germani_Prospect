@@ -314,6 +314,31 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   assert.equal(await pagina.locator('#menu a[title="Significado dos termos"]').count(), 0, 'sem item separado no menu');
   assert.match((await pagina.locator('#menu .menu-titulo').allInnerTexts()).at(-1), /ajuda/i, 'Ajuda é o último grupo do menu');
 
+  // Rejeitados: cards por tipo, motivos só para o sem interesse, exportação em Excel de um ou mais tipos
+  await ir('#/rejeitados');
+  await pagina.waitForSelector('#rej-cards');
+  assert.equal(await pagina.locator('#menu a[title="Rejeitados"]').count(), 1, 'no menu do administrador');
+  const qtdCard = async (t) => Number((await pagina.locator(`#rej-${t} b`).innerText()).replace(/\./g, ''));
+  assert.equal(await qtdCard('todos'), (await qtdCard('baixado')) + (await qtdCard('expurgado')) + (await qtdCard('cliente')) + (await qtdCard('representante')));
+  assert.ok(await qtdCard('cliente') > 0, 'os dados de exemplo têm sem interesse');
+  assert.equal(await pagina.locator('#rej-motivos').count(), 0, 'sem motivos com todos os tipos');
+  await pagina.click('#rej-cliente');
+  await pagina.waitForSelector('#rej-motivos');
+  await foto('p14a-rejeitados');
+  await pagina.click('#rej-baixado');
+  assert.equal(await pagina.locator('#rej-motivos').count(), 0, 'baixado não tem motivo de sem interesse');
+  for (const t of ['baixado', 'expurgado', 'representante']) await pagina.locator(`#rej-exportar input[data-tipo="${t}"]`).uncheck();
+  assert.match(await pagina.locator('#exportar-rejeitados').innerText(), new RegExp(`· ${(await qtdCard('cliente')).toLocaleString('pt-BR')} clientes`));
+  const [planilha] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#exportar-rejeitados')]);
+  assert.match(planilha.suggestedFilename(), /^rejeitados-.*\.xlsx$/);
+  const caminhoXlsx = path.join(tmp, 'rejeitados.xlsx');
+  await planilha.saveAs(caminhoXlsx);
+  const { linhas: doExcel } = await lerPlanilha(caminhoXlsx);
+  assert.equal(doExcel[0][0], 'Tipo');
+  assert.equal(doExcel.length - 1, await qtdCard('cliente'), 'uma linha por cliente do tipo marcado');
+  assert.ok(doExcel.slice(1).every((l) => l[0] === 'Sem interesse do cliente'));
+  for (const t of ['baixado', 'expurgado', 'representante']) await pagina.locator(`#rej-exportar input[data-tipo="${t}"]`).check();
+
   // ondas liberadas: o administrador escolhe as ondas em Parâmetros
   await ir('#/admin/parametros');
   await pagina.waitForSelector('#ondas-liberadas');
@@ -356,7 +381,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   });
   for (const largura of [360, 390, 768, 1024, 1366]) {
     await pagina.setViewportSize({ width: largura, height: 900 });
-    for (const rota of ['#/pedidos', '#/carteira?aba=acompanhamento', '#/ajuda']) {
+    for (const rota of ['#/pedidos', '#/carteira?aba=acompanhamento', '#/ajuda', '#/rejeitados']) {
       await ir(rota);
       await pagina.waitForTimeout(150);
       const m = await medir();
@@ -443,6 +468,9 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
     await recorte('admin-usuarios', '#conteudo', { altura: 420 });
     await ir('#/admin/parametros');
     await recorte('admin-ondas', '#ondas-liberadas');
+    await ir('#/rejeitados');
+    await pagina.click('#rej-cliente');
+    await recorte('rejeitados', '#rejeitados', { altura: 460 });
     await limpa.evaluate((e) => e.remove());
     await pagina.setViewportSize({ width: 1360, height: 900 });
   }

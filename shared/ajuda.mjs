@@ -127,6 +127,10 @@ export const CAPITULOS = Object.freeze([
     ['parte', 'carteira-arvore', 'A hierarquia', 'Os números de cada linha. Clique numa linha para os gráficos seguirem ela.', [['Prospects', 'Clientes da base na linha.'], ['Ag. cadastro, Ag. financeiro, Ag. pedido', 'Quantos estão em cada etapa.']]],
     ['opcoes', '/explorar'],
     ['termos', 'carteira'],
+    ['h', 'Rejeitados (gerente e administrador)'],
+    ['parte', 'rejeitados', 'A tela Rejeitados', 'Quem saiu da prospecção e por quê, com a hierarquia de níveis. Escolha uma linha e um tipo: tudo abaixo segue a escolha.', [['Cards do topo', 'Baixados, expurgados, sem interesse do cliente e do representante.'], ['Motivos', 'Aparecem só para o sem interesse escolhido.'], ['Exportar Excel', 'Marque um ou mais tipos e baixe a planilha.']]],
+    ['opcoes', '/rejeitados'],
+    ['termos', 'rejeitados'],
     ['perguntas', [['Por que a soma das etapas não dá o total?', 'O total inclui os não contactados e os rejeitados, que não estão em etapa nenhuma.'],
       ['Como vejo os clientes de uma linha?', 'Escolha a linha e clique em Abrir na Lista principal.']]],
   ] },
@@ -191,6 +195,12 @@ export const AJUDA_TELAS = Object.freeze({
     como: ['Escolha Pedidos de venda, Pedidos de bonificação ou Ambos.', 'Escolha Ver por Empresa ou Ver por Grupo.', 'Monte os níveis e clique numa linha: cards, gráficos e lista seguem aquela linha.', 'Use a busca para achar um pedido na lista.', 'Sem espaço para as colunas (celular ou tela estreita), cada linha vira um cartão com os números rotulados.'],
     campos: [F('Clientes', 'Clientes diferentes com venda válida'), F('Válidos', 'Pedidos em carteira, faturados em parte ou faturados'), F('Venda válida', 'Em carteira, parcial ou faturada'), F('Faturado', 'O que já faturou da venda válida'), F('Em carteira', 'A faturar'), F('Digitado', 'Pedido digitado, ainda fora da carteira'), F('Desistência', 'Pedido de venda cancelado'), F('Invest.', 'Bonificação: não entra na venda'), F('Invest. ÷ venda', 'Bonificação para cada real vendido, em %'), F('Próprio', 'Venda de quem é dono do cliente'), F('Outro', 'Venda de outro representante/vendedor'), F('Na lista?', 'Se o cliente é da lista de quem vendeu')],
     analisar: ['Abra a faixa de alertas: bonificação sem venda, limite do grupo e pedido parado.', 'A coluna Outro mostra quem vende fora da própria lista.'], comuns: [F('Por empresa não aparece nada', 'Pode ser pedido de filial do grupo: use Ver por Grupo.'), F('Pedido do arquivo não aparece', 'CNPJ fora da base é ignorado na importação.')], proximo: 'Veja a situação do primeiro pedido de cada cliente no Acompanhamento.' },
+  '/rejeitados': { titulo: 'Rejeitados', cap: 7, objetivo: 'Ver quem saiu da prospecção (baixados, expurgados e sem interesse), por que saiu, e exportar essa base em Excel.',
+    como: ['Monte os níveis da hierarquia, como no Explorar carteira.', 'Clique numa linha da hierarquia e num card de tipo: tudo abaixo segue a escolha.', 'Marque um ou mais tipos e clique em Exportar Excel.'],
+    campos: [F('Na base', 'Todos os prospects da linha'), F('Rejeitados', 'Baixados, expurgados e sem interesse'), F('% da base', 'Rejeitados ÷ Na base')],
+    analisar: ['Onde o sem interesse do representante é alto, veja os motivos antes de liberar outra onda.', 'Motivos de preço e prazo repetidos pedem conversa com o comercial.'],
+    comuns: [F('Não aparecem os motivos', 'Eles só aparecem com o card Sem interesse do cliente ou do representante escolhido.'), F('Na base aparece —', 'Pelo mês da rejeição não há Na base: a base não tem mês.')],
+    proximo: 'Exporte a base e combine com o comercial o que fazer com cada tipo.' },
   '/ficha': { titulo: 'Ficha do cliente', cap: 3, objetivo: 'Reunir os dados do cliente, o status, o crédito, os pedidos e o histórico.',
     como: ['Confira o status e os dados do cliente.', 'Clique em Registrar atendimento para gravar um contato.', 'Veja no histórico tudo o que aconteceu.'],
     campos: [F('Carteira', 'Representante/vendedor dono do cliente'), F('Dias corridos', 'Dias desde o primeiro registro'), F('Prazo para o cadastro', 'Data limite em Aguardando cadastro'), F('Limite', 'Crédito liberado'), F('Filiais fora da base', 'Empresas do mesmo grupo que não estão na base')],
@@ -298,6 +308,16 @@ export const TERMOS = Object.freeze([
     T('Sem interesse do representante', 'O representante/vendedor não vai trabalhar o cliente. Pede o motivo.'),
     T('Reabrir: pedido identificado', 'Para quem estava em sem interesse e fez pedido: volta ao fluxo.'),
     T('Retornar em (opcional)', 'Data para voltar a falar com o cliente.'),
+  ] },
+  { id: 'rejeitados', nome: 'Rejeitados', tela: 'rejeitados', caminho: '/rejeitados', termos: [
+    T('Na base', 'Todos os prospects da linha da hierarquia, em qualquer situação.'),
+    T('Baixados', 'CNPJ baixado na Receita: não pode mais ser faturado.'),
+    T('Expurgados', 'Tirados da base por já serem clientes (grupo de CNPJ), pelo administrador.'),
+    T('Sem int. cliente', 'Sem interesse do cliente: ele recusou a proposta.'),
+    T('Sem int. repr.', 'Sem interesse do representante: o representante/vendedor não vai trabalhar o cliente.'),
+    T('% da base', 'Parte da linha que foi rejeitada.', 'rejeitados ÷ na base × 100'),
+    T('Mês da rejeição', 'Nível da hierarquia: o mês do sem interesse, da baixa ou do expurgo.'),
+    T('Exportar Excel', 'Baixa uma planilha com os clientes dos tipos marcados, da linha escolhida.'),
   ] },
   { id: 'credito', nome: 'Console de crédito', tela: 'credito', caminho: '/financeiro', termos: [
     T('Cadastro ERP', 'Data em que o cliente foi cadastrado no ERP.'),
@@ -418,6 +438,9 @@ export const OPCOES_TOPO = Object.freeze({
       ['Pedidos de bonificação', 'Só os pedidos de bonificação, o investimento no cliente. No celular, Bonificação.'],
       ['Ambos', 'Venda e bonificação juntas.']]),
     VER_POR],
+  '/rejeitados': [O('Cards do topo', [
+    ['Rejeitados', 'Todos os tipos juntos.'], ['Baixados', 'CNPJ baixado na Receita: não pode mais ser faturado.'], ['Expurgados', 'Tirados da base por já serem clientes (grupo de CNPJ).'],
+    ['Sem interesse do cliente', 'O cliente recusou a proposta. Mostra os motivos.'], ['Sem interesse do representante', 'O representante/vendedor não vai trabalhar o cliente. Mostra os motivos.']])],
   '/financeiro': [O('Cards do topo', [
     ['em análise', 'Clientes aguardando a liberação do crédito.'], ['fora do prazo', 'Os que passaram do prazo da análise.'], ['liberados aguardando pedido', 'Já liberados, ainda sem pedido: para corrigir uma liberação.']])],
   '/admin/grupos': [O('Todas | Expurgar | Manter | Decidir | Expurgados', [
@@ -450,7 +473,7 @@ export function capituloDeTermos(usuario) {
     ...telas.flatMap(([c, o]) => [['h', AJUDA_TELAS[c].titulo], ...blocosDeOpcoes(o)])] };
 }
 const blocosDeOpcoes = (opcoes) => (opcoes.length ? [['tabela', ['Opção do topo', 'O que mostra'], opcoes.flatMap((o) => o.opcoes.map((x) => [`${x.opcao} (${o.nome})`, x.significado]))]] : []);
-const TELA_DO_CAMINHO = { '/explorar': 'explorar', '/carteira': 'lista', '/carteira?aba=acompanhamento': 'acompanhamento', '/pedidos': 'pedidos', '/financeiro': 'credito', '/admin/grupos': 'admin_grupos' };
+const TELA_DO_CAMINHO = { '/rejeitados': 'rejeitados', '/explorar': 'explorar', '/carteira': 'lista', '/carteira?aba=acompanhamento': 'acompanhamento', '/pedidos': 'pedidos', '/financeiro': 'credito', '/admin/grupos': 'admin_grupos' };
 const podeVerTela = (usuario, c) => !TELA_DO_CAMINHO[c] || podeTela(usuario, TELA_DO_CAMINHO[c]);
 
 /** Significado de um termo (dica do rótulo no computador), ou null. */
