@@ -11,7 +11,7 @@ import { STATUS_ENCERRADOS } from '../../shared/status.mjs';
 import { h, montar, formatar, selo, baixarCsv, comEspera, semRolagem } from '../ui.js';
 import { gerarPdfLista } from '../relatorio.js';
 import { nomeStatus, seloStatus } from './_carteira.js';
-import { blocoNiveis, chaveVerPor, documento, lerPedidos, lerVerPor, moeda, razaoSocial, seloSituacao, valor } from './_pedidos.js';
+import { blocoNiveis, textoChave, chaveVerPor, documento, lerPedidos, lerVerPor, moeda, razaoSocial, seloSituacao, valor } from './_pedidos.js';
 
 const CHAVE_NIVEIS = 'germani.acompNiveis';
 const CHAVE_PEDIDOS = 'germani.acompPedidos';
@@ -66,11 +66,11 @@ export async function render(conteudo, { usuario, parametros }) {
   }
 
   function desenharChaves() {
-    const chave = (rotulo, opcoes, atual, aoMudar) => h('div', { class: 'ped-chave', role: 'group', 'aria-label': rotulo }, opcoes.map(([v, t, id]) =>
-      h('button', { type: 'button', id, class: v === atual ? 'ativa' : '', 'aria-pressed': v === atual ? 'true' : 'false', onclick: () => { aoMudar(v); desenharChaves(); desenhar(); } }, t)));
+    const chave = (rotulo, opcoes, atual, aoMudar) => h('div', { class: 'ped-chave', role: 'group', 'aria-label': rotulo }, opcoes.map(([v, t, id, curto]) =>
+      h('button', { type: 'button', id, class: v === atual ? 'ativa' : '', 'aria-pressed': v === atual ? 'true' : 'false', onclick: () => { aoMudar(v); desenharChaves(); desenhar(); } }, textoChave(t, curto))));
     montar(slotChaves,
       chave('Visão', [['fluxo', 'Fluxo', 'visao-fluxo'], ['credito', 'Crédito × Pedido', 'visao-credito']], estado.visao, (v) => { estado.visao = v; estado.fechados = new Set(); }),
-      chave('Dados dos pedidos', [[true, 'Apenas o primeiro pedido', 'so-primeiro'], [false, 'Todos os pedidos', 'todos-pedidos']], estado.soPrimeiro, (v) => { estado.soPrimeiro = v; guardar(CHAVE_PEDIDOS, v ? 'primeiro' : 'todos'); }),
+      chave('Dados dos pedidos', [[true, 'Apenas o primeiro pedido', 'so-primeiro', 'Primeiro pedido'], [false, 'Todos os pedidos', 'todos-pedidos']], estado.soPrimeiro, (v) => { estado.soPrimeiro = v; guardar(CHAVE_PEDIDOS, v ? 'primeiro' : 'todos'); }),
       chaveVerPor(estado.porGrupo ? 'grupo' : 'empresa', (v) => { estado.porGrupo = v === 'grupo'; estado.fechados = new Set(); desenhar(); }));
   }
 

@@ -365,13 +365,13 @@ export const OPCOES_TOPO = Object.freeze({
       ['Fluxo', 'Mostra em que etapa está cada cliente, do cadastro ao pedido faturado.'],
       ['Crédito × Pedido', 'Compara o limite de crédito liberado com os pedidos em carteira: dentro do limite, acima do limite ou sem limite.']]),
     O('Apenas o primeiro pedido | Todos os pedidos', [
-      ['Apenas o primeiro pedido', 'Conta só o primeiro pedido válido de cada cliente: mostra quantos clientes foram conquistados.'],
+      ['Apenas o primeiro pedido', 'Conta só o primeiro pedido válido de cada cliente: mostra quantos clientes foram conquistados. No celular, Primeiro pedido.'],
       ['Todos os pedidos', 'Conta todos os pedidos válidos: mostra o valor vendido, inclusive a recompra.']]),
     VER_POR],
   '/pedidos': [
     O('Pedidos de venda | Pedidos de bonificação | Ambos', [
-      ['Pedidos de venda', 'Só os pedidos de venda: a venda válida, o digitado e a desistência.'],
-      ['Pedidos de bonificação', 'Só os pedidos de bonificação, o investimento no cliente.'],
+      ['Pedidos de venda', 'Só os pedidos de venda: a venda válida, o digitado e a desistência. No celular, Venda.'],
+      ['Pedidos de bonificação', 'Só os pedidos de bonificação, o investimento no cliente. No celular, Bonificação.'],
       ['Ambos', 'Venda e bonificação juntas.']]),
     VER_POR],
   '/financeiro': [O('Cards do topo', [

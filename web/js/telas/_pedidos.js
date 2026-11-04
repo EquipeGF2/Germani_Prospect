@@ -12,6 +12,8 @@ export async function lerPedidos(db, consulta) {
 }
 
 export const moeda = (v) => formatar.moeda(Number(v ?? 0));
+/** Texto de botão do topo: completo no computador e curto no celular, para as opções caberem numa linha. */
+export const textoChave = (longo, curto) => (curto ? [h('span', { class: 'longo' }, longo), h('span', { class: 'curto', 'aria-hidden': 'true' }, curto)] : longo);
 export const valor = (v) => Number(v ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function cartoes(itens) {

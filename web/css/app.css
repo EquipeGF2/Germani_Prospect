@@ -773,6 +773,15 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ped-frase { margin: 0 0 14px; }
 .ped-filtros-linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ped-seg button { padding: 0 12px; font-size: 13px; }
+/* chaves do topo: no celular ocupam a linha toda e usam o texto curto, para nenhuma opção ficar cortada */
+.ped-chave .curto { display: none; }
+@media (max-width: 600px) {
+  .ped-chaves, .ped-chaves > div, .acf-chaves { width: 100%; }
+  .ped-chave { display: flex; width: 100%; box-sizing: border-box; }
+  .ped-chave button { flex: 1 1 auto; min-width: 0; padding: 0 8px; font-size: 14px; justify-content: center; text-align: center; }
+  .ped-chave .longo { display: none; }
+  .ped-chave .curto { display: inline; }
+}
 .ped-lista-topo { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 12px; }
 .ped-lista-topo h2 { flex: 1 1 300px; min-width: 0; margin: 0; }
 .ped-lista-topo input { flex: 0 1 340px; width: auto; min-height: 36px; padding: 4px 10px; }
