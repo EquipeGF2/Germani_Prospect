@@ -453,6 +453,10 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.waitForFunction(() => { const i = document.querySelector('.ajf-recorte img'); i.loading = 'eager'; return i.complete && i.naturalWidth > 0; });
   for (const bloco of ['opcoes', 'termos', 'perguntas']) assert.equal(await pagina.locator(`[data-bloco="${bloco}"]`).count(), 1, `capítulo com ${bloco}`);
   assert.match(await pagina.locator('.ajf-serve').innerText(), /Para que serve/);
+  // no computador, o nome do termo e da opção do topo fica numa linha só
+  const rotulosQuebrados = await pagina.locator('[data-bloco] .ajf-pares dt').evaluateAll((dts) => dts.filter((d) => { const r = document.createRange(); r.selectNodeContents(d); return new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size > 1; }).map((d) => d.textContent));
+  assert.deepEqual(rotulosQuebrados, [], 'rótulos sem quebra de linha');
+  assert.ok(await pagina.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'sem rolagem para o lado');
   const larguraRecorte = (await pagina.locator('.ajf-recorte').first().boundingBox()).width;
   assert.ok(larguraRecorte <= 430, `recorte pequeno: ${larguraRecorte}`);
   await pagina.locator('.ajf-recorte button').first().click();

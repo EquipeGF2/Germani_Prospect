@@ -3,13 +3,16 @@
 import { bancoApp } from '../db.js';
 import { ajustarFicha, consultaFicha } from '../../shared/carteira.mjs';
 import { comandoRegistrarContato, listarMotivos } from '../../shared/registro.mjs';
-import { CANAIS, motivosDaOrigem, ORIGENS_SEM_INTERESSE, ROTULOS_RESULTADO, validarContato } from '../../shared/status.mjs';
+import { CANAIS_EM_USO, motivosDaOrigem, ORIGENS_SEM_INTERESSE, ROTULOS_RESULTADO, validarContato } from '../../shared/status.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { mensagemErro } from '../../shared/gravacao.mjs';
 import { h, montar, mensagem, aviso, comEspera, formatar } from '../ui.js';
 import { seloStatus } from './_carteira.js';
 
 export const NOMES_CANAL = { visita: 'Visita', telefone: 'Telefone', whatsapp: 'WhatsApp' };
+/** Campo Canal: com um canal só (hoje, Visita), fica fixo; com mais de um, vira escolha. */
+export const campoCanal = (id) => h('select', { id, 'aria-label': 'Canal', disabled: CANAIS_EM_USO.length === 1, title: CANAIS_EM_USO.length === 1 ? 'Por enquanto, todo atendimento é visita' : null },
+  CANAIS_EM_USO.map((c) => h('option', { value: c }, NOMES_CANAL[c])));
 
 export function campoMotivo(motivos, { id = 'motivo', vazio = 'Selecione o motivo', valor = '' } = {}) {
   return h('select', { id, 'aria-label': 'Motivo' }, h('option', { value: '' }, vazio),
@@ -40,7 +43,7 @@ export async function render(conteudo, ctx) {
   const opcoes = h('div', { class: 'opcoes-resultado em-linha', role: 'radiogroup' }, escolhas.map(([v, rotulo, ajuda]) => h('label', { class: `opcao ${v.split(':')[0]}`, dados: { escolha: v } },
     h('input', { type: 'radio', name: 'resultado', value: v, onchange: () => { [resultado, origem = ''] = v.split(':'); trocarMotivos(); atualizar(); } }),
     h('span', {}, rotulo, ajuda ? h('small', { class: 'ajuda', style: 'display:block;margin:0' }, ajuda) : null))));
-  const canal = h('select', { id: 'canal', 'aria-label': 'Canal' }, CANAIS.map((c) => h('option', { value: c }, NOMES_CANAL[c])));
+  const canal = campoCanal('canal');
   const data = h('input', { type: 'date', id: 'data-contato', value: hoje, max: hoje, min: p.dt_ultimo_contato ?? null });
   const motivo = campoMotivo([]);
   const rotuloMotivo = h('label', { for: 'motivo' }, 'Motivo *');

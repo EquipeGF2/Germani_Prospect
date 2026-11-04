@@ -34,3 +34,9 @@ test('registro pelo app: atendido, sem interesse (motivo) e reabertura com pedid
   assert.equal((await db.execute(consultaFicha({ usuario: { id: 1, perfil: 'supervisor' }, prospectId: id }))).rows.length, 1);
   assert.equal((await db.execute(consultaFicha({ usuario: { id: 9, perfil: 'financeiro' }, prospectId: id }))).rows.length, 1);
 });
+
+test('canal: o registro oferece só visita; o banco segue aceitando telefone e WhatsApp, para o futuro', async () => {
+  const { CANAIS, CANAIS_EM_USO } = await import('../shared/status.mjs');
+  assert.deepEqual(CANAIS_EM_USO, ['visita']);
+  assert.ok(CANAIS_EM_USO.every((c) => CANAIS.includes(c)));
+});

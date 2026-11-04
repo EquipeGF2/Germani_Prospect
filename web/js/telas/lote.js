@@ -4,11 +4,11 @@ import { bancoApp } from '../db.js';
 import { ajustarFicha, consultaFicha } from '../../shared/carteira.mjs';
 import { listarMotivos } from '../../shared/registro.mjs';
 import { prepararLote, registrarLote } from '../../shared/lote.mjs';
-import { CANAIS, motivosDaOrigem, ORIGENS_SEM_INTERESSE } from '../../shared/status.mjs';
+import { motivosDaOrigem, ORIGENS_SEM_INTERESSE } from '../../shared/status.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, comEspera, formatar, numeros } from '../ui.js';
 import { gravarLote, lerLote } from './_carteira.js';
-import { campoMotivo, NOMES_CANAL } from './registrar.js';
+import { campoCanal, campoMotivo } from './registrar.js';
 
 export async function render(conteudo, ctx) {
   const { usuario } = ctx;
@@ -34,7 +34,7 @@ export async function render(conteudo, ctx) {
     motivosDaOrigem(motivos, origem.value).map((m) => h('option', { value: m.id }, m.descricao))];
   const motivo = campoMotivo(motivosDaOrigem(motivos, 'cliente'), { id: 'motivo-lote', vazio: 'Motivo do lote' });
   const observacao = h('input', { id: 'obs-lote', maxlength: 500, placeholder: 'Observação para todos (opcional)' });
-  const canal = h('select', { id: 'canal-lote', 'aria-label': 'Canal' }, CANAIS.map((c) => h('option', { value: c }, NOMES_CANAL[c])));
+  const canal = campoCanal('canal-lote');
   const data = h('input', { type: 'date', id: 'data-lote', value: hoje, max: hoje, min: ultimo });
   const individuais = new Map(prospects.map((p) => [Number(p.id), {
     motivo: campoMotivo(motivosDaOrigem(motivos, 'cliente'), { id: `motivo-${p.id}`, vazio: '(o do lote)' }),

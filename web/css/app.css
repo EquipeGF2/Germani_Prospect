@@ -926,11 +926,11 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .ajf-parte-texto h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 17px; }
 .ajf-parte-texto p { margin: 0 0 6px; }
 .ajf-num { display: inline-flex; flex: none; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 50%; background: var(--destaque); color: #fff; font-size: 14px; font-weight: 700; }
-.ajf-pares { display: grid; grid-template-columns: minmax(110px, 200px) minmax(0, 1fr); margin: 0; font-size: 14px; }
+.ajf-pares { display: grid; grid-template-columns: max-content minmax(0, 1fr); margin: 0; font-size: 14px; }
 .ajf-pares dt, .ajf-pares dd { margin: 0; padding: 7px 10px; border-bottom: 1px solid #F3F4F6; }
-.ajf-pares dt { font-weight: 700; }
+.ajf-pares dt { font-weight: 700; white-space: nowrap; }   /* rótulo do termo numa linha só: há espaço no computador */
 .ajf-conta { display: block; width: fit-content; max-width: 100%; margin-top: 3px; padding: 1px 8px; border-radius: 6px; background: #F3F4F6; color: #374151; font-size: 13px; }
 .ajf-parte-texto .ajf-pares { grid-template-columns: 1fr; }
-.ajf-parte-texto .ajf-pares dt { border-bottom: 0; padding-bottom: 0; }
+.ajf-parte-texto .ajf-pares dt { border-bottom: 0; padding-bottom: 0; white-space: normal; }
 .ajf-bloco { padding-top: 6px; } .ajf-sub { margin: 10px 0 2px; font-size: 15px; color: var(--destaque-escuro); }
-@media (max-width: 600px) { .ajf-pares { grid-template-columns: 1fr; } .ajf-pares dt { border-bottom: 0; padding-bottom: 0; } .ajf-recorte { flex-basis: 100%; } }
+@media (max-width: 600px) { .ajf-pares { grid-template-columns: 1fr; } .ajf-pares dt { border-bottom: 0; padding-bottom: 0; white-space: normal; } .ajf-recorte { flex-basis: 100%; } }

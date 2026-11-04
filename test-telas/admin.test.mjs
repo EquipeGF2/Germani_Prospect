@@ -409,6 +409,10 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('label.opcao:has-text("Atendido")');
   assert.equal(await pagina.getAttribute('#observacao', 'placeholder'), 'Opcional');
   await foto('12-registrar');
+  // canal: por enquanto todo atendimento é visita; o campo fica na tela, fixo
+  assert.equal(await pagina.locator('#canal').inputValue(), 'visita');
+  assert.ok(await pagina.locator('#canal').isDisabled(), 'canal fixo em Visita');
+  assert.deepEqual(await pagina.locator('#canal option').allInnerTexts(), ['Visita']);
   await pagina.click('button:text("Gravar registro")');
   await pagina.waitForSelector('text=Atendido registrado.');
   await pagina.waitForSelector('text=Histórico de movimentação');
