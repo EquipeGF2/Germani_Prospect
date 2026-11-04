@@ -51,7 +51,7 @@ export function consultaPedidosResumo({ usuario }) {
 export const NIVEIS = Object.freeze({
   supervisor: { nome: 'Supervisor', chave: (l) => String(l.supervisor_id ?? ''), rotulo: (l) => l.supervisor_nome ?? '—',
     filtro: (l) => ({ supervisorId: l.supervisor_id }) },
-  representante: { nome: 'Representante', chave: (l) => String(l.vendedor_id), rotulo: (l) => l.vendedor_nome ?? '—',
+  representante: { nome: 'Rep.', chave: (l) => String(l.vendedor_id), rotulo: (l) => l.vendedor_nome ?? '—',
     filtro: (l) => ({ vendedorId: l.vendedor_id }) },
   cidade: { nome: 'Cidade', chave: (l) => `${l.cidade_busca}|${l.uf}`, rotulo: (l) => (l.cidade_busca ? `${l.cidade ?? l.cidade_busca}${l.uf ? '/' + l.uf : ''}` : 'sem cidade'),
     filtro: (l) => (l.cidade_busca ? { cidadeBusca: l.cidade_busca, uf: l.uf || null } : {}) },
