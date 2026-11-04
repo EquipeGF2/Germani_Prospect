@@ -5,6 +5,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
+import ExcelJS from 'exceljs';
 import { servir } from '../scripts/servir.mjs';
 import { lerPlanilha } from '../lib/planilha.mjs';
 import { analisarCnpj, calcularDv } from '../shared/cnpj.mjs';
@@ -326,21 +327,35 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await foto('p14a-rejeitados');
   await pagina.click('#rej-baixado');
   assert.equal(await pagina.locator('#rej-motivos').count(), 0, 'baixado não tem motivo de sem interesse');
-  // a exportação fica em Importações › Exportar; a tela Rejeitados tem o atalho
+  // Excel do que está na tela: dados cadastrais completos, motivo e observação; uma aba por tipo
   const qtdCliente = await qtdCard('cliente');
-  await pagina.click('#rej-atalho-exportar a');
-  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/importacoes?aba=exportar');
-  for (const t of ['baixado', 'expurgado', 'representante']) await pagina.locator(`#exportar-bloco-rejeitados input[data-tipo="${t}"]`).uncheck();
-  assert.match(await pagina.locator('#exportar-rejeitados').innerText(), new RegExp(`· ${qtdCliente.toLocaleString('pt-BR')} clientes`));
+  const qtdRep = await qtdCard('representante');
+  assert.equal(await pagina.locator('#lista-rejeitados').count(), 0, 'sem a lista de clientes embaixo: só contagens na tela');
+  await pagina.click('#rej-cliente');
+  assert.match(await pagina.locator('#excel-rejeitados').innerText(), new RegExp(`Excel · ${qtdCliente.toLocaleString('pt-BR')} clientes`));
+  const lerAbas = async (download) => {
+    const destino = path.join(tmp, download.suggestedFilename());
+    await download.saveAs(destino);
+    const livro = new ExcelJS.Workbook();
+    await livro.xlsx.readFile(destino);
+    return livro.worksheets.map((f) => ({ nome: f.name, cabecalho: f.getRow(1).values.slice(1), linhas: f.rowCount - 1 }));
+  };
+  const [daTela] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#excel-rejeitados')]);
+  assert.match(daTela.suggestedFilename(), /^rejeitados-.*\.xlsx$/);
+  const abasTela = await lerAbas(daTela);
+  assert.deepEqual(abasTela.map((a) => [a.nome, a.linhas]), [['Sem interesse do cliente', qtdCliente]]);
+  for (const col of ['Rejeição', 'Motivo', 'Observação', 'Razão social', 'Endereço', 'Bairro', 'CEP', 'Telefone', 'Representante', 'Supervisor']) assert.ok(abasTela[0].cabecalho.includes(col), `coluna ${col}`);
+  await pagina.click('#rej-todos');
+  const [todosTipos] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#excel-rejeitados')]);
+  assert.deepEqual((await lerAbas(todosTipos)).map((a) => a.nome), ['Baixados', 'Expurgados', 'Sem interesse do cliente', 'Sem interesse do representante'], 'uma aba por tipo');
+
+  // na aba Exportar: um ou mais tipos marcados, uma aba para cada
+  await ir('#/importacoes?aba=exportar');
+  for (const t of ['baixado', 'expurgado']) await pagina.locator(`#exportar-bloco-rejeitados input[data-tipo="${t}"]`).uncheck();
+  assert.match(await pagina.locator('#exportar-rejeitados').innerText(), new RegExp(`· ${(qtdCliente + qtdRep).toLocaleString('pt-BR')} clientes`));
   await foto('p14b-exportar');
   const [planilha] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#exportar-rejeitados')]);
-  assert.match(planilha.suggestedFilename(), /^rejeitados-.*\.xlsx$/);
-  const caminhoXlsx = path.join(tmp, 'rejeitados.xlsx');
-  await planilha.saveAs(caminhoXlsx);
-  const { linhas: doExcel } = await lerPlanilha(caminhoXlsx);
-  assert.equal(doExcel[0][0], 'Tipo');
-  assert.equal(doExcel.length - 1, qtdCliente, 'uma linha por cliente do tipo marcado');
-  assert.ok(doExcel.slice(1).every((l) => l[0] === 'Sem interesse do cliente'));
+  assert.deepEqual((await lerAbas(planilha)).map((a) => [a.nome, a.linhas]), [['Sem interesse do cliente', qtdCliente], ['Sem interesse do representante', qtdRep]]);
   const [doPedidos] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#exportar-pedidos')]);
   assert.match(doPedidos.suggestedFilename(), /^pedidos-.*\.xlsx$/);
 

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, evento, registrarContato } from './auxiliar.mjs';
 import { comandosExpurgo } from '../shared/grupos.mjs';
 import { consultaResumo } from '../shared/explorar.mjs';
-import { buscarRejeitados, consultaRejeitados, contarMotivos, contarRejeitados, montarArvoreRejeitados, paraExportar, prepararRejeitado } from '../shared/rejeitados.mjs';
+import { buscarRejeitados, consultaResumoRejeitados, naLinha, consultaRejeitados, contarMotivos, contarRejeitados, montarArvoreRejeitados, paraExportar, prepararRejeitado } from '../shared/rejeitados.mjs';
 import { podeTela } from '../shared/perfis.mjs';
 
 let db; let clientes; let base;
@@ -58,4 +58,18 @@ test('só gerente e administrador veem a tela', () => {
   assert.ok(podeTela({ id: 4, perfil: 'administrador' }, 'rejeitados'));
   assert.ok(podeTela({ id: 9, perfil: 'gerente' }, 'rejeitados'));
   for (const perfil of ['supervisor', 'vendedor', 'financeiro']) assert.ok(!podeTela({ id: 1, perfil, telas: ['rejeitados'] }, 'rejeitados'), perfil);
+});
+
+test('a tela lê só as contagens: mesmas contas, árvore e motivos que o detalhe; o detalhe vem só na exportação', async () => {
+  const resumo = (await db.execute(consultaResumoRejeitados())).rows.map(prepararRejeitado);
+  assert.ok(resumo.length <= clientes.length);
+  assert.deepEqual(contarRejeitados(resumo), contarRejeitados(clientes));
+  assert.deepEqual(contarMotivos(resumo, 'cliente'), contarMotivos(clientes, 'cliente'));
+  const arv = (ls) => montarArvoreRejeitados({ clientes: ls, base, niveis: ['representante', 'mes'], abertos: new Set(['', '/representante=2']) }).map((n) => [n.caminho, n.cont.total, n.naBase]);
+  assert.deepEqual(arv(resumo), arv(clientes));
+  // a exportação da linha escolhida: o detalhe filtrado pelo mesmo caminho
+  assert.deepEqual(clientes.filter((l) => naLinha('/representante=2/mes=2026-10', l)).map((l) => l.razao_social).sort(), ['Mercado 1', 'Mercado 2']);
+  assert.equal(clientes.filter((l) => naLinha('', l)).length, 5);
+  const dados = clientes.find((l) => l.razao_social === 'Mercado 1');
+  for (const campo of ['endereco', 'bairro', 'cep', 'telefone', 'nome_fantasia', 'tentativas', 'observacao', 'vendedor_nome', 'supervisor_nome']) assert.ok(campo in dados, `exporta ${campo}`);
 });
