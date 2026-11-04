@@ -79,11 +79,9 @@ Implementação: [`shared/lote.mjs`](../shared/lote.mjs) · testes: [`test/lote.
   O registro é o mesmo (resultado `sem_interesse` + motivo); vale o motivo do **último** sem interesse. Nenhum registro é
   alterado: os sem interesse anteriores à 0015 usam motivos do cliente.
 - **Do cliente** — o cliente recusou a proposta. **Do representante** — o representante não vai trabalhar o cliente.
-- **E-commerce (0020)**: todo cliente marcado **sem interesse do representante** (qualquer motivo dessa origem, também em
-  lote) vai **na hora** para a carteira do representante E-commerce — o usuário escolhido em Parâmetros
-  (`vendedor_ecommerce_id`; 0 = desligado). Chega como está ("Sem interesse · representante"); o E-commerce registra um
-  atendimento quando for trabalhar. A ida fica em `transferencias` e no histórico ("X → E-commerce: sem interesse do
-  representante (motivo)"). Sem interesse **do cliente** não transfere; o próprio E-commerce marcando não transfere de novo.
+- **E-commerce (0020) — retirado na 0025**: o cliente marcado sem interesse do representante não vai mais para outra carteira; fica
+  com o dono da carteira e aparece na tela **Rejeitados** (§16), de onde a base é exportada por tipo. As transferências já feitas
+  continuam no histórico.
 - Onde aparece: selo/status "Sem interesse · cliente" / "· representante" (ficha, listas, PDF); filtro de situação da
   Lista/Acompanhamento com as duas opções; Explorar com as duas fatias em "Da totalidade" e as colunas S. int. cliente /
   S. int. repr. (resumo: `resumo_carteira.si_representante`); no lote, escolhe-se a origem e os motivos dela.
@@ -604,3 +602,25 @@ desistências a partir de `alerta_desistencias_cliente` (5) · pedido em carteir
 
 **Apagar um arquivo** (Administração → Importações): tira os pedidos, as linhas e o histórico que o arquivo trouxe e volta o cliente ao que era antes, considerando os atendimentos registrados depois.
 Mantém atendimentos, cadastro, crédito e baixados. Vai do arquivo mais novo para o mais antigo, só pelo administrador, digitando o nome do arquivo; fica o registro de quem apagou o quê. ADR-0007.
+
+## 16. Rejeitados (migração 0025 · `shared/rejeitados.mjs`)
+
+Tela **Prospecção › Rejeitados** (`#/rejeitados`), só para **gerente e administrador** (tela `rejeitados`). Mostra os clientes da
+base que saíram da prospecção, por tipo:
+
+| Tipo | Status | Motivo | Data |
+|---|---|---|---|
+| Baixado | Inválido (CNPJ baixado) | "CNPJ baixado" | data da baixa |
+| Expurgado | Expurgado (já era cliente, §13) | motivo do expurgo | data do expurgo |
+| Sem interesse do cliente | Sem interesse, motivo de origem cliente | motivo do registro | último registro |
+| Sem interesse do representante | Sem interesse, motivo de origem representante | motivo do registro | último registro |
+
+- **Hierarquia de níveis**, como no Explorar carteira: Supervisor, Representante, Onda, Segmento, Cidade, Rota e Mês da rejeição.
+  Colunas: Na base (todos os prospects da linha, do resumo da carteira), Baixados, Expurgados, Sem int. cliente, Sem int. repr.,
+  Rejeitados e % da base. Pelo mês da rejeição não há Na base (a base não tem mês).
+- **Cards** filtram por tipo. Os **motivos** aparecem só com Sem interesse do cliente ou do representante escolhido; baixado e
+  expurgado não mostram motivos, para não confundir a leitura.
+- **Exportar Excel**: um ou mais tipos marcados, da linha escolhida na hierarquia. Colunas: tipo, motivo, data, código, razão
+  social, CNPJ, telefone, cidade, UF, onda, segmento, representante e supervisor.
+- Com a 0025, o sem interesse do representante **não vai mais para o E-commerce**: o cliente fica com o dono da carteira e sai
+  por esta tela.

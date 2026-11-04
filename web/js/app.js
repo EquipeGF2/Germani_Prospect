@@ -14,6 +14,7 @@ const ROTAS = [
   { caminho: '/explorar', tela: () => import('./telas/explorar.js'), telas: ['explorar'] },
   { caminho: '/carteira', tela: () => import('./telas/carteira.js'), telas: (q) => [q.get('aba') === 'acompanhamento' ? 'acompanhamento' : 'lista'] },
   { caminho: '/pedidos', tela: () => import('./telas/pedidos.js'), telas: ['pedidos'] },
+  { caminho: '/rejeitados', tela: () => import('./telas/rejeitados.js'), telas: ['rejeitados'] },
   { caminho: '/ficha', tela: () => import('./telas/ficha.js'), telas: ['lista', 'acompanhamento', 'credito'] },
   { caminho: '/registrar', tela: () => import('./telas/registrar.js'), telas: ['registrar'] },
   { caminho: '/lote', tela: () => import('./telas/lote.js'), telas: ['registrar'] },

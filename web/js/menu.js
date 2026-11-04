@@ -25,6 +25,7 @@ const ICONES = {
   recolher: 'M11 17l-5-5 5-5M18 17l-5-5 5-5',
   expandir: 'M13 17l5-5-5-5M6 17l5-5-5-5',
   menu: 'M3 6h18M3 12h18M3 18h18',
+  rejeitados: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.6 5.6l12.8 12.8',
   sair: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   buscar: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35',
 };
@@ -47,6 +48,7 @@ const GRUPOS = [
     { caminho: '/carteira', rotulo: 'Lista principal', icone: 'lista', tela: 'lista' },
     { caminho: '/carteira?aba=acompanhamento', rotulo: 'Acompanhamento', icone: 'acompanhamento', tela: 'acompanhamento' },
     { caminho: '/pedidos', rotulo: 'Explorar pedidos', icone: 'erp', tela: 'pedidos' },
+    { caminho: '/rejeitados', rotulo: 'Rejeitados', icone: 'rejeitados', tela: 'rejeitados' },
   ] },
   { titulo: 'Financeiro', itens: [
     { caminho: '/financeiro', rotulo: 'Console de crédito', icone: 'financeiro', tela: 'credito' },

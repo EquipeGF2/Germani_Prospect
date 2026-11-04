@@ -15,6 +15,7 @@ export const TELAS = Object.freeze([
   { codigo: 'lista', rotulo: 'Lista principal', grupo: 'Prospecção' },
   { codigo: 'acompanhamento', rotulo: 'Acompanhamento', grupo: 'Prospecção' },
   { codigo: 'pedidos', rotulo: 'Explorar pedidos', grupo: 'Prospecção' },
+  { codigo: 'rejeitados', rotulo: 'Rejeitados', grupo: 'Prospecção', bases: ['administrador', 'gerente'] },
   { codigo: 'registrar', rotulo: 'Registrar atendimento e lote', grupo: 'Prospecção', bases: ['administrador', 'gerente', 'supervisor', 'vendedor'] },
   { codigo: 'credito', rotulo: 'Console de crédito', grupo: 'Financeiro', bases: ['administrador', 'financeiro'] },
   { codigo: 'admin_base', rotulo: 'Base de prospects', grupo: 'Administração', bases: ['administrador'] },

@@ -95,7 +95,7 @@ test('termos por perfil, busca sem acento e o grupo da tela do botão ?', () => 
 });
 
 test('opções do topo: toda tela com chave ou filtro no topo explica cada opção, e cada opção existe na tela', () => {
-  for (const c of ['/explorar', '/carteira', '/carteira?aba=acompanhamento', '/pedidos', '/financeiro', '/admin/grupos']) {
+  for (const c of ['/explorar', '/carteira', '/carteira?aba=acompanhamento', '/pedidos', '/financeiro', '/admin/grupos', '/rejeitados']) {
     assert.ok(OPCOES_TOPO[c]?.length, `${c}: opções do topo`);
     assert.ok(AJUDA_TELAS[c], `${c}: tela com ajuda`);
   }
