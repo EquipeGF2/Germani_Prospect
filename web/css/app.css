@@ -467,8 +467,7 @@ td.pct { min-width: 96px; }
 .exp-niveis { display: flex; flex-wrap: nowrap; gap: 12px; align-items: stretch; padding: 10px 14px; margin-bottom: 14px; }
 .exp-niveis .zona { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; align-content: center; min-height: 44px; border: 1px dashed transparent; border-radius: 10px; padding: 4px 8px; }
 .exp-niveis .zona:hover { border-color: var(--borda-forte); }
-.exp-niveis .zona:not(.livres) { flex: 0 0 auto; max-width: 70%; }   /* os níveis ficam numa linha; quando falta espaço, quem quebra são os disponíveis */
-.exp-niveis .zona.livres { flex: 1 1 0; background: #F9FAFB; }
+.exp-niveis .zona.livres { background: #F9FAFB; }   /* cabendo, tudo numa linha; faltando espaço, as duas partes dividem a linha conforme o tamanho e quebram dentro delas */
 .exp-niveis .tit { flex: none; white-space: nowrap; font-size: 12px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: .06em; }
 .exp-nivel { flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; background: var(--destaque-claro); border: 1px solid #E8A0A4; color: var(--destaque-escuro); border-radius: 8px; padding: 0 0 0 7px; font-size: 13px; font-weight: 600; min-height: 34px; cursor: grab; user-select: none; }
 .exp-nivel.livre { background: #fff; border-color: var(--borda-forte); color: #374151; font-weight: 500; padding-right: 8px; }

@@ -186,7 +186,7 @@ voltar da ficha, do lote ou pelo menu) e a lista já lida vem do cache (`lerComC
 limpa), sem ler o banco de novo. "Limpar filtros" abre a lista limpa (`?limpo=1`). Explorar carteira, Explorar pedidos,
 Acompanhamento e Rejeitados voltam com a linha escolhida, as linhas abertas e o tipo/etapa.
 
-**Níveis da hierarquia** (Explorar carteira, Explorar pedidos, Acompanhamento e Rejeitados): Níveis e Disponíveis numa linha só, lado a lado; os níveis ficam numa linha (até 70% da largura) e, se faltar espaço, os disponíveis quebram dentro da parte deles, sem rolagem para o lado.
+**Níveis da hierarquia** (Explorar carteira, Explorar pedidos, Acompanhamento e Rejeitados): Níveis e Disponíveis numa linha só, lado a lado; cabendo, tudo numa linha; faltando espaço, as duas partes dividem a linha conforme o tamanho e quebram dentro delas, sem rolagem para o lado. No Explorar pedidos, o nome do nível diz de onde vem a informação: Supervisor da carteira, Representante do pedido, Representante da carteira, Venda na própria carteira?, Cidade/Segmento/Onda do cliente, Grupo de CNPJ, Tipo, Situação e Mês do pedido.
 
 **Municípios, rota e subrota em maiúsculas** (0027, 0028): ficam sempre em maiúsculas, com acento, inclusive nos baixados; a importação da base já grava assim. **Segmento:** "Atacado Perueiro" passa a ser "Atacado" (também nas próximas importações).
 

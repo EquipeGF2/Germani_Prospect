@@ -203,20 +203,20 @@ const texto = (v, vazio) => (v == null || v === '' ? vazio : String(v));
 const NOME_TIPO = { venda: 'Venda', investimento: 'Bonificação', ignorar: 'Não considerado' };
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 
-/** Níveis possíveis. `chave` agrupa; `rotulo` mostra. */
+/** Níveis possíveis. `chave` agrupa; `rotulo` mostra. O nome diz de onde vem a informação: do pedido, do cliente ou da carteira. */
 export const NIVEIS_PEDIDOS = Object.freeze({
-  supervisor: { nome: 'Supervisor', chave: (p) => texto(p.dono_supervisor_id, ''), rotulo: (p) => texto(p.supervisor_nome, 'sem supervisor') },
-  representante: { nome: 'Quem vendeu', chave: (p) => texto(p.rep_codigo, ''), rotulo: nomeRep },
-  carteira: { nome: 'Dono da carteira', chave: (p) => texto(p.dono_id, ''), rotulo: (p) => [p.dono_codigo, p.dono_nome].filter(Boolean).join(' · ') || 'sem dono' },
-  lista: { nome: 'Na lista?', chave: (p) => p.relacao, rotulo: (p) => (p.relacao === 'propria' ? 'Na lista de quem vendeu' : 'Fora da lista de quem vendeu') },
-  cidade: { nome: 'Cidade', chave: (p) => `${texto(p.cidade, '')}|${texto(p.uf, '')}`, rotulo: (p) => (p.cidade ? `${p.cidade}${p.uf ? '/' + p.uf : ''}` : 'sem cidade') },
-  segmento: { nome: 'Segmento', chave: (p) => texto(p.tipologia_gtm, ''), rotulo: (p) => texto(p.tipologia_gtm, 'sem segmento') },
-  onda: { nome: 'Onda', chave: (p) => texto(p.onda, ''), rotulo: (p) => (p.onda ? `Onda ${p.onda}` : 'sem onda') },
-  grupo: { nome: 'Grupo', chave: (p) => texto(p.raiz, ''), rotulo: (p) => `${texto(p.razao_social, '')} · raiz ${texto(p.raiz, '')}` },
+  supervisor: { nome: 'Supervisor da carteira', chave: (p) => texto(p.dono_supervisor_id, ''), rotulo: (p) => texto(p.supervisor_nome, 'sem supervisor') },
+  representante: { nome: 'Representante do pedido', chave: (p) => texto(p.rep_codigo, ''), rotulo: nomeRep },
+  carteira: { nome: 'Representante da carteira', chave: (p) => texto(p.dono_id, ''), rotulo: (p) => [p.dono_codigo, p.dono_nome].filter(Boolean).join(' · ') || 'sem dono' },
+  lista: { nome: 'Venda na própria carteira?', chave: (p) => p.relacao, rotulo: (p) => (p.relacao === 'propria' ? 'Sim: cliente da carteira de quem vendeu' : 'Não: cliente de outra carteira') },
+  cidade: { nome: 'Cidade do cliente', chave: (p) => `${texto(p.cidade, '')}|${texto(p.uf, '')}`, rotulo: (p) => (p.cidade ? `${p.cidade}${p.uf ? '/' + p.uf : ''}` : 'sem cidade') },
+  segmento: { nome: 'Segmento do cliente', chave: (p) => texto(p.tipologia_gtm, ''), rotulo: (p) => texto(p.tipologia_gtm, 'sem segmento') },
+  onda: { nome: 'Onda do cliente', chave: (p) => texto(p.onda, ''), rotulo: (p) => (p.onda ? `Onda ${p.onda}` : 'sem onda') },
+  grupo: { nome: 'Grupo de CNPJ', chave: (p) => texto(p.raiz, ''), rotulo: (p) => `${texto(p.razao_social, '')} · raiz ${texto(p.raiz, '')}` },
   cliente: { nome: 'Cliente', chave: (p) => p.cpf_cnpj, rotulo: (p) => `${texto(p.codigo_cliente, '—')} - ${texto(p.razao_social, '')}` },
-  tipo: { nome: 'Tipo', chave: (p) => p.tipo, rotulo: (p) => NOME_TIPO[p.tipo] ?? p.tipo },
-  situacao: { nome: 'Situação', chave: (p) => p.situacao_codigo, rotulo: (p) => texto(p.situacao_descricao, p.situacao_codigo) },
-  mes: { nome: 'Mês', chave: (p) => String(p.data_primeira ?? '').slice(0, 7), rotulo: (p) => (p.data_primeira ? `${MESES[Number(p.data_primeira.slice(5, 7)) - 1]}/${p.data_primeira.slice(0, 4)}` : 'sem data') },
+  tipo: { nome: 'Tipo de pedido', chave: (p) => p.tipo, rotulo: (p) => NOME_TIPO[p.tipo] ?? p.tipo },
+  situacao: { nome: 'Situação do pedido', chave: (p) => p.situacao_codigo, rotulo: (p) => texto(p.situacao_descricao, p.situacao_codigo) },
+  mes: { nome: 'Mês do pedido', chave: (p) => String(p.data_primeira ?? '').slice(0, 7), rotulo: (p) => (p.data_primeira ? `${MESES[Number(p.data_primeira.slice(5, 7)) - 1]}/${p.data_primeira.slice(0, 4)}` : 'sem data') },
 });
 
 /** Níveis que o usuário pode usar: quem não vê todas as equipes não tem o nível Supervisor. */
