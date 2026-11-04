@@ -159,7 +159,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await excelPed.saveAs(caminhoPed);
   const { linhas: doExcelPed } = await lerPlanilha(caminhoPed);
   assert.equal(doExcelPed.length - 1, 6);
-  for (const col of ['Pedido', 'Razão social', 'Quem vendeu', 'Dono da carteira', 'Na lista?', 'Situação', 'Pedido (R$)']) assert.ok(doExcelPed[0].includes(col), `coluna ${col}`);
+  for (const col of ['Pedido', 'Razão social', 'Representante do pedido', 'Representante da carteira', 'Venda na própria carteira?', 'Situação', 'Pedido (R$)']) assert.ok(doExcelPed[0].includes(col), `coluna ${col}`);
   // níveis: incluir e tirar; ramo escolhido
   await pagina.locator('#analise-pedidos .exp-nivel[data-livre="situacao"]').click();
   assert.equal(await pagina.locator('#analise-pedidos .exp-nivel[data-nivel="situacao"]').count(), 1, 'incluir nível com um clique');
@@ -176,7 +176,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   const caminhoGrupo = path.join(tmp, 'pedidos-grupo.xlsx');
   await excelGrupo.saveAs(caminhoGrupo);
   const { linhas: doGrupo } = await lerPlanilha(caminhoGrupo);
-  const iLista = doGrupo[0].indexOf('Na lista?');
+  const iLista = doGrupo[0].indexOf('Venda na própria carteira?');
   assert.equal(doGrupo.slice(1).filter((l) => l[iLista] === 'Filial do grupo').length, 1, 'a filial do grupo vem marcada');
   await foto('p6c-explorar-grupo');
   await pagina.click('#ver-empresa');
