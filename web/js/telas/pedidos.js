@@ -30,7 +30,7 @@ export async function render(conteudo, { usuario }) {
         `${alertasAbertos ? '▼' : '▶'} ${alertas.length} ${alertas.length === 1 ? 'alerta' : 'alertas'} para olhar`),
       alertasAbertos ? [tabelaPedidos([{ titulo: 'Alerta', valor: (a) => selo(a.rotulo, a.tipo === 'bonificacao' ? 'investimento' : 'alerta'), classe: 'cen' },
         { titulo: 'Razão social', valor: (a) => (a.prospectId ? h('a', { href: `#/ficha?id=${a.prospectId}` }, a.cliente) : a.cliente) }, { titulo: 'O que aconteceu', campo: 'detalhe' }, { titulo: 'Quem age', campo: 'quem', classe: 'cen' }], alertas, { id: 'tabela-alertas' }),
-      h('p', { class: 'ajuda', style: 'margin:10px 0 0' }, 'Prazos e limites ficam em Administração → Parâmetros. Venda para cliente de outro representante não é alerta: veja pelo nível Quem vendeu.')] : null));
+      h('p', { class: 'ajuda', style: 'margin:10px 0 0' }, 'Prazos e limites ficam em Administração → Parâmetros. Venda para cliente de outro representante não é alerta: veja em Vendas fora da carteira.')] : null));
   }
   desenharFaixa();
   desenhar();
