@@ -66,7 +66,7 @@ export async function carregarExemplo(db, { linhasBase, mapaStatus, hoje, gerarH
     if (p.dt_ultimo_contato && data < p.dt_ultimo_contato) data = p.dt_ultimo_contato > hoje ? hoje : p.dt_ultimo_contato;
     const semInteresse = r() < 0.36;
     await db.execute(comandoRegistrarContato({
-      usuario: { id: Number(p.vendedor_id) }, prospect: p, canal: escolher(['visita', 'visita', 'telefone', 'whatsapp']),
+      usuario: { id: Number(p.vendedor_id) }, prospect: p, canal: (r(), 'visita'),   // todo atendimento é visita; o sorteio continua, para os demais dados de exemplo não mudarem
       resultado: semInteresse ? 'sem_interesse' : 'atendido', motivoId: semInteresse ? Number(escolher(motivos).id) : null,
       dataContato: data, dataHoraDispositivo: `${data}T14:00:00.000Z`,
     }));

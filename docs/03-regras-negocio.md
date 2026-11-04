@@ -25,7 +25,7 @@ O vendedor nunca escolhe "inválido", "cadastrado" ou "venda": não existem como
 
 ## 2. Registro de contato (app)
 
-Campos: **canal** (visita · telefone · WhatsApp) → **resultado** → campos condicionais. Mesmo formulário para
+Campos: **canal** (por enquanto só **visita**: o campo fica fixo na tela; o banco também aceita telefone e WhatsApp, para incluir no futuro mudando `CANAIS_EM_USO` em shared/status.mjs) → **resultado** → campos condicionais. Mesmo formulário para
 representante e vendedor. **Só existem três registros**: Atendido, Sem interesse e Reabrir com pedido.
 **"Não atendido" não gera registro** — o prospect simplesmente continua na lista principal.
 

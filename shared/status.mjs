@@ -23,7 +23,9 @@ export const STATUS_ACEITAM_CONTATO = Object.freeze([STATUS.NAO_CONTACTADO, STAT
 /** Tipo de atuação: representante (sem rota) · vendedor (com rota/subrota). NULL é tratado como representante. */
 export const TIPOS_ATUACAO = Object.freeze(['representante', 'vendedor']);
 
-export const CANAIS = Object.freeze(['visita', 'telefone', 'whatsapp']);
+export const CANAIS = Object.freeze(['visita', 'telefone', 'whatsapp']);   // os que o banco aceita (registros antigos e futuros)
+/** Canais oferecidos no registro: por enquanto só visita. O campo fica na tela para incluir telefone e WhatsApp depois, só mudando esta lista. */
+export const CANAIS_EM_USO = Object.freeze(['visita']);
 /** Resultados que o app registra. "Não atendido" não gera registro. */
 export const RESULTADOS = Object.freeze(['atendido', 'sem_interesse', 'pedido_informado']);
 
