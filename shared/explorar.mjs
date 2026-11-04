@@ -119,7 +119,7 @@ export function montarArvore({ linhas, pedidos = [], niveis, abertos, tipo = '',
     for (const l of rows) {
       const k = def.chave(l);
       if (!grupos.has(k)) grupos.set(k, { rows: [], peds: [], exemplo: l, qtd: 0 });
-      const g = grupos.get(k); g.rows.push(l); g.qtd += Number(l.qtd);
+      const g = grupos.get(k); g.rows.push(l); if (l.status_atual !== 'invalido' && l.status_atual !== 'expurgado') g.qtd += Number(l.qtd);   // ordem pelos prospects da base
     }
     for (const p of peds) grupos.get(def.chave(p))?.peds.push(p);
     [...grupos.entries()].sort((a, b) => b[1].qtd - a[1].qtd || def.rotulo(a[1].exemplo).localeCompare(def.rotulo(b[1].exemplo), 'pt-BR'))
