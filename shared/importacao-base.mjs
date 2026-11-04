@@ -35,6 +35,13 @@ export const COLUNAS_BASE = Object.freeze([
   { campo: 'dias_corridos_planilha', cabecalho: '# Dias Corridos' }, // recalculado pelo sistema (vw_prospects.dias_corridos)
 ]);
 
+/** Segmento como vem da planilha; "Atacado Perueiro" passa a ser "Atacado" (0027). */
+function segmento(valor) {
+  const t = limparTexto(valor);
+  if (!t || normalizarBusca(t) !== normalizarBusca('Atacado Perueiro')) return t;
+  return t === t.toUpperCase() ? 'ATACADO' : 'Atacado';
+}
+
 const UFS = new Set('AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' '));
 
 /**
@@ -191,7 +198,7 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje, considerarDatas = 
   if (erros.length) return { dados: null, erros, avisos };
 
   const nomeFantasia = limparTexto(campos.nome_fantasia);
-  const cidade = limparTexto(campos.cidade);
+  const cidade = limparTexto(campos.cidade)?.toLocaleUpperCase('pt-BR') ?? null;   // municípios sempre em maiúsculas (0027)
   const bairro = limparTexto(campos.bairro);
   const dtEntrada = datas.length && datas[0] < hoje ? datas[0] : hoje;
   return {
@@ -212,7 +219,7 @@ export function analisarLinhaBase(campos, { mapaStatus, hoje, considerarDatas = 
         latitude: lat,
         longitude: lng,
         telefone: somenteDigitos(campos.telefone),
-        tipologia_gtm: limparTexto(campos.tipologia_gtm),
+        tipologia_gtm: segmento(campos.tipologia_gtm),
         onda: codigo(campos.onda),
         tipo: limparTexto(campos.tipo),
         rota: codigo(campos.rota),

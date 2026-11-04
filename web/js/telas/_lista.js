@@ -12,6 +12,7 @@ import { h, montar, mensagem, formatar, comEspera } from '../ui.js';
 import { gerarPdfLista } from '../relatorio.js';
 import { icone } from '../menu.js';
 import { consultaResumo, opcoesEmCascata } from '../../shared/explorar.mjs';
+import { consultaOndasLiberadas, ondasDoFiltro } from '../../shared/ondas.mjs';
 import { endereco, gravarLote, lerEstado, lerLote, nomeStatus as nomeDoStatus, papelDoAgente, seloStatus } from './_carteira.js';
 import { ORIGENS_SEM_INTERESSE } from '../../shared/status.mjs';
 
@@ -44,9 +45,10 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
   // nada é lido da lista enquanto os filtros não forem aplicados no botão Buscar (?ver=1); o representante já entra com a
   // própria carteira. As opções dos filtros saem do resumo pronto (em cache) e mudam no navegador, sem ir ao banco.
   const ler = (e.ver || usuario.perfil === 'vendedor') && !falta.length;
-  const [lidas, resumo] = await Promise.all([
+  const [lidas, resumo, liberadas] = await Promise.all([
     ler ? db.execute(consulta).then((r) => r.rows) : [],
     lerComCache(db, consultaResumo({ usuario }), 300).then((r) => r.rows),
+    lerComCache(db, consultaOndasLiberadas(), 300).then((r) => r.rows[0]?.valor ?? 'todas'),
   ]);
   const codigoDe = new Map(resumo.map((l) => [Number(l.vendedor_id), l.vendedor_codigo]));
 
@@ -75,6 +77,7 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
   async function desenharFiltros() {
     const f = rascunho.filtros;
     const opcoes = opcoesEmCascata(resumo, f);
+    opcoes.ondas = ondasDoFiltro(opcoes.ondas, usuario, liberadas);   // ondas não liberadas fora do filtro do representante e do supervisor
     const bairros = f.cidadeBusca ? await bairrosDe(f.cidadeBusca, f.uf) : [];
     const grupos = [];
     if (gestao) {

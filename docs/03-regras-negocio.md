@@ -181,6 +181,8 @@ vendedor, supervisor, cidade, bairro, onda e UF. O agrupamento por **rota consid
 > Mudança em relação à especificação original: "conversão declarada" (venda informada pelo vendedor)
 > deixou de existir — a venda só é registrada pelo arquivo de pedidos do ERP.
 
+**Municípios em maiúsculas** (0027): o nome do município fica sempre em maiúsculas, com acento, inclusive dos baixados; a importação da base já grava assim. **Segmento:** "Atacado Perueiro" passa a ser "Atacado" (também nas próximas importações).
+
 ## 6. Lista de prospects e acompanhamento — representante × vendedor
 
 Implementação: [`shared/carteira.mjs`](../shared/carteira.mjs) · testes: [`test/carteira.test.mjs`](../test/carteira.test.mjs).
@@ -196,7 +198,7 @@ Todos os registros da base são **prospects** — para representante e para vend
 vê, para liberar a base aos poucos. Vale para quem ainda está na lista (Não contactado e Em prospecção), na Lista principal, na ficha
 e no Explorar carteira; quem já foi atendido aparece sempre, em qualquer onda. "Sem onda" também é uma opção. Supervisor, gerente,
 financeiro e administrador veem todas. Padrão `todas` (sem restrição); o banco aceita só `todas` ou uma lista. A mudança aparece para
-o representante na próxima leitura da tela (até 5 minutos, pelo cache).
+o representante na próxima leitura da tela (até 5 minutos, pelo cache). No filtro de onda (Lista principal), o representante/vendedor e o **supervisor** só veem as ondas liberadas.
 
 Entrar em negociação **tira o cliente da lista principal e o leva para o acompanhamento**. Toda essa
 movimentação conta sempre nos indicadores.
@@ -544,7 +546,7 @@ Um único conteúdo alimenta três saídas, para não haver textos diferentes: a
 
 ## 14. Pedidos do ERP (migração 0022 · `shared/importar-pedidos.mjs`, `shared/pedidos.mjs`)
 
-Importação: docs/05 §6. Tela: **Explorar pedidos** (`#/pedidos`), o que foi vendido, numa tela só, sem abas. Dois gráficos: **Faturamento da venda** (só a venda válida: faturado × em carteira, a faturar) e **O que aconteceu com os pedidos de venda** (todos os pedidos de venda: venda válida, digitado e desistência, com as colunas Pedidos, Valor e %).
+Importação: docs/05 §6. Tela: **Explorar pedidos** (`#/pedidos`), o que foi vendido, numa tela só, sem abas. Sem lista de pedidos na tela: o botão **Excel** (ao lado do caminho) baixa os pedidos da linha escolhida, do tipo marcado no topo (pedido, data, cliente, quem vendeu, dono da carteira, na lista?, tipo, situação e valores); os pedidos já foram lidos para os números, nada volta ao banco. Dois gráficos: **Faturamento da venda** (só a venda válida: faturado × em carteira, a faturar) e **O que aconteceu com os pedidos de venda** (todos os pedidos de venda: venda válida, digitado e desistência, com as colunas Pedidos, Valor e %).
 
 **Cada tela responde a uma pergunta.** Explorar carteira: como está a base? · Lista principal: quem procurar? · Acompanhamento: o que está em andamento? · Explorar pedidos: o que foi vendido?
 

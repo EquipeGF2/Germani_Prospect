@@ -534,3 +534,19 @@ test('crédito depois do pedido: registra sem mudar o status; inválido continua
   await assert.rejects(liberar(novo), /não está em análise financeira/, 'sem pedido e sem cadastro continua recusado');
 });
 
+
+test('0027: municípios em maiúsculas (com acento), Atacado Perueiro vira Atacado, inclusive no baixado, e a trava do baixado volta', async () => {
+  const { readFileSync } = await import('node:fs');
+  const a = await criarProspect(db, { n: 270, cidade: 'Venâncio Aires' });
+  const b = await criarProspect(db, { n: 271, cidade: 'são joão da urtiga' });
+  await db.execute({ sql: "UPDATE prospects SET tipologia_gtm = 'ATACADO PERUEIRO' WHERE id = ?", args: [a] });
+  await db.execute({ sql: "UPDATE prospects SET tipologia_gtm = 'Atacado Perueiro' WHERE id = ?", args: [b] });
+  await evento(db, { prospectId: b, tipo: 'baixa', data: '2026-10-10' });
+  await db.executeMultiple(readFileSync(new URL('../db/migrations/0027_cidades_maiusculas.sql', import.meta.url), 'utf8'));
+  const pa = await prospect(db, a); const pb = await prospect(db, b);
+  assert.deepEqual([pa.cidade, pa.tipologia_gtm, pa.cidade_busca], ['VENÂNCIO AIRES', 'ATACADO', 'VENANCIO AIRES']);
+  assert.deepEqual([pb.cidade, pb.tipologia_gtm, pb.status_atual], ['SÃO JOÃO DA URTIGA', 'Atacado', 'invalido']);
+  await assert.rejects(db.execute({ sql: "UPDATE prospects SET cidade = 'X' WHERE id = ?", args: [b] }), /congelado/);
+  const r = (await db.execute({ sql: "SELECT cidade FROM resumo_carteira WHERE cidade_busca = 'VENANCIO AIRES' AND qtd > 0", args: [] })).rows;
+  assert.ok(r.every((l) => l.cidade === 'VENÂNCIO AIRES'), 'o resumo da carteira acompanha');
+});

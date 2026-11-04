@@ -29,3 +29,13 @@ export function consultaOndasDaBase() {
   return { sql: `SELECT COALESCE(onda, '') AS onda, COUNT(*) AS qtd, SUM(status_atual IN ('nao_contactado', 'em_prospeccao')) AS na_lista
                    FROM prospects GROUP BY 1 ORDER BY CAST(COALESCE(onda, '') AS INTEGER), 1`, args: [] };
 }
+
+/** Valor do parâmetro de ondas liberadas (para montar os filtros no navegador). */
+export const consultaOndasLiberadas = () => ({ sql: "SELECT valor FROM parametros WHERE chave = 'ondas_liberadas'", args: [] });
+
+/** Ondas oferecidas no filtro: representante/vendedor e supervisor não veem as ondas não liberadas. */
+export function ondasDoFiltro(ondas, usuario, valor) {
+  if (!['vendedor', 'supervisor'].includes(usuario?.perfil)) return ondas;
+  const liberadas = lerOndas(valor);
+  return liberadas ? ondas.filter((o) => liberadas.includes(String(o))) : ondas;
+}
