@@ -125,27 +125,28 @@ export async function render(conteudo, { usuario }) {
             h('button', { type: 'button', class: 'secundario pequeno', 'aria-label': `Descer ${NIVEIS[nivel].nome}`, disabled: i === estado.niveis.length - 1, onclick: () => mover(nivel, 1) }, '↓')) : null);
       })) : null);
 
-    // Da totalidade: uma barra de 100% em 3 partes que somam todos os prospects do ramo; Rejeitados abre nos 4 tipos
+    // Da totalidade: os prospects da base, sem baixados e expurgados (que ficam fora da base, em Rejeitados), numa barra de 100%:
+    // contactados que seguem no processo, não contactados e sem interesse (do cliente e do representante)
     const contSemSI = ind.contactados - ind.semInteresse;   // contactados que seguem no processo (sem os sem interesse)
-    const rejeitados = ind.semInteresse + ind.inativos;
     const partes = [
       ['contactados', 'Contactados, seguem no processo', contSemSI, '#1D4ED8'],
       ['nao_contactados', 'Não contactados', ind.status.nao_contactado, '#9CA3AF'],
-      ['rejeitados', 'Rejeitados', rejeitados, '#9F1D24'],
+      ['sem_interesse', 'Sem interesse', ind.semInteresse, '#9F1D24'],
     ];
-    const tiposRejeitados = [['si_cliente', 'Sem interesse do cliente', ind.siCliente], ['si_representante', 'Sem interesse do representante', ind.siRepresentante],
-      ['baixados', 'Baixados', ind.status.invalido ?? 0], ['expurgados', 'Expurgados (já eram clientes)', ind.status.expurgado ?? 0]];
+    const tiposRejeitados = [['si_cliente', 'Sem interesse do cliente', ind.siCliente], ['si_representante', 'Sem interesse do representante', ind.siRepresentante]];
     const totalidade = h('section', { class: 'cartao exp-grafico', id: 'grafico-totalidade' },
       h('div', { class: 'exp-grafico-topo' }, h('div', {}, h('span', { class: 'tit' }, 'Da totalidade'), h('h2', {}, escolhido.rotulo)),
-        h('div', { class: 'exp-total' }, h('b', {}, n0(ind.qtd)), h('span', {}, 'prospects'))),
+        h('div', { class: 'exp-total' }, h('b', {}, n0(ind.base)), h('span', {}, 'prospects'))),
       h('div', { class: 'exp-barra100', role: 'img', 'aria-label': partes.map(([, nome, q]) => `${nome}: ${n0(q)}`).join(', ') },
         partes.filter(([, , q]) => q > 0).map(([chave, nome, q, cor]) => h('span', { dados: { parte: chave }, title: `${nome}: ${n0(q)}`, style: `flex:${q} 1 0;background:${cor}` }))),
       partes.map(([chave, nome, q, cor]) => h('div', { class: 'exp-legenda', dados: { parte: chave } },
-        h('span', { class: 'ponto', style: `background:${cor}` }), h('span', {}, chave === 'rejeitados' ? h('b', {}, nome) : nome),
-        h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(ind.qtd ? (q / ind.qtd) * 100 : null)))),
+        h('span', { class: 'ponto', style: `background:${cor}` }), h('span', {}, nome),
+        h('b', {}, n0(q)), h('span', { class: 'pct' }, pct(ind.base ? (q / ind.base) * 100 : null)))),
       tiposRejeitados.map(([chave, nome, q]) => h('div', { class: 'exp-legenda sub', dados: { parte: chave } }, h('span'), h('span', {}, nome), h('span', { class: 'qtd-sub' }, n0(q)), h('span'))),
       h('p', { class: 'exp-rodape' }, h('b', {}, `Cobertura ${pct(ind.cobertura)}`),
-        ` = contactados com sem interesse (${n0(ind.contactados)}) ÷ base válida (${n0(ind.base)}, sem baixados e expurgados)`));
+        ` = contactados com sem interesse (${n0(ind.contactados)}) ÷ prospects (${n0(ind.base)})`),
+      h('p', { class: 'exp-rodape', id: 'fora-da-base' }, h('b', {}, `Fora da base: ${n0(ind.inativos)}`),
+        ` = baixados (${n0(ind.status.invalido ?? 0)}) e expurgados (${n0(ind.status.expurgado ?? 0)}). Não entram nos prospects nem nos percentuais.`));
 
     // Dos contactados: onde estão os que seguem no processo (% sobre os contactados sem os sem interesse)
     const etapasProcesso = [['Aguardando cadastro', ind.status.aguardando_cadastro, status.aguardando_cadastro?.cor ?? '#6D28D9'],
@@ -164,7 +165,7 @@ export async function render(conteudo, { usuario }) {
         h('div', {}, h('span', { class: 'tit' }, 'Potencial'), h('b', {}, reais(ind.potencial)), h('small', {}, `em aberto × ${parametros.percentual_pipeline ?? 0}%`)),
         h('div', {}, h('span', { class: 'tit' }, 'Conversão'), h('b', {}, pct(ind.conversao)), h('small', {}, 'vendas ÷ contactados'))),
       escolhido.profundidade
-        ? h('a', { class: 'botao pequeno', id: 'abrir-lista', href: enderecoLista(escolhido.filtros) }, `Abrir na Lista principal · ${n0(ind.qtd)} prospects`)
+        ? h('a', { class: 'botao pequeno', id: 'abrir-lista', href: enderecoLista(escolhido.filtros) }, `Abrir na Lista principal · ${n0(ind.base)} prospects`)
         : h('p', { class: 'ajuda', style: 'margin:0' }, 'Escolha um ramo na árvore para abrir a lista dele.'));
 
     const cab = h('div', { class: 'exp-linha cab' }, ['Ramo', 'Prospects', 'Contactados', 'Cobertura', 'S. int. cliente', 'S. int. repr.', 'Ag. cadastro', 'Ag. financeiro', 'Ag. pedido', 'Pedido realizado', 'Pedidos (R$)', 'Potencial (R$)']
@@ -181,8 +182,8 @@ export async function render(conteudo, { usuario }) {
         n.temFilhos ? h('button', { type: 'button', class: 'abre', 'aria-expanded': n.aberto ? 'true' : 'false', 'aria-label': `${n.aberto ? 'Fechar' : 'Abrir'} ${n.rotulo}`,
           onclick: (ev) => { ev.stopPropagation(); if (n.aberto) estado.abertos.delete(n.caminho); else estado.abertos.add(n.caminho); desenhar(); } }, n.aberto ? '▼' : '▶') : h('span', { class: 'abre vazio' }),
         h('button', { type: 'button', class: 'nome', title: n.rotulo }, n.rotulo)),
-      // `dados.r` = rótulo do número no cartão do celular; `cel` = ordem nele (grade 4 × 2); rejeitados só aparecem no celular
-      h('b', { class: 'num qtd' }, n0(n.ind.qtd)), h('span', { class: 'quebra', 'aria-hidden': 'true' }),
+      // `dados.r` = rótulo do número no cartão do celular; `cel` = ordem nele (grade 4 × 2); fora da base só aparece no celular
+      h('b', { class: 'num qtd' }, n0(n.ind.base)), h('span', { class: 'quebra', 'aria-hidden': 'true' }),
       h('span', { class: 'num contact' }, n0(n.ind.contactados)),
       h('span', { class: 'num cobertura', dados: { r: 'Cobert.', cel: 9 } }, pct(n.ind.cobertura)),
       h('span', { class: 'num', dados: { r: 'S.I. cli.', cel: 5 } }, n0(n.ind.siCliente)),
@@ -192,7 +193,7 @@ export async function render(conteudo, { usuario }) {
       h('span', { class: 'num', dados: { r: 'Ag. ped.', cel: 3 } }, n0(n.ind.aguardandoPedido)),
       h('b', { class: 'num', dados: { r: 'Pedidos', cel: 4 } }, n0(n.ind.vendas)),
       h('span', { class: 'num', dados: { r: 'Valor', cel: 8 } }, reais(n.ind.valorPedidos)), h('span', { class: 'num potencial' }, reais(n.ind.potencial)),
-      h('span', { class: 'num so-celular', dados: { r: 'Rejeitados', cel: 7 } }, n0(n.ind.semInteresse + n.ind.inativos))));
+      h('span', { class: 'num so-celular', dados: { r: 'Fora da base', cel: 7 } }, n0(n.ind.inativos))));
 
     return [
       h('div', { class: 'exp-topo' }, h('h1', {}, 'Explorar carteira'), tipos),
