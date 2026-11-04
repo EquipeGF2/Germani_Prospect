@@ -350,9 +350,16 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
     for (const el of document.querySelectorAll('main th, main .exp-linha.cab > span, main .exp-linha > .num, main .ped-kpi > *, main .acf-etapa > *, main .ped-chave button'))
       if (cortado(el)) problemas.push(`cortado: "${el.textContent}"`);
     for (const el of document.querySelectorAll('main .ped-kpi, main .acf-etapa')) if (visivel(el) && el.scrollWidth > el.clientWidth + 1) problemas.push(`card estoura: "${el.textContent}"`);
+    // opção da chave do topo cortada pela caixa (a caixa esconde o que passa da borda)
+    for (const caixa of document.querySelectorAll('main .ped-chave')) {
+      if (!visivel(caixa)) continue;
+      const borda = caixa.getBoundingClientRect();
+      if (caixa.scrollWidth > caixa.clientWidth + 1) problemas.push(`chave cortada: "${caixa.textContent}"`);
+      for (const b of caixa.querySelectorAll('button')) { const r = b.getBoundingClientRect(); if (r.right > borda.right + 1 || r.right > innerWidth) problemas.push(`opção cortada: "${b.textContent}"`); }
+    }
     return { problemas, cartoes: [...document.querySelectorAll('main .cartoes')].map((e) => e.id || e.className) };
   });
-  for (const largura of [390, 768, 1024, 1366]) {
+  for (const largura of [360, 390, 768, 1024, 1366]) {
     await pagina.setViewportSize({ width: largura, height: 900 });
     for (const rota of ['#/pedidos', '#/carteira?aba=acompanhamento', '#/ajuda']) {
       await ir(rota);

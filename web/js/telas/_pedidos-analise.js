@@ -5,7 +5,7 @@ import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { h, montar, formatar, baixarCsv, semRolagem } from '../ui.js';
 import { significadoDe } from '../../shared/ajuda.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
-import { blocoNiveis, cartoes, moeda, valor, razaoSocial, seloSituacao, seloDoPedido, tabelaPedidos } from './_pedidos.js';
+import { blocoNiveis, textoChave, cartoes, moeda, valor, razaoSocial, seloSituacao, seloDoPedido, tabelaPedidos } from './_pedidos.js';
 
 const CHAVE_NIVEIS = 'germani.pedidosNiveis';
 const LIMITE_RAMO = 100;
@@ -57,7 +57,7 @@ export function renderAnalise(destino, { pedidos: todosPedidos, usuario, porGrup
     const opcao = (id, ativo, texto, aoClicar) => h('button', { type: 'button', id, class: ativo ? 'ativa' : '', 'aria-pressed': ativo ? 'true' : 'false', onclick: () => { aoClicar(); aoFiltrar(); } }, texto);
     montar(slotFiltros,
       h('div', { class: 'ped-chave ped-seg', role: 'group', 'aria-label': 'Tipo de pedido' },
-        [['venda', 'Pedidos de venda'], ['investimento', 'Pedidos de bonificação'], ['ambos', 'Ambos']].map(([v, t]) => opcao(`tipo-${v}`, estado.tipo === v, t, () => { estado.tipo = v; }))));
+        [['venda', 'Pedidos de venda', 'Venda'], ['investimento', 'Pedidos de bonificação', 'Bonificação'], ['ambos', 'Ambos']].map(([v, t, curto]) => opcao(`tipo-${v}`, estado.tipo === v, textoChave(t, curto), () => { estado.tipo = v; }))));
   }
 
   function listaDoRamo(doRamo, escolhido) {
