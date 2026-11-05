@@ -4,6 +4,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
@@ -250,6 +251,18 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   const folha = livro.worksheets[0];
   assert.deepEqual(folha.getRow(1).values.slice(1), ['CNPJ', 'Razão social', 'Cidade', 'UF', 'Onda', 'Segmento', 'Status', 'Representante', 'Supervisor']);
   assert.ok(folha.rowCount > 100, `linhas: ${folha.rowCount}`);
+
+  // listas por equipe (aba Exportar): ZIP com uma pasta por supervisor e um PDF por representante, onda 1 já escolhida
+  assert.equal(await pagina.inputValue('#exportar-listas-onda'), '1');
+  assert.match(await pagina.textContent('#exportar-listas'), /^Gerar PDFs · \d+ rep\. · [\d.]+ clientes$/);
+  const baixandoListas = pagina.waitForEvent('download', { timeout: 120000 });
+  await pagina.click('#exportar-listas');
+  const listasZip = await baixandoListas;
+  assert.match(listasZip.suggestedFilename(), /^listas-onda-1-\d{4}-\d{2}-\d{2}\.zip$/);
+  const zip = await JSZip.loadAsync(await readFile(await listasZip.path()));
+  const pdfs = Object.keys(zip.files).filter((n) => !zip.files[n].dir);
+  assert.ok(pdfs.length > 1 && pdfs.every((n) => /^[^/]+\/[^/]+\.pdf$/.test(n)), `arquivos: ${pdfs.join(', ')}`);
+  assert.equal(new TextDecoder().decode((await zip.file(pdfs[0]).async('uint8array')).slice(0, 5)), '%PDF-');
 
   // erros do app: tela do administrador abre (lista vazia no banco de demonstração)
   await pagina.click('#menu a[title="Erros do app"]');

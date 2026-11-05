@@ -41,9 +41,10 @@ const ROSA = [252, 235, 236];
 
 /**
  * Gera e baixa o PDF. `blocos`: [{ grupo (rótulo ou null), linhas: [[13 textos na ordem de COLUNAS]] }] — já na ordem e no
- * agrupamento da tela. `resumo`: [[rótulo, número]]. Devolve o nome do arquivo.
+ * agrupamento da tela. `resumo`: [[rótulo, número]]. Devolve o nome do arquivo; com `baixar: false`, devolve os bytes do PDF
+ * (Listas por equipe, que junta vários num ZIP).
  */
-export async function gerarPdfLista({ titulo, representante, supervisor, emissao, resumo, filtros, blocos, nomeArquivo }) {
+export async function gerarPdfLista({ titulo, representante, supervisor, emissao, resumo, filtros, blocos, nomeArquivo, baixar = true }) {
   const [JsPDF, logo] = await Promise.all([bibliotecaPdf(), logotipo().catch(() => null)]);
   const doc = new JsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const L = 297; const A = 210; const M = 10; const util = L - 2 * M;
@@ -116,6 +117,7 @@ export async function gerarPdfLista({ titulo, representante, supervisor, emissao
     doc.setPage(i); doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(107, 114, 128);
     doc.text(`Página ${i} de ${paginas}`, L - M, A - 5.5, { align: 'right' });
   }
+  if (!baixar) return new Uint8Array(doc.output('arraybuffer'));
   doc.save(nomeArquivo);
   return nomeArquivo;
 }

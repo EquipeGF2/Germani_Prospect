@@ -660,11 +660,16 @@ passo a passo (arquivo → colunas → simulação → gravação):
 | 3. Cadastro e crédito | cadastro e crédito do ERP; recolhido embaixo, o arquivo **só de cadastro** (sem crédito → Análise financeira) | Cadastro e crédito (ERP) |
 | 4. Pedidos | arquivo de pedidos (§14) | Importar pedidos |
 | 5. Baixados | CNPJs baixados (§3) | Pedidos · Baixados (ERP) |
-| Exportar | Rejeitados (um ou mais tipos, com supervisor, representante e onda), base de prospects e pedidos, em Excel | — (estava em Rejeitados e Base de prospects) |
+| Exportar | **Listas por equipe** em PDF; Rejeitados (um ou mais tipos, com supervisor, representante e onda), base de prospects e pedidos, em Excel | — (estava em Rejeitados e Base de prospects) |
 | Histórico | o que foi importado; apagar o arquivo de pedidos mais novo | Importações |
 
 - Cada aba já sabe o tipo do arquivo: não há como importar baixados como cadastro.
 - As abas de importação são **só no computador** (escolha de arquivo); no celular aparece o aviso. Exportar e Histórico abrem em qualquer tela.
 - **Exportar** é também do **gerente** (tela `exportar`, 0026); para ele o menu mostra "Exportar dados" e a tela só essa aba.
+- **Listas por equipe** (`shared/listas-equipe.mjs`): um PDF da Lista por representante, com o mesmo layout do Gerar PDF da Lista
+  (web/js/relatorio.js), num ZIP com uma pasta por supervisor (`<Supervisor>/<cód> - <Representante>.pdf`). Filtros: onda (começa na 1
+  quando existe), quem entra — **Clientes válidos** (todos menos baixados e expurgados, como a grade do Explorar carteira) ou **Só a
+  Lista principal** (Não contactado e Em prospecção) — e supervisor. Ordem: cidade (uma faixa por cidade) › bairro › segmento › razão social.
+  O botão mostra quantos representantes e clientes entram; a leitura dos clientes é feita só ao clicar.
 - Os endereços antigos (`#/admin/importar/base`, `/admin/grupos`, `/admin/importar/credito`, `/admin/importar/pedidos`,
   `/admin/importar/erp`, `/admin/importacoes`) levam à aba correspondente.
