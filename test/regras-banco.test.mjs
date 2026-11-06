@@ -564,3 +564,12 @@ test('0028: rota e subrota em maiúsculas (com acento), inclusive no baixado, e 
   const r = (await db.execute("SELECT DISTINCT rota FROM resumo_carteira WHERE qtd > 0 AND rota <> ''")).rows.map((l) => l.rota);
   assert.ok(r.every((x) => x === x.toLocaleUpperCase('pt-BR')), `o resumo da carteira acompanha: ${r}`);
 });
+
+test('0029: fora da exclusão de uma importação da base, prospects, contatos e movimentações continuam sem DELETE', async () => {
+  const id = await criarProspect(db, { n: 1 });
+  await registrarContato(db, { prospectId: id, resultado: 'atendido', data: '2026-10-05' });
+  await assert.rejects(db.execute('DELETE FROM contatos'), /somente inclusão/);
+  await assert.rejects(db.execute('DELETE FROM movimentacoes'), /somente inclusão/);
+  await assert.rejects(db.execute('DELETE FROM prospects'), /não são apagados/);
+  await assert.rejects(db.execute({ sql: 'INSERT INTO base_exclusoes (importacao_id, usuario_id) VALUES (999, 4)', args: [] }), /FOREIGN KEY|não é uma base/);
+});

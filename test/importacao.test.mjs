@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bancoTeste, cnpjTeste } from './auxiliar.mjs';
+import { bancoTeste, cnpjTeste, criarEquipe, evento } from './auxiliar.mjs';
+import { apagarImportacaoBase, conferirExclusaoBase } from '../shared/administracao.mjs';
 import { importarBase } from '../shared/importar-base.mjs';
 import { importarEventos } from '../shared/importar-eventos.mjs';
 import { COLUNAS_BASE, chaveStatus, contarStatusPlanilha, mapearCabecalho, normalizarMapaStatus } from '../shared/importacao-base.mjs';
@@ -222,4 +223,53 @@ test('falta de permissão no banco (SQLITE_AUTH) para a importação inteira com
   const db = { batch: async () => { chamadas++; throw new Error('SQLITE_AUTH: SQLite error: not authorized'); } };
   await assert.rejects(gravarEmLotes(db, [1, 2, 3], (x) => [{ sql: 'x', args: [x] }]), /falta de permissão.*Criar administrador/);
   assert.equal(chamadas, 1);
+});
+
+// 0029: apagar uma importação da base (ex.: base de SC carregada por engano)
+async function duasBases() {
+  const db = await bancoTeste();
+  await criarEquipe(db);
+  await importar(db, [linha({ cnpj: cnpjTeste(1) }), linha({ cnpj: cnpjTeste(2) })]);
+  const { importacaoId } = await importar(db, [
+    linha({ cnpj: cnpjTeste(1), razao: 'Atualizada pela SC' }),
+    linha({ cnpj: cnpjTeste(3), cod: '20', nome: 'Vend SC', codSup: '95', sup: 'Sup SC', dt1: '01/09/2026', status: 'Em prospecção', cidade: 'Chapecó' }),
+    linha({ cnpj: cnpjTeste(4), cod: '20', nome: 'Vend SC', codSup: '95', sup: 'Sup SC', cidade: 'Chapecó' }),
+  ]);
+  return { db, sc: importacaoId };
+}
+const n = async (db, sql, args = []) => Number((await db.execute({ sql, args })).rows[0].n);
+
+test('apagar importação da base: saem só os clientes que entraram por ela; quem ela criou é desativado', async () => {
+  const { db, sc } = await duasBases();
+  const c = await conferirExclusaoBase(db, sc);
+  assert.deepEqual([c.prospects, c.atualizados, c.trabalhados, c.contatos], [2, 1, 0, 1]);
+  assert.deepEqual(c.usuarios.map((u) => u.nome), ['Sup SC', 'Vend SC']);
+  await assert.rejects(apagarImportacaoBase(db, { importacaoId: sc, usuarioId: 1 }), /só o administrador/);
+  const r = await apagarImportacaoBase(db, { importacaoId: sc, usuarioId: 4 });
+  assert.deepEqual([r.qtd_prospects, r.qtd_contatos, r.qtd_atualizados, r.qtd_usuarios].map(Number), [2, 1, 1, 2]);
+  assert.deepEqual((await db.execute('SELECT cnpj FROM prospects ORDER BY cnpj')).rows.map((l) => l.cnpj), [cnpjTeste(1), cnpjTeste(2)], 'o que já existia fica');
+  assert.equal(await n(db, 'SELECT COUNT(*) n FROM movimentacoes WHERE prospect_id NOT IN (SELECT id FROM prospects)'), 0);
+  assert.equal(await n(db, 'SELECT COUNT(*) n FROM contatos'), 0);
+  assert.equal(await n(db, 'SELECT COALESCE(SUM(qtd), 0) n FROM resumo_carteira'), 2, 'resumo da carteira bate com a base');
+  assert.equal(await n(db, "SELECT COUNT(*) n FROM usuarios WHERE ativo = 0 AND nome IN ('Sup SC', 'Vend SC')"), 2);
+  assert.equal(await n(db, "SELECT COUNT(*) n FROM usuarios WHERE ativo = 1 AND nome IN ('Sup Um', 'Vend Dez')"), 2, 'a equipe de antes continua');
+  assert.equal(await n(db, 'SELECT COUNT(*) n FROM importacao_linhas WHERE importacao_id = ?', [sc]), 3, 'as linhas do arquivo ficam como registro');
+  assert.equal(await n(db, "SELECT COUNT(*) n FROM prospects_busca WHERE busca LIKE '%CHAPECO%'"), 0);
+  // continua proibido fora da exclusão; e a exclusão não se repete nem se altera
+  await assert.rejects(db.execute('DELETE FROM prospects'), /não são apagados/);
+  await assert.rejects(db.execute('DELETE FROM movimentacoes'), /somente inclusão/);
+  await assert.rejects(apagarImportacaoBase(db, { importacaoId: sc, usuarioId: 4 }), /UNIQUE/);
+  await assert.rejects(db.execute('UPDATE base_exclusoes SET qtd_prospects = 0'), /somente inclusão/);
+});
+
+test('apagar importação da base: recusa se algum cliente já foi trabalhado, e não muda nada', async () => {
+  const { db, sc } = await duasBases();
+  const id = Number((await db.execute({ sql: 'SELECT id FROM prospects WHERE cnpj = ?', args: [cnpjTeste(4)] })).rows[0].id);
+  await evento(db, { prospectId: id, tipo: 'cadastro', data: '2026-10-10' });
+  assert.equal((await conferirExclusaoBase(db, sc)).trabalhados, 1);
+  await assert.rejects(apagarImportacaoBase(db, { importacaoId: sc, usuarioId: 4 }), /já trabalhados/);
+  assert.equal(await n(db, 'SELECT COUNT(*) n FROM prospects'), 4);
+  assert.equal(await n(db, 'SELECT COUNT(*) n FROM base_exclusoes'), 0);
+  const primeira = Number((await db.execute("SELECT MIN(id) n FROM importacoes")).rows[0].n);
+  await assert.rejects(apagarImportacaoBase(db, { importacaoId: primeira + 99, usuarioId: 4 }), /não é uma base de prospects/);
 });

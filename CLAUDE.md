@@ -17,7 +17,8 @@ Sistema **GERMANI** (guarda-chuva GERMANI), estado **ativo**. Português do Bras
 ## Não fazer
 - Commitar planilhas, relatórios, `.env` ou tokens (repositório público).
 - UPDATE/DELETE em contatos, eventos_erp, movimentacoes, transferencias, importacao_linhas, auditoria.
-  Única exceção: apagar um arquivo de pedidos (`pedido_exclusoes`, migração 0022, ADR-0007), só pelo trigger.
+  Exceções, só pelo trigger: apagar um arquivo de pedidos (`pedido_exclusoes`, migração 0022, ADR-0007) e apagar uma
+  importação da base ainda não trabalhada (`base_exclusoes`, migração 0029, ADR-0008).
 - Alterar `prospects.status_atual` fora dos triggers.
 - Inventar layout de arquivo do ERP: colunas vêm por parâmetro até a amostra real chegar.
 - Calcular distância por geolocalização (ADR-0005). Dar rota ao representante.
