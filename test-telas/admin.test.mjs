@@ -246,10 +246,10 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await aplicar.click();
   await pagina.locator('button', { hasText: /desfazer 1$/ }).click();
   await pagina.waitForSelector('text=1 desfeito(s)');
-  // desfaz o resto (os passos seguintes contam a carteira inteira)
-  for (const sel of await pagina.locator('.tabela-grupos select').all()) {
-    await sel.selectOption((await sel.locator('option[value="desfazer"]').count()) ? 'desfazer' : 'manter');
-  }
+  // desfaz o resto num clique só (os passos seguintes contam a carteira inteira)
+  assert.equal(await pagina.textContent('#desfazer-todos'), `Desfazer todos os expurgados (${qtdExpurgo - 1})`);
+  await pagina.click('#desfazer-todos');
+  assert.equal(await aplicar.innerText(), `Aplicar (0 expurgar · ${qtdExpurgo - 1} desfazer)`, 'o resto fica em Manter');
   await aplicar.click();
   await pagina.locator('button', { hasText: new RegExp(`^Expurgar 0 · desfazer ${qtdExpurgo - 1}$`) }).click();
   await pagina.waitForSelector(`text=${qtdExpurgo - 1} desfeito(s)`);
