@@ -365,6 +365,13 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('a:text("Ver linhas") >> nth=0');
   await pagina.waitForSelector('text=Importação nº 4'); // a mais recente: relatório de crédito
   await foto('09-importacoes');
+  // apagar a importação da base: a conferência mostra o que sai; com clientes já trabalhados (cadastro do ERP), recusa
+  await abaImportacoes('historico');
+  await pagina.click('[data-apagar-base] >> nth=0');
+  await pagina.waitForSelector('h1:text-is("Apagar uma importação da base")');
+  await pagina.waitForSelector('#base-trabalhados');
+  assert.equal(await pagina.locator('#apagar-base').count(), 0, 'sem botão quando há clientes trabalhados');
+  await foto('09b-apagar-base');
 
   // 7. vendedor entra com a senha gerada (mesmo banco: a sessão do demo continua na página)
   await pagina.click('.menu-sair');

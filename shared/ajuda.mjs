@@ -165,9 +165,9 @@ export const CAPITULOS = Object.freeze([
   { n: 8, nome: 'Administração', desc: 'Importações, usuários, perfis e parâmetros.', para: (u) => u.perfil === 'administrador', blocos: [
     ['serve', 'Trazer para o sistema os arquivos do ERP, exportar as bases em Excel, cadastrar as pessoas e ajustar prazos, alertas e as ondas liberadas.'],
     ['rapido', ['Abra Administração › Importações, no computador.', 'Siga as abas numeradas, na ordem: Base de prospects, Grupos de CNPJ, Cadastro e crédito, Pedidos e Baixados.', 'Em cada aba, confira a simulação: nada é gravado antes da confirmação.']],
-    ['parte', 'admin-importacoes', 'A tela Importações', 'Uma aba por arquivo, na ordem do processo, mais Exportar e Histórico. Cada aba já sabe o tipo do arquivo. As abas de importação são só no computador.', [['Abas numeradas', 'Os 5 passos da importação, na ordem.'], ['Exportar', 'Listas por equipe em PDF; rejeitados por tipo, a base e os pedidos em Excel (também para o gerente).'], ['Histórico', 'Tudo o que foi importado; o arquivo de pedidos mais novo pode ser apagado.']]],
+    ['parte', 'admin-importacoes', 'A tela Importações', 'Uma aba por arquivo, na ordem do processo, mais Exportar e Histórico. Cada aba já sabe o tipo do arquivo. As abas de importação são só no computador.', [['Abas numeradas', 'Os 5 passos da importação, na ordem.'], ['Exportar', 'Listas por equipe em PDF; rejeitados por tipo, a base e os pedidos em Excel (também para o gerente).'], ['Histórico', 'Tudo o que foi importado; o arquivo de pedidos mais novo e uma importação da base ainda não trabalhada podem ser apagados.']]],
     ['opcoes', '/importacoes'],
-    ['parte', 'admin-usuarios', 'Usuários', 'Cadastro das pessoas, senhas e perfis.', [['Código do ERP', 'Liga o usuário ao representante dos arquivos de pedidos.'], ['Perfil', 'O que a pessoa acessa.']]],
+    ['parte', 'admin-usuarios', 'Usuários', 'Cadastro das pessoas, senhas e perfis.', [['Cód. ERP', 'Código do ERP: liga o usuário ao representante dos arquivos de pedidos; não faz parte do login.'], ['Perfil', 'O que a pessoa acessa.']]],
     ['parte', 'admin-ondas', 'Ondas liberadas', 'Em Parâmetros: as ondas que o representante/vendedor vê para prospectar. Quem já foi atendido aparece sempre.', [['Na lista', 'Clientes da onda ainda não atendidos.'], ['Marcar todas', 'Libera a base inteira.']]],
     ['p', 'Se os pedidos chegarem antes do cadastro, nada se perde: os pedidos ficam guardados, e o relatório de cadastro e crédito completa o cliente depois, sem reimportar.'],
     ['termos', 'importar-credito'],
@@ -293,7 +293,7 @@ export const AJUDA_TELAS = Object.freeze({
     analisar: ['Antes de apagar, leia o que acontece com cada coisa.'], comuns: [F('Não consigo apagar', 'Só o arquivo mais recente pode ser apagado; é preciso digitar o nome dele.')], proximo: 'Depois de apagar, importe o arquivo correto.' },
   '/admin/usuarios': { titulo: 'Usuários', cap: 8, objetivo: 'Cadastrar as pessoas, definir as senhas e os perfis.',
     como: ['Preencha nome, login, perfil e supervisor.', 'Defina a senha, com ao menos 6 caracteres (administrador: 8).', 'Em Alterar login, troque o login de alguém, por exemplo pelo que a pessoa já usa em outro sistema.', 'Use Perfis para escolher as telas de cada perfil.'],
-    campos: [F('Código do ERP', 'Liga o usuário ao representante dos arquivos de pedidos'), F('Perfil', 'O que a pessoa acessa'), F('Supervisor', 'A equipe da pessoa'), F('Acesso', 'Se a senha já foi definida')],
+    campos: [F('Cód. ERP', 'Código do ERP: liga o usuário ao representante dos arquivos de pedidos; não faz parte do login'), F('Perfil', 'O que a pessoa acessa'), F('Supervisor', 'A equipe da pessoa'), F('Acesso', 'Se a senha já foi definida')],
     analisar: ['Representante sem código aparece nos alertas de pedidos.'], comuns: [F('Administrador sem acesso à Administração', 'Defina a senha dele aqui, estando logado como administrador.')], proximo: 'Avise a pessoa do login e da senha.' },
   '/admin/perfis': { titulo: 'Perfis', cap: 8, objetivo: 'Escolher quais telas cada perfil acessa.',
     como: ['Crie ou abra um perfil.', 'Escolha o tipo-base e marque as telas.', 'Grave e atribua o perfil em Usuários.'],
@@ -488,7 +488,7 @@ export const OPCOES_TOPO = Object.freeze({
   '/importacoes': [O('Abas da tela', [
     ['Base de prospects', '1º passo: os clientes a trabalhar, cada um na carteira de um representante/vendedor.'], ['Grupos de CNPJ', '2º passo: sugere quem expurgar por já ser cliente.'],
     ['Cadastro e crédito', '3º passo: cadastro no ERP e crédito liberado.'], ['Pedidos', '4º passo: pedidos do ERP, ligados a cada cliente.'], ['Baixados', '5º passo: CNPJs baixados na Receita.'],
-    ['Exportar', 'Listas por equipe em PDF; rejeitados, base de prospects e pedidos em Excel.'], ['Histórico', 'Tudo o que foi importado; o arquivo de pedidos mais novo pode ser apagado.']])],
+    ['Exportar', 'Listas por equipe em PDF; rejeitados, base de prospects e pedidos em Excel.'], ['Histórico', 'Tudo o que foi importado; o arquivo de pedidos mais novo e uma importação da base ainda não trabalhada podem ser apagados.']])],
   '/rejeitados': [O('Cards do topo', [
     ['Rejeitados', 'Todos os tipos juntos.'], ['Baixados', 'CNPJ baixado na Receita: não pode mais ser faturado.'], ['Expurgados', 'Tirados da base por já serem clientes (grupo de CNPJ).'],
     ['Sem interesse do cliente', 'O cliente recusou a proposta. Mostra os motivos.'], ['Sem interesse do representante', 'O representante/vendedor não vai trabalhar o cliente. Mostra os motivos.']])],

@@ -126,6 +126,8 @@ tbody tr:hover { background: #E9EEF5; }
 tbody tr:last-child td { border-bottom: 0; }
 th { background: #F9FAFB; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); position: sticky; top: 0; border-bottom: 1px solid var(--borda); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.cen, th.cen { text-align: center; }
+.tabela-wrap th, .acoes > button, .acoes > .botao { white-space: nowrap; }
 .numeros { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); margin: 14px 0 18px; }
 .numero { background: #fff; border: 1px solid var(--borda); border-radius: var(--raio); padding: 14px 16px; box-shadow: var(--sombra); border-top: 3px solid var(--borda-forte); }
 .numero b { display: block; font-size: 1.7rem; line-height: 1.15; font-family: "IBM Plex Sans Condensed", sans-serif; font-variant-numeric: tabular-nums; }

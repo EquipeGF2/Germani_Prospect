@@ -665,6 +665,11 @@ passo a passo (arquivo → colunas → simulação → gravação):
 
 - Cada aba já sabe o tipo do arquivo: não há como importar baixados como cadastro.
 - As abas de importação são **só no computador** (escolha de arquivo); no celular aparece o aviso. Exportar e Histórico abrem em qualquer tela.
+- **Apagar uma importação da base** (Histórico, só administrador, migração 0029, ADR-0008): saem os clientes que **entraram** por
+  ela e o histórico que a planilha gerou (entrada na base, DT 1º/2º contato). Recusa se algum já foi trabalhado — atendimento no app,
+  cadastro/evento do ERP, crédito, pedido, transferência, rota ou expurgo. Quem já existia e só teve o cadastro atualizado fica (o
+  cadastro não volta). Representante e supervisor criados por ela, sem acesso liberado e sem cliente restante, são desativados.
+  As linhas da importação ficam (Ver linhas). A tela confere antes e pede o nome do arquivo para confirmar.
 - **Exportar** é também do **gerente** (tela `exportar`, 0026); para ele o menu mostra "Exportar dados" e a tela só essa aba.
 - **Listas por equipe** (`shared/listas-equipe.mjs`): um PDF da Lista por representante, com o mesmo layout do Gerar PDF da Lista
   (web/js/relatorio.js), num ZIP com uma pasta por supervisor (`<Supervisor>/<cód> - <Representante>.pdf`). Filtros: onda (começa na 1

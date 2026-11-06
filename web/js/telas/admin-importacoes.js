@@ -1,5 +1,5 @@
 import { bancoAdmin } from '../db.js';
-import { linhasDaImportacao, listarImportacoes, NOMES_IMPORTACAO } from '../../shared/administracao.mjs';
+import { apagarImportacaoBase, conferirExclusaoBase, linhasDaImportacao, listarImportacoes, NOMES_IMPORTACAO } from '../../shared/administracao.mjs';
 import { apagarArquivoPedidos, conferirExclusao, listarArquivosPedidos } from '../../shared/importar-pedidos.mjs';
 import { h, montar, tabela, selo, formatar, baixarCsv, comEspera, aviso, mensagem } from '../ui.js';
 import { cartoes, moeda, tabelaPedidos } from './_pedidos.js';
@@ -10,6 +10,8 @@ export async function render(conteudo, ctx) {
   if (id) return detalhe(conteudo, db, Number(id));
   const apagar = ctx.parametros.get('apagar');
   if (apagar) return confirmarExclusao(conteudo, db, Number(apagar), ctx);
+  const apagarBase = ctx.parametros.get('apagarBase');
+  if (apagarBase) return confirmarExclusaoBase(conteudo, db, Number(apagarBase), ctx);
   const lista = await listarImportacoes(db);
   const arquivos = await listarArquivosPedidos(db);
   const blocoArquivos = arquivos.length ? h('div', { class: 'cartao', id: 'arquivos-pedidos' }, h('h2', {}, 'Arquivos de pedidos'),
@@ -25,12 +27,14 @@ export async function render(conteudo, ctx) {
       { titulo: 'Tipo', valor: (i) => NOMES_IMPORTACAO[i.tipo] ?? i.tipo },
       { titulo: 'Arquivo', campo: 'arquivo_nome' },
       { titulo: 'Quando / quem', valor: (i) => `${formatar.dataHora(i.iniciado_em)} · ${i.executado_por}` },
-      { titulo: 'Situação', valor: (i) => selo(i.situacao, i.situacao) },
+      { titulo: 'Situação', valor: (i) => (i.base_apagada_em ? selo(`Apagada em ${formatar.dataHora(i.base_apagada_em)} por ${i.base_apagada_por}`, 'erro') : selo(i.situacao, i.situacao)) },
       { titulo: 'Lidas', valor: (i) => formatar.numero(i.linhas_lidas), classe: 'num' },
       { titulo: 'Aceitas', valor: (i) => formatar.numero(i.linhas_aceitas), classe: 'num' },
       { titulo: 'Rejeitadas', valor: (i) => formatar.numero(i.linhas_rejeitadas), classe: 'num' },
       { titulo: 'Ignoradas', valor: (i) => formatar.numero(i.linhas_ignoradas), classe: 'num' },
-      { titulo: '', valor: (i) => h('a', { href: `#/importacoes?aba=historico&id=${i.id}` }, 'Ver linhas') },
+      { titulo: '', valor: (i) => h('div', { class: 'acoes', style: 'margin:0' }, h('a', { href: `#/importacoes?aba=historico&id=${i.id}` }, 'Ver linhas'),
+        i.tipo === 'base_prospects' && i.situacao === 'concluida' && !i.base_apagada_em
+          ? h('a', { class: 'botao secundario pequeno', dados: { apagarBase: i.id }, href: `#/importacoes?aba=historico&apagarBase=${i.id}` }, 'Apagar') : null) },
     ], lista, { vazio: 'Nenhuma importação ainda.' }));
 }
 
@@ -87,5 +91,41 @@ async function confirmarExclusao(conteudo, db, id, ctx) {
         { o: 'Cadastro, crédito e baixados', r: 'Mantidos', t: 'ok', d: 'Vieram de outros arquivos' },
         { o: 'Registro da exclusão', r: 'Permanece', t: '', d: 'Arquivo, quantidades, quem importou, quem apagou e quando' }])),
     h('div', { class: 'ped-confirma' }, h('label', { for: 'confirma-arquivo' }, 'Não dá para desfazer. Para confirmar, digite o nome do arquivo:'),
+      h('div', { class: 'linha-campos' }, confirma, bApagar)));
+}
+
+/** Conferência antes de apagar uma importação da base de prospects. A regra está no banco (0029, ADR-0008). */
+async function confirmarExclusaoBase(conteudo, db, id, ctx) {
+  const imp = (await listarImportacoes(db, { limite: 1000 })).find((i) => Number(i.id) === id);
+  const voltar = h('p', {}, h('a', { href: '#/importacoes?aba=historico' }, '← Histórico'));
+  if (!imp || imp.tipo !== 'base_prospects' || imp.situacao !== 'concluida' || imp.base_apagada_em) {
+    return montar(conteudo, voltar, mensagem('Esta importação não pode ser apagada: só uma importação da base de prospects concluída e ainda não apagada.', 'erro'));
+  }
+  const c = await conferirExclusaoBase(db, id);
+  const n = (x) => formatar.numero(x);
+  const confirma = h('input', { id: 'confirma-arquivo', placeholder: imp.arquivo_nome, 'aria-label': 'Nome do arquivo para confirmar', oninput: () => { bApagar.disabled = c.trabalhados > 0 || confirma.value.trim() !== imp.arquivo_nome; } });
+  const bApagar = h('button', { id: 'apagar-base', disabled: true, onclick: async () => {
+    const r = await comEspera(bApagar, () => apagarImportacaoBase(db, { importacaoId: id, usuarioId: ctx.usuario.id }));
+    if (!r) return;
+    aviso(`Importação apagada: ${n(r.qtd_prospects)} clientes saíram da base${Number(r.qtd_usuarios) ? `, ${n(r.qtd_usuarios)} usuário(s) desativado(s)` : ''}.`);
+    location.hash = '#/importacoes?aba=historico';
+  } }, 'Apagar esta importação');
+  montar(conteudo, voltar, h('h1', {}, 'Apagar uma importação da base'),
+    h('p', { class: 'ajuda' }, `${imp.arquivo_nome} · importada em ${formatar.dataHora(imp.iniciado_em)} por ${imp.executado_por} · ${n(imp.linhas_aceitas)} linhas aceitas. Saem só os clientes que entraram por esta importação.`),
+    cartoes([['Clientes que saem', n(c.prospects), 'desta importação', 'destaque'], ['Registros da planilha', n(c.contatos), 'DT 1º e 2º contato'],
+      ['Já existiam', n(c.atualizados), 'ficam na base'], ['Já trabalhados', n(c.trabalhados), c.trabalhados ? 'impedem apagar' : 'nenhum', c.trabalhados ? 'alerta' : '']]),
+    c.trabalhados ? h('div', { class: 'cartao', id: 'base-trabalhados' }, mensagem(`${n(c.trabalhados)} cliente(s) desta importação já foram trabalhados (atendimento, cadastro, crédito, pedido, transferência, rota ou expurgo). Por isso a importação não pode ser apagada.`, 'erro'),
+      tabelaPedidos([{ titulo: 'CNPJ', valor: (l) => formatar.cnpj(l.cnpj), classe: 'cen' }, { titulo: 'Razão social', campo: 'razao_social' }, { titulo: 'Status', campo: 'status_nome', classe: 'cen' }], c.exemplosTrabalhados)) : null,
+    c.usuarios.length && !c.trabalhados ? h('div', { class: 'cartao' }, h('h2', {}, 'Usuários que serão desativados'), h('p', { class: 'ajuda' }, 'Criados por esta importação, sem acesso liberado e sem nenhum cliente restante. Não são apagados.'),
+      tabelaPedidos([{ titulo: 'Nome', campo: 'nome' }, { titulo: 'Perfil', valor: (u) => (u.perfil === 'supervisor' ? 'Supervisor' : 'Representante / vendedor'), classe: 'cen' }, { titulo: 'Código', campo: 'codigo_erp', classe: 'cen' }], c.usuarios)) : null,
+    h('div', { class: 'cartao' }, h('h2', {}, 'O que acontece com cada coisa'),
+      tabelaPedidos([{ titulo: 'O quê', campo: 'o' }, { titulo: 'Resultado', valor: (l) => selo(l.r, l.t), classe: 'cen' }, { titulo: 'Detalhe', campo: 'd' }], [
+        { o: 'Clientes que entraram por esta importação', r: 'Apagados', t: 'erro', d: 'Somem da lista, do Explorar, do Início e das exportações' },
+        { o: 'Histórico desses clientes', r: 'Apagado', t: 'erro', d: 'Entrada na base e as tentativas que vieram da planilha' },
+        { o: 'Clientes que já existiam', r: 'Mantidos', t: 'ok', d: 'Status, contatos e representante não mudaram; o cadastro fica como a importação deixou' },
+        { o: 'Linhas do arquivo', r: 'Mantidas', t: 'ok', d: 'Continuam em Ver linhas, como registro do que o arquivo trouxe' },
+        { o: 'Painéis e indicadores', r: 'Recalculados', t: 'alerta', d: 'Início, Explorar e resumo da carteira voltam a bater na mesma hora' },
+        { o: 'Registro da exclusão', r: 'Permanece', t: '', d: 'Arquivo, quantidades, quem importou, quem apagou e quando' }])),
+    c.trabalhados ? null : h('div', { class: 'ped-confirma' }, h('label', { for: 'confirma-arquivo' }, 'Não dá para desfazer. Para confirmar, digite o nome do arquivo:'),
       h('div', { class: 'linha-campos' }, confirma, bApagar)));
 }

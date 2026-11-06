@@ -29,11 +29,52 @@ export const NOMES_IMPORTACAO = Object.freeze({
 
 export async function listarImportacoes(db, { limite = 100 } = {}) {
   return (await db.execute({
-    sql: `SELECT id, tipo, arquivo_nome, executado_por, iniciado_em, concluido_em, situacao,
-                 linhas_lidas, linhas_aceitas, linhas_rejeitadas, linhas_ignoradas, observacao
-            FROM importacoes ORDER BY id DESC LIMIT ?`,
+    sql: `SELECT i.id, i.tipo, i.arquivo_nome, i.executado_por, i.iniciado_em, i.concluido_em, i.situacao,
+                 i.linhas_lidas, i.linhas_aceitas, i.linhas_rejeitadas, i.linhas_ignoradas, i.observacao,
+                 e.registrado_em AS base_apagada_em, u.login AS base_apagada_por, e.qtd_prospects AS base_apagados
+            FROM importacoes i
+            LEFT JOIN base_exclusoes e ON e.importacao_id = i.id
+            LEFT JOIN usuarios u ON u.id = e.usuario_id
+           ORDER BY i.id DESC LIMIT ?`,
     args: [limite],
   })).rows;
+}
+
+/**
+ * O que sai ao apagar uma importação da base (0029): clientes que entraram por ela, o histórico deles, os já trabalhados
+ * (que impedem a exclusão), os que já existiam (cadastro atualizado, ficam) e quem será desativado.
+ */
+export async function conferirExclusaoBase(db, importacaoId) {
+  const [r, trab, usuarios] = await Promise.all([
+    db.execute({
+      sql: `SELECT (SELECT COUNT(*) FROM prospects WHERE importacao_id = ?) AS prospects,
+                   (SELECT COUNT(*) FROM contatos WHERE prospect_id IN (SELECT id FROM prospects WHERE importacao_id = ?)) AS contatos,
+                   (SELECT COUNT(DISTINCT l.cnpj) FROM importacao_linhas l WHERE l.importacao_id = ? AND l.resultado = 'aceita'
+                       AND EXISTS (SELECT 1 FROM prospects p WHERE p.cnpj = l.cnpj AND p.importacao_id IS NOT ?)) AS atualizados,
+                   (SELECT COUNT(*) FROM vw_base_trabalhados WHERE importacao_id = ?) AS trabalhados`,
+      args: [importacaoId, importacaoId, importacaoId, importacaoId, importacaoId],
+    }),
+    db.execute({ sql: `SELECT p.cnpj, p.razao_social, s.nome AS status_nome FROM vw_base_trabalhados t JOIN prospects p ON p.id = t.prospect_id JOIN status s ON s.codigo = p.status_atual
+                        WHERE t.importacao_id = ? ORDER BY p.razao_social LIMIT 50`, args: [importacaoId] }),
+    db.execute({
+      sql: `SELECT u.nome, u.perfil, u.codigo_erp FROM usuarios u
+             WHERE u.ativo = 1 AND u.perfil IN ('vendedor','supervisor') AND u.senha_hash IS NULL
+               AND u.criado_em >= (SELECT iniciado_em FROM importacoes WHERE id = ?)
+               AND NOT EXISTS (SELECT 1 FROM prospects p WHERE p.vendedor_id = u.id AND p.importacao_id IS NOT ?)
+               AND (u.perfil = 'vendedor' OR NOT EXISTS (SELECT 1 FROM usuarios v WHERE v.supervisor_id = u.id AND v.ativo = 1
+                      AND EXISTS (SELECT 1 FROM prospects p WHERE p.vendedor_id = v.id AND p.importacao_id IS NOT ?)))
+             ORDER BY u.perfil, u.nome`,
+      args: [importacaoId, importacaoId, importacaoId],
+    }),
+  ]);
+  const l = r.rows[0];
+  return { prospects: Number(l.prospects), contatos: Number(l.contatos), atualizados: Number(l.atualizados), trabalhados: Number(l.trabalhados), exemplosTrabalhados: trab.rows, usuarios: usuarios.rows };
+}
+
+/** Apaga uma importação da base. A regra está no banco (trigger de base_exclusoes, 0029): administrador, nada já trabalhado. */
+export async function apagarImportacaoBase(db, { importacaoId, usuarioId }) {
+  await db.execute({ sql: 'INSERT INTO base_exclusoes (importacao_id, usuario_id) VALUES (?, ?)', args: [importacaoId, usuarioId] });
+  return (await db.execute({ sql: 'SELECT qtd_prospects, qtd_contatos, qtd_atualizados, qtd_usuarios FROM base_exclusoes WHERE importacao_id = ?', args: [importacaoId] })).rows[0];
 }
 
 /** Linhas de uma importação (relatório). `resultado` opcional: aceita | rejeitada | ignorada. */

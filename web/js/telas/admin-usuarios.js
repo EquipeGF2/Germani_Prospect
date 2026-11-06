@@ -63,7 +63,9 @@ export async function render(conteudo, ctx) {
       && (!termo || normalizarBusca(`${u.nome} ${u.login} ${u.codigo_erp ?? ''}`).includes(termo)));
     montar(listaArea, tabela([
       { titulo: 'Nome', valor: (u) => h('b', {}, u.nome) },
-      { titulo: 'Login', valor: (u) => `${u.login}${u.codigo_erp && String(u.codigo_erp) !== u.login ? ' · cód. ' + u.codigo_erp : ''}` },
+      // o login aparece exatamente como foi gravado (é o que a pessoa digita); o código do ERP fica na coluna ao lado
+      { titulo: 'Login', valor: (u) => u.login },
+      { titulo: 'Cód. ERP', valor: (u) => u.codigo_erp ?? '—', classe: 'cen' },
       { titulo: 'Perfil', valor: (u) => {
         // mesmo tipo-base: muda só as telas; administrador/gerente/financeiro trocam entre si (shared/perfis.mjs);
         // vendedor: Representante ou Vendedor é escolhido aqui mesmo (tipo de atuação)

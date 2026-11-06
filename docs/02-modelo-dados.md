@@ -115,6 +115,7 @@ cálculo de distância ([ADR-0005](adr/0005-sem-calculo-de-distancia.md)).
 | `pedidos_erp` | uma linha por pedido por arquivo em que mudou, com `importacao_id` e `prospect_id` (NULL = filial de um grupo da base). Só inclusão, exceto pela exclusão do arquivo |
 | `pedido_aplicacoes` | efeito de um arquivo em cada cliente: status antes e depois, motivo e a foto dos campos para poder voltar. O trigger desta tabela é o único que muda o status por pedido |
 | `pedido_exclusoes` | exclusão de um arquivo: quem, quando, quantidades. Somente inclusão; o trigger faz toda a exclusão numa transação (ADR-0007) |
+| `base_exclusoes` (0029) | exclusão de uma importação da base: quem, quando, clientes e contatos apagados, já existentes (ficam) e usuários desativados. Somente inclusão; o trigger faz tudo numa transação e recusa se algum cliente já foi trabalhado (`vw_base_trabalhados`, ADR-0008) |
 
 Views: `vw_pedidos` (situação atual de cada pedido, classificada, com representante, dono da carteira e `relacao`: propria · outra · fora_base · cpf) e `vw_valor_pedidos` (valor do painel).
 
