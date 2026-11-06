@@ -103,12 +103,26 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('button:text("Liberar acesso")');
   await pagina.fill('.definir-senha .campo-senha', 'curta');
   await pagina.click('.definir-senha button:text("Salvar")');
-  await pagina.waitForSelector('text=ao menos 8 caracteres');
+  await pagina.waitForSelector('text=ao menos 6 caracteres');
   const senhaVendedor = 'vendedor-1201';
   await pagina.fill('.definir-senha .campo-senha', senhaVendedor);
   await foto('07-usuarios-senha');
   await pagina.click('.definir-senha button:text("Salvar")');
   await pagina.waitForSelector('text=Senha de 1201 definida.');
+  // alterar login (o mesmo de outro sistema): troca e volta; login de outro usuário é recusado
+  const trocarLogin = async (de, para) => {
+    await pagina.click(`button[data-login="${de}"]`);
+    await pagina.fill('.definir-login input', para);
+    await pagina.click('.definir-login button:text("Salvar")');
+  };
+  await trocarLogin('1201', 'Vende1201');
+  await pagina.waitForSelector('text=: Vende1201.');
+  await pagina.fill('input[aria-label=Buscar]', 'Vende1201');
+  await trocarLogin('Vende1201', 'admin');
+  await pagina.waitForSelector('text=o login admin já é de');
+  await pagina.fill('.definir-login input', '1201');
+  await pagina.click('.definir-login button:text("Salvar")');
+  await pagina.waitForSelector('text=: 1201.');
   // cards = filtro de situação
   await pagina.fill('input[aria-label=Buscar]', '');
   await pagina.click('.filtrantes [data-filtro="sem_acesso"]');

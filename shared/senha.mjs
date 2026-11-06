@@ -10,8 +10,11 @@ async function derivar(senha, sal, iteracoes) {
   return crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: sal, iterations: iteracoes }, chave, 256);
 }
 
+/** Mínimo de caracteres da senha de login (decisão do dono, 2026-11-06). O administrador segue com 8, pelo cofre (shared/cofre.mjs). */
+export const SENHA_MINIMA = 6;
+
 export async function gerarHashSenha(senha) {
-  if (typeof senha !== 'string' || senha.length < 8) throw new Error('senha deve ter ao menos 8 caracteres');
+  if (typeof senha !== 'string' || senha.length < SENHA_MINIMA) throw new Error(`senha deve ter ao menos ${SENHA_MINIMA} caracteres`);
   const sal = crypto.getRandomValues(new Uint8Array(16));
   return `pbkdf2$${ITERACOES}$${b64(sal)}$${b64(await derivar(senha, sal, ITERACOES))}`;
 }

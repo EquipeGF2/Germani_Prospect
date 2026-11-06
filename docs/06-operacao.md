@@ -154,7 +154,7 @@ npm run usuarios -- listar
 npm run usuarios -- senha 1101                       # para cada vendedor/supervisor que vai usar o app
 ```
 
-Pela tela (Administração → Usuários) o administrador **define a senha de cada usuário** (mín. 8 caracteres) — no cadastro
+Pela tela (Administração → Usuários) o administrador **define a senha de cada usuário** (mín. 6 caracteres; administrador, 8) e pode **alterar o login** (Alterar login) — no cadastro
 do novo usuário ou em *Definir senha* / *Liberar acesso* na lista; "Gerar" cria uma aleatória, mostrada **uma vez**.
 Pela linha de comando as senhas são geradas aleatoriamente. Entregue-as por canal privado.
 

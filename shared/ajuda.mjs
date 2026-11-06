@@ -292,7 +292,7 @@ export const AJUDA_TELAS = Object.freeze({
     campos: [F('Lidas', 'Linhas do arquivo'), F('Aceitas', 'Linhas gravadas'), F('Ignoradas', 'Fora da base, por exemplo, ou sem mudança'), F('Rejeitadas', 'Linhas com erro'), F('Clientes afetados', 'Quem muda ao apagar o arquivo')],
     analisar: ['Antes de apagar, leia o que acontece com cada coisa.'], comuns: [F('Não consigo apagar', 'Só o arquivo mais recente pode ser apagado; é preciso digitar o nome dele.')], proximo: 'Depois de apagar, importe o arquivo correto.' },
   '/admin/usuarios': { titulo: 'Usuários', cap: 8, objetivo: 'Cadastrar as pessoas, definir as senhas e os perfis.',
-    como: ['Preencha nome, login, perfil e supervisor.', 'Defina a senha, com ao menos 8 caracteres.', 'Use Perfis para escolher as telas de cada perfil.'],
+    como: ['Preencha nome, login, perfil e supervisor.', 'Defina a senha, com ao menos 6 caracteres (administrador: 8).', 'Em Alterar login, troque o login de alguém, por exemplo pelo que a pessoa já usa em outro sistema.', 'Use Perfis para escolher as telas de cada perfil.'],
     campos: [F('Código do ERP', 'Liga o usuário ao representante dos arquivos de pedidos'), F('Perfil', 'O que a pessoa acessa'), F('Supervisor', 'A equipe da pessoa'), F('Acesso', 'Se a senha já foi definida')],
     analisar: ['Representante sem código aparece nos alertas de pedidos.'], comuns: [F('Administrador sem acesso à Administração', 'Defina a senha dele aqui, estando logado como administrador.')], proximo: 'Avise a pessoa do login e da senha.' },
   '/admin/perfis': { titulo: 'Perfis', cap: 8, objetivo: 'Escolher quais telas cada perfil acessa.',
