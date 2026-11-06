@@ -1,5 +1,5 @@
 import { bancoAdmin, tokenAdminAtual, versaoTokenAdmin } from '../db.js';
-import { aplicarAcessos, criarUsuarioEquipe, criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, planoDeAcessos, redefinirSenha } from '../../shared/usuarios.mjs';
+import { alterarLogin, aplicarAcessos, criarUsuarioEquipe, criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, planoDeAcessos, redefinirSenha } from '../../shared/usuarios.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
 import { definirPerfilUsuario, listarPerfis, opcoesDePerfil, TIPOS_BASE } from '../../shared/perfis.mjs';
 import { h, montar, tabela, aviso, comEspera, selo, cartoesFiltro } from '../ui.js';
@@ -97,10 +97,10 @@ export async function render(conteudo, ctx) {
       } },
       { titulo: 'Acesso', valor: (u) => Number(u.ativo) ? selo(...SITUACAO[u.situacao_senha]) : selo('desativado', 'erro') },
       { titulo: 'Ações', valor: (u) => {
-        // o administrador define a senha de cada usuário (mín. 8); "Gerar" cria uma provisória aleatória
+        // o administrador define o login e a senha de cada usuário (mín. 6); "Gerar" cria uma provisória aleatória
         const acoes = h('div', { class: 'acoes', style: 'margin:0' });
         const bSenha = h('button', { class: 'pequeno', dados: { senha: u.login }, onclick: () => {
-          const campo = h('input', { type: 'password', class: 'campo-senha', autocomplete: 'new-password', placeholder: 'mín. 8 caracteres', 'aria-label': `nova senha de ${u.login}` });
+          const campo = h('input', { type: 'password', class: 'campo-senha', autocomplete: 'new-password', placeholder: 'mín. 6 caracteres', 'aria-label': `nova senha de ${u.login}` });
           const bSalvar = h('button', { class: 'pequeno', type: 'submit' }, 'Salvar');
           const bGerar = h('button', { class: 'pequeno secundario', type: 'button', onclick: async () => {
             const r = await comEspera(bGerar, () => redefinirSenha(db, { usuarioId: u.id, executadoPor: quem, chaveAdmin: tokenAdminAtual(), versaoChave: versaoTokenAdmin() }));
@@ -118,7 +118,17 @@ export async function render(conteudo, ctx) {
           const ok = await comEspera(bAtivo, async () => { await definirAtivo(db, { usuarioId: u.id, ativo: !Number(u.ativo), executadoPor: quem }); return true; });
           if (ok) { u.ativo = Number(u.ativo) ? 0 : 1; desenhar(); }
         } }, Number(u.ativo) ? 'Desativar' : 'Ativar');
-        montar(acoes, bSenha, bAtivo);
+        const bLogin = h('button', { class: 'pequeno secundario', dados: { login: u.login }, onclick: () => {
+          const campo = h('input', { class: 'campo-senha', value: u.login, autocapitalize: 'none', autocomplete: 'off', 'aria-label': `novo login de ${u.login}` });
+          const bSalvar = h('button', { class: 'pequeno', type: 'submit' }, 'Salvar');
+          montar(acoes, h('form', { class: 'definir-login', onsubmit: async (ev) => {
+            ev.preventDefault();
+            const r = await comEspera(bSalvar, () => alterarLogin(db, { usuarioId: u.id, login: campo.value, executadoPor: quem }));
+            if (r) { aviso(`Login de ${u.nome}: ${r.login}.`); u.login = r.login; desenhar(); }
+          } }, campo, bSalvar, h('button', { class: 'pequeno secundario', type: 'button', onclick: desenhar }, 'Cancelar')));
+          campo.select();
+        } }, 'Alterar login');
+        montar(acoes, bSenha, bLogin, bAtivo);
         return acoes;
       } },
     ], lista, { vazio: 'Nenhum usuário com esse filtro.' }));
@@ -171,7 +181,7 @@ export async function render(conteudo, ctx) {
   h('div', { class: 'nome' }, h('label', { for: 'novo-nome' }, 'Nome'), nomeNovo),
   campoCodigo,
   campoSupervisor,
-  h('div', {}, h('label', { for: 'novo-senha' }, 'Senha (mín. 8)'), senhaNova),
+  h('div', {}, h('label', { for: 'novo-senha' }, 'Senha (mín. 6)'), senhaNova),
   bCriar,
   h('small', { class: 'ajuda' }, 'Supervisor e vendedor: informe o código do ERP — a importação da base reconhece o usuário por ele. Administrador: a senha abre o cofre de administração — prefira letras e números.'));
   ajustarCamposEquipe();

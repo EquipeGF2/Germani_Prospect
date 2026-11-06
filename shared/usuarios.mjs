@@ -42,7 +42,7 @@ export async function listarUsuarios(db) {
 
 /**
  * Cria administrador, gerente comercial ou analista financeiro.
- * `senha` (opcional, mín. 8 caracteres): senha definida pelo administrador (tela de usuários ou Secret do workflow
+ * `senha` (opcional, mín. 6 caracteres; administrador com cofre, 8): senha definida pelo administrador (tela de usuários ou Secret do workflow
  * "Criar administrador"). Sem ela, gera uma senha provisória, devolvida para mostrar uma vez.
  * `chaveAdmin` (opcional): chave de administração a trancar no cofre do novo ADMINISTRADOR com a senha dele
  * (ADR-0006) — assim ele entra só com usuário e senha. Exige senha forte (shared/cofre.mjs). `versaoChave`: versão das
@@ -100,7 +100,7 @@ export async function criarUsuarioEquipe(db, { perfil, login, nome, codigoErp, s
 
 /**
  * Define a senha do usuário (também libera o acesso de quem veio da importação sem senha).
- * `senha` informada pelo administrador (mín. 8 caracteres); sem ela, gera uma senha provisória.
+ * `senha` informada pelo administrador (mín. 6 caracteres; administrador com cofre, 8); sem ela, gera uma senha provisória.
  * Para um ADMINISTRADOR, `chaveAdmin` regrava o cofre com a nova senha; sem ela, o cofre antigo é apagado
  * (nunca fica um cofre que abre com a senha anterior).
  */
@@ -117,6 +117,23 @@ export async function redefinirSenha(db, { usuarioId, executadoPor, senha: defin
   ], 'write');
   if (!r[0].rows.length) throw new Error('usuário não encontrado');
   return { login: r[0].rows[0].login, senha };
+}
+
+/**
+ * Muda o login de um usuário (tela Usuários, só administrador): o mesmo login que a pessoa já usa em outro sistema, por exemplo.
+ * Maiúsculas e minúsculas não diferem no acesso (COLLATE NOCASE); recusa login de outro usuário.
+ */
+export async function alterarLogin(db, { usuarioId, login, executadoPor }) {
+  const l = String(login ?? '').trim();
+  if (!/^[A-Za-z0-9._-]{3,40}$/.test(l)) throw new Error('login: 3 a 40 caracteres (letras, números, ponto, hífen)');
+  const outro = (await db.execute({ sql: 'SELECT nome FROM usuarios WHERE login = ? AND id <> ?', args: [l, usuarioId] })).rows[0];
+  if (outro) throw new Error(`o login ${l} já é de ${outro.nome}`);
+  const r = await db.batch([
+    { sql: "UPDATE usuarios SET login = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ? RETURNING login", args: [l, usuarioId] },
+    auditoria(executadoPor, 'login_alterado', usuarioId, { login: l }),
+  ], 'write');
+  if (!r[0].rows.length) throw new Error('usuário não encontrado');
+  return { login: r[0].rows[0].login };
 }
 
 /**
@@ -202,7 +219,7 @@ export function planoDeAcessos(usuarios) {
 
 /**
  * Grava o plano, com auditoria (nunca a senha). `itens`: linhas do plano já filtradas pela tela (o administrador pode tirar
- * alguém). `aplicarSenha` (desligado por padrão): senha inicial = código, provisória — esbarra no mínimo de 8 caracteres de
+ * alguém). `aplicarSenha` (desligado por padrão): senha inicial = código, provisória — esbarra no mínimo de 6 caracteres de
  * shared/senha.mjs para códigos curtos; só será ligado quando o dono decidir a regra da senha (o site não obriga troca no
  * 1º acesso: o token público não altera usuários). `aoProgredir(feitos, total)`.
  */

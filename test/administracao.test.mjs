@@ -65,7 +65,7 @@ test('senha definida pelo administrador (tela e workflow "Criar administrador"):
   assert.equal(u.perfil, 'administrador');
   assert.equal(Number(u.senha_provisoria), 0, 'definida pelo administrador');
   assert.ok(await conferirSenha('inicial-123', u.senha_hash));
-  await assert.rejects(criarUsuarioSistema(db, { perfil: 'administrador', login: 'outro', nome: 'Outro Teste', executadoPor: 'actions', senha: '1234' }), /ao menos 8 caracteres/);
+  await assert.rejects(criarUsuarioSistema(db, { perfil: 'administrador', login: 'outro', nome: 'Outro Teste', executadoPor: 'actions', senha: '1234' }), /ao menos 6 caracteres/);
   assert.equal((await db.execute("SELECT COUNT(*) n FROM usuarios WHERE login = 'outro'")).rows[0].n, 0);
 });
 
@@ -77,7 +77,7 @@ test('administrador define a senha de um usuário existente; sem senha informada
   assert.ok(await conferirSenha('definida-pelo-adm', u.senha_hash));
   assert.equal(Number(u.senha_provisoria), 0);
   assert.equal((await db.execute("SELECT COUNT(*) n FROM auditoria WHERE acao = 'senha_definida'")).rows[0].n, 1);
-  await assert.rejects(redefinirSenha(db, { usuarioId: 2, executadoPor: 'adm', senha: 'curta' }), /ao menos 8 caracteres/);
+  await assert.rejects(redefinirSenha(db, { usuarioId: 2, executadoPor: 'adm', senha: 'curta' }), /ao menos 6 caracteres/);
   assert.ok(await conferirSenha('definida-pelo-adm', (await db.execute('SELECT senha_hash FROM usuarios WHERE id = 2')).rows[0].senha_hash), 'senha recusada não altera nada');
   const g = await redefinirSenha(db, { usuarioId: 2, executadoPor: 'adm' });
   assert.equal(Number((await db.execute('SELECT senha_provisoria FROM usuarios WHERE id = 2')).rows[0].senha_provisoria), 1);
@@ -110,8 +110,8 @@ test('padronizar acessos: supervisor pelo primeiro nome (repetido ganha inicial)
   assert.ok(await u('julio') && await u('julio.s') && await u('1101') && await u('genaro.t'), 'logins novos gravados');
   assert.equal((await u('julio')).senha_hash, null, 'senha não muda sem pedir');
   assert.equal((await u('genaro')).login, 'genaro');
-  // senha = código curto esbarra no mínimo de 8 caracteres (decisão pendente com o dono)
-  await assert.rejects(aplicarAcessos(db, { itens: plano.filter((p) => p.senha === '1101'), executadoPor: 'adm', aplicarSenha: true }), /8 caracteres/);
+  // senha = código curto esbarra no mínimo de 6 caracteres (decisão pendente com o dono)
+  await assert.rejects(aplicarAcessos(db, { itens: plano.filter((p) => p.senha === '1101'), executadoPor: 'adm', aplicarSenha: true }), /6 caracteres/);
   const aud = (await db.execute("SELECT detalhes FROM auditoria WHERE acao = 'acesso_padronizado'")).rows;
   assert.equal(aud.length, 4);
   assert.ok(aud.every((a) => Object.keys(JSON.parse(a.detalhes)).every((k) => k === 'login' || k === 'senha_inicial')), 'a auditoria nunca guarda a senha');
@@ -129,4 +129,19 @@ test('exportar base: todos os prospects, com status, representante e onda', asyn
   assert.deepEqual(Object.keys(r[0]), ['cnpj', 'razao_social', 'cidade', 'uf', 'onda', 'tipologia_gtm', 'status_nome', 'status_descricao', 'vendedor_codigo', 'vendedor_nome', 'supervisor_nome']);
   assert.equal(r[0].status_nome, 'Não contactado');
   assert.equal(r[0].vendedor_nome, 'Vend Dez');
+});
+
+test('senha a partir de 6 caracteres e login alterado pelo administrador (o mesmo de outro sistema)', async () => {
+  const { alterarLogin } = await import('../shared/usuarios.mjs');
+  const db = await bancoTeste();
+  await criarEquipe(db);
+  await redefinirSenha(db, { usuarioId: 1, executadoPor: 'adm', senha: 'Sup@12' });
+  assert.ok(await conferirSenha('Sup@12', (await db.execute('SELECT senha_hash FROM usuarios WHERE id = 1')).rows[0].senha_hash));
+  await assert.rejects(redefinirSenha(db, { usuarioId: 1, executadoPor: 'adm', senha: 'Su@12' }), /ao menos 6 caracteres/);
+  assert.deepEqual(await alterarLogin(db, { usuarioId: 1, login: ' Clerio ', executadoPor: 'adm' }), { login: 'Clerio' });
+  // no acesso, maiúsculas não importam (COLLATE NOCASE)
+  assert.equal(Number((await db.execute({ sql: 'SELECT id FROM usuarios WHERE login = ?', args: ['clerio'] })).rows[0].id), 1);
+  await assert.rejects(alterarLogin(db, { usuarioId: 5, login: 'CLERIO', executadoPor: 'adm' }), /já é de Sup Um/);
+  await assert.rejects(alterarLogin(db, { usuarioId: 5, login: 'a b', executadoPor: 'adm' }), /3 a 40 caracteres/);
+  assert.equal((await db.execute("SELECT COUNT(*) n FROM auditoria WHERE acao = 'login_alterado'")).rows[0].n, 1);
 });
