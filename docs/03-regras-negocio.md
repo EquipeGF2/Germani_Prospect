@@ -556,6 +556,9 @@ Um único conteúdo alimenta três saídas, para não haver textos diferentes: a
   (como o inválido: `conta_carteira = 0`; no Explorar entra em "Rejeitados"), sem aceitar registro. Fica em `expurgos`
   (somente inclusão) com quem, quando e o motivo, e aparece no histórico da ficha. **Desfazer** (na mesma tela) devolve a
   situação anterior. O banco só aceita expurgar quem não foi trabalhado e só pelo administrador.
+- **Desfazer todos os expurgados (N)**: um clique marca Desfazer em todos os expurgados do filtro (sugestão, supervisor, busca) e
+  Manter no resto; o Aplicar confirma. Serve para corrigir um arquivo carregado por engano (ex.: CNPJs baixados lidos como grupo,
+  que expurgam também as filiais).
 
 ## 14. Pedidos do ERP (migração 0022 · `shared/importar-pedidos.mjs`, `shared/pedidos.mjs`)
 

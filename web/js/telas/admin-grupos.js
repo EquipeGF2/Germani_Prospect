@@ -38,7 +38,19 @@ export async function render(conteudo, ctx) {
       return { e, d };
     };
     const bAplicar = h('button', { onclick: confirmar }, '');
-    const atualizarBotao = () => { const { e, d } = contagem(); bAplicar.textContent = `Aplicar (${e} expurgar${d ? ` · ${d} desfazer` : ''})`; bAplicar.disabled = !(e + d); };
+    // um clique para todos: desfazer o expurgo de todos os expurgados do filtro; o resto fica em Manter (o Aplicar faz só isso)
+    const expurgadosDoFiltro = () => grupos.flatMap((g) => g.prospects).filter((p) => p.status_atual === 'expurgado' && visivel(p));
+    const bDesfazerTodos = h('button', { type: 'button', class: 'secundario', id: 'desfazer-todos', onclick: () => {
+      const alvo = new Set(expurgadosDoFiltro().map((p) => p.id));
+      for (const id of acao.keys()) acao.set(id, alvo.has(id) ? 'desfazer' : 'manter');
+      atualizarBotao(); desenharTabela();
+      aviso(`${formatar.numero(alvo.size)} marcado(s) para desfazer. Confira e clique em Aplicar.`);
+    } }, '');
+    const atualizarBotao = () => {
+      const { e, d } = contagem(); bAplicar.textContent = `Aplicar (${e} expurgar${d ? ` · ${d} desfazer` : ''})`; bAplicar.disabled = !(e + d);
+      const n = expurgadosDoFiltro().length;
+      bDesfazerTodos.textContent = `Desfazer todos os expurgados (${formatar.numero(n)})`; bDesfazerTodos.disabled = !n;
+    };
 
     const casaBusca = (p) => {
       if (!filtro.busca) return true;
@@ -133,11 +145,11 @@ export async function render(conteudo, ctx) {
     const chips = h('div', { class: 'visoes', role: 'group', 'aria-label': 'Sugestão' },
       [['', 'Todas'], ['expurgar', 'Expurgar'], ['manter', 'Manter'], ['expurgado', 'Expurgados']].map(([v, t]) =>
         h('a', { href: '#', class: v === filtro.sugestao ? 'ativa' : '', dados: { sugestao: v || 'todas' }, onclick: (ev) => {
-          ev.preventDefault(); filtro.sugestao = v; [...chips.children].forEach((c) => c.classList.toggle('ativa', c === ev.currentTarget)); desenharTabela();
+          ev.preventDefault(); filtro.sugestao = v; [...chips.children].forEach((c) => c.classList.toggle('ativa', c === ev.currentTarget)); desenharTabela(); atualizarBotao();
         } }, t)));
-    const supSel = h('select', { id: 'grupos-supervisor', onchange: (ev) => { filtro.supervisor = ev.target.value; desenharTabela(); } },
+    const supSel = h('select', { id: 'grupos-supervisor', onchange: (ev) => { filtro.supervisor = ev.target.value; desenharTabela(); atualizarBotao(); } },
       h('option', { value: '' }, 'Todos'), supervisores.map(([id, nome]) => h('option', { value: id }, nome)));
-    const busca = h('input', { id: 'grupos-busca', placeholder: 'raiz, CNPJ ou razão social', oninput: (ev) => { filtro.busca = ev.target.value.trim(); desenharTabela(); } });
+    const busca = h('input', { id: 'grupos-busca', placeholder: 'raiz, CNPJ ou razão social', oninput: (ev) => { filtro.busca = ev.target.value.trim(); desenharTabela(); atualizarBotao(); } });
     const painel = h('div');
     atualizarBotao();
     montar(area,
@@ -147,7 +159,7 @@ export async function render(conteudo, ctx) {
         ['filial nova do grupo', resumo.filialNova], ['sugeridos para expurgo', resumo.expurgar, resumo.expurgar ? 'erro' : ''], ['já expurgados', resumo.expurgados]]),
       h('div', { class: 'cartao filtros-grupos' }, h('span', {}, 'Sugestão:'), chips,
         h('label', { for: 'grupos-supervisor' }, 'Supervisor'), supSel, h('label', { for: 'grupos-busca' }, 'Buscar'), busca),
-      h('div', { class: 'acoes' }, h('button', { class: 'secundario', onclick: baixar }, 'Baixar relatório (CSV)'), bAplicar),
+      h('div', { class: 'acoes' }, h('button', { class: 'secundario', onclick: baixar }, 'Baixar relatório (CSV)'), bDesfazerTodos, bAplicar),
       painel, tabelaArea,
       h('div', { class: 'cartao ajuda' },
         h('p', {}, h('b', {}, 'Expurgar (sugestão): '), 'cadastrado no ERP, pelo mesmo CNPJ ou por outra empresa do mesmo grupo, e ainda não trabalhado — já é cliente.'),
