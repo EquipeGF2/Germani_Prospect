@@ -11,6 +11,8 @@ export async function alterarParametro(db, { chave, valor, executadoPor }) {
   if (!p) throw new Error(`parâmetro inexistente: ${chave}`);
   if (p.tipo === 'inteiro' && !/^\d+$/.test(v)) throw new Error('informe um número inteiro maior ou igual a zero');
   if (chave.startsWith('data_') && !/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error('informe a data');
+  // e-mails em cópia dos avisos (0035): vazio ou e-mails separados por ";"
+  if (chave === 'avisos_email_copia' && v && v.split(/[;,\s]+/).filter(Boolean).some((e) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))) throw new Error('informe e-mails válidos, separados por ";"');
   const r = await db.execute({
     sql: "UPDATE parametros SET valor = ?, alterado_por = ?, alterado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE chave = ? RETURNING chave",
     args: [v, executadoPor, chave],

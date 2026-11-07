@@ -1,0 +1,53 @@
+# E-mail diário de avisos (docs/03 §18 · scripts/enviar-avisos.mjs): às 7h dos dias úteis, os avisos do dia útil anterior.
+# Supervisor recebe a equipe dele; gerente/administrador (e supervisor que vê todas as equipes), um anexo por supervisor,
+# com a cópia do parâmetro avisos_email_copia. Envio pelo Zoho com contato@svoltagf2.com.br.
+# Secrets do ambiente producao: TURSO_DATABASE_URL, TURSO_AUTH_TOKEN, SMTP_SENHA (a do contato@svoltagf2.com.br) e
+# AVISOS_RESPONDER_PARA (o "responder para" e o destino do teste). O repositório é público: o log mostra só contagens.
+# Teste: Actions → "E-mail diário de avisos" → Run workflow → modo "teste" (tudo só para AVISOS_RESPONDER_PARA, sem cópia).
+name: E-mail diário de avisos
+on:
+  # agendamento ligado só depois do teste aprovado (docs/03 §18): 10h UTC = 7h em Brasília, segunda a sexta
+  # schedule:
+  #   - cron: '0 10 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: 'teste = só para o responsável, sem cópia; envio = para todos os cadastrados'
+        type: choice
+        options: [teste, envio]
+        default: teste
+      hoje:
+        description: 'Data de envio a simular (AAAA-MM-DD, opcional): usa o dia útil anterior a ela'
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: avisos-email
+  cancel-in-progress: false
+jobs:
+  enviar:
+    runs-on: ubuntu-24.04
+    environment: producao
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Enviar os avisos
+        # as entradas chegam por variável de ambiente (nunca coladas no comando)
+        run: |
+          ARGS=()
+          if [ "$EVENTO" = "workflow_dispatch" ] && [ "$MODO" != "envio" ]; then ARGS+=(--teste); fi
+          if [[ "$HOJE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then ARGS+=("--hoje=$HOJE"); fi
+          node scripts/enviar-avisos.mjs "${ARGS[@]}"
+        env:
+          EVENTO: ${{ github.event_name }}
+          MODO: ${{ inputs.modo }}
+          HOJE: ${{ inputs.hoje }}
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          SMTP_SENHA: ${{ secrets.SMTP_SENHA }}
+          AVISOS_RESPONDER_PARA: ${{ secrets.AVISOS_RESPONDER_PARA }}

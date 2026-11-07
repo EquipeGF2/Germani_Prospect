@@ -19,6 +19,7 @@ Guarde o token administrativo num gerenciador de senhas. Ele **nunca** vai para 
 | `.env` na máquina do administrador (copiar de `.env.example`) | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `GERMANI_EXECUTADO_POR` | importações, usuários, migração manual |
 | GitHub → Settings → Secrets and variables → **Actions** → *Repository secrets* | `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | workflows "Migrar banco (produção)" e "Criar administrador" |
 | idem | `ADMIN_SENHA_INICIAL` (mín. 8 caracteres; prefira letras e números) | senha do administrador criado pelo workflow "Criar administrador" (abre o cofre de administração — ADR-0006). **Manter** com a senha atual do administrador: a publicação usa para renovar o cofre sozinha |
+| idem (ambiente `producao`) | `SMTP_SENHA` (senha do contato@svoltagf2.com.br no Zoho — a mesma do PREZZI, apelido `smtp_prezzi` no cofre) e `AVISOS_RESPONDER_PARA` | workflow "E-mail diário de avisos" (docs/03 §18.1). Só nesse workflow: **nunca** na publicação do site |
 | Site publicado (F1) | token **do app**, com permissões restritas | ver ADR-0001 — é visível para quem abre o site |
 
 > **Atenção:** um Secret do GitHub injetado na publicação do Pages acaba dentro do JavaScript público.

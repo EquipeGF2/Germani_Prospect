@@ -79,3 +79,17 @@ export async function incluirFeriado(db, { data, descricao, abrangencia, uf, cid
 export async function excluirFeriado(db, { id }) {
   await db.execute({ sql: 'DELETE FROM feriados WHERE id = ?', args: [id] });
 }
+
+// ---------- dia útil (e-mail diário de avisos, docs/03 §18) ----------
+const diaDaSemana = (iso) => new Date(`${iso}T12:00:00Z`).getUTCDay();   // 0 = domingo
+const somar = (iso, n) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+
+/** Segunda a sexta, fora dos feriados (`feriados`: Set de AAAA-MM-DD, como o de datasDeFeriado). */
+export const ehDiaUtil = (iso, feriados = new Set()) => ![0, 6].includes(diaDaSemana(iso)) && !feriados.has(iso);
+
+/** O dia útil antes de `iso`: na segunda, a sexta; se a sexta for feriado, a quinta. */
+export function diaUtilAnterior(iso, feriados = new Set()) {
+  let d = somar(iso, -1);
+  for (let i = 0; i < 31 && !ehDiaUtil(d, feriados); i += 1) d = somar(d, -1);
+  return d;
+}

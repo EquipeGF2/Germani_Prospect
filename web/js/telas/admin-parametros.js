@@ -37,6 +37,8 @@ export async function render(conteudo, ctx) {
       { titulo: 'Valor', valor: (p) => {
         const campo = p.chave.startsWith('data_')
           ? h('input', { type: 'date', value: p.valor, style: 'max-width:180px', 'aria-label': p.chave })
+          : p.tipo === 'texto'   // ex.: e-mails em cópia dos avisos da gerência
+            ? h('input', { type: 'text', value: p.valor, style: 'min-width:260px', placeholder: 'email@empresa.com; outro@empresa.com', 'aria-label': p.chave })
           : h('input', { type: 'number', min: '0', step: '1', value: p.valor, style: 'max-width:130px', 'aria-label': p.chave });
         const botao = h('button', { class: 'pequeno', onclick: async () => {
           const ok = await comEspera(botao, async () => { await alterarParametro(db, { chave: p.chave, valor: campo.value, executadoPor: ctx.usuario.login }); return true; });

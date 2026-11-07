@@ -25,7 +25,8 @@
     "exceljs": "^4.4.0",
     "jspdf": "4.2.1",
     "jspdf-autotable": "5.0.8",
-    "jszip": "^3.10.2"
+    "jszip": "^3.10.2",
+    "nodemailer": "10.2.1"
   },
   "devDependencies": {
     "@libsql/client-wasm": "^0.18.0",

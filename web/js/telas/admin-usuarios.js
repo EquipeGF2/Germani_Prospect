@@ -1,5 +1,5 @@
 import { bancoAdmin, tokenAdminAtual, versaoTokenAdmin } from '../db.js';
-import { alterarLogin, aplicarAcessos, criarUsuarioEquipe, criarUsuarioSistema, definirAtivo, definirTipoAtuacao, listarUsuarios, planoDeAcessos, redefinirSenha } from '../../shared/usuarios.mjs';
+import { alterarLogin, aplicarAcessos, criarUsuarioEquipe, criarUsuarioSistema, definirAtivo, definirEmailAvisos, definirTipoAtuacao, listarUsuarios, PERFIS_AVISOS_EMAIL, planoDeAcessos, redefinirSenha } from '../../shared/usuarios.mjs';
 import { normalizarBusca } from '../../shared/texto.mjs';
 import { definirPerfilUsuario, listarPerfis, opcoesDePerfil, TIPOS_BASE } from '../../shared/perfis.mjs';
 import { h, montar, tabela, aviso, comEspera, selo, cartoesFiltro } from '../ui.js';
@@ -62,7 +62,9 @@ export async function render(conteudo, ctx) {
       && (filtroSituacao.value !== 'sem_tipo' || (u.perfil === 'vendedor' && !u.tipo_atuacao))
       && (!termo || normalizarBusca(`${u.nome} ${u.login} ${u.codigo_erp ?? ''}`).includes(termo)));
     montar(listaArea, tabela([
-      { titulo: 'Nome', valor: (u) => h('b', {}, u.nome) },
+      // e-mail (e se recebe o e-mail diário de avisos, docs/03 §18) embaixo do nome
+      { titulo: 'Nome', valor: (u) => h('div', {}, h('b', {}, u.nome), u.email ? h('small', { class: 'ajuda', style: 'display:block', dados: { email: u.login } },
+        `${u.email}${Number(u.avisos_email) ? ' · recebe avisos por e-mail' : ''}`) : null) },
       // o login aparece exatamente como foi gravado (é o que a pessoa digita); o código do ERP fica na coluna ao lado
       { titulo: 'Login', valor: (u) => u.login },
       { titulo: 'Cód. ERP', valor: (u) => u.codigo_erp ?? '—', classe: 'cen' },
@@ -130,7 +132,20 @@ export async function render(conteudo, ctx) {
           } }, campo, bSalvar, h('button', { class: 'pequeno secundario', type: 'button', onclick: desenhar }, 'Cancelar')));
           campo.select();
         } }, 'Alterar login');
-        montar(acoes, bSenha, bLogin, bAtivo);
+        // e-mail e "receber avisos por e-mail": supervisor, gerente e administrador
+        const bEmail = PERFIS_AVISOS_EMAIL.includes(u.perfil) ? h('button', { class: 'pequeno secundario', dados: { emailAvisos: u.login }, onclick: () => {
+          const campo = h('input', { type: 'email', class: 'campo-senha', value: u.email ?? '', autocomplete: 'off', placeholder: 'e-mail', 'aria-label': `e-mail de ${u.login}` });
+          const receber = h('input', { type: 'checkbox', id: `avisos-${u.id}`, checked: Boolean(Number(u.avisos_email)) });
+          const bSalvar = h('button', { class: 'pequeno', type: 'submit' }, 'Salvar');
+          montar(acoes, h('form', { class: 'definir-email', onsubmit: async (ev) => {
+            ev.preventDefault();
+            const r = await comEspera(bSalvar, () => definirEmailAvisos(db, { usuarioId: u.id, perfil: u.perfil, email: campo.value, receber: receber.checked, executadoPor: quem }));
+            if (r) { u.email = r.email; u.avisos_email = r.receber ? 1 : 0; aviso(`${u.nome}: ${r.receber ? 'recebe os avisos por e-mail' : 'não recebe os avisos por e-mail'}.`); desenhar(); }
+          } }, campo, h('label', { class: 'ped-opcao', for: `avisos-${u.id}` }, receber, h('span', {}, 'Receber avisos por e-mail')), bSalvar,
+          h('button', { class: 'pequeno secundario', type: 'button', onclick: desenhar }, 'Cancelar')));
+          campo.focus();
+        } }, 'E-mail') : null;
+        montar(acoes, bSenha, bLogin, bEmail, bAtivo);
         return acoes;
       } },
     ], lista, { vazio: 'Nenhum usuário com esse filtro.' }));
