@@ -40,7 +40,7 @@ Navegação pelo **menu lateral** (grupos Prospecção e Administração; recolh
 | `#/carteira?aba=acompanhamento` | todos | **acompanhamento**: cartões por status → lista do status |
 | `#/ficha?id=` | todos | situação, dias corridos, prazos, crédito, **histórico de movimentação**, cadastro, ligar / WhatsApp / mapa |
 | `#/registrar?id=` | vendedor, supervisor, admin | Atendido · Sem interesse (motivo) · Reabrir com pedido identificado |
-| `#/lote` | vendedor, supervisor, admin | sem interesse em lote (motivo do lote e/ou por cliente) |
+| `#/lote` | vendedor, supervisor, admin | registro em lote: atendido (retorno opcional) ou sem interesse (motivo do lote e/ou por cliente) |
 | `#/financeiro` | analista financeiro, admin | **console de crédito**: em análise × liberados, liberar ou corrigir (forma, prazo, limite, restrição) |
 | `#/admin/feriados` | administrador | feriados que saem dos dias úteis da campanha |
 | `#/admin/...` | administrador | importações, usuários, parâmetros (token de administração) |

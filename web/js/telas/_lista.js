@@ -160,7 +160,7 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
   const comLote = podeRegistrar;
   const lote = new Set(lerLote());
   const colunas = [
-    comLote ? { t: '', classe: 'sel-lote' } : null,
+    comLote ? { t: '', classe: 'sel-lote', todos: true } : null,
     { t: 'Prospect', o: 'prospect' }, { t: 'Cidade · bairro', o: 'cidade' }, { t: 'Onda', o: 'onda', classe: 'num' }, { t: 'Segmento' },
     colunaRota ? { t: 'Rota', o: 'rota' } : null, { t: 'Status', o: 'status', classe: 'centro' },
     { t: 'Tentativas', classe: 'centro' }, { t: '1º registro em', o: 'primeiro', classe: 'centro' },
@@ -175,10 +175,11 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
   const painel = h('aside', { class: 'ficha-lateral', hidden: true, 'aria-label': 'Ficha do prospect' });
 
   const barraLote = h('div', { class: 'lote-flutuante', hidden: true });
+  const atualizarTodos = () => { const c = cab.querySelector('#lote-todos'); if (c) c.replaceWith(caixaTodos()); };
   const atualizarLote = () => {
     barraLote.hidden = !lote.size;
-    montar(barraLote, lote.size ? [h('span', {}, `${lote.size} selecionado(s)`), h('a', { class: 'botao pequeno', href: '#/lote' }, 'Sem interesse em lote'),
-      h('button', { type: 'button', class: 'pequeno secundario', onclick: () => { lote.clear(); gravarLote([]); corpo.querySelectorAll('input[data-lote]').forEach((c) => { c.checked = false; }); atualizarLote(); } }, 'Limpar seleção')] : []);
+    montar(barraLote, lote.size ? [h('span', {}, `${lote.size} selecionado(s)`), h('a', { class: 'botao pequeno', href: '#/lote' }, 'Registrar em lote'),
+      h('button', { type: 'button', class: 'pequeno secundario', onclick: () => { lote.clear(); gravarLote([]); corpo.querySelectorAll('input[data-lote]').forEach((c) => { c.checked = false; }); atualizarLote(); atualizarTodos(); } }, 'Limpar seleção')] : []);
   };
 
   const registrarPermitido = (p) => podeRegistrar && !['venda_realizada', 'invalido', 'expurgado'].includes(p.status_atual)
@@ -220,7 +221,7 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
     const tr = h('tr', { dados: { id: p.id, grupo: grupo ?? '' }, hidden: grupo != null && !abertos.has(grupo),
       onclick: (ev) => { if (!ev.target.closest('a, input, button, label')) abrirFicha(p, tr); } },
       comLote ? h('td', { class: 'sel-lote' }, Number(p.na_lista) ? h('input', { type: 'checkbox', 'aria-label': `Selecionar ${p.razao_social}`, checked: lote.has(Number(p.id)), dados: { lote: p.id },
-        onchange: (ev) => { if (ev.target.checked) lote.add(Number(p.id)); else lote.delete(Number(p.id)); gravarLote([...lote]); atualizarLote(); } }) : null) : null,
+        onchange: (ev) => { if (ev.target.checked) lote.add(Number(p.id)); else lote.delete(Number(p.id)); gravarLote([...lote]); atualizarLote(); atualizarTodos(); } }) : null) : null,
       h('td', {}, h('a', { href: `#/ficha?id=${p.id}`, class: 'nome', title: p.razao_social }, p.razao_social),
         h('small', {}, formatar.cnpj(p.cnpj))),
       h('td', {}, h('span', { class: 'corta' }, p.cidade ? `${p.cidade}/${p.uf ?? ''}` : '—'), h('small', { class: 'corta' }, p.bairro ?? '')),
@@ -246,6 +247,18 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
     return [...grupos.entries()].sort((a, b) => natural(a[0], b[0])).map(([g, ls]) => ({ grupo: g, linhas: ls }));
   }
 
+  // marca/desmarca de uma vez todos os da lista na tela (filtros e situação aplicados, inclusive grupos fechados): ex. a rota do dia
+  function caixaTodos() {
+    const ids = visiveis().flatMap((b) => b.linhas).filter((p) => Number(p.na_lista)).map((p) => Number(p.id));
+    if (!ids.length) return '';
+    const marcados = ids.filter((id) => lote.has(id)).length;
+    const caixa = h('input', { type: 'checkbox', id: 'lote-todos', 'aria-label': 'Selecionar todos da lista', title: 'Selecionar todos da lista',
+      checked: marcados === ids.length,
+      onchange: (ev) => { for (const id of ids) { if (ev.target.checked) lote.add(id); else lote.delete(id); } gravarLote([...lote]); atualizarLote(); desenharTabela(); } });
+    caixa.indeterminate = marcados > 0 && marcados < ids.length;
+    return caixa;
+  }
+
   function desenharTabela() {
     const chip = (codigo, texto, n, cor) => h('button', { type: 'button', class: `chip-situacao${vista.status === codigo ? ' ativa' : ''}`, dados: { status: codigo || 'todos' },
       onclick: () => { vista.status = codigo; desenharTabela(); } },
@@ -257,7 +270,7 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
       h('span', { class: 'lista-situacao-acoes' }, h('button', { type: 'button', class: 'secundario pequeno', id: 'imprimir-lista', onclick: imprimir }, 'Gerar PDF')));
     // rótulo = ordenação: 1º clique crescente, 2º decrescente, 3º volta à ordem de trabalho (tudo no navegador)
     montar(cab, h('tr', {}, colunas.map((c) => h('th', { class: c.classe ?? '', 'aria-sort': c.o && vista.ordem === c.o ? (vista.desc ? 'descending' : 'ascending') : null },
-      c.o ? h('button', { type: 'button', class: `ordenar ${vista.ordem === c.o ? 'ativa' : ''}`, dados: { ordem: c.o }, title: 'Ordenar',
+      c.todos ? caixaTodos() : c.o ? h('button', { type: 'button', class: `ordenar ${vista.ordem === c.o ? 'ativa' : ''}`, dados: { ordem: c.o }, title: 'Ordenar',
         onclick: () => { if (vista.ordem !== c.o) Object.assign(vista, { ordem: c.o, desc: false }); else if (!vista.desc) vista.desc = true; else Object.assign(vista, { ordem: '', desc: false }); desenharTabela(); } },
       c.t, vista.ordem === c.o ? (vista.desc ? ' ▼' : ' ▲') : '') : c.t))));
     const blocos = visiveis();

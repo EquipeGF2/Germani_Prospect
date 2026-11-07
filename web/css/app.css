@@ -427,7 +427,7 @@ td.pct { min-width: 96px; }
 .barra-carteira .exibicao a { padding: 6px 10px; }
 @media (max-width: 1300px) { .barra-carteira { flex-wrap: wrap; } }
 .tabela-carteira td { vertical-align: middle; }
-.tabela-carteira td.sel-lote { width: 36px; } .tabela-carteira td.sel-lote input { width: 18px; height: 18px; min-height: 0; accent-color: var(--destaque); }
+.tabela-carteira .sel-lote { width: 36px; } .tabela-carteira .sel-lote input { width: 18px; height: 18px; min-height: 0; accent-color: var(--destaque); }
 .tabela-carteira .nome { font-weight: 600; color: var(--texto); text-decoration: none; } .tabela-carteira .nome:hover { color: var(--destaque); text-decoration: underline; }
 .tabela-carteira small { display: block; color: var(--suave); font-size: 12px; margin-top: 2px; }
 .tabela-carteira .alerta-txt { color: var(--erro); }

@@ -68,10 +68,13 @@ Implementação: [`shared/lote.mjs`](../shared/lote.mjs) · testes: [`test/lote.
 - Cada item vira um registro normal (mesmas regras do banco) com o mesmo `lote_id`.
 - Item inválido (sem motivo, outra carteira, baixado…) é devolvido com o motivo; **os demais gravam**.
 - "Pedido identificado" não entra em lote: cada pedido tem a sua data.
-- **Na tela** (`#/lote`): marca-se os clientes na lista principal (a seleção fica só nesta aba do navegador) →
-  **Sem interesse em lote** → motivo/observação do lote e, se quiser, por cliente → grava. O resultado mostra
-  gravados × recusados (com o motivo); os recusados continuam selecionados. Atendido em lote existe em
-  `shared/lote.mjs`, mas a tela oferece só sem interesse.
+- **Na tela** (`#/lote`, **Registro em lote**): marca-se os clientes na lista principal (a seleção fica só nesta aba do
+  navegador; a caixa do título marca todos da lista filtrada, inclusive grupos fechados — ex.: a rota do dia) →
+  **Registrar em lote** → escolhe o **Registro**, que vale para todos (começa sem escolha):
+  - **Atendido**: sem motivo; **Retornar em** opcional para todos; todos passam para **Aguardando cadastro** com o prazo
+    de cadastro aberto, igual ao registro individual.
+  - **Sem interesse do cliente / do representante**: motivo/observação do lote e, se quiser, por cliente.
+  O resultado mostra gravados × recusados (com o motivo); os recusados continuam selecionados.
 
 ### Sem interesse: do cliente × do representante (migração 0015)
 
@@ -286,7 +289,7 @@ movimentação conta sempre nos indicadores.
     e dias; e Registrar. Rótulos centralizados; status, tentativas, datas e dias centralizados. Uma linha por prospect (textos longos cortados). O **rótulo da coluna ordena** (▲, ▼, volta à
     ordem de trabalho). Na Lista não há coluna Representante (ele é o filtro); no Acompanhamento há.
   - **Clicar na linha abre a ficha ao lado** (dados, últimos 5 movimentos, Registrar e Abrir ficha completa) sem sair
-    da lista. Marcar prospects (Lista principal) mostra a barra flutuante "Sem interesse em lote".
+    da lista. Marcar prospects (Lista principal) mostra a barra flutuante "Registrar em lote" (Atendido ou Sem interesse).
 - **Ficha** (`#/ficha`): situação (status, dias corridos, registros, datas, prazos, motivo, cadastro e pedido do
   ERP), crédito liberado (forma, prazo, limite e se veio do grupo, restrição), **histórico de movimentação**
   (data, status antes → depois, detalhe, quem fez, origem, carteira da época) e cadastro com Ligar / WhatsApp

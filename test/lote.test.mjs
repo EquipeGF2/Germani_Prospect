@@ -1,4 +1,4 @@
-// Registro em lote de "sem interesse": justificativa do lote e/ou individual; falha de um não derruba os outros.
+// Registro em lote (atendido ou "sem interesse"): justificativa do lote e/ou individual; falha de um não derruba os outros.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, evento, prospect } from './auxiliar.mjs';
@@ -61,4 +61,25 @@ test('itens inválidos e recusados pelo banco são informados; os demais gravam'
 test('lote recusa repetidos e reabertura com pedido (que é individual)', () => {
   assert.throws(() => prepararLote({ usuario: REP, prospects: [{ id: 1, tentativas: 0 }, { id: 1, tentativas: 0 }], comum: {} }), /repetido/);
   assert.throws(() => prepararLote({ usuario: REP, prospects: [{ id: 1, tentativas: 0 }], comum: { resultado: 'pedido_informado' } }), /um a um/);
+});
+
+test('atendido em lote: todos vão para Aguardando cadastro, com o prazo e o retorno; motivo é ignorado', async () => {
+  const db = await bancoTeste();
+  await criarEquipe(db);
+  const ids = [await criarProspect(db, { n: 1 }), await criarProspect(db, { n: 2 })];
+  const lote = prepararLote({
+    usuario: REP,
+    prospects: ids.map((id) => ({ id, tentativas: 0 })),
+    comum: { resultado: 'atendido', canal: 'visita', dataContato: '2026-10-15', dataRetorno: '2026-10-20', motivoId: await motivoId(db, 'PRECO') },
+  });
+  const r = await registrarLote(db, lote);
+  assert.equal(r.gravados, 2);
+  for (const id of ids) {
+    const p = await prospect(db, id);
+    assert.equal(p.status_atual, 'aguardando_cadastro');
+    assert.equal(p.dt_atendido, '2026-10-15');
+    assert.ok(p.prazo_cadastro_ate > '2026-10-15');
+  }
+  const c = (await db.execute({ sql: 'SELECT resultado, motivo_id, data_retorno FROM contatos' })).rows;
+  assert.deepEqual(c.map((x) => [x.resultado, x.motivo_id, x.data_retorno]), [['atendido', null, '2026-10-20'], ['atendido', null, '2026-10-20']]);
 });

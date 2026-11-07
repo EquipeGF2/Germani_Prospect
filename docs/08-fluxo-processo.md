@@ -50,7 +50,7 @@ flowchart TD
 
 | Etapa | Tela | Ação |
 |---|---|---|
-| Não contactado / Em prospecção | **Lista principal** (`#/carteira`) | abrir a ficha → **Registrar atendimento**; ou marcar vários → **Sem interesse em lote** |
+| Não contactado / Em prospecção | **Lista principal** (`#/carteira`) | abrir a ficha → **Registrar atendimento**; ou marcar vários → **Registrar em lote** (Atendido ou Sem interesse) |
 | Aguardando cadastro · Análise financeira · Aguardando pedido · Venda realizada · Sem interesse · Inválido | **Acompanhamento** (`#/carteira?aba=acompanhamento`) → cartão do status | consulta; novo registro enquanto o status aceitar |
 | Sem interesse → Aguardando cadastro | ficha → Registrar → **Reabrir: pedido identificado** | data de entrada do pedido |
 | Cadastro · Pedido · Baixa · Relatório de crédito | Administração → importações | arquivos do ERP |
