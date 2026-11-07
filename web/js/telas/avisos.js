@@ -65,13 +65,13 @@ export async function render(conteudo, { usuario }) {
 
   function cards() {
     const todos = estado.tipos.size === TIPOS_AVISO.length;
-    const cartao = ({ id, titulo, numero, regra, param, ligado, cor, onclick }) => h('button', { type: 'button', class: `av-card${ligado ? ' ligado' : ''}`, id: `av-${id}`, 'aria-pressed': ligado ? 'true' : 'false', onclick },
+    const cartao = ({ id, titulo, numero, regra, dica, param, ligado, cor, onclick }) => h('button', { type: 'button', class: `av-card${ligado ? ' ligado' : ''}`, id: `av-${id}`, title: dica ?? regra, 'aria-pressed': ligado ? 'true' : 'false', onclick },
       h('span', { class: 'av-card-topo' }, h('span', { class: 'caixa', 'aria-hidden': 'true' }, ligado ? '✓' : ''), h('span', { class: 'tit' }, titulo)),
       h('b', { class: cor }, n0(numero)), h('span', { class: 'regra' }, regra), h('span', { class: 'param' }, param));
     return h('section', { class: 'av-cards', id: 'av-cards', 'aria-label': 'Tipos de aviso (escolha um ou mais)' },
-      cartao({ id: 'todos', titulo: 'Todos os avisos', numero: cont.total, regra: 'Marca ou desmarca todos os tipos de uma vez.', param: tudo ? 'Todas as equipes' : 'Sua equipe', ligado: todos, cor: '',
+      cartao({ id: 'todos', titulo: 'Todos os avisos', numero: cont.total, regra: 'Marca ou desmarca todos os tipos.', param: tudo ? 'Todas as equipes' : 'Sua equipe', ligado: todos, cor: '',
         onclick: () => { estado.tipos = todos ? new Set() : new Set(TIPOS_AVISO.map((t) => t.id)); desenhar(); } }),
-      TIPOS_AVISO.map((t) => cartao({ id: t.id, titulo: t.curto, numero: cont[t.id], regra: t.regra, param: textoParametro(t.id, parametros), ligado: estado.tipos.has(t.id),
+      TIPOS_AVISO.map((t) => cartao({ id: t.id, titulo: t.curto, numero: cont[t.id], regra: t.card, dica: t.regra, param: textoParametro(t.id, parametros), ligado: estado.tipos.has(t.id),
         cor: t.id === 'parado' ? 'medio' : 'alto',
         onclick: () => { if (estado.tipos.has(t.id)) estado.tipos.delete(t.id); else estado.tipos.add(t.id); desenhar(); } })));
   }
@@ -99,10 +99,10 @@ export async function render(conteudo, { usuario }) {
         ? h('a', { href: `#/carteira?${new URLSearchParams({ vendedorId: a.vendedor_id, ...(a.supervisor_id ? { supervisorId: a.supervisor_id } : {}), ver: '1', de: 'explorar' })}` }, 'Ver carteira')
         : h('a', { href: `#/ficha?id=${a.prospect_id}` }, 'Abrir ficha');
       return h('tr', { class: 'av-item', dados: { tipo: a.tipo } },
-        h('td', { class: 'rz', 'data-r': 'Cliente', style: recuo(l.prof) }, h('b', { class: 'nome', title: doRep ? '' : a.razao_social }, doRep ? 'Nenhum atendimento lançado' : `${a.codigo_cliente_erp ? `${a.codigo_cliente_erp} - ` : ''}${a.razao_social}`),
+        h('td', { class: 'rz', 'data-r': 'Cliente', style: recuo(l.prof) }, h('b', { class: 'nome', title: doRep ? '' : a.razao_social }, doRep ? 'Sem atendimento no app' : `${a.codigo_cliente_erp ? `${a.codigo_cliente_erp} - ` : ''}${a.razao_social}`),
           h('small', {}, sub)),
         h('td', { class: 'cen', 'data-r': 'Aviso' }, h('span', { class: `selo av-tipo ${a.tipo}` }, t.curto)),
-        h('td', { 'data-r': 'Cidade' }, doRep ? '—' : [a.cidade, a.uf].filter(Boolean).join('/')),
+        h('td', { class: doRep ? 'cen' : '', 'data-r': 'Cidade' }, doRep ? '—' : [a.cidade, a.uf].filter(Boolean).join('/')),
         h('td', { class: 'cen', 'data-r': 'Desde' }, a.data_ref ? formatar.data(a.data_ref) : '—', h('small', {}, rotuloDesde(a, parametros))),
         h('td', { class: 'cen', 'data-r': 'Atraso' }, h('span', { class: 'selo erro' }, dias(a))),
         h('td', { class: 'cen', 'data-r': '' }, acao));
