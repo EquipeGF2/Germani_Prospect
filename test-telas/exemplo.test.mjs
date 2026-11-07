@@ -21,10 +21,10 @@ after(async () => { await navegador?.close(); srv?.close(); });
 
 const foto = async (nome) => { if (FOTOS) await pagina.screenshot({ path: path.join(FOTOS, `${nome}.png`), fullPage: true }); };
 const telaPronta = () => pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === location.hash);
-// a página inicial é o Explorar carteira; o Início saiu do menu — os testes abrem pelo endereço
+// a página inicial é Avisos (gestão e supervisor) ou o Explorar carteira (representante); o Início saiu do menu — os testes abrem pelo endereço
 const irAoInicio = async () => {
-  await pagina.waitForFunction(() => ['#/explorar', '#/inicio'].includes(document.getElementById('conteudo').dataset.pronto));
-  if (await pagina.evaluate(() => location.hash) === '#/explorar') await pagina.evaluate(() => { location.hash = '#/inicio'; });
+  await pagina.waitForFunction(() => ['#/explorar', '#/avisos', '#/inicio'].includes(document.getElementById('conteudo').dataset.pronto));
+  if (await pagina.evaluate(() => location.hash) !== '#/inicio') await pagina.evaluate(() => { location.hash = '#/inicio'; });
 };
 const entrar = async (login) => {
   await pagina.fill('#login', login);
@@ -36,7 +36,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.goto(base);
   await pagina.waitForSelector('#login');
   await entrar('admin');
-  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');   // página inicial
+  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/avisos');   // página inicial
   await pagina.evaluate(() => { location.hash = '#/inicio'; });
   await pagina.waitForSelector('#carregar-exemplo');
   assert.equal(await pagina.locator('script[src*="exceljs"]').count(), 0, 'a biblioteca de planilha não carrega na abertura do site');
@@ -330,4 +330,45 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   }, supervisor);
   assert.equal(Number((await pagina.locator('#rej-todos b').innerText()).replace(/\./g, '')), daEquipe, 'só os rejeitados da equipe');
   await foto('29-supervisor-rejeitados');
+  // Avisos: tela inicial do supervisor, só a equipe; o número do menu e do sino é o total da tela
+  await pagina.evaluate(() => { location.hash = '#/avisos'; });
+  await pagina.waitForSelector('#av-cards');
+  const totalAvisos = Number((await pagina.locator('#av-todos b').innerText()).replace(/\./g, ''));
+  const avisosDaEquipe = await pagina.evaluate(async (login) => {
+    const v = new URL(document.querySelector('script[type=module]').src).search;
+    const { bancoApp } = await import(`./js/db.js${v}`);
+    return Number((await (await bancoApp()).execute({ sql: `SELECT COUNT(*) AS n FROM vw_avisos a JOIN usuarios v ON v.id = a.vendedor_id
+      WHERE COALESCE(v.supervisor_id, v.id) = (SELECT id FROM usuarios WHERE login = ?)`, args: [login] })).rows[0].n);
+  }, supervisor);
+  assert.equal(totalAvisos, avisosDaEquipe, 'só os avisos da equipe');
+  assert.ok(totalAvisos > 0, 'os dados de exemplo têm avisos');
+  assert.equal(await pagina.locator('#menu-numero-avisos').innerText(), totalAvisos.toLocaleString('pt-BR'), 'número no menu');
+  assert.equal(await pagina.locator('#sino-numero').innerText(), totalAvisos.toLocaleString('pt-BR'), 'número no sino');
+  const somaTipos = await pagina.locator('.av-card:not(#av-todos) b').evaluateAll((bs) => bs.reduce((t, b) => t + Number(b.textContent.replace(/\./g, '')), 0));
+  assert.equal(somaTipos, totalAvisos, 'os cards somam o total');
+  const itens = await pagina.locator('tr.av-item').count();
+  assert.equal(itens, totalAvisos, 'todos marcados: todos os avisos na grade, abertos por representante');
+  assert.ok(await pagina.locator('tr.av-grupo').count() >= 1, 'quebra por representante');
+  assert.ok(await pagina.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'sem rolagem para o lado');
+  await foto('30-supervisor-avisos');
+  // cards de seleção múltipla: desmarca todos, marca um tipo, a grade segue
+  await pagina.click('#av-todos');
+  await pagina.waitForSelector('.av-vazio');
+  const tipoComAviso = await pagina.locator('.av-card:not(#av-todos)').evaluateAll((cs) => cs.find((c) => Number(c.querySelector('b').textContent.replace(/\./g, '')) > 0)?.id);
+  await pagina.click(`#${tipoComAviso}`);
+  await pagina.waitForSelector('tr.av-item');
+  const tipos = new Set(await pagina.locator('tr.av-item').evaluateAll((trs) => trs.map((t) => t.dataset.tipo)));
+  assert.deepEqual([...tipos], [tipoComAviso.replace('av-', '')]);
+  // fechar o ramo do representante esconde os avisos dele
+  const antes = await pagina.locator('tr.av-item').count();
+  await pagina.locator('tr.av-grupo .av-abre').first().click();
+  assert.ok(await pagina.locator('tr.av-item').count() < antes);
+  await pagina.locator('tr.av-grupo .av-abre').first().click();
+  await pagina.click('#av-todos');
+  // PDF de pendências e Excel
+  const [pdfAvisos] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#pdf-avisos')]);
+  assert.match(pdfAvisos.suggestedFilename(), /^pendencias-.*\.pdf$/);
+  if (FOTOS) await pdfAvisos.saveAs(path.join(FOTOS, '31-pendencias.pdf'));
+  const [xlsx] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#excel-avisos')]);
+  assert.match(xlsx.suggestedFilename(), /^avisos-.*\.xlsx$/);
 });

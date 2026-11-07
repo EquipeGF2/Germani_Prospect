@@ -3,6 +3,8 @@
 import { h, montar } from './ui.js';
 import { podeTela } from '../shared/perfis.mjs';
 import { ajudaDaTela, grupoDeTermos, opcoesDaTela } from '../shared/ajuda.mjs';
+import { consultaAvisos } from '../shared/avisos.mjs';
+import { bancoApp, lerComCache } from './db.js';
 
 const CHAVE_RECOLHIDO = 'germani.menuRecolhido';
 const SVG = 'http://www.w3.org/2000/svg';
@@ -25,6 +27,7 @@ const ICONES = {
   recolher: 'M11 17l-5-5 5-5M18 17l-5-5 5-5',
   expandir: 'M13 17l5-5-5-5M6 17l5-5-5-5',
   menu: 'M3 6h18M3 12h18M3 18h18',
+  avisos: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
   rejeitados: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.6 5.6l12.8 12.8',
   sair: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
   buscar: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35',
@@ -47,6 +50,7 @@ const GRUPOS = [
     { caminho: '/explorar', rotulo: 'Explorar carteira', icone: 'explorar', tela: 'explorar' },
     { caminho: '/carteira', rotulo: 'Lista principal', icone: 'lista', tela: 'lista' },
     { caminho: '/carteira?aba=acompanhamento', rotulo: 'Acompanhamento', icone: 'acompanhamento', tela: 'acompanhamento' },
+    { caminho: '/avisos', rotulo: 'Avisos', icone: 'avisos', tela: 'avisos' },
     { caminho: '/pedidos', rotulo: 'Explorar pedidos', icone: 'erp', tela: 'pedidos' },
     { caminho: '/rejeitados', rotulo: 'Rejeitados', icone: 'rejeitados', tela: 'rejeitados' },
   ] },
@@ -137,6 +141,22 @@ function atualizarAjuda(usuario, caminho, consulta) {
   desenharAjuda();
 }
 
+// número de avisos no item do menu e no sino do topo: a mesma leitura da tela Avisos, em cache (uma ida ao banco serve aos
+// dois; limpa a cada gravação)
+async function numeroDeAvisos(usuario) {
+  const sino = document.getElementById('sino-avisos');
+  const pode = podeTela(usuario, 'avisos');
+  sino.hidden = !pode;
+  if (!pode) return;
+  try {
+    const n = (await lerComCache(await bancoApp(), consultaAvisos({ usuario }), 300)).rows.length;
+    const texto = n > 999 ? '999+' : n.toLocaleString('pt-BR');
+    for (const el of [document.getElementById('menu-numero-avisos'), document.getElementById('sino-numero')]) if (el) { el.textContent = texto; el.hidden = !n; }
+    sino.setAttribute('aria-label', n ? `Avisos: ${n.toLocaleString('pt-BR')} em aberto` : 'Avisos: nada atrasado');
+    sino.title = sino.getAttribute('aria-label');
+  } catch { /* sem o número: o menu continua funcionando */ }
+}
+
 /** Liga os botões fixos da casca (uma vez). */
 export function iniciarCasca() {
   aplicarRecolhido(recolhido());
@@ -176,8 +196,10 @@ export function atualizarCasca({ usuario, caminho, consulta, papel, aoSair }) {
       const marcado = i.caminho === ativo;
       if (marcado) { grupoAtivo = g.titulo; itemDoTopo = i.rotulo; }
       return h('a', { href: `#${i.caminho}`, class: marcado ? 'ativo' : '', title: i.rotulo, 'aria-current': marcado ? 'page' : null },
-        icone(i.icone), h('span', { class: 'menu-rotulo' }, i.rotulo));
+        icone(i.icone), h('span', { class: 'menu-rotulo' }, i.rotulo), i.caminho === '/avisos' ? h('span', { class: 'menu-numero', id: 'menu-numero-avisos', hidden: true }) : null);
     }))));
+
+  numeroDeAvisos(usuario);
 
   const interna = TELAS_INTERNAS[caminho]?.[1];
   montar(caminhoTopo, [grupoAtivo, itemDoTopo, interna].filter(Boolean).flatMap((t, k, l) =>

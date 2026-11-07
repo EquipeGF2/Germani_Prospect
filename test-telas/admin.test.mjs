@@ -57,8 +57,8 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('.aviso.erro');
   await pagina.fill('#senha', 'demo1234');
   await pagina.click('button[type=submit]');
-  // página inicial = Explorar carteira; o Início saiu do menu (só pelo endereço)
-  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
+  // página inicial do administrador = Avisos; o Início saiu do menu (só pelo endereço)
+  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/avisos');
   assert.equal(await pagina.locator('#menu a[title="Início"]').count(), 0, 'Início fora do menu (os números estão no Explorar)');
   await pagina.evaluate(() => { location.hash = '#/inicio'; });
   await pagina.waitForSelector('.painel-web');
@@ -588,7 +588,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.fill('#login', 'gerente');
   await pagina.fill('#senha', senhaGerente);
   await pagina.click('button:text("Entrar")');
-  await pagina.waitForSelector('.explorar');
+  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/avisos');   // gerente abre nos Avisos
   await pagina.evaluate(() => { location.hash = '#/inicio'; });
   await pagina.waitForSelector('#painel-supervisor');
   assert.match(await pagina.locator('#usuario-lateral').innerText(), /Gerente comercial/);
@@ -616,7 +616,7 @@ test('telas cabem no celular (sem rolagem horizontal da página)', async () => {
   await cel.fill('#login', 'admin');
   await cel.fill('#senha', 'demo1234');
   await cel.click('button[type=submit]');
-  await cel.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
+  await cel.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/avisos');
   await cel.evaluate(() => { location.hash = '#/inicio'; });
   await cel.waitForSelector('h1:text("Dashboard de acompanhamento")');
   for (const tela of ['#/inicio', '#/admin/usuarios', '#/carteira', '#/carteira?aba=acompanhamento', '#/carteira?visao=cidade']) {

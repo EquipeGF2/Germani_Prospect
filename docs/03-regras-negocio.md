@@ -140,16 +140,18 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 - Reimportar o mesmo arquivo não duplica eventos (índice único por prospect + tipo + documento). O valor entra junto
   com o pedido e não é alterado depois (eventos são só de inclusão).
 
-## 4. Alertas (para o painel)
+## 4. Alertas (tela Avisos, §18 · `vw_avisos`, migração 0031)
 
-| Alerta | Regra |
-|---|---|
-| Prazo de cadastro vencido | Aguardando cadastro e `prazo_cadastro_ate` < hoje |
-| Retorno pendente | `retorno_pendente`: data de retorno hoje ou vencida (inclui Aguardando cadastro) |
-| Análise financeira vencida | `analise_financeira_vencida`: em análise e sem OK do analista após 10 dias |
-| Vendedor sem lançar | `vw_ultimo_lancamento.dias_sem_lancar` > `dias_alerta_sem_lancamento` |
-| Prospect parado | `vw_prospects.parado`: ativo e último contato (ou entrada na base) há mais de `dias_alerta_sem_movimento` |
-| Convertido sem registro | `convertido_sem_registro = 1` |
+| Alerta (card) | Regra | Atraso |
+|---|---|---|
+| Prazo de cadastro vencido (Cadastro vencido) | Aguardando cadastro e `prazo_cadastro_ate` < hoje | dias depois do prazo |
+| Análise financeira fora do prazo (Análise financeira) | Em análise e `analise_financeira_ate` < hoje (`prazo_analise_financeira_dias`) | dias depois do prazo |
+| Retorno vencido | data de retorno < hoje, em status que aceita contato | dias depois da data |
+| Representante sem registrar (Sem registrar) | representante/vendedor ativo com cliente a procurar nas ondas liberadas e sem atendimento no app há mais de `dias_alerta_sem_lancamento` (ou nunca) | dias desde o último registro |
+| Cliente sem movimento (Sem movimento) | `vw_prospects.parado`, **só depois do 1º registro** (0031): Em prospecção desde o último registro, ou Aguardando pedido desde a liberação do crédito (ou o último registro), sem retorno marcado, há mais de `dias_alerta_sem_movimento`. **Não contactado não entra** (é cobertura da carteira, não pendência); Aguardando cadastro e Análise financeira têm prazo próprio e não contam duas vezes | dias parado |
+| Cadastro sem atendimento (Sem atendimento) | `convertido_sem_registro = 1` (cadastro ou pedido do ERP sem atendimento no app), fora de baixado e expurgado | dias desde o cadastro (ou pedido) |
+
+O "retorno pendente" do dia (`retorno_pendente`, hoje ou vencido) continua na Lista principal; o aviso é só o vencido.
 
 ## 5. Indicadores
 
@@ -448,8 +450,8 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 
 ## 12. Explorar carteira (migração 0012 · `shared/explorar.mjs`)
 
-- **É a página inicial do app** (depois do login e no endereço vazio); sem o Explorar no perfil, abre a primeira tela
-  permitida (Início, Lista, Console de crédito…). O Início **saiu do menu** (os números estão no Explorar; evita leitura à toa) — continua só pelo endereço `#/inicio` (no modo demonstração, o botão "Carregar dados de exemplo" fica lá).
+- **É a página inicial do representante/vendedor** (depois do login e no endereço vazio). Administrador, gerente e
+  supervisor abrem nos **Avisos** (§18); sem as duas telas no perfil, abre a primeira permitida (Início, Lista, Console de crédito…). O Início **saiu do menu** (os números estão no Explorar; evita leitura à toa) — continua só pelo endereço `#/inicio` (no modo demonstração, o botão "Carregar dados de exemplo" fica lá).
 - Abre **no escopo** de quem entrou: representante/vendedor na própria carteira; supervisor na sua equipe; supervisor que
   vê todas as equipes (ex.: Julio), gerente e administrador na base toda.
 - Árvore **do total até o cliente** com níveis livres, em qualquer ordem: Supervisor, Representante, Cidade, Segmento
@@ -490,13 +492,13 @@ com o histórico de movimentação completo. Sorteio com semente fixa; nunca rod
 
 ## 15. Ajuda e manual (`shared/ajuda.mjs`)
 
-Um único conteúdo alimenta três saídas, para não haver textos diferentes: a tela **Ajuda** (último item do menu, com o fluxograma e os capítulos), o botão **?** no topo de toda tela (objetivo, como funciona, campos, o que analisar, situações comuns e próximo passo) e o **manual em PDF**, gerado na hora no navegador. Cada perfil vê só os capítulos do que usa. O Explorar carteira é a tela inicial: ao entrar, o sistema abre sempre nela. Tela nova ou alterada: atualize `shared/ajuda.mjs`; `test/ajuda.test.mjs` falha se uma tela ficar sem ajuda.
+Um único conteúdo alimenta três saídas, para não haver textos diferentes: a tela **Ajuda** (último item do menu, com o fluxograma e os capítulos), o botão **?** no topo de toda tela (objetivo, como funciona, campos, o que analisar, situações comuns e próximo passo) e o **manual em PDF**, gerado na hora no navegador. Cada perfil vê só os capítulos do que usa. Ao entrar, o sistema abre na tela inicial: Avisos (administrador, gerente e supervisor) ou Explorar carteira (representante/vendedor). Tela nova ou alterada: atualize `shared/ajuda.mjs`; `test/ajuda.test.mjs` falha se uma tela ficar sem ajuda.
 
 **Capítulos** (`CAPITULOS`), escritos para quem não é da área de tecnologia: Para que serve, Em 30 segundos, A tela parte por parte (recortes pequenos de cada parte da tela, com o botão Ampliar imagem, e o que é cada item), Opções do topo, Termos e Perguntas comuns. Os recortes ficam em `web/img/ajuda`, com dados fictícios, e são gerados de novo por `IMAGENS_AJUDA=web/img/ajuda npm run test:telas`; no PDF, os mesmos blocos saem como texto, recorte e tabela (`blocosSimples`).
 
 **Ajuda por perfil:** cada trecho de capítulo, item, opção do topo, termo e pergunta pode dizer quem o vê (`GESTAO`, `CARTEIRA`, `TODAS_EQUIPES`, `SO_ADMIN` em `shared/ajuda.mjs`). O representante/vendedor vê só a própria carteira: sem escolha de equipe, sem níveis de supervisor e representante, sem administração nem Rejeitados; a rota do cadastro aparece para todos. Onde a tela dele é diferente, há recorte próprio (menu e filtros da Lista principal). `test/ajuda.test.mjs` confere o que cada perfil vê. Tela ou opção nova só para um perfil: marque o trecho.
 
-**Opções do topo e significado dos termos**, no botão **?** de cada tela (e no fim do manual em PDF): cada opção das chaves e filtros do topo (`OPCOES_TOPO`: Fluxo | Crédito × Pedido, Ver por Empresa | Ver por Grupo…) e tudo o que aparece na tela, inclusive as abreviações (`TERMOS`: Invest., Ag. fin., S.I. cli., Créd. Cliente…). Não há tela separada no menu. Só entra o que existe no sistema: `test/ajuda.test.mjs` procura cada termo e cada opção no código das telas. Rótulo ou opção nova em tela: inclua o significado. Ao entrar, o sistema abre sempre na página inicial (Explorar carteira).
+**Opções do topo e significado dos termos**, no botão **?** de cada tela (e no fim do manual em PDF): cada opção das chaves e filtros do topo (`OPCOES_TOPO`: Fluxo | Crédito × Pedido, Ver por Empresa | Ver por Grupo…) e tudo o que aparece na tela, inclusive as abreviações (`TERMOS`: Invest., Ag. fin., S.I. cli., Créd. Cliente…). Não há tela separada no menu. Só entra o que existe no sistema: `test/ajuda.test.mjs` procura cada termo e cada opção no código das telas. Rótulo ou opção nova em tela: inclua o significado. Ao entrar, o sistema abre sempre na página inicial (Avisos ou Explorar carteira, §12 e §18).
 
 **Sem rolagem para o lado** (computador e celular): rótulos de coluna e textos de card numa linha só. Tabela, hierarquia ou fila de cards que não cabe na largura vira cartão, com o rótulo de cada campo (`semRolagem`, `web/js/ui.js`): a decisão é tomada pela largura real, então muda ao girar o celular ou recolher o menu. No celular, a hierarquia do Explorar pedidos mostra a venda e um resumo por linha (os oito números da linha escolhida ficam nos cards), e as etapas do Acompanhamento ficam uma abaixo da outra. `test-telas/pedidos.test.mjs` mede 360, 390, 768, 1024 e 1366 px. No celular, as chaves do topo ocupam a linha toda, com texto curto (Venda | Bonificação | Ambos; Primeiro pedido).
 
@@ -508,8 +510,8 @@ Um único conteúdo alimenta três saídas, para não haver textos diferentes: a
 | Tipo-base | Dados | Telas possíveis |
 |---|---|---|
 | Administrador | tudo, sem restrição | todas (o perfil Administrador do sistema tem sempre todas) |
-| Gerente comercial | todos os dados; não libera crédito | Início, Lista principal, Acompanhamento, Registrar |
-| Supervisor | só a equipe dele | Início, Lista principal, Acompanhamento, Registrar, Rejeitados (só a equipe, migração 0030) |
+| Gerente comercial | todos os dados; não libera crédito | Início, Lista principal, Acompanhamento, Registrar, Avisos (0031) |
+| Supervisor | só a equipe dele | Início, Lista principal, Acompanhamento, Registrar, Rejeitados (só a equipe, migração 0030), Avisos (só a equipe, 0031) |
 | Vendedor / representante | só a própria carteira | Início, Lista principal, Acompanhamento, Registrar |
 | Analista financeiro | só a análise de crédito | Console de crédito (+ Início, Lista, Acompanhamento, se marcados) |
 
@@ -694,3 +696,27 @@ passo a passo (arquivo → colunas → simulação → gravação):
   O botão mostra quantos representantes e clientes entram; a leitura dos clientes é feita só ao clicar.
 - Os endereços antigos (`#/admin/importar/base`, `/admin/grupos`, `/admin/importar/credito`, `/admin/importar/pedidos`,
   `/admin/importar/erp`, `/admin/importacoes`) levam à aba correspondente.
+
+## 18. Avisos (migração 0031 · `shared/avisos.mjs` · `web/js/telas/avisos.js`)
+
+Tela **Prospecção › Avisos** (`#/avisos`), para **administrador, gerente e supervisor** (tela `avisos`; o supervisor vê só a
+equipe dele, o que vê todas as equipes vê a base toda). É a **página inicial** desses perfis. Mostra o que passou do prazo
+configurado em Parâmetros (§4), para saber **o que cobrar e de quem**.
+
+- **Níveis** no topo, como no Explorar carteira (padrão: Rep.; com todas as equipes, Supervisor › Rep.). O "sem registrar" não
+  tem cliente: nos níveis do cliente (cidade, segmento, onda, rota, subrota) fica no ramo **Do representante**.
+- **Cards de seleção múltipla**: Todos os avisos (marca ou desmarca todos) e um por tipo, com o número, a regra e o prazo dos
+  Parâmetros. Sem card marcado, a grade pede para escolher. Ao abrir, todos marcados.
+- **Uma grade só**: uma linha por ramo dos níveis (total e resumo do que cobrar, ▶/▼ abre e fecha) e, dentro, os avisos dos
+  tipos marcados, mais atrasados primeiro (quem nunca registrou vem antes): Cliente · CNPJ (com o Rep. embaixo quando ele não é
+  nível), Aviso, Cidade, Desde (com o que a data é), Atraso e Abrir ficha (no Sem registrar, Ver carteira). Sem espaço, vira cartões.
+- **Excel** e **PDF de pendências** saem dos tipos marcados. O PDF (A4 retrato, modelo aprovado): página 1 com o resumo
+  representante × tipo e o que cada coluna quer dizer; depois uma página por representante (por supervisor, mais avisos
+  primeiro), com o Sem registrar em destaque, um bloco por tipo (regra, o que fazer, caixinha e espaço "Combinado") e
+  **Para conferir**: os sem interesse do representante dos últimos 7 dias (não é pendência).
+- **Número no menu e no sino** do topo (o sino leva à tela): a mesma leitura da tela, em cache por 5 minutos e limpa a cada
+  gravação — uma ida ao banco serve aos dois.
+- **Leitura mínima** (o Turso cobra por linha lida): `vw_avisos` compara cada tipo com uma data fixa num índice parcial próprio
+  (`ix_avisos_*`) e lê só o que venceu, nunca a carteira inteira; o último registro de cada representante sai de
+  `ix_avisos_contatos_app` (uma linha por representante). Medido com `scripts/medir-consultas.mjs` (casos Avisos).
+- O aviso **some sozinho** quando o cliente avança ou o representante registra: não há o que apagar nem marcar como lido.
