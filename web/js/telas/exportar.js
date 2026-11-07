@@ -22,7 +22,7 @@ const representante = (codigo, nome) => [codigo, nome].filter(Boolean).join(' - 
 export async function render(conteudo, { usuario }) {
   const db = await bancoApp();
   // contagens para os tipos e os filtros (leitura leve); os dados de cada cliente são lidos só ao exportar
-  const clientes = (await lerComCache(db, consultaResumoRejeitados(), 300)).rows.map(prepararRejeitado);
+  const clientes = (await lerComCache(db, consultaResumoRejeitados({ usuario }), 300)).rows.map(prepararRejeitado);
   const filtro = { tipos: new Set(TIPOS_REJEICAO), supervisor: '', representante: '', onda: '' };
   const unicos = (chave, rotulo) => [...new Map(clientes.filter((l) => l[chave] != null && l[chave] !== '').map((l) => [String(l[chave]), rotulo(l)])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR', { numeric: true }));
   const selecao = (id, rotulo, chave, opcoes, todos) => h('div', { class: 'campo' }, h('label', { for: id }, rotulo),
@@ -34,7 +34,7 @@ export async function render(conteudo, { usuario }) {
   const tiposRej = h('div', { class: 'rej-tipos' });
   // dados cadastrais completos, tipo, motivo e observação; com mais de um tipo, uma aba para cada
   const botaoRej = h('button', { type: 'button', id: 'exportar-rejeitados', onclick: () => comEspera(botaoRej, async () => {
-    const n = await exportarRejeitados(db, { tipos: TIPOS_REJEICAO.filter((t) => filtro.tipos.has(t)), filtro: passa });
+    const n = await exportarRejeitados(db, { usuario, tipos: TIPOS_REJEICAO.filter((t) => filtro.tipos.has(t)), filtro: passa });
     aviso(`Rejeitados exportados: ${n0(n)} clientes.`);
   }) });
   function desenharRejeitados() {

@@ -12,7 +12,8 @@ export const colunasUsuario = `v.nome AS vendedor_nome, v.tipo_atuacao, v.perfil
 export const juntaUsuario = `JOIN usuarios v ON v.id = x.vendedor_id
        LEFT JOIN usuarios sup ON sup.id = COALESCE(v.supervisor_id, CASE WHEN v.perfil = 'supervisor' THEN v.id END)`;
 
-function escopo(usuario) {
+/** Recorte dos dados pelo usuário (também o dos Rejeitados): gestão tudo, supervisor a equipe, vendedor a carteira. */
+export function escopo(usuario) {
   if (veTodasEquipes(usuario)) return { where: '', args: [] };
   if (usuario.perfil === 'supervisor') return { where: 'AND COALESCE(v.supervisor_id, v.id) = ?', args: [usuario.id] };
   // representante/vendedor: só as ondas liberadas para quem ainda está na lista (0024)

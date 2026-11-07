@@ -24,8 +24,8 @@ const COLUNAS = [
 const ABA = { baixado: 'Baixados', expurgado: 'Expurgados', cliente: 'Sem interesse do cliente', representante: 'Sem interesse do representante' };
 
 /** Lê o detalhe dos rejeitados (em cache) e baixa o Excel dos tipos marcados que passam em `filtro(l)`: uma aba por tipo. Devolve quantos foram. */
-export async function exportarRejeitados(db, { tipos, filtro = () => true }) {
-  const todos = (await lerComCache(db, consultaRejeitados(), 300)).rows.map(prepararRejeitado).filter(filtro);
+export async function exportarRejeitados(db, { usuario, tipos, filtro = () => true }) {
+  const todos = (await lerComCache(db, consultaRejeitados({ usuario }), 300)).rows.map(prepararRejeitado).filter(filtro);
   const lista = paraExportar(todos, tipos);
   const abas = TIPOS_REJEICAO.filter((t) => tipos.includes(t)).map((t) => ({ nome: ABA[t], colunas: COLUNAS, linhas: lista.filter((l) => l.tipo === t) }));
   await baixarXlsxAbas(`rejeitados-${hojeSaoPaulo()}.xlsx`, abas);

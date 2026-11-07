@@ -317,4 +317,17 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await irAoInicio();
   await pagina.waitForSelector('h1:text("Sua equipe")');
   assert.equal(await pagina.locator('#painel-supervisor').count(), 0);
+  // Rejeitados também para o supervisor, só da equipe dele
+  assert.equal(await pagina.locator('#menu a[title="Rejeitados"]').count(), 1, 'no menu do supervisor');
+  await pagina.evaluate(() => { location.hash = '#/rejeitados'; });
+  await pagina.waitForSelector('#rej-cards');
+  assert.equal((await pagina.locator('.exp-linha.raiz .nome').innerText()).trim(), 'Minha equipe');
+  const daEquipe = await pagina.evaluate(async (login) => {
+    const v = new URL(document.querySelector('script[type=module]').src).search;
+    const { bancoApp } = await import(`./js/db.js${v}`);
+    return Number((await (await bancoApp()).execute({ sql: `SELECT COUNT(*) AS n FROM prospects x JOIN usuarios v ON v.id = x.vendedor_id
+      WHERE x.status_atual IN ('sem_interesse', 'invalido', 'expurgado') AND COALESCE(v.supervisor_id, v.id) = (SELECT id FROM usuarios WHERE login = ?)`, args: [login] })).rows[0].n);
+  }, supervisor);
+  assert.equal(Number((await pagina.locator('#rej-todos b').innerText()).replace(/\./g, '')), daEquipe, 'só os rejeitados da equipe');
+  await foto('29-supervisor-rejeitados');
 });
