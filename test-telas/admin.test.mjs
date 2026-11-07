@@ -477,14 +477,35 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.check('.lista-tabela input[data-lote] >> nth=0');
   await pagina.check('.lista-tabela input[data-lote] >> nth=1');
   await pagina.waitForSelector('text=2 selecionado(s)');
-  await pagina.click('a:text("Sem interesse em lote")');
+  await pagina.click('a:text("Registrar em lote")');
   await pagina.waitForSelector('text=Gravar 2 registro(s)');
+  assert.ok(await pagina.locator('button:text("Gravar 2 registro(s)")').isDisabled(), 'sem escolher o registro não grava');
+  await pagina.selectOption('#registro-lote', { label: 'Atendido' });
+  assert.ok(await pagina.locator('#retorno-lote').isVisible() && !(await pagina.locator('#motivo-lote').isVisible()), 'atendido: retorno sem motivo');
+  await pagina.selectOption('#registro-lote', { label: 'Sem interesse do cliente' });
   await pagina.selectOption('#motivo-lote', { label: 'Preço acima do praticado' });
   await pagina.locator('.lote-item select').nth(1).selectOption({ label: 'Já tem fornecedor / contrato' });
   await foto('14-lote');
   await pagina.click('button:text("Gravar 2 registro(s)")');
   await pagina.waitForSelector('text=Lote gravado');
   assert.match(await texto(), /2\s+gravados/);
+
+  // 9b. caixa do título marca todos da lista; atendido em lote leva para Aguardando cadastro
+  await pagina.goto(`${base}#/carteira?limpo=1`);
+  await pagina.waitForSelector('.lista-tabela tbody tr');
+  const marcaveis = await pagina.locator('.lista-tabela input[data-lote]').count();
+  await pagina.check('#lote-todos');
+  await pagina.waitForSelector(`text=${marcaveis} selecionado(s)`);
+  await pagina.uncheck('#lote-todos');
+  assert.equal(await pagina.locator('.lote-flutuante').isVisible(), false);
+  await pagina.check('.lista-tabela input[data-lote] >> nth=0');
+  await pagina.click('a:text("Registrar em lote")');
+  await pagina.waitForSelector('text=Gravar 1 registro(s)');
+  await pagina.selectOption('#registro-lote', { label: 'Atendido' });
+  await foto('14b-lote-atendido');
+  await pagina.click('button:text("Gravar 1 registro(s)")');
+  await pagina.waitForSelector('text=Lote gravado');
+  assert.match(await texto(), /1\s+gravados[\s\S]*Aguardando cadastro/);
 
   // 10. acompanhamento por status → lista dos sem interesse → ficha com o motivo individual
   await pagina.click('#menu a[title="Acompanhamento"]');

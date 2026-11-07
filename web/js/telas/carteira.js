@@ -209,7 +209,7 @@ function blocoLista(e, linhas, { podeRegistrar, selecao, comRota, mostrarCarteir
   const temMais = linhas.length > POR_PAGINA;
   const pagina = linhas.slice(0, POR_PAGINA);
   if (!pagina.length) return mensagem(e.busca ? `Nada encontrado para "${e.busca}".` : 'Nenhum prospect nesta lista.', 'info');
-  // lote: só para quem ainda está na lista principal (sem interesse em lote)
+  // lote: só para quem ainda está na lista principal (atendido ou sem interesse em lote)
   const loteVisivel = podeRegistrar && e.aba === 'principal';
   const barraLote = h('div', { class: 'barra-lote' });
   // a barra só aparece com algum prospect marcado
@@ -217,7 +217,7 @@ function blocoLista(e, linhas, { podeRegistrar, selecao, comRota, mostrarCarteir
     barraLote.hidden = !selecao.size;
     montar(barraLote, selecao.size
       ? [h('span', {}, `${selecao.size} selecionado(s)`),
-        h('a', { class: 'botao', href: '#/lote' }, 'Sem interesse em lote'),
+        h('a', { class: 'botao', href: '#/lote' }, 'Registrar em lote'),
         h('button', { class: 'secundario pequeno', onclick: () => { selecao.clear(); gravarLote([]); document.querySelectorAll('input[data-lote]').forEach((c) => { c.checked = false; }); atualizarBarra(); } }, 'Limpar seleção')]
       : []);
   };

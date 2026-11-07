@@ -72,7 +72,7 @@ const GRUPOS = [
 const TELAS_INTERNAS = {
   '/ficha': ['/carteira', 'Ficha do cliente'],
   '/registrar': ['/carteira', 'Registrar atendimento'],
-  '/lote': ['/carteira', 'Sem interesse em lote'],
+  '/lote': ['/carteira', 'Registro em lote'],
   '/financeiro/liberar': ['/financeiro', 'Liberar crédito'],
   '/admin/acesso': ['', 'Confirmar senha'],
   '/admin/perfis': ['/admin/usuarios', 'Perfis'],
