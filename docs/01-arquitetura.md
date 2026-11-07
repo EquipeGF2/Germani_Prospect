@@ -22,6 +22,10 @@
 
 Decisão e riscos: [ADR-0001](adr/0001-turso-direto-github-pages.md). Sem cálculo de distância: [ADR-0005](adr/0005-sem-calculo-de-distancia.md).
 
+**Instalar como app** (Android, computador e iPhone): `web/manifest.webmanifest` (nome, ícones em `web/img/app`, tela cheia)
+e `web/sw.js`, um service worker mínimo exigido pelo navegador para oferecer "Instalar". Ele **não guarda cache**: a página
+vem sempre da rede (versão publicada) e, sem internet, mostra um aviso; as leituras do banco não passam por ele.
+
 ## Pastas do repositório
 
 ```
