@@ -54,8 +54,7 @@ test('cada tipo de aviso com a regra do banco; não contactado e cliente em dia 
   assert.deepEqual(por(5), ['retorno']);
   assert.equal(todos.find((a) => a.prospect_id === p[5]).atraso, 2);
   assert.deepEqual(por(6), ['analise']);
-  assert.deepEqual(por(7), ['sem_registro']);
-  assert.equal(todos.find((a) => a.prospect_id === p[7]).atraso, 8);
+  assert.deepEqual(por(7), [], 'cadastro do ERP sem atendimento não é aviso (0033)');
   assert.deepEqual(por(8), [], 'atendido há 4 dias: no prazo');
   const sem = todos.filter((a) => a.tipo === 'sem_lancar').map((a) => [a.vendedor_nome, a.atraso]).sort();
   assert.deepEqual(sem, [['Vend Doze', 20], ['Vend Onze', 90]], 'Vend Dez registrou há 3 dias; Vend Onze nunca registrou (conta do início da campanha); o sem registrar não tem cliente');
@@ -115,8 +114,9 @@ test('tela Avisos: administrador, gerente e supervisor; o perfil do sistema já 
   for (const perfil of ['vendedor', 'financeiro']) assert.ok(!podeTela({ id: 1, perfil, telas: ['avisos'] }, 'avisos'), perfil);
   const bases = (await db.execute("SELECT p.base FROM perfil_telas t JOIN perfis p ON p.id = t.perfil_id WHERE t.tela = 'avisos' ORDER BY p.base")).rows.map((r) => r.base);
   assert.deepEqual(bases, ['administrador', 'gerente', 'supervisor']);
-  assert.equal(textoParametro('cadastro', { prazo_cadastro_dias: '15' }), 'Prazo do cadastro: 15 dias');
-  assert.equal(textoParametro('retorno', {}), 'Data marcada pelo representante');
+  assert.equal(textoParametro('cadastro', { prazo_cadastro_dias: '15' }), 'Prazo: 15 dias');
+  assert.equal(textoParametro('sem_lancar', { dias_alerta_sem_lancamento: '7' }), 'Limite: 7 dias');
+  assert.equal(textoParametro('retorno', {}), 'Data do representante');
 });
 
 test('grade: um ramo por representante com total e resumo; mais atrasados primeiro; ramo fechado esconde os avisos', async () => {
@@ -128,7 +128,7 @@ test('grade: um ramo por representante com total e resumo; mais atrasados primei
   assert.deepEqual(grupos.map((g) => [g.rotulo, g.avisos.length]), [['Vend Dez', avisos.filter((a) => a.vendedor_nome === 'Vend Dez').length], ['Vend Onze', 1]]);
   assert.ok(grupos[0].avisos.length > 1);
   assert.equal(grupos[0].resumo, resumoAvisos(grupos[0].avisos));
-  assert.match(grupos[0].resumo, /^1 cadastro vencido · .*1 sem movimento · 1 sem atendimento$/);
+  assert.match(grupos[0].resumo, /^1 sem movimento · 1 retorno vencido · 1 cadastro vencido/, 'na sequência do processo');
   assert.equal(contarAvisos(grupos[1].avisos).sem_lancar, 1);
   const itens = grade.filter((l) => !l.grupo && l.aviso.vendedor_nome === 'Vend Dez').map((l) => l.aviso.atraso);
   assert.deepEqual(itens, [...itens].sort((a, b) => b - a));
@@ -147,7 +147,7 @@ test('PDF de pendências: um bloco por representante, avisos por tipo e o para c
   const reps = pendenciasPorRepresentante(avisos, conferir);
   assert.equal(reps.reduce((t, r) => t + r.avisos.length, 0), avisos.length);
   const doze = reps.find((r) => r.nome === 'Vend Doze');
-  assert.deepEqual(doze.porTipo.map((b) => b.tipo.id), ['cadastro', 'sem_lancar']);
+  assert.deepEqual(doze.porTipo.map((b) => b.tipo.id), ['sem_lancar', 'cadastro']);
   assert.deepEqual(doze.conferir.map((c) => c.razao_social), ['Mercado 12']);
   assert.deepEqual(reps.map((r) => r.supervisor), [...reps.map((r) => r.supervisor)].sort((a, b) => a.localeCompare(b, 'pt-BR')), 'agrupado por supervisor');
 });

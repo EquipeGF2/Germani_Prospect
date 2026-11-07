@@ -997,7 +997,11 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .sino-avisos[hidden] { display: none; }
 .sino-avisos:not([hidden]) + .botao-ajuda { margin-left: 8px; }
 .sino-numero { position: absolute; top: -5px; right: -7px; padding: 0 6px; border-radius: 999px; background: #DC2626; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; }
-.av-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.av-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+/* 6 cards (Todos + 5 tipos): numa linha só quando cabem; senão 3 + 3 (nunca um sozinho embaixo) */
+@media (max-width: 1439px) { .av-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.casca.recolhido .av-cards { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1199px) { .casca.recolhido .av-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .av-card { display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-height: 118px; padding: 12px 14px; text-align: left; font: inherit; color: var(--texto); background: var(--cartao);
   border: 2px solid var(--borda); border-radius: var(--raio); cursor: pointer; box-shadow: var(--sombra); }
 .av-card:hover { border-color: #E8A0A4; background: #FFF5F5; color: var(--texto); }   /* o vermelho do botão some: fundo suave, texto legível */
@@ -1010,7 +1014,7 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .av-card b { font-size: 26px; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .av-card b.alto { color: #B91C1C; } .av-card b.medio { color: #B45309; }
 .av-card .regra { font-size: 12px; color: #4B5563; line-height: 1.3; }
-.av-card .param { margin-top: auto; font-size: 11.5px; color: var(--suave); }
+.av-card .param { margin-top: auto; font-size: 11.5px; color: var(--suave); white-space: nowrap; }
 .av-grade { padding: 0; overflow: hidden; }
 .av-grade-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 12px 16px; border-bottom: 1px solid var(--borda); }
 .av-grade-topo h2 { margin: 0; font-size: 17px; white-space: nowrap; }
@@ -1036,7 +1040,7 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .av-abre .resumo { min-width: 0; font-size: 12.5px; color: #4B5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .av-tipo { white-space: nowrap; border-radius: 6px; }
 .av-tipo.cadastro { background: #FEE2E2; color: #991B1B; } .av-tipo.analise { background: #FFEDD5; color: #9A3412; } .av-tipo.retorno { background: #FEF3C7; color: #92400E; }
-.av-tipo.sem_lancar { background: #FCE7F3; color: #9D174D; } .av-tipo.parado { background: #E0F2FE; color: #075985; } .av-tipo.sem_registro { background: #EDE9FE; color: #5B21B6; }
+.av-tipo.sem_lancar { background: #FCE7F3; color: #9D174D; } .av-tipo.parado { background: #E0F2FE; color: #075985; }
 .av-grade .tabela-wrap.cartoes { padding: 8px; }
 .av-grade .tabela-wrap.cartoes tr.av-grupo { padding: 0; background: #F6F7F9; }
 .av-grade .tabela-wrap.cartoes tr.av-grupo td { display: block; padding: 0 0 0 8px !important; background: transparent; border: 0; }

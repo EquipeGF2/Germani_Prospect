@@ -149,7 +149,9 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 | Retorno vencido | data de retorno < hoje, em status que aceita contato | dias depois da data |
 | Representante sem registrar (Sem registrar) | representante/vendedor ativo com cliente a procurar nas ondas liberadas e sem atendimento no app há mais de `dias_alerta_sem_lancamento` (ou nunca) | dias desde o último registro |
 | Cliente sem movimento (Sem movimento) | `vw_prospects.parado`, **só depois do 1º registro** (0031): Em prospecção desde o último registro, ou Aguardando pedido desde a liberação do crédito (ou o último registro), sem retorno marcado, há mais de `dias_alerta_sem_movimento`. **Não contactado não entra** (é cobertura da carteira, não pendência); Aguardando cadastro e Análise financeira têm prazo próprio e não contam duas vezes | dias parado |
-| Cadastro sem atendimento (Sem atendimento) | `convertido_sem_registro = 1` (cadastro ou pedido do ERP sem atendimento no app), fora de baixado e expurgado | dias desde o cadastro (ou pedido) |
+
+**Cadastro sem atendimento não é aviso (0033):** o cadastro (ou pedido) que chega do ERP sem atendimento registrado segue o fluxo
+normal e não gera cobrança; o sinal `convertido_sem_registro` continua no cliente.
 
 **Início da campanha (0032):** Sem registrar e Sem movimento contam os dias a partir do **início da campanha** (Parâmetros ›
 `data_inicio_campanha`). Registro anterior a ela (ex.: contato da planilha) — ou nenhum, no Sem registrar — conta do início; o aviso
@@ -701,7 +703,7 @@ passo a passo (arquivo → colunas → simulação → gravação):
 - Os endereços antigos (`#/admin/importar/base`, `/admin/grupos`, `/admin/importar/credito`, `/admin/importar/pedidos`,
   `/admin/importar/erp`, `/admin/importacoes`) levam à aba correspondente.
 
-## 18. Avisos (migrações 0031 e 0032 · `shared/avisos.mjs` · `web/js/telas/avisos.js`)
+## 18. Avisos (migrações 0031, 0032 e 0033 · `shared/avisos.mjs` · `web/js/telas/avisos.js`)
 
 Tela **Prospecção › Avisos** (`#/avisos`, **primeiro item do menu**), para **administrador, gerente e supervisor** (tela `avisos`; o supervisor vê só a
 equipe dele, o que vê todas as equipes vê a base toda). É a **página inicial** desses perfis. Mostra o que passou do prazo
@@ -709,7 +711,8 @@ configurado em Parâmetros (§4), para saber **o que cobrar e de quem**.
 
 - **Níveis** no topo, como no Explorar carteira (padrão: Rep.; com todas as equipes, Supervisor › Rep.). O "sem registrar" não
   tem cliente: nos níveis do cliente (cidade, segmento, onda, rota, subrota) fica no ramo **Do representante**.
-- **Cards de seleção múltipla**: Todos os avisos (marca ou desmarca todos) e um por tipo, com o número, a regra e o prazo dos
+- **Cards de seleção múltipla**, na **sequência do processo** (Sem registrar › Sem movimento › Retorno vencido › Cadastro vencido ›
+  Análise financeira; a mesma ordem no resumo da linha e no PDF): Todos os avisos (marca ou desmarca todos) e um por tipo, com o número, a regra e o prazo dos
   Parâmetros. Sem card marcado, a grade pede para escolher. Ao abrir, todos marcados.
 - **Uma grade só**, que **abre sempre recolhida** (0032): uma linha por ramo dos níveis (total e resumo do que cobrar, ▶ abre e
   ▼ fecha; ao sair e voltar, recolhe de novo) e, dentro, os avisos dos
