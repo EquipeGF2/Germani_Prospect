@@ -232,7 +232,9 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
       // rota do cadastro embaixo do segmento, como o bairro embaixo da cidade
       h('td', { dados: { r: colunaRota ? 'Segmento · rota' : 'Segmento' } }, h('span', { class: 'corta' }, p.tipologia_gtm ?? ''),
         colunaRota && p.rota ? h('small', { class: 'corta' }, `Rota ${p.rota}${p.subrota ? ' / ' + p.subrota : ''}`) : null),
-      h('td', { class: 'centro', dados: { r: 'Status' } }, seloStatus(p), Number(p.prazo_cadastro_vencido) ? h('small', { class: 'alerta-txt' }, 'prazo de cadastro vencido') : null),
+      h('td', { class: 'centro', dados: { r: 'Status' } }, seloStatus(p), Number(p.prazo_cadastro_vencido) ? h('small', { class: 'alerta-txt' }, 'prazo de cadastro vencido') : null,
+        // 1ª recusa do cliente: na lista até a data de retorno (0034)
+        p.status_atual === 'sem_interesse' && p.data_proxima_acao ? h('small', { class: Number(p.pendente_hoje) ? 'alerta-txt' : '' }, `retornar em ${formatar.data(p.data_proxima_acao)}`) : null),
       h('td', { class: 'centro', dados: { r: 'Tentativas' } }, String(p.tentativas ?? 0)), // dias desde o 1º registro embaixo da data, como o bairro embaixo da cidade
       h('td', { class: 'centro', dados: { r: '1º registro' } }, formatar.data(p.dt_primeiro_contato) || '—',
         p.dias_corridos != null ? h('small', {}, `${p.dias_corridos} dia(s)`) : null),

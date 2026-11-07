@@ -16,7 +16,7 @@ test('lote com justificativa comum e individual', async () => {
   const lote = prepararLote({
     usuario: REP,
     prospects: ids.map((id) => ({ id, tentativas: 0 })),
-    comum: { canal: 'visita', dataContato: '2026-10-15', motivoId: preco, observacao: 'tabela acima da concorrência' },
+    comum: { canal: 'visita', dataContato: '2026-10-15', motivoId: preco, observacao: 'tabela acima da concorrência', dataRetorno: '2026-10-22', exigeRetorno: true },
     individuais: { [ids[2]]: { motivoId: outro, observacao: 'loja vai fechar' } },
     motivos: { [outro]: { exige_observacao: 1 } },
   });
@@ -26,6 +26,7 @@ test('lote com justificativa comum e individual', async () => {
   const p1 = await prospect(db, ids[0]);
   const p3 = await prospect(db, ids[2]);
   assert.equal(p1.status_atual, 'sem_interesse');
+  assert.deepEqual([p1.na_lista, p1.data_proxima_acao], [1, '2026-10-22'], '1ª recusa do cliente: fica na lista até o retorno');
   assert.equal(p1.motivo_sem_interesse, 'Preço acima do praticado');
   assert.equal(p3.motivo_sem_interesse, 'Outro (descrever na observação)');
   const c = (await db.execute({ sql: 'SELECT lote_id, observacao FROM contatos ORDER BY prospect_id' })).rows;
@@ -46,9 +47,14 @@ test('itens inválidos e recusados pelo banco são informados; os demais gravam'
   const lote = prepararLote({
     usuario: REP,
     prospects: [ok, semMotivo, outraCarteira, baixado].map((id) => ({ id, tentativas: 0 })),
-    comum: { canal: 'telefone', dataContato: '2026-10-15' },
+    comum: { canal: 'telefone', dataContato: '2026-10-15', dataRetorno: '2026-10-22', exigeRetorno: true },
     individuais: { [ok]: { motivoId: preco }, [outraCarteira]: { motivoId: preco }, [baixado]: { motivoId: preco } },
   });
+  // sem a data de retorno, a 1ª recusa do cliente não passa; quem já recusou (está na lista como Sem interesse) não precisa
+  const semData = prepararLote({ usuario: REP, prospects: [{ id: ok, tentativas: 0 }, { id: semMotivo, tentativas: 1, status_atual: 'sem_interesse' }],
+    comum: { canal: 'visita', dataContato: '2026-10-15', motivoId: preco, exigeRetorno: true } });
+  assert.match(semData.itens[0].erros.join(' '), /informe a data de retorno/);
+  assert.deepEqual(semData.itens[1].erros, []);
   const r = await registrarLote(db, lote);
   assert.equal(r.gravados, 1);
   const erros = Object.fromEntries(r.recusados.map((x) => [x.prospectId, x.erros.join(' ')]));

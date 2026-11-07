@@ -17,7 +17,8 @@
 O vendedor nunca escolhe "inválido", "cadastrado" ou "venda": não existem como resultado de contato.
 
 > **Lista de prospects × acompanhamento × indicadores.**
-> - A **lista de prospects** mostra só *Não contactado* e *Em prospecção* (`vw_prospects.na_lista = 1`).
+> - A **lista de prospects** mostra *Não contactado*, *Em prospecção* e a 1ª recusa do cliente com retorno marcado (0034)
+>   (`vw_prospects.na_lista = 1`).
 > - O **acompanhamento por status** (visão `status` da carteira) mostra **toda** a carteira do vendedor,
 >   inclusive o que saiu da lista, para ele seguir o andamento.
 > - **Tudo o que acontece na base conta nos indicadores** — por vendedor, por equipe (supervisor) e geral.
@@ -31,8 +32,8 @@ representante e vendedor. **Só existem três registros**: Atendido, Sem interes
 
 | Resultado | Campo obrigatório | Efeito |
 |---|---|---|
-| **Atendido** | — (data de retorno opcional) | → **Aguardando cadastro** (sai da lista principal); "atendido em" = data do 1º atendimento; o CNPJ passa a ser procurado nos arquivos de **cadastro** e **pedido** do ERP; abre o **prazo de cadastro** = data + `prazo_cadastro_dias` (15) |
-| **Sem interesse do cliente** | motivo **do cliente** (lista) + observação ("Outro" exige observação) | → **Sem interesse** na hora (sai da lista principal) — "Sem interesse · cliente" |
+| **Atendido** | — | → **Aguardando cadastro** (sai da lista principal); "atendido em" = data do 1º atendimento; o CNPJ passa a ser procurado nos arquivos de **cadastro** e **pedido** do ERP; abre o **prazo de cadastro** = data + `prazo_cadastro_dias` (15) |
+| **Sem interesse do cliente** | motivo **do cliente** (lista) + observação ("Outro" exige observação) + **data de retorno na 1ª recusa** (0034) | → **Sem interesse** — "Sem interesse · cliente". **1ª recusa:** continua **na lista** do representante até a data de retorno (aí sobe ao topo; passou sem registro, aviso Retorno vencido). **2ª recusa** (já houve recusa do cliente antes): **sai da lista**, sem data (Rejeitados) |
 | **Sem interesse do representante** | motivo **do representante** (lista) + observação ("Outro" exige observação) | → **Sem interesse** na hora (sai da lista principal) — "Sem interesse · representante" |
 | **Reabrir: pedido identificado** | **data de entrada do pedido** (≤ data do registro) | → **Aguardando cadastro · pedido informado em dd/mm** (acompanhamento) até o arquivo de pedidos do ERP confirmar a **Venda realizada** |
 
@@ -44,8 +45,14 @@ Regras:
 - **Reabertura:** quando aparece um pedido de um cliente que estava *Sem interesse*, o vendedor/representante
   registra "pedido identificado" com a data de entrada do pedido. Não marca como "convertido sem registro".
 - **Motivo final** de "Sem interesse" = o do último "sem interesse" registrado.
-- **Lista principal** (Não contactado / Em prospecção) está sempre pendente — não há agenda de retorno nela.
-- **Data de retorno** (opcional) só existe na negociação e aparece **só no acompanhamento**.
+- **Lista principal** (Não contactado / Em prospecção) está sempre pendente; a única agenda nela é o retorno da 1ª recusa do
+  cliente (0034), que entra na ordem da próxima ação (vencida/hoje no topo, futura no fim).
+- **Data de retorno** (0034): **obrigatória na 1ª recusa do cliente** (deve ser depois da data do registro) — é ela que mantém o
+  cliente na lista (`vw_prospects.na_lista`: Não contactado, Em prospecção ou Sem interesse com retorno marcado). Na Lista aparece
+  embaixo do status ("retornar em dd/mm", em vermelho quando chegou). O Atendido não pede mais retorno na tela (o banco ainda aceita).
+  Cliente já cadastrado no ERP (análise, aguardando pedido) só registra: não pede data e não volta para a lista.
+- **Recusas do cliente:** a 1ª é a que não tem outra recusa do cliente antes (qualquer data). Os sem interesse do cliente
+  registrados antes da 0034 ficaram fora da lista; um novo registro deles já conta como 2ª recusa.
 - **Data do aparelho manda.** Única trava: não pode ser anterior ao último registro do prospect.
 - **Observação** é livre; a versão sem acento (`observacao_busca`) alimenta o ranking de palavras-chave.
 - **Correção** = novo registro. Nada é editado.
@@ -71,9 +78,11 @@ Implementação: [`shared/lote.mjs`](../shared/lote.mjs) · testes: [`test/lote.
 - **Na tela** (`#/lote`, **Registro em lote**): marca-se os clientes na lista principal (a seleção fica só nesta aba do
   navegador; a caixa do título marca todos da lista filtrada, inclusive grupos fechados — ex.: a rota do dia) →
   **Registrar em lote** → escolhe o **Registro**, que vale para todos (começa sem escolha):
-  - **Atendido**: sem motivo; **Retornar em** opcional para todos; todos passam para **Aguardando cadastro** com o prazo
+  - **Atendido**: sem motivo nem retorno; todos passam para **Aguardando cadastro** com o prazo
     de cadastro aberto, igual ao registro individual.
-  - **Sem interesse do cliente / do representante**: motivo/observação do lote e, se quiser, por cliente.
+  - **Sem interesse do cliente / do representante**: motivo/observação do lote e, se quiser, por cliente. No **do cliente**,
+    **Retornar em** é obrigatório (1ª recusa: os clientes continuam na lista); quem já está na lista como Sem interesse está na
+    2ª recusa e sai da lista sem data.
   O resultado mostra gravados × recusados (com o motivo); os recusados continuam selecionados.
 
 ### Sem interesse: do cliente × do representante (migração 0015)
@@ -146,7 +155,7 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 |---|---|---|
 | Prazo de cadastro vencido (Cadastro vencido) | Aguardando cadastro e `prazo_cadastro_ate` < hoje | dias depois do prazo |
 | Análise financeira fora do prazo (Análise financeira) | Em análise e `analise_financeira_ate` < hoje (`prazo_analise_financeira_dias`) | dias depois do prazo |
-| Retorno vencido | data de retorno < hoje, em status que aceita contato | dias depois da data |
+| Retorno vencido | data de retorno < hoje, em status que aceita contato — na prática, a 1ª recusa do cliente sem novo registro até a data (0034) | dias depois da data |
 | Representante sem registrar (Sem registrar) | representante/vendedor ativo com cliente a procurar nas ondas liberadas e sem atendimento no app há mais de `dias_alerta_sem_lancamento` (ou nunca) | dias desde o último registro |
 | Cliente sem movimento (Sem movimento) | `vw_prospects.parado`, **só depois do 1º registro** (0031): Em prospecção desde o último registro, ou Aguardando pedido desde a liberação do crédito (ou o último registro), sem retorno marcado, há mais de `dias_alerta_sem_movimento`. **Não contactado não entra** (é cobertura da carteira, não pendência); Aguardando cadastro e Análise financeira têm prazo próprio e não contam duas vezes | dias parado |
 

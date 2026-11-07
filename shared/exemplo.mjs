@@ -69,6 +69,7 @@ export async function carregarExemplo(db, { linhasBase, mapaStatus, hoje, gerarH
       usuario: { id: Number(p.vendedor_id) }, prospect: p, canal: (r(), 'visita'),   // todo atendimento é visita; o sorteio continua, para os demais dados de exemplo não mudarem
       resultado: semInteresse ? 'sem_interesse' : 'atendido', motivoId: semInteresse ? Number(escolher(motivos).id) : null,
       dataContato: data, dataHoraDispositivo: `${data}T14:00:00.000Z`,
+      dataRetorno: semInteresse ? somarDias(data, 7) : null,   // 1ª recusa do cliente: retorno obrigatório (0034); do representante, não vale
     }));
     contatos++;
     if (!semInteresse) atendidos.push({ ...p, data });

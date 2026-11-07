@@ -58,7 +58,9 @@ test('validação do formulário de contato espelha o banco', () => {
   assert.match(validarContato({ canal: 'visita', resultado: 'nao_atendido', dataContato: '2026-10-01' }).join(), /resultado inválido/);
   assert.match(validarContato({ canal: 'visita', resultado: 'sem_interesse', dataContato: '2026-10-01' }).join(), /motivo obrigatório/);
   assert.deepEqual(validarContato({ canal: 'visita', resultado: 'atendido', dataContato: '2026-10-01' }), []);
-  assert.match(validarContato({ canal: 'visita', resultado: 'atendido', dataContato: '2026-10-01', dataRetorno: '2026-09-01' }).join(), /anterior/);
+  assert.match(validarContato({ canal: 'visita', resultado: 'atendido', dataContato: '2026-10-01', dataRetorno: '2026-09-01' }).join(), /depois da data do registro/);
+  assert.match(validarContato({ canal: 'visita', resultado: 'sem_interesse', motivoId: 1, dataContato: '2026-10-01', exigeRetorno: true }).join(), /informe a data de retorno/);
+  assert.deepEqual(validarContato({ canal: 'visita', resultado: 'sem_interesse', motivoId: 1, dataContato: '2026-10-01', dataRetorno: '2026-10-08', exigeRetorno: true }), []);
   assert.match(validarContato({ canal: 'fax', resultado: 'x', dataContato: '' }).join(), /canal.*resultado.*data/);
 });
 

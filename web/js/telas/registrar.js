@@ -2,9 +2,9 @@
 // "Não atendido" não gera registro. A data é a do aparelho; o banco confere tudo de novo (triggers).
 import { bancoApp } from '../db.js';
 import { consultaFicha } from '../../shared/carteira.mjs';
-import { comandoRegistrarContato, listarMotivos } from '../../shared/registro.mjs';
+import { comandoRegistrarContato, consultaPrimeiraRecusa, listarMotivos } from '../../shared/registro.mjs';
 import { CANAIS_EM_USO, motivosDaOrigem, ORIGENS_SEM_INTERESSE, ROTULOS_RESULTADO, validarContato } from '../../shared/status.mjs';
-import { hojeSaoPaulo } from '../../shared/datas.mjs';
+import { hojeSaoPaulo, somarDias } from '../../shared/datas.mjs';
 import { mensagemErro } from '../../shared/gravacao.mjs';
 import { h, montar, mensagem, aviso, comEspera, formatar } from '../ui.js';
 import { seloStatus } from './_carteira.js';
@@ -30,7 +30,9 @@ export async function render(conteudo, ctx) {
     return montar(conteudo, mensagem(`${p.status_nome}: este cliente não aceita novo registro.`, 'info'),
       h('a', { href: `#/ficha?id=${id}` }, '‹ Voltar à ficha'));
   }
-  const motivos = await listarMotivos(db);
+  const [motivos, recusa] = await Promise.all([listarMotivos(db), db.execute(consultaPrimeiraRecusa(id))]);
+  // 1ª recusa do cliente: data de retorno obrigatória e o cliente continua na lista; na 2ª ele sai da lista (0034)
+  const primeiraRecusa = Number(recusa.rows[0]?.primeira) === 1;
   const hoje = hojeSaoPaulo();
   // "sem interesse" em duas opções (do cliente / do representante), cada uma com os seus motivos; o registro é o mesmo
   // (resultado sem_interesse) e a origem vem do motivo. Reabrir com pedido só para quem está "sem interesse".
@@ -55,18 +57,23 @@ export async function render(conteudo, ctx) {
   }
   const observacao = h('textarea', { id: 'observacao', rows: 3, maxlength: 500, placeholder: 'Opcional' });
   const rotuloObs = h('label', { for: 'observacao' }, 'Observação');
-  const retorno = h('input', { type: 'date', id: 'data-retorno', min: hoje });
+  const retorno = h('input', { type: 'date', id: 'data-retorno', min: somarDias(hoje, 1) });
   const dataPedido = h('input', { type: 'date', id: 'data-pedido', max: hoje });
   const blocoMotivo = h('div', { class: 'campo oculto' }, rotuloMotivo, motivo);
   const blocoPedido = h('div', { class: 'campo oculto' }, h('label', { for: 'data-pedido' }, 'Data de entrada do pedido *'), dataPedido);
-  const blocoRetorno = h('div', { class: 'campo oculto' }, h('label', { for: 'data-retorno' }, 'Retornar em (opcional)'), retorno);
+  const blocoRetorno = h('div', { class: 'campo oculto' }, h('label', { for: 'data-retorno' }, 'Retornar em *'), retorno,
+    h('small', { class: 'ajuda', style: 'display:block' }, 'O cliente continua na sua lista e volta ao topo nesta data.'));
+  // 2ª recusa do cliente: sem data, ele sai da lista
+  const avisoSegunda = h('p', { class: 'ajuda oculto', id: 'segunda-recusa', style: 'margin:0' }, 'O cliente já recusou antes: agora ele sai da sua lista e vai para Rejeitados.');
   const erros = h('div');
   const botao = h('button', { type: 'submit', disabled: true }, 'Gravar registro');
 
   function atualizar() {
     blocoMotivo.classList.toggle('oculto', resultado !== 'sem_interesse');
     blocoPedido.classList.toggle('oculto', resultado !== 'pedido_informado');
-    blocoRetorno.classList.toggle('oculto', resultado === 'sem_interesse' || !resultado); // retorno só na negociação
+    const recusaCliente = resultado === 'sem_interesse' && origem === 'cliente';
+    blocoRetorno.classList.toggle('oculto', !(recusaCliente && primeiraRecusa));   // o retorno é só da 1ª recusa do cliente
+    avisoSegunda.classList.toggle('oculto', !(recusaCliente && !primeiraRecusa));
     botao.disabled = !resultado;
     // observação obrigatória só quando não há interesse e o motivo exige descrição ("Outros")
     const m = motivos.find((x) => String(x.id) === motivo.value);
@@ -82,7 +89,9 @@ export async function render(conteudo, ctx) {
     const dados = {
       canal: canal.value, resultado, dataContato: data.value, observacao: observacao.value,
       motivoId: resultado === 'sem_interesse' && m ? Number(m.id) : null, motivoExigeObservacao: Boolean(m && Number(m.exige_observacao)),
-      dataRetorno: resultado !== 'sem_interesse' && retorno.value ? retorno.value : null, dataPedido: resultado === 'pedido_informado' ? dataPedido.value || null : null,
+      dataRetorno: resultado === 'sem_interesse' && origem === 'cliente' && primeiraRecusa && retorno.value ? retorno.value : null,
+      exigeRetorno: resultado === 'sem_interesse' && origem === 'cliente' && primeiraRecusa,
+      dataPedido: resultado === 'pedido_informado' ? dataPedido.value || null : null,
     };
     const lista = validarContato(dados);
     if (data.value > hoje) lista.push('a data do registro não pode ser futura');
@@ -104,12 +113,12 @@ export async function render(conteudo, ctx) {
       h('div', { class: 'cartao-prospect-topo' }, h('b', {}, p.razao_social), seloStatus(p)),
       h('div', { class: 'ajuda', style: 'margin:4px 0 0' }, `${formatar.cnpj(p.cnpj)} · ${p.cidade ?? ''} · ${p.status_descricao}`)),
     h('form', { class: 'cartao', onsubmit: gravar },
-      h('p', { class: 'ajuda', style: 'margin-top:0' }, 'Não atendeu? Não precisa registrar. Atendido vai para "Aguardando cadastro"; sem interesse sai da lista principal.'),
+      h('p', { class: 'ajuda', style: 'margin-top:0' }, 'Não atendeu? Não precisa registrar. Atendido vai para "Aguardando cadastro". Sem interesse do cliente: na 1ª recusa ele continua na sua lista até a data de retorno; na 2ª, sai. Sem interesse do representante sai da lista.'),
       opcoes,
       h('div', { class: 'linha-campos' },
         h('div', { class: 'campo' }, h('label', { for: 'canal' }, 'Canal'), canal),
         h('div', { class: 'campo' }, h('label', { for: 'data-contato' }, 'Data do registro'), data),
-        blocoRetorno),
+        blocoRetorno, avisoSegunda),
       blocoMotivo, blocoPedido,
       h('div', { class: 'campo' }, rotuloObs, observacao),
       erros,

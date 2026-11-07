@@ -111,7 +111,7 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForSelector('.lista-tabela tbody tr');
   const situacoes = await pagina.locator('.chip-situacao').evaluateAll((els) => els.map((el) => el.dataset.status));
   assert.equal(situacoes[0], 'todos');
-  assert.ok(situacoes.slice(1).every((x) => ['nao_contactado', 'em_prospeccao'].includes(x)), `situações: ${situacoes}`);
+  assert.ok(situacoes.slice(1).every((x) => ['nao_contactado', 'em_prospeccao', 'sem_interesse:cliente'].includes(x)), `situações: ${situacoes}`);   // a 1ª recusa do cliente segue na lista (0034)
   assert.equal(await pagina.locator('#carregar-mais').count(), 0, 'a lista vem inteira (sem páginas de 50)');
   // situação, ordem e grupos mudam no navegador, sem nova leitura (o endereço não muda)
   const enderecoAntes = await pagina.evaluate(() => location.hash);

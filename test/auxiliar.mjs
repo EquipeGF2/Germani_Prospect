@@ -42,7 +42,11 @@ export async function criarProspect(db, { n, vendedorId = 2, cidade = 'Santa Cru
 }
 
 let seq = 0;
+// sem interesse sem retorno informado: o teste recebe uma data de retorno (7 dias depois), como o app exige na 1ª recusa do
+// cliente (0034); `retorno: false` grava sem data (para testar a recusa)
 export async function registrarContato(db, { prospectId, usuarioId = 2, resultado, data, motivo = null, retorno = null, observacao = null }) {
+  if (resultado === 'sem_interesse' && retorno === null) retorno = new Date(Date.parse(`${data}T12:00:00Z`) + 7 * 86400000).toISOString().slice(0, 10);
+  if (retorno === false) retorno = null;
   const p = (await db.execute({ sql: 'SELECT tentativas FROM prospects WHERE id = ?', args: [prospectId] })).rows[0];
   const id = `teste-${++seq}`;
   await db.execute({

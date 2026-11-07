@@ -6,7 +6,7 @@ import { consultaFicha } from '../../shared/carteira.mjs';
 import { listarMotivos } from '../../shared/registro.mjs';
 import { prepararLote, registrarLote } from '../../shared/lote.mjs';
 import { motivosDaOrigem, ORIGENS_SEM_INTERESSE, ROTULOS_RESULTADO } from '../../shared/status.mjs';
-import { hojeSaoPaulo } from '../../shared/datas.mjs';
+import { hojeSaoPaulo, somarDias } from '../../shared/datas.mjs';
 import { h, montar, mensagem, comEspera, formatar, numeros } from '../ui.js';
 import { gravarLote, lerLote } from './_carteira.js';
 import { campoCanal, campoMotivo } from './registrar.js';
@@ -40,24 +40,26 @@ export async function render(conteudo, ctx) {
   const observacao = h('input', { id: 'obs-lote', maxlength: 500, placeholder: 'Observação para todos (opcional)' });
   const canal = campoCanal('canal-lote');
   const data = h('input', { type: 'date', id: 'data-lote', value: hoje, max: hoje, min: ultimo });
-  const retorno = h('input', { type: 'date', id: 'retorno-lote', min: hoje });
+  const amanha = somarDias(hoje, 1);
+  const retorno = h('input', { type: 'date', id: 'retorno-lote', min: amanha });
   const individuais = new Map(prospects.map((p) => [Number(p.id), {
     motivo: campoMotivo(motivosDaOrigem(motivos, 'cliente'), { id: `motivo-${p.id}`, vazio: '(o do lote)' }),
     observacao: h('input', { maxlength: 500, placeholder: '(a do lote)', 'aria-label': `Observação ${p.razao_social}` }),
   }]));
   const blocoMotivo = h('div', { class: 'campo oculto' }, h('label', { for: 'motivo-lote' }, 'Motivo do lote'), motivo);
-  const blocoRetorno = h('div', { class: 'campo oculto' }, h('label', { for: 'retorno-lote' }, 'Retornar em (opcional)'), retorno);
+  const blocoRetorno = h('div', { class: 'campo oculto' }, h('label', { for: 'retorno-lote' }, 'Retornar em *'), retorno);
   const explicacao = h('p', { class: 'ajuda', style: 'margin-top:0' }, 'Escolha o registro que vale para todos os clientes marcados.');
-  // atendido não tem motivo: some o motivo (do lote e de cada cliente) e aparece o retorno
+  // atendido não tem motivo nem retorno; o sem interesse do cliente pede a data de retorno (1ª recusa: o cliente fica na lista)
   function trocarRegistro() {
     const semInteresse = resultadoDe() === 'sem_interesse';
     montar(motivo, opcoesMotivo('Motivo do lote'));
     for (const c of individuais.values()) { montar(c.motivo, opcoesMotivo('(o do lote)')); c.motivo.classList.toggle('oculto', !semInteresse); }
     blocoMotivo.classList.toggle('oculto', !semInteresse);
-    blocoRetorno.classList.toggle('oculto', resultadoDe() !== 'atendido');
+    blocoRetorno.classList.toggle('oculto', registro.value !== 'sem_interesse:cliente');
     explicacao.textContent = !registro.value ? 'Escolha o registro que vale para todos os clientes marcados.'
-      : semInteresse ? 'O motivo e a observação do lote valem para todos; o que for informado no cliente vale só para ele.'
-        : 'Todos passam para Aguardando cadastro. A observação do cliente vale só para ele.';
+      : registro.value === 'sem_interesse:cliente' ? 'Na 1ª recusa, o cliente continua na sua lista e volta na data de retorno; quem já recusou antes sai da lista. O motivo e a observação do lote valem para todos; o do cliente vale só para ele.'
+        : semInteresse ? 'Os clientes saem da sua lista. O motivo e a observação do lote valem para todos; o do cliente vale só para ele.'
+          : 'Todos passam para Aguardando cadastro. A observação do cliente vale só para ele.';
     botao.disabled = !registro.value;
   }
   const resultado = h('div');
@@ -74,10 +76,10 @@ export async function render(conteudo, ctx) {
       if (Object.keys(item).length) ind[id] = item;
     }
     const preparado = prepararLote({
-      usuario, prospects: prospects.map((p) => ({ id: Number(p.id), tentativas: p.tentativas })), individuais: ind, motivos: porId,
+      usuario, prospects: prospects.map((p) => ({ id: Number(p.id), tentativas: p.tentativas, status_atual: p.status_atual })), individuais: ind, motivos: porId,
       comum: { resultado: resultadoDe(), canal: canal.value, dataContato: data.value,
         motivoId: resultadoDe() === 'sem_interesse' && motivo.value ? Number(motivo.value) : null,
-        dataRetorno: resultadoDe() === 'atendido' && retorno.value ? retorno.value : null,
+        dataRetorno: registro.value === 'sem_interesse:cliente' && retorno.value ? retorno.value : null, exigeRetorno: registro.value === 'sem_interesse:cliente',
         observacao: observacao.value, dataHoraDispositivo: new Date().toISOString() },
     });
     const invalidos = preparado.itens.filter((i) => i.erros.length);
@@ -92,7 +94,9 @@ export async function render(conteudo, ctx) {
     montar(conteudo, h('h1', {}, 'Lote gravado'),
       numeros([['gravados', r.gravados, 'ok'], ['recusados', r.recusados.length, r.recusados.length ? 'erro' : '']]),
       r.recusados.length ? mensagem(r.recusados.map((x) => `${prospects.find((p) => Number(p.id) === x.prospectId)?.razao_social}: ${x.erros.join('; ')}`).join(' · '), 'erro') : null,
-      h('p', { class: 'ajuda' }, `Os clientes gravados saíram da lista principal e aparecem no Acompanhamento como "${gravadoComo}".`),
+      h('p', { class: 'ajuda' }, registro.value === 'sem_interesse:cliente'
+        ? 'Na 1ª recusa, os clientes continuam na sua lista e voltam ao topo na data de retorno; quem já tinha recusado saiu da lista (Rejeitados).'
+        : `Os clientes gravados saíram da lista principal e aparecem no Acompanhamento como "${gravadoComo}".`),
       h('div', { class: 'acoes' }, h('a', { class: 'botao', href: '#/carteira' }, 'Voltar à lista'),
         h('a', { class: 'botao secundario', href: '#/carteira?aba=acompanhamento' }, 'Ver no Acompanhamento')));
   }

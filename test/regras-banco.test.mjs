@@ -35,9 +35,9 @@ test('motivos de uso do sistema não podem ser escolhidos no app', async () => {
   await assert.rejects(registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'NAO_INFORMADO', data: '2026-10-01' }), /não disponível para o app/);
 });
 
-test('data de retorno é opcional, mas não pode ser anterior ao contato', async () => {
+test('data de retorno é opcional no atendido, mas não pode ser anterior ao contato', async () => {
   const id = await criarProspect(db, { n: 1 });
-  await assert.rejects(registrarContato(db, { prospectId: id, resultado: 'atendido', retorno: '2026-09-30', data: '2026-10-01' }), /CHECK constraint/);
+  await assert.rejects(registrarContato(db, { prospectId: id, resultado: 'atendido', retorno: '2026-09-30', data: '2026-10-01' }), /depois da data do registro/);
   await registrarContato(db, { prospectId: id, resultado: 'atendido', data: '2026-10-01' });
   assert.equal((await prospect(db, id)).data_proxima_acao, null);
 });
@@ -53,20 +53,39 @@ test('app só registra atendido, sem interesse ou pedido identificado — "não 
   assert.equal(Number(r.rows[0].n), 0);
 });
 
-test('"sem interesse" sai da lista principal; dias corridos contam do 1º registro', async () => {
+test('sem interesse do cliente: 1ª recusa exige retorno e fica na lista; a 2ª tira da lista; dias corridos do 1º registro (0034)', async () => {
   const id = await criarProspect(db, { n: 1 });
   let p = await prospect(db, id);
   assert.equal(p.na_lista, 1);
   assert.equal(p.pendente_hoje, 1);
   assert.equal(p.dias_corridos, null); // sem registro ainda
-  await registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-03' });
+  await assert.rejects(registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-03', retorno: false }), /informe a data de retorno/);
+  await registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-03', retorno: '2026-10-10' });
   p = await prospect(db, id);
   assert.equal(p.status_atual, 'sem_interesse');
-  assert.equal(p.na_lista, 0);
-  assert.equal(p.data_proxima_acao, null);
+  assert.equal(p.na_lista, 1, '1ª recusa do cliente: continua na lista do representante');
+  assert.equal(p.data_proxima_acao, '2026-10-10');
+  assert.equal(p.pendente_hoje, 1, 'a data já passou: no topo da lista');
+  assert.equal(p.retorno_pendente, 1);
   assert.equal(p.motivo_sem_interesse, 'Preço acima do praticado');
   assert.equal(p.dt_primeiro_contato, '2026-10-03');
   assert.ok(p.dias_corridos > 0);
+  // na volta, nova recusa do cliente: sai da lista (Rejeitados), sem data, mesmo se vier uma
+  await registrarContato(db, { prospectId: id, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-11', retorno: '2026-10-20' });
+  p = await prospect(db, id);
+  assert.deepEqual([p.status_atual, p.na_lista, p.data_proxima_acao, Number(p.tentativas)], ['sem_interesse', 0, null, 2]);
+  // sem interesse do representante: sai da lista na hora, sem data
+  const id2 = await criarProspect(db, { n: 2 });
+  await registrarContato(db, { prospectId: id2, resultado: 'sem_interesse', motivo: 'REP_FORA_ROTA', data: '2026-10-03', retorno: false });
+  p = await prospect(db, id2);
+  assert.deepEqual([p.na_lista, p.data_proxima_acao], [0, null]);
+  // atendido depois da 1ª recusa segue o fluxo; uma recusa do cliente depois disso já é a 2ª
+  const id3 = await criarProspect(db, { n: 3 });
+  await registrarContato(db, { prospectId: id3, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-03', retorno: '2026-10-10' });
+  await registrarContato(db, { prospectId: id3, resultado: 'atendido', data: '2026-10-10' });
+  assert.equal((await prospect(db, id3)).status_atual, 'aguardando_cadastro');
+  await registrarContato(db, { prospectId: id3, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-12', retorno: false });
+  assert.equal((await prospect(db, id3)).na_lista, 0);
 });
 
 test('reabrir "sem interesse" informando a data de entrada do pedido → Aguardando cadastro (acompanhamento)', async () => {
