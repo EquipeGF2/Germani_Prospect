@@ -1,6 +1,6 @@
 // Lista principal (Não contactado / Em prospecção). O Acompanhamento vai para acompanhamento.js. docs/03 §6
 // Computador: _lista.js (sempre em tabela, filtros em grupos, ficha ao lado). Aqui: o CELULAR, layout de sempre —
-// visões lista, cidade, bairro, onda, status e (só vendedor) rota; busca sem acento.
+// visões lista, cidade, bairro, onda, status e rota; busca sem acento.
 import { memoriaDaTela } from '../memoria.js';
 import { bancoApp, lerComCache } from '../db.js';
 import { consultaCarteira, precisaFiltro, visoesPermitidas } from '../../shared/carteira.mjs';

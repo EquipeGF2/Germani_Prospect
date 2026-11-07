@@ -69,7 +69,7 @@ export async function criarUsuarioSistema(db, { perfil, login, nome, executadoPo
 /**
  * Cria supervisor ou vendedor/representante pela tela (antes ou além da importação da base). Precisa do código do ERP
  * (é por ele que a importação reconhece o mesmo usuário e liga os prospects) e, para vendedor, do supervisor da equipe.
- * `tipo` (vendedor): 'representante' (sem rota) ou 'vendedor' (com rota).
+ * `tipo` (vendedor): 'representante' ou 'vendedor' (monta rotas).
  */
 export async function criarUsuarioEquipe(db, { perfil, login, nome, codigoErp, supervisorId = null, tipo = null, executadoPor, senha: senhaInicial = null }) {
   if (!['supervisor', 'vendedor'].includes(perfil)) throw new Error('perfil deve ser supervisor ou vendedor');

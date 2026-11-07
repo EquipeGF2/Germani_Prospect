@@ -2,9 +2,9 @@
 // docs/03-regras-negocio.md §6
 //
 // Duas formas de trabalho:
-//   * REPRESENTANTE — visita a carteira. Visões: lista, cidade, bairro, onda, status. NÃO tem rota:
-//     não agrupa, não filtra e não recebe as colunas rota/subrota.
-//   * VENDEDOR      — atendimento mais amplo. Visões: lista, cidade, bairro, onda, status, rota (rota + subrota).
+//   * REPRESENTANTE — visita a carteira. Visões: lista, cidade, bairro, onda, status, rota.
+//   * VENDEDOR      — atendimento mais amplo. Mesmas visões; só ele monta rotas (shared/rotas.mjs, docs/03 §7).
+// Rota/subrota da base é dado de cadastro: aparece, filtra e agrupa para todos (representante, vendedor e gestão).
 //   * supervisor / gerente comercial / administrador — todas as visões, sobre a equipe / sobre tudo.
 // tipo_atuacao NULL é tratado como representante (a forma mais restrita).
 //
@@ -23,11 +23,7 @@ const COLUNAS_LISTA = ['id', 'cnpj', 'razao_social', 'nome_fantasia', 'endereco'
   'tentativas', 'dt_primeiro_contato', 'dt_segundo_contato', 'dt_ultimo_contato', 'dt_atendido', 'data_proxima_acao',
   'dias_corridos', 'pendente_hoje', 'retorno_pendente', 'na_lista', 'atendido', 'prazo_cadastro_vencido',
   'motivo_sem_interesse', 'sem_interesse_origem', 'dt_cadastro_erp', 'dt_pedido', 'numero_pedido', 'dt_baixa', 'vendedor_id', 'vendedor_nome', 'supervisor_id'];
-// rota/subrota só existem para prospects de vendedor (nunca de representante), mesmo na visão de gestão
-const COLUNAS_ROTA = [
-  "CASE WHEN vendedor_tipo_atuacao = 'vendedor' THEN rota END AS rota",
-  "CASE WHEN vendedor_tipo_atuacao = 'vendedor' THEN subrota END AS subrota",
-];
+const COLUNAS_ROTA = ['rota', 'subrota'];
 
 /** Forma de trabalho efetiva do usuário. */
 export function formaDeTrabalho(usuario) {
@@ -35,9 +31,9 @@ export function formaDeTrabalho(usuario) {
   return usuario.tipo_atuacao === 'vendedor' ? 'vendedor' : 'representante';
 }
 
-/** Visões que o usuário pode abrir. */
+/** Visões que o usuário pode abrir: todas, para todos (a rota é dado de cadastro). */
 export function visoesPermitidas(usuario) {
-  return formaDeTrabalho(usuario) === 'representante' ? VISOES.filter((v) => v !== 'rota') : [...VISOES];
+  return usuario ? [...VISOES] : [];
 }
 
 // Ordenação da lista pelos rótulos das colunas (tela do computador, exibição em lista). Só chaves conhecidas viram SQL.
@@ -56,7 +52,7 @@ export const ORDENACOES = Object.freeze({
 
 /**
  * "Agrupar por" da lista do computador: a lista sai ordenada pelo grupo (cabeçalho a cada troca) e, dentro dele, pela
- * ordem escolhida. Bairro só com a cidade escolhida; rota só para quem trabalha com rota.
+ * ordem escolhida. Bairro só com a cidade escolhida.
  */
 export const AGRUPAMENTOS = Object.freeze({
   cidade: { nome: 'Cidade', ordem: 'cidade_busca, uf', rotulo: (p) => (p.cidade ? `${p.cidade}${p.uf ? '/' + p.uf : ''}` : '(sem cidade)') },
@@ -67,7 +63,7 @@ export const AGRUPAMENTOS = Object.freeze({
   rota: { nome: 'Rota', ordem: 'rota IS NULL, length(rota), rota, subrota', rotulo: (p) => (p.rota ? `Rota ${p.rota}${p.subrota ? ' / ' + p.subrota : ''}` : '(sem rota)') },
 });
 
-/** Agrupamentos que fazem sentido agora (bairro só com cidade; representante só para gestão; rota só com rota). */
+/** Agrupamentos que fazem sentido agora (bairro só com cidade; representante só para gestão). */
 export function agrupamentosPossiveis(usuario, filtros = {}) {
   return Object.keys(AGRUPAMENTOS).filter((k) => (k !== 'bairro' || filtros.cidadeBusca)
     && (k !== 'representante' || usuario.perfil !== 'vendedor') && (k !== 'rota' || visoesPermitidas(usuario).includes('rota')));
@@ -100,9 +96,8 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   if (!usuario?.id || !usuario?.perfil) throw new Error('usuário obrigatório');
   if (!VISOES.includes(visao)) throw new Error(`visão inválida: ${visao}`);
   const permitidas = visoesPermitidas(usuario);
-  if (!permitidas.includes(visao)) throw new Error(`visão "${visao}" não disponível para representante`);
+  if (!permitidas.includes(visao)) throw new Error(`visão "${visao}" não disponível`);
   const comRota = permitidas.includes('rota');
-  if (!comRota && (filtros.rota || filtros.subrota)) throw new Error('representante não trabalha com rota');
 
   const { where, args } = escopo(usuario);
   // Aguardando cadastro, Sem interesse etc. só aparecem no acompanhamento (visão 'status' ou filtro de status)
@@ -121,7 +116,6 @@ export function consultaCarteira({ usuario, visao = 'lista', filtros = {}, busca
   if (filtros.bairroBusca) { where.push('bairro_busca = ?'); args.push(filtros.bairroBusca); }
   if (filtros.onda) { where.push('onda = ?'); args.push(String(filtros.onda)); }
   if (filtros.segmento) { where.push('tipologia_gtm = ?'); args.push(filtros.segmento); }
-  if (visao === 'rota' || filtros.rota || filtros.subrota) where.push("vendedor_tipo_atuacao = 'vendedor'");
   if (filtros.rota) { where.push('rota = ?'); args.push(filtros.rota); }
   if (filtros.subrota) { where.push('subrota = ?'); args.push(filtros.subrota); }
   const termo = normalizarBusca(busca);
@@ -260,14 +254,6 @@ export function consultaSegmentos() {
 
 export function consultaOndas() {
   return { sql: `SELECT DISTINCT onda FROM prospects WHERE onda IS NOT NULL AND onda <> '' ORDER BY ${natural('onda')}`, args: [] };
-}
-
-/** Remove da ficha o que o perfil não usa (representante não tem rota). */
-export function ajustarFicha(usuario, ficha) {
-  if (!ficha) return ficha;
-  const f = { ...ficha };
-  if (formaDeTrabalho(usuario) === 'representante' || f.vendedor_tipo_atuacao !== 'vendedor') { delete f.rota; delete f.subrota; }
-  return f;
 }
 
 /** Linha do tempo (histórico de movimentação) — chamar só depois de consultaFicha confirmar o acesso. */

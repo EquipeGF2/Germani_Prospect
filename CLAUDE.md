@@ -21,7 +21,7 @@ Sistema **GERMANI** (guarda-chuva GERMANI), estado **ativo**. Português do Bras
   importação da base ainda não trabalhada (`base_exclusoes`, migração 0029, ADR-0008).
 - Alterar `prospects.status_atual` fora dos triggers.
 - Inventar layout de arquivo do ERP: colunas vêm por parâmetro até a amostra real chegar.
-- Calcular distância por geolocalização (ADR-0005). Dar rota ao representante.
+- Calcular distância por geolocalização (ADR-0005). Deixar o representante montar rota (§7; a rota do cadastro ele vê).
 
 ## Comandos
 `npm test` · `npm run test:telas` · `npm run site` · `npm run servir` · `npm run migrate` · `npm run importar:base` · `npm run importar:eventos` · `npm run importar:tipos` · `npm run importar:credito` · `npm run usuarios`

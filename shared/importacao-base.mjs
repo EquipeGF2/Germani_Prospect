@@ -259,7 +259,7 @@ export function normalizarMapaStatus(mapa) {
  * mesmo código com nomes diferentes. Altera `resultados` (rejeita / acrescenta avisos).
  * @param resultados [{ numeroLinha, dados, erros, avisos }]
  */
-/** Coluna TIPO da planilha → tipo de atuação do vendedor ('Representante' sem rota · 'Vendedor' com rota). */
+/** Coluna TIPO da planilha → tipo de atuação do vendedor ('Representante' · 'Vendedor', que monta rotas). */
 export function tipoAtuacao(valor) {
   const t = normalizarBusca(valor ?? '');
   return t.startsWith('REPRESENTANTE') ? 'representante' : t.startsWith('VENDEDOR') ? 'vendedor' : null;

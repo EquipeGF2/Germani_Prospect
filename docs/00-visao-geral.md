@@ -35,7 +35,7 @@ Detalhe completo: [03-regras-negocio.md](03-regras-negocio.md).
 
 | Perfil | No app | Por importação (administrador) |
 |---|---|---|
-| Representante | **filtro e consulta**: lista principal por lista, cidade e bairro (**sem rota**) + acompanhamento; registra **atendido / sem interesse** (também em lote) e reabre com pedido identificado | — |
+| Representante | **filtro e consulta**: lista principal por lista, cidade, bairro e rota do cadastro (**não monta rota**) + acompanhamento; registra **atendido / sem interesse** (também em lote) e reabre com pedido identificado | — |
 | Vendedor | o mesmo + **montagem de rotas** e visão por rota/subrota | — |
 | Analista financeiro | console de crédito: libera sempre, informando à vista/antecipado ou a prazo, restrição de crédito e limite | — |
 | Supervisor | o mesmo, para a sua equipe; painel do Início **só da equipe**; redistribui carteira | — |

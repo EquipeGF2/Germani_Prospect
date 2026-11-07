@@ -147,9 +147,10 @@ export function opcoesEmCascata(linhas, filtros = {}) {
     cidade: (l) => !f.cidadeBusca || l.cidade_busca === f.cidadeBusca,
     segmento: (l) => !f.segmento || l.tipologia_gtm === f.segmento,
     onda: (l) => !f.onda || String(l.onda) === String(f.onda),
+    rota: (l) => !f.rota || l.rota === f.rota,
+    subrota: (l) => !f.subrota || l.subrota === f.subrota,
   };
-  const fixos = (l) => naAba(l) && (!f.rota || l.rota === f.rota) && (!f.subrota || l.subrota === f.subrota);
-  const base = linhas.filter((l) => Number(l.qtd) > 0 && fixos(l));
+  const base = linhas.filter((l) => Number(l.qtd) > 0 && naAba(l));
   // linhas que passam em todos os filtros, menos o da própria faceta
   const sem = (faceta) => base.filter((l) => Object.entries(testes).every(([k, t]) => k === faceta || t(l)));
   const unicos = (rows, chave, montar) => { const m = new Map(); for (const l of rows) { const k = chave(l); if (k !== '' && k != null && !m.has(k)) m.set(k, montar(l)); } return [...m.values()]; };
@@ -163,5 +164,8 @@ export function opcoesEmCascata(linhas, filtros = {}) {
       .sort((a, b) => a.cidade_busca.localeCompare(b.cidade_busca, 'pt-BR') || String(a.uf).localeCompare(String(b.uf))),
     segmentos: unicos(sem('segmento'), (l) => l.tipologia_gtm, (l) => l.tipologia_gtm).sort((a, b) => a.localeCompare(b, 'pt-BR')),
     ondas: unicos(sem('onda'), (l) => String(l.onda ?? ''), (l) => String(l.onda)).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })),
+    // rota e subrota do cadastro (subrota só depois de escolher a rota)
+    rotas: unicos(sem('rota'), (l) => l.rota, (l) => l.rota).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })),
+    subrotas: f.rota ? unicos(sem('subrota'), (l) => l.subrota, (l) => l.subrota).sort((a, b) => a.localeCompare(b, 'pt-BR', { numeric: true })) : [],
   };
 }

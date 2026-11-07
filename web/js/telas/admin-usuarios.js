@@ -8,8 +8,8 @@ import { NOMES_PERFIL } from '../app.js';
 const SITUACAO = { sem_acesso: ['sem acesso', 'alerta'], provisoria: ['senha provisória', 'ok'], ok: ['ativo', 'ok'] };
 
 // todos os perfis, agrupados por tipo; os que não servem para o usuário aparecem desabilitados, com o motivo.
-// Vendedor: o perfil do sistema vira duas opções — Representante (sem rota) e Vendedor (com rota) — e a escolha grava o tipo.
-const TIPOS_VENDEDOR = [['representante', 'Representante (sem rota)'], ['vendedor', 'Vendedor (com rota)']];
+// Vendedor: o perfil do sistema vira duas opções — Representante e Vendedor (monta rotas) — e a escolha grava o tipo.
+const TIPOS_VENDEDOR = [['representante', 'Representante'], ['vendedor', 'Vendedor (monta rotas)']];
 function opcoesAgrupadas(opcoes, atual, valor = (p) => p.id, vendedor = null) {
   return Object.entries(TIPOS_BASE).map(([base, nomeTipo]) => {
     const doTipo = opcoes.filter((o) => o.perfil.base === base);

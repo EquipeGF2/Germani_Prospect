@@ -49,7 +49,7 @@ export async function render(conteudo, ctx) {
         if (!g) return;
         aviso('Lista gravada.');
         montar(area, passos(ETAPAS, 4), blocoResultado({ titulo: `Importação nº ${g.importacaoId}`, resumo: g.resumo, resultados: paraTela(g.resultados), nomeRelatorio: `importacao-${g.importacaoId}-tipos.csv` }),
-          g.resumo.semTipoDefinido ? mensagem(`${g.resumo.semTipoDefinido} representante(s)/vendedor(es) continuam sem tipo — tratados como representante (sem rota).`, 'info') : null);
+          g.resumo.semTipoDefinido ? mensagem(`${g.resumo.semTipoDefinido} representante(s)/vendedor(es) continuam sem tipo — tratados como representante (não monta rotas).`, 'info') : null);
       } }, 'Confirmar e gravar');
       montar(area, passos(ETAPAS, 2), blocoResultado({ titulo: 'Resultado da simulação', resumo: r.resumo, resultados: paraTela(r.resultados), nomeRelatorio: `simulacao-tipos-${hojeSaoPaulo()}.csv` }),
         h('div', { class: 'acoes' }, bGravar, h('button', { class: 'secundario', onclick: colunas }, 'Voltar')));
@@ -65,5 +65,5 @@ export async function render(conteudo, ctx) {
     h('div', { class: 'campo', style: 'margin-top:16px' }, h('label', { for: 'lista-colada' }, 'Ou cole a lista copiada do Excel (com o cabeçalho)'), colada),
     bColar));
   montar(conteudo, h('h1', {}, 'Representantes e vendedores'),
-    h('p', { class: 'ajuda' }, 'Representante: lista, cidade, bairro, onda e status — sem rota. Vendedor: o mesmo + rota/subrota e montagem de rotas.'), area);
+    h('p', { class: 'ajuda' }, 'Representante e vendedor veem a rota/subrota do cadastro. Só o vendedor monta rotas.'), area);
 }

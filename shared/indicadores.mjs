@@ -12,7 +12,7 @@
 //   pct_cadastro     = (análise financeira + aguardando pedido + vendas) ÷ contactados
 //   pct_conversao    = vendas ÷ contactados
 // Agrupamento por vendedor/supervisor usa a carteira ATUAL (transferências não reescrevem o passado).
-// Agrupamentos: geral · vendedor · supervisor · cidade · bairro · onda · rota (rota: só vendedores, nunca representantes).
+// Agrupamentos: geral · vendedor · supervisor · cidade · bairro · onda · rota (rota de cadastro: todas as carteiras).
 import { veTodasEquipes } from './perfis.mjs';
 
 const AGRUPAMENTOS = {
@@ -25,12 +25,11 @@ const AGRUPAMENTOS = {
     rotulo: "COALESCE(p.bairro, '(sem bairro)') || ' — ' || COALESCE(p.cidade, '(sem cidade)') || '/' || COALESCE(p.uf, '')",
   },
   onda: { chave: "COALESCE(p.onda, '')", rotulo: "COALESCE('Onda ' || p.onda, '(sem onda)')" },
-  // rota existe só para vendedores (tipo_atuacao = 'vendedor'); representantes ficam fora deste agrupamento
-  rota: { chave: "COALESCE(p.rota, '') || '|' || COALESCE(p.subrota, '')", rotulo: "COALESCE(p.rota, '(sem rota)') || COALESCE(' / ' || p.subrota, '')", somenteVendedor: true },
+  rota: { chave: "COALESCE(p.rota, '') || '|' || COALESCE(p.subrota, '')", rotulo: "COALESCE(p.rota, '(sem rota)') || COALESCE(' / ' || p.subrota, '')" },
 };
 
 function filtrosSql(filtros = {}, g = {}) {
-  const where = g.somenteVendedor ? ["v.tipo_atuacao = 'vendedor'"] : [];
+  const where = [];
   const args = [];
   if (filtros.vendedorId) { where.push('v.id = ?'); args.push(filtros.vendedorId); }
   if (filtros.supervisorId) { where.push('COALESCE(v.supervisor_id, v.id) = ?'); args.push(filtros.supervisorId); }

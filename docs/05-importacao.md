@@ -135,7 +135,7 @@ As colunas são reconhecidas pelo nome (a "Descrição" pela posição) e podem 
 
 ## 4. Lista de representantes e vendedores (forma de trabalho)
 
-Quando a planilha base não informa quem é **representante** (sem rota) e quem é **vendedor** (com rota),
+Quando a planilha base não informa quem é **representante** e quem é **vendedor** (monta rotas),
 o administrador envia uma lista simples — rode depois da carga da base:
 
 ```bash
