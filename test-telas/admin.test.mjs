@@ -455,15 +455,21 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('text=Histórico de movimentação');
   await pagina.click('a:text("Registrar atendimento")');
   await pagina.waitForSelector('text=Não atendeu? Não precisa registrar.');
-  await pagina.click('label.opcao:has-text("Sem interesse")');
+  await pagina.click('label.opcao:has-text("Sem interesse do representante")');
+  assert.ok(!(await pagina.locator('#data-retorno').isVisible()), 'do representante: sem retorno (sai da lista)');
+  await pagina.click('label.opcao:has-text("Sem interesse do cliente")');
+  assert.ok(await pagina.locator('#data-retorno').isVisible(), '1ª recusa do cliente: Retornar em *');
+  assert.equal(await pagina.locator('label[for="data-retorno"]').innerText(), 'Retornar em *');
   await pagina.click('button:text("Gravar registro")');
   await pagina.waitForSelector('text=motivo obrigatório');                // validação antes de enviar
+  assert.match(await texto(), /informe a data de retorno/);
   assert.equal(await pagina.locator('label[for="observacao"]').innerText(), 'Observação');   // opcional por padrão
   await pagina.selectOption('#motivo', { label: 'Outro (descrever na observação)' });
   assert.equal(await pagina.locator('label[for="observacao"]').innerText(), 'Observação *');  // obrigatória: sem interesse + "Outro"
   assert.equal(await pagina.getAttribute('#observacao', 'placeholder'), 'Obrigatória: descreva o motivo');
   await pagina.click('label.opcao:has-text("Atendido")');
   assert.equal(await pagina.getAttribute('#observacao', 'placeholder'), 'Opcional');
+  assert.ok(!(await pagina.locator('#data-retorno').isVisible()), 'atendido: sem retorno');
   await foto('12-registrar');
   // canal: por enquanto todo atendimento é visita; o campo fica na tela, fixo
   assert.equal(await pagina.locator('#canal').inputValue(), 'visita');
@@ -492,14 +498,22 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('text=Gravar 2 registro(s)');
   assert.ok(await pagina.locator('button:text("Gravar 2 registro(s)")').isDisabled(), 'sem escolher o registro não grava');
   await pagina.selectOption('#registro-lote', { label: 'Atendido' });
-  assert.ok(await pagina.locator('#retorno-lote').isVisible() && !(await pagina.locator('#motivo-lote').isVisible()), 'atendido: retorno sem motivo');
+  assert.ok(!(await pagina.locator('#retorno-lote').isVisible()) && !(await pagina.locator('#motivo-lote').isVisible()), 'atendido: sem retorno nem motivo');
+  await pagina.selectOption('#registro-lote', { label: 'Sem interesse do representante' });
+  assert.ok(!(await pagina.locator('#retorno-lote').isVisible()), 'sem interesse do representante: sai da lista, sem retorno');
   await pagina.selectOption('#registro-lote', { label: 'Sem interesse do cliente' });
+  assert.ok(await pagina.locator('#retorno-lote').isVisible(), 'sem interesse do cliente: retorno obrigatório (1ª recusa)');
   await pagina.selectOption('#motivo-lote', { label: 'Preço acima do praticado' });
   await pagina.locator('.lote-item select').nth(1).selectOption({ label: 'Já tem fornecedor / contrato' });
   await foto('14-lote');
   await pagina.click('button:text("Gravar 2 registro(s)")');
+  await pagina.waitForSelector('text=/informe a data de retorno/');   // sem a data, a 1ª recusa do cliente não grava
+  const amanha = await pagina.locator('#retorno-lote').getAttribute('min');
+  await pagina.fill('#retorno-lote', amanha);
+  await pagina.click('button:text("Gravar 2 registro(s)")');
   await pagina.waitForSelector('text=Lote gravado');
   assert.match(await texto(), /2\s+gravados/);
+  assert.match(await texto(), /continuam na sua lista/);
 
   // 9b. caixa do título marca todos da lista; atendido em lote leva para Aguardando cadastro
   await pagina.goto(`${base}#/carteira?limpo=1`);

@@ -41,21 +41,23 @@ export const ROTULOS_RESULTADO = Object.freeze({
  * O status é um só; a origem vem do motivo escolhido (motivos_sem_interesse.origem).
  */
 export const ORIGENS_SEM_INTERESSE = Object.freeze({
-  cliente: { rotulo: 'Sem interesse do cliente', curto: 'cliente', ajuda: 'O cliente recusou a proposta' },
-  representante: { rotulo: 'Sem interesse do representante', curto: 'representante', ajuda: 'O representante não vai trabalhar este cliente' },
+  cliente: { rotulo: 'Sem interesse do cliente', curto: 'cliente', ajuda: 'O cliente recusou: na 1ª vez, volte na data de retorno' },
+  representante: { rotulo: 'Sem interesse do representante', curto: 'representante', ajuda: 'Não vai trabalhar o cliente: sai da lista' },
 });
 /** Motivos de uma origem (a lista vem de listarMotivos, com a coluna origem). */
 export const motivosDaOrigem = (motivos, origem) => motivos.filter((m) => (m.origem ?? 'cliente') === origem);
 
 /** Validação do formulário "Registrar contato" — mesmas regras dos CHECKs/triggers do banco. */
-export function validarContato({ canal, resultado, motivoId, motivoExigeObservacao, observacao, dataContato, dataRetorno, dataPedido }) {
+/** `exigeRetorno`: 1ª recusa do cliente (0034) — a data de retorno é obrigatória e o cliente continua na lista. */
+export function validarContato({ canal, resultado, motivoId, motivoExigeObservacao, observacao, dataContato, dataRetorno, dataPedido, exigeRetorno = false }) {
   const erros = [];
   if (!CANAIS.includes(canal)) erros.push('canal inválido');
   if (!RESULTADOS.includes(resultado)) erros.push('resultado inválido');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataContato ?? '')) erros.push('data do contato obrigatória');
   if (resultado === 'sem_interesse' && !motivoId) erros.push('motivo obrigatório para "sem interesse"');
   if (resultado === 'sem_interesse' && motivoExigeObservacao && !String(observacao ?? '').trim()) erros.push('este motivo exige observação');
-  if (dataRetorno && dataRetorno < dataContato) erros.push('data de retorno anterior ao contato');
+  if (resultado === 'sem_interesse' && exigeRetorno && !dataRetorno) erros.push('sem interesse do cliente: informe a data de retorno');
+  if (dataRetorno && dataRetorno <= dataContato) erros.push('a data de retorno deve ser depois da data do registro');
   if (resultado === 'pedido_informado') {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dataPedido ?? '')) erros.push('data de entrada do pedido obrigatória para reabrir');
     else if (dataPedido > dataContato) erros.push('data do pedido posterior à data do registro');

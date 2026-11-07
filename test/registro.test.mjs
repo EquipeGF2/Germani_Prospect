@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, prospect } from './auxiliar.mjs';
-import { comandoRegistrarContato, listarMotivos } from '../shared/registro.mjs';
+import { comandoRegistrarContato, consultaPrimeiraRecusa, listarMotivos } from '../shared/registro.mjs';
 import { consultaFicha, consultaLinhaTempo } from '../shared/carteira.mjs';
 
 test('registro pelo app: atendido, sem interesse (motivo) e reabertura com pedido; ficha e linha do tempo', async () => {
@@ -16,7 +16,10 @@ test('registro pelo app: atendido, sem interesse (motivo) e reabertura com pedid
   assert.equal(ficha.rota, 'R1');                                   // rota é dado de cadastro: o representante também vê
   assert.throws(() => comandoRegistrarContato({ usuario: REP, prospect: ficha, canal: 'visita', resultado: 'sem_interesse', dataContato: '2026-10-02' }), /motivo obrigatório/);
   const preco = motivos.find((m) => m.codigo === 'PRECO');
-  await db.execute(comandoRegistrarContato({ usuario: REP, prospect: ficha, canal: 'visita', resultado: 'sem_interesse', motivoId: preco.id, observacao: 'Tabela alta', dataContato: '2026-10-02' }));
+  assert.throws(() => comandoRegistrarContato({ usuario: REP, prospect: ficha, canal: 'visita', resultado: 'sem_interesse', motivoId: preco.id, dataContato: '2026-10-02', exigeRetorno: true }), /informe a data de retorno/);
+  assert.equal(Number((await db.execute(consultaPrimeiraRecusa(id))).rows[0].primeira), 1);
+  await db.execute(comandoRegistrarContato({ usuario: REP, prospect: ficha, canal: 'visita', resultado: 'sem_interesse', motivoId: preco.id, observacao: 'Tabela alta', dataContato: '2026-10-02', dataRetorno: '2026-10-09', exigeRetorno: true }));
+  assert.equal(Number((await db.execute(consultaPrimeiraRecusa(id))).rows[0].primeira), 0, 'a próxima recusa já é a 2ª');
   ficha = (await db.execute(consultaFicha({ usuario: REP, prospectId: id }))).rows[0];
   assert.equal(ficha.status_atual, 'sem_interesse');
   await db.execute(comandoRegistrarContato({ usuario: REP, prospect: ficha, canal: 'telefone', resultado: 'pedido_informado', dataPedido: '2026-10-05', dataContato: '2026-10-06' }));

@@ -396,8 +396,8 @@ test('Acompanhamento: só o que está em processo e encerrados; a venda fica em 
   const consulta = consultaCarteira({ usuario: adm, filtros: { foraDaLista: true, semVenda: true } });
   const st = (await db.execute(consulta)).rows.map((p) => p.status_atual).sort();
   assert.deepEqual(st, ['aguardando_cadastro', 'sem_interesse']);
-  const lista = (await db.execute(consultaCarteira({ usuario: adm, filtros: {} }))).rows.map((p) => p.status_atual);
-  assert.deepEqual(lista, ['nao_contactado'], 'a Lista principal não muda');
+  const lista = (await db.execute(consultaCarteira({ usuario: adm, filtros: {} }))).rows.map((p) => p.status_atual).sort();
+  assert.deepEqual(lista, ['nao_contactado', 'sem_interesse'], 'a Lista principal não muda (a 1ª recusa do cliente segue nela até o retorno)');
   assert.deepEqual([...STATUS_ENCERRADOS].sort(), ['expurgado', 'invalido', 'sem_interesse']);
 });
 

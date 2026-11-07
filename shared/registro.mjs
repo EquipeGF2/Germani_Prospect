@@ -8,12 +8,24 @@ export async function listarMotivos(db) {
 }
 
 /**
+ * O próximo sem interesse do cliente é a 1ª recusa? (0034) Então exige data de retorno e o cliente continua na lista; senão
+ * (já recusou antes, ou já está cadastrado no ERP e o status não muda) ele sai da lista sem data. Lê só os registros do cliente.
+ */
+export const consultaPrimeiraRecusa = (prospectId) => ({
+  sql: `SELECT p.status_atual NOT IN ('analise_financeira', 'aguardando_pedido', 'aguardando_pedido_valido')
+               AND NOT EXISTS (SELECT 1 FROM contatos c JOIN motivos_sem_interesse m ON m.id = c.motivo_id
+                                WHERE c.prospect_id = p.id AND c.resultado = 'sem_interesse' AND m.origem = 'cliente') AS primeira
+          FROM prospects p WHERE p.id = ?`,
+  args: [prospectId],
+});
+
+/**
  * @param prospect  { id, tentativas } — linha da ficha (tentativas = nº de registros até agora)
  * @returns {{ sql, args, id }}
  */
 export function comandoRegistrarContato({ usuario, prospect, canal, resultado, motivoId = null, motivoExigeObservacao = false, observacao = null,
-  dataContato, dataRetorno = null, dataPedido = null, dataHoraDispositivo = new Date().toISOString(), gerarId = () => crypto.randomUUID() }) {
-  const erros = validarContato({ canal, resultado, motivoId, motivoExigeObservacao, observacao, dataContato, dataRetorno, dataPedido });
+  dataContato, dataRetorno = null, dataPedido = null, exigeRetorno = false, dataHoraDispositivo = new Date().toISOString(), gerarId = () => crypto.randomUUID() }) {
+  const erros = validarContato({ canal, resultado, motivoId, motivoExigeObservacao, observacao, dataContato, dataRetorno, dataPedido, exigeRetorno });
   if (erros.length) throw new Error(erros.join('; '));
   const id = gerarId();
   const obs = String(observacao ?? '').trim() || null;

@@ -10,12 +10,15 @@ import { gravarEmLotes } from './gravacao.mjs';
 /**
  * @param usuario     { id }
  * @param prospects   [{ id, tentativas }]  — linhas da carteira (tentativas atual de cada prospect)
- * @param comum       { resultado = 'sem_interesse', canal, dataContato, motivoId, observacao }
+ * @param comum       { resultado = 'sem_interesse', canal, dataContato, motivoId, observacao, dataRetorno, exigeRetorno }
+ *                    exigeRetorno: sem interesse do cliente — a data é obrigatória para quem ainda não recusou (quem está na
+ *                    lista como Sem interesse já recusou uma vez: a 2ª recusa tira da lista, sem data)
  * @param individuais { [prospectId]: { motivoId, observacao } }
  * @param motivos     { [motivoId]: { exige_observacao } } — para validar "Outro" antes de enviar
  * @returns {{ loteId, itens: [{ prospectId, erros, comando }] }}
  */
 export function prepararLote({ usuario, prospects, comum, individuais = {}, motivos = {}, gerarId = () => crypto.randomUUID() }) {
+  // prospects: [{ id, tentativas, status_atual? }]
   if (!prospects?.length) throw new Error('lote vazio');
   if (new Set(prospects.map((p) => p.id)).size !== prospects.length) throw new Error('prospect repetido no lote');
   const resultado = comum.resultado ?? 'sem_interesse';
@@ -28,6 +31,7 @@ export function prepararLote({ usuario, prospects, comum, individuais = {}, moti
     const erros = validarContato({
       canal: comum.canal, resultado, dataContato: comum.dataContato, dataRetorno: comum.dataRetorno,
       motivoId, observacao, motivoExigeObservacao: Boolean(motivos[motivoId]?.exige_observacao),
+      exigeRetorno: Boolean(comum.exigeRetorno) && p.status_atual !== 'sem_interesse',
     });
     return {
       prospectId: p.id,
