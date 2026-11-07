@@ -301,8 +301,9 @@ exclusivo do vendedor.
     **Situação, ordem (clique no título da coluna) e agrupamento mudam no navegador**, sem voltar ao banco.
   - **Agrupar por** (só na Lista principal, na linha dos filtros): cidade, bairro (só com cidade), onda, segmento, rota
     (vendedor) — sem representante, que já é obrigatório. Os grupos vêm **recolhidos**, com a contagem; um clique abre.
-  - **Gerar PDF** (Lista principal e Acompanhamento): relatório da lista **exatamente como está na tela** (filtros
-    aplicados, situação, ordem e grupos) para enviar ao representante — `web/js/relatorio.js`, jsPDF + AutoTable
+  - **Gerar PDF** (Lista principal e Acompanhamento): relatório dos clientes da tela (filtros aplicados, situação e grupos),
+    **sempre na ordem cidade › bairro › segmento › razão social**, como as Listas por equipe da Exportação: sem grupo na tela,
+    uma faixa por cidade; agrupado (onda, segmento, rota, bairro), cada grupo segue nessa ordem — para enviar ao representante — `web/js/relatorio.js`, jsPDF + AutoTable
     carregados só ao gerar. A4 paisagem; logotipo à esquerda, título e subtítulo (representante e supervisor)
     centralizados, emissão à direita; resumo numa linha (prospects e cada status) e os filtros; colunas Razão social,
     Fantasia, CNPJ, Endereço, Bairro, Cidade/UF, Telefone, Onda, Segmento, Status (situação atual), Tent., 1º registro

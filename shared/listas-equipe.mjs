@@ -42,6 +42,26 @@ export function nomeSeguro(texto) {
 }
 
 const cidadeUf = (l) => (l.cidade ? `${l.cidade}/${l.uf ?? ''}` : '(sem cidade)');
+const chaveTexto = (x) => normalizarBusca(x ?? '') ?? '';
+/** Ordem dos PDFs de clientes: cidade › bairro › segmento › razão social (sem acento, sem diferenciar maiúsculas). */
+export const compararParaPdf = (a, b) => chaveTexto(cidadeUf(a)).localeCompare(chaveTexto(cidadeUf(b)), 'pt-BR')
+  || chaveTexto(a.bairro).localeCompare(chaveTexto(b.bairro), 'pt-BR') || chaveTexto(a.tipologia_gtm).localeCompare(chaveTexto(b.tipologia_gtm), 'pt-BR')
+  || chaveTexto(a.razao_social).localeCompare(chaveTexto(b.razao_social), 'pt-BR');
+
+/**
+ * Blocos de um PDF de clientes, sempre na ordem cidade › bairro › segmento (docs/03 §9): sem grupos, uma faixa por cidade;
+ * com os grupos da tela (`grupos`: [{ grupo, linhas }], ex.: agrupado por rota), cada grupo fica e as linhas seguem essa ordem.
+ */
+export function blocosParaPdf(linhas, grupos = null) {
+  if (grupos) return grupos.map((g) => ({ grupo: g.grupo, linhas: [...g.linhas].sort(compararParaPdf) }));
+  const cidades = new Map();
+  for (const l of [...linhas].sort(compararParaPdf)) {
+    const c = cidadeUf(l);
+    if (!cidades.has(c)) cidades.set(c, []);
+    cidades.get(c).push(l);
+  }
+  return [...cidades.entries()].map(([grupo, ls]) => ({ grupo, linhas: ls }));
+}
 
 /**
  * Agrupa as linhas (na ordem de consultaListasEquipe) em uma lista por representante, com uma faixa por cidade.
@@ -65,11 +85,8 @@ export function montarListasEquipe(linhas) {
     lista.total += 1;
     lista.porStatus.set(l.status_atual, (lista.porStatus.get(l.status_atual) ?? 0) + 1);
   }
-  const chave = (x) => normalizarBusca(x ?? '') ?? '';
-  const comparar = (a, b) => chave(a.bairro).localeCompare(chave(b.bairro), 'pt-BR') || chave(a.tipologia_gtm).localeCompare(chave(b.tipologia_gtm), 'pt-BR')
-    || chave(a.razao_social).localeCompare(chave(b.razao_social), 'pt-BR');
   return [...listas.values()].map(({ cidades, ...lista }) => ({
     ...lista,
-    blocos: [...cidades.entries()].sort(([a], [b]) => chave(a).localeCompare(chave(b), 'pt-BR')).map(([grupo, ls]) => ({ grupo, linhas: [...ls].sort(comparar) })),
+    blocos: blocosParaPdf([...cidades.values()].flat()),
   })).sort((a, b) => a.pasta.localeCompare(b.pasta, 'pt-BR') || a.arquivo.localeCompare(b.arquivo, 'pt-BR', { numeric: true }));
 }

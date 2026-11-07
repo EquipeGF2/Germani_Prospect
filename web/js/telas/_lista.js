@@ -10,6 +10,7 @@ import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { h, montar, mensagem, formatar, comEspera, semRolagem } from '../ui.js';
 import { gerarPdfLista } from '../relatorio.js';
+import { blocosParaPdf } from '../../shared/listas-equipe.mjs';
 import { icone } from '../menu.js';
 import { consultaResumo, opcoesEmCascata } from '../../shared/explorar.mjs';
 import { consultaOndasLiberadas, ondasDoFiltro } from '../../shared/ondas.mjs';
@@ -299,7 +300,8 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
     excedeu ? h('span', { class: 'alerta-txt' }, `Mostrando os primeiros ${formatar.numero(LIMITE)}: refine os filtros.`) : null);
   }
 
-  // Relatório em PDF para o representante: exatamente o que está na tela (filtros aplicados, situação, ordem e grupos).
+  // Relatório em PDF para o representante: os clientes da tela (filtros aplicados, situação e grupos), sempre na ordem
+  // cidade › bairro › segmento, como as Listas por equipe da Exportação (sem grupo na tela: uma faixa por cidade).
   async function imprimir(ev) {
     const botao = ev.currentTarget;
     const rep = resumo.find((l) => Number(l.vendedor_id) === Number(e.filtros.vendedorId));
@@ -325,7 +327,8 @@ export async function renderComputador(conteudo, { usuario, parametros }) {
     const hoje = hojeSaoPaulo();
     const arquivo = `lista-${(rep?.vendedor_codigo ?? rep?.vendedor_nome ?? 'equipe').toString().toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${hoje}.pdf`;
     await comEspera(botao, () => gerarPdfLista({ titulo, representante, supervisor, emissao: formatar.data(hoje), resumo: resumoPdf, filtros,
-      blocos: blocos.map((b) => ({ grupo: b.grupo, linhas: b.linhas.map(linhaPdf) })), nomeArquivo: arquivo }));
+      blocos: blocosParaPdf(blocos.flatMap((b) => b.linhas), vista.agrupar && vista.agrupar !== 'cidade' ? blocos : null)
+        .map((b) => ({ grupo: b.grupo, linhas: b.linhas.map(linhaPdf) })), nomeArquivo: arquivo }));
   }
 
   if (comLote) atualizarLote();
