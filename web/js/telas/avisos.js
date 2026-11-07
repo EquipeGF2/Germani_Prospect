@@ -72,7 +72,7 @@ export async function render(conteudo, { usuario }) {
       cartao({ id: 'todos', titulo: 'Todos os avisos', numero: cont.total, regra: 'Marca ou desmarca todos os tipos de uma vez.', param: tudo ? 'Todas as equipes' : 'Sua equipe', ligado: todos, cor: '',
         onclick: () => { estado.tipos = todos ? new Set() : new Set(TIPOS_AVISO.map((t) => t.id)); desenhar(); } }),
       TIPOS_AVISO.map((t) => cartao({ id: t.id, titulo: t.curto, numero: cont[t.id], regra: t.regra, param: textoParametro(t.id, parametros), ligado: estado.tipos.has(t.id),
-        cor: t.id === 'parado' || t.id === 'sem_registro' ? 'medio' : 'alto',
+        cor: t.id === 'parado' ? 'medio' : 'alto',
         onclick: () => { if (estado.tipos.has(t.id)) estado.tipos.delete(t.id); else estado.tipos.add(t.id); desenhar(); } })));
   }
 

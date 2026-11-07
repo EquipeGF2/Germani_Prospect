@@ -4,20 +4,19 @@
 import { colunasUsuario, juntaUsuario, NIVEIS } from './explorar.mjs';
 import { veTodasEquipes } from './perfis.mjs';
 
-/** Tipos de aviso, na ordem dos cards. `param` = chave em parametros (o número aparece no card); `desde` = o que é a data. */
+/** Tipos de aviso, na sequência do processo (é a ordem dos cards, do resumo e do PDF): o representante trabalha a lista,
+ * o cliente parado, o retorno marcado no atendimento, o cadastro e a análise do crédito. `param` = chave em parametros (o número aparece no card); `desde` = o que é a data. */
 export const TIPOS_AVISO = Object.freeze([
-  { id: 'cadastro', nome: 'Prazo de cadastro vencido', curto: 'Cadastro vencido', desde: 'atendido em', param: 'prazo_cadastro_dias', rotuloParam: 'prazo do cadastro',
-    regra: 'Atendido e o cadastro ainda não chegou do ERP depois do prazo.', acao: 'Enviar a ficha cadastral ao ERP.' },
-  { id: 'analise', nome: 'Análise financeira fora do prazo', curto: 'Análise financeira', desde: 'cadastro em', param: 'prazo_analise_financeira_dias', rotuloParam: 'prazo da análise',
-    regra: 'Cadastro chegou do ERP e o crédito não foi liberado no prazo.', acao: 'Conferir os documentos pendentes com o cliente e o financeiro.' },
-  { id: 'retorno', nome: 'Retorno vencido', curto: 'Retorno vencido', desde: 'retornar em', param: null, rotuloParam: 'data marcada pelo representante',
-    regra: 'A data de retorno marcada no atendimento já passou.', acao: 'Voltar a falar com o cliente e registrar.' },
-  { id: 'sem_lancar', nome: 'Representante sem registrar', curto: 'Sem registrar', desde: 'último registro', param: 'dias_alerta_sem_lancamento', rotuloParam: 'alerta sem lançamento',
+  { id: 'sem_lancar', nome: 'Representante sem registrar', curto: 'Sem registrar', desde: 'último registro', param: 'dias_alerta_sem_lancamento', rotuloParam: 'limite',
     regra: 'Tem clientes a procurar e nenhum atendimento registrado no app há mais dias que o limite.', acao: 'Cobrar os registros da rota.' },
-  { id: 'parado', nome: 'Cliente sem movimento', curto: 'Sem movimento', desde: 'último registro', param: 'dias_alerta_sem_movimento', rotuloParam: 'alerta sem movimento',
+  { id: 'parado', nome: 'Cliente sem movimento', curto: 'Sem movimento', desde: 'último registro', param: 'dias_alerta_sem_movimento', rotuloParam: 'limite',
     regra: 'Já teve registro (em prospecção ou aguardando pedido) e está parado. Não contactado não entra.', acao: 'Visitar ou registrar sem interesse.' },
-  { id: 'sem_registro', nome: 'Cadastro sem atendimento', curto: 'Sem atendimento', desde: 'cadastro em', param: null, rotuloParam: 'some quando ele registra',
-    regra: 'O cadastro chegou do ERP sem atendimento registrado pelo representante.', acao: 'Registrar o atendimento que originou o cadastro.' },
+  { id: 'retorno', nome: 'Retorno vencido', curto: 'Retorno vencido', desde: 'retornar em', param: null, rotuloParam: 'data do representante',
+    regra: 'A data de retorno marcada no atendimento já passou.', acao: 'Voltar a falar com o cliente e registrar.' },
+  { id: 'cadastro', nome: 'Prazo de cadastro vencido', curto: 'Cadastro vencido', desde: 'atendido em', param: 'prazo_cadastro_dias', rotuloParam: 'prazo',
+    regra: 'Atendido e o cadastro ainda não chegou do ERP depois do prazo.', acao: 'Enviar a ficha cadastral ao ERP.' },
+  { id: 'analise', nome: 'Análise financeira fora do prazo', curto: 'Análise financeira', desde: 'cadastro em', param: 'prazo_analise_financeira_dias', rotuloParam: 'prazo',
+    regra: 'Cadastro chegou do ERP e o crédito não foi liberado no prazo.', acao: 'Conferir os documentos pendentes com o cliente e o financeiro.' },
 ]);
 export const TIPO_AVISO = Object.freeze(Object.fromEntries(TIPOS_AVISO.map((t) => [t.id, t])));
 const IDS = TIPOS_AVISO.map((t) => t.id);
@@ -60,7 +59,7 @@ export function rotuloDesde(aviso, parametros) {
   return TIPO_AVISO[aviso.tipo].desde;
 }
 
-/** "Prazo do cadastro: 15 dias", com o número dos Parâmetros (ou o texto do tipo sem parâmetro). */
+/** "Prazo: 15 dias" ou "Limite: 7 dias", com o número dos Parâmetros (ou o texto do tipo sem parâmetro): cabe no card sem quebrar. */
 export function textoParametro(tipo, parametros) {
   const t = TIPO_AVISO[tipo];
   const rotulo = t.rotuloParam[0].toUpperCase() + t.rotuloParam.slice(1);

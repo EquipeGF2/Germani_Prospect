@@ -344,6 +344,10 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.ok(totalAvisos > 0, 'os dados de exemplo têm avisos');
   assert.equal(await pagina.locator('#menu-numero-avisos').innerText(), totalAvisos.toLocaleString('pt-BR'), 'número no menu');
   assert.equal(await pagina.locator('#sino-numero').innerText(), totalAvisos.toLocaleString('pt-BR'), 'número no sino');
+  const titulosCortados = await pagina.locator('.av-card .tit, .av-card .param').evaluateAll((ts) => ts.filter((t) => t.scrollWidth > t.clientWidth + 1).map((t) => t.textContent));
+  assert.deepEqual(titulosCortados, [], 'títulos dos cards inteiros');
+  const linhasDeCards = new Set(await pagina.locator('.av-card').evaluateAll((cs) => cs.map((c) => Math.round(c.getBoundingClientRect().top))));
+  assert.ok(linhasDeCards.size <= 2, 'cards em 1 linha (6) ou 2 linhas (3 + 3)');
   const somaTipos = await pagina.locator('.av-card:not(#av-todos) b').evaluateAll((bs) => bs.reduce((t, b) => t + Number(b.textContent.replace(/\./g, '')), 0));
   assert.equal(somaTipos, totalAvisos, 'os cards somam o total');
   assert.equal(await pagina.locator('tr.av-item').count(), 0, 'a grade abre sempre recolhida');
