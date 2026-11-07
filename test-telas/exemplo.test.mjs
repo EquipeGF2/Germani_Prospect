@@ -346,9 +346,24 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   assert.equal(await pagina.locator('#sino-numero').innerText(), totalAvisos.toLocaleString('pt-BR'), 'número no sino');
   const somaTipos = await pagina.locator('.av-card:not(#av-todos) b').evaluateAll((bs) => bs.reduce((t, b) => t + Number(b.textContent.replace(/\./g, '')), 0));
   assert.equal(somaTipos, totalAvisos, 'os cards somam o total');
-  const itens = await pagina.locator('tr.av-item').count();
-  assert.equal(itens, totalAvisos, 'todos marcados: todos os avisos na grade, abertos por representante');
-  assert.ok(await pagina.locator('tr.av-grupo').count() >= 1, 'quebra por representante');
+  assert.equal(await pagina.locator('tr.av-item').count(), 0, 'a grade abre sempre recolhida');
+  const ramos = await pagina.locator('tr.av-grupo').count();
+  assert.ok(ramos >= 1, 'quebra por representante');
+  for (let i = 0; i < ramos; i += 1) await pagina.locator('tr.av-grupo .av-abre[aria-expanded="false"]').first().click();
+  assert.equal(await pagina.locator('tr.av-item').count(), totalAvisos, 'abertos os ramos: todos os avisos, por representante');
+  for (let i = 0; i < ramos; i += 1) await pagina.locator('tr.av-grupo .av-abre[aria-expanded="true"]').first().click();
+  assert.equal(await pagina.locator('tr.av-item').count(), 0);
+  // Avisos é o primeiro item do menu (página inicial do supervisor)
+  assert.equal(await pagina.locator('#menu a').first().getAttribute('title'), 'Avisos');
+  // ao passar o mouse, o card e a linha do representante ficam com fundo suave e texto escuro (sem o vermelho do botão)
+  await pagina.hover('#av-cadastro');
+  await pagina.waitForTimeout(400);   // fim da transição de cor do botão
+  const corCard = await pagina.locator('#av-cadastro').evaluate((e) => getComputedStyle(e).backgroundColor);
+  assert.equal(corCard, 'rgb(253, 238, 238)', 'card marcado com fundo suave no mouse');
+  await pagina.hover('tr.av-grupo .av-abre >> nth=0');
+  await pagina.waitForTimeout(400);
+  const corLinha = await pagina.locator('tr.av-grupo .av-abre').first().evaluate((e) => getComputedStyle(e).backgroundColor);
+  assert.equal(corLinha, 'rgb(253, 240, 240)', 'linha com fundo suave no mouse');
   assert.ok(await pagina.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'sem rolagem para o lado');
   await foto('30-supervisor-avisos');
   // cards de seleção múltipla: desmarca todos, marca um tipo, a grade segue
@@ -356,15 +371,21 @@ test('dados de exemplo: Início preenchido nas 3 visualizações, com período, 
   await pagina.waitForSelector('.av-vazio');
   const tipoComAviso = await pagina.locator('.av-card:not(#av-todos)').evaluateAll((cs) => cs.find((c) => Number(c.querySelector('b').textContent.replace(/\./g, '')) > 0)?.id);
   await pagina.click(`#${tipoComAviso}`);
+  await pagina.locator('tr.av-grupo .av-abre[aria-expanded="false"]').first().click();
   await pagina.waitForSelector('tr.av-item');
   const tipos = new Set(await pagina.locator('tr.av-item').evaluateAll((trs) => trs.map((t) => t.dataset.tipo)));
   assert.deepEqual([...tipos], [tipoComAviso.replace('av-', '')]);
   // fechar o ramo do representante esconde os avisos dele
-  const antes = await pagina.locator('tr.av-item').count();
-  await pagina.locator('tr.av-grupo .av-abre').first().click();
-  assert.ok(await pagina.locator('tr.av-item').count() < antes);
-  await pagina.locator('tr.av-grupo .av-abre').first().click();
+  await pagina.locator('tr.av-grupo .av-abre[aria-expanded="true"]').first().click();
+  assert.equal(await pagina.locator('tr.av-item').count(), 0);
   await pagina.click('#av-todos');
+  // ao voltar à tela, a grade abre recolhida de novo
+  await pagina.locator('tr.av-grupo .av-abre').first().click();
+  await pagina.evaluate(() => { location.hash = '#/explorar'; });
+  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
+  await pagina.evaluate(() => { location.hash = '#/avisos'; });
+  await pagina.waitForSelector('#av-cards');
+  assert.equal(await pagina.locator('tr.av-item').count(), 0, 'sempre recolhida ao entrar');
   // PDF de pendências e Excel
   const [pdfAvisos] = await Promise.all([pagina.waitForEvent('download'), pagina.click('#pdf-avisos')]);
   assert.match(pdfAvisos.suggestedFilename(), /^pendencias-.*\.pdf$/);

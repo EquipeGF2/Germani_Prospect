@@ -47,11 +47,18 @@ export function consultaAvisos({ usuario }) {
   };
 }
 
-/** Prazos dos cards (Parâmetros). */
-export const consultaParametrosAvisos = () => ({
-  sql: `SELECT chave, valor FROM parametros WHERE chave IN (${TIPOS_AVISO.filter((t) => t.param).map(() => '?').join(', ')})`,
-  args: TIPOS_AVISO.filter((t) => t.param).map((t) => t.param),
-});
+/** Prazos dos cards e o início da campanha (Parâmetros). */
+const PARAMETROS = [...TIPOS_AVISO.filter((t) => t.param).map((t) => t.param), 'data_inicio_campanha'];
+export const consultaParametrosAvisos = () => ({ sql: `SELECT chave, valor FROM parametros WHERE chave IN (${PARAMETROS.map(() => '?').join(', ')})`, args: PARAMETROS });
+
+/**
+ * O que a data do aviso é. Sem registrar e sem movimento contam a partir do início da campanha (0032): quando a data é ela,
+ * o registro é anterior à campanha (ou não houve).
+ */
+export function rotuloDesde(aviso, parametros) {
+  if ((aviso.tipo === 'sem_lancar' || aviso.tipo === 'parado') && aviso.data_ref && aviso.data_ref === parametros?.data_inicio_campanha) return 'início da campanha';
+  return TIPO_AVISO[aviso.tipo].desde;
+}
 
 /** "Prazo do cadastro: 15 dias", com o número dos Parâmetros (ou o texto do tipo sem parâmetro). */
 export function textoParametro(tipo, parametros) {
@@ -110,9 +117,9 @@ export function ordenarAvisos(avisos) {
 
 /**
  * Grade: linhas de grupo (uma por ramo dos níveis, com total e resumo) e, nos ramos abertos, os avisos.
- * `fechados`: caminhos recolhidos ('/representante=7'). Ramos com mais avisos primeiro.
+ * A grade abre sempre recolhida: `abertos` = caminhos que o usuário abriu ('/representante=7'). Ramos com mais avisos primeiro.
  */
-export function montarGradeAvisos({ avisos, niveis, fechados = new Set() }) {
+export function montarGradeAvisos({ avisos, niveis, abertos = new Set() }) {
   const linhas = [];
   const visitar = (lista, prof, caminho) => {
     if (prof === niveis.length) { for (const a of ordenarAvisos(lista)) linhas.push({ grupo: false, prof, aviso: a }); return; }
@@ -122,7 +129,7 @@ export function montarGradeAvisos({ avisos, niveis, fechados = new Set() }) {
     [...grupos.entries()].sort((a, b) => b[1].length - a[1].length || def.rotulo(a[1][0]).localeCompare(def.rotulo(b[1][0]), 'pt-BR'))
       .forEach(([k, g]) => {
         const c = `${caminho}/${niveis[prof]}=${k}`;
-        const aberto = !fechados.has(c);
+        const aberto = abertos.has(c);
         linhas.push({ grupo: true, prof, caminho: c, nivel: niveis[prof], rotulo: def.rotulo(g[0]), aberto, avisos: g, resumo: resumoAvisos(g) });
         if (aberto) visitar(g, prof + 1, c);
       });

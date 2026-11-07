@@ -151,6 +151,10 @@ Do sistema (não aparece no app): Não informado (importação inicial).
 | Cliente sem movimento (Sem movimento) | `vw_prospects.parado`, **só depois do 1º registro** (0031): Em prospecção desde o último registro, ou Aguardando pedido desde a liberação do crédito (ou o último registro), sem retorno marcado, há mais de `dias_alerta_sem_movimento`. **Não contactado não entra** (é cobertura da carteira, não pendência); Aguardando cadastro e Análise financeira têm prazo próprio e não contam duas vezes | dias parado |
 | Cadastro sem atendimento (Sem atendimento) | `convertido_sem_registro = 1` (cadastro ou pedido do ERP sem atendimento no app), fora de baixado e expurgado | dias desde o cadastro (ou pedido) |
 
+**Início da campanha (0032):** Sem registrar e Sem movimento contam os dias a partir do **início da campanha** (Parâmetros ›
+`data_inicio_campanha`). Registro anterior a ela (ex.: contato da planilha) — ou nenhum, no Sem registrar — conta do início; o aviso
+só aparece quando, desde lá, passaram mais dias que o alerta. Na grade, a data aparece com "início da campanha" embaixo.
+
 O "retorno pendente" do dia (`retorno_pendente`, hoje ou vencido) continua na Lista principal; o aviso é só o vencido.
 
 ## 5. Indicadores
@@ -697,9 +701,9 @@ passo a passo (arquivo → colunas → simulação → gravação):
 - Os endereços antigos (`#/admin/importar/base`, `/admin/grupos`, `/admin/importar/credito`, `/admin/importar/pedidos`,
   `/admin/importar/erp`, `/admin/importacoes`) levam à aba correspondente.
 
-## 18. Avisos (migração 0031 · `shared/avisos.mjs` · `web/js/telas/avisos.js`)
+## 18. Avisos (migrações 0031 e 0032 · `shared/avisos.mjs` · `web/js/telas/avisos.js`)
 
-Tela **Prospecção › Avisos** (`#/avisos`), para **administrador, gerente e supervisor** (tela `avisos`; o supervisor vê só a
+Tela **Prospecção › Avisos** (`#/avisos`, **primeiro item do menu**), para **administrador, gerente e supervisor** (tela `avisos`; o supervisor vê só a
 equipe dele, o que vê todas as equipes vê a base toda). É a **página inicial** desses perfis. Mostra o que passou do prazo
 configurado em Parâmetros (§4), para saber **o que cobrar e de quem**.
 
@@ -707,7 +711,8 @@ configurado em Parâmetros (§4), para saber **o que cobrar e de quem**.
   tem cliente: nos níveis do cliente (cidade, segmento, onda, rota, subrota) fica no ramo **Do representante**.
 - **Cards de seleção múltipla**: Todos os avisos (marca ou desmarca todos) e um por tipo, com o número, a regra e o prazo dos
   Parâmetros. Sem card marcado, a grade pede para escolher. Ao abrir, todos marcados.
-- **Uma grade só**: uma linha por ramo dos níveis (total e resumo do que cobrar, ▶/▼ abre e fecha) e, dentro, os avisos dos
+- **Uma grade só**, que **abre sempre recolhida** (0032): uma linha por ramo dos níveis (total e resumo do que cobrar, ▶ abre e
+  ▼ fecha; ao sair e voltar, recolhe de novo) e, dentro, os avisos dos
   tipos marcados, mais atrasados primeiro (quem nunca registrou vem antes): Cliente · CNPJ (com o Rep. embaixo quando ele não é
   nível), Aviso, Cidade, Desde (com o que a data é), Atraso e Abrir ficha (no Sem registrar, Ver carteira). Sem espaço, vira cartões.
 - **Excel** e **PDF de pendências** saem dos tipos marcados. O PDF (A4 retrato, modelo aprovado): página 1 com o resumo

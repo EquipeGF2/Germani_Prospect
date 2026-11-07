@@ -3,7 +3,7 @@
 // saem do que está escolhido. Tela inicial de administrador, gerente e supervisor (este só a equipe). docs/03 §18
 import { bancoApp, lerComCache } from '../db.js';
 import { consultaAvisos, consultaParametrosAvisos, consultaParaConferir, contarAvisos, montarGradeAvisos, NIVEIS_AVISOS, pendenciasPorRepresentante,
-  prepararAviso, textoParametro, TIPO_AVISO, TIPOS_AVISO } from '../../shared/avisos.mjs';
+  prepararAviso, rotuloDesde, textoParametro, TIPO_AVISO, TIPOS_AVISO } from '../../shared/avisos.mjs';
 import { niveisPossiveis } from '../../shared/explorar.mjs';
 import { veTodasEquipes } from '../../shared/perfis.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
@@ -32,13 +32,13 @@ export async function render(conteudo, { usuario }) {
   const tudo = veTodasEquipes(usuario);
   const possiveis = niveisPossiveis(usuario);
   const nome = (n) => NIVEIS_AVISOS[n].nome;
-  const estado = { niveis: lerNiveis(possiveis, tudo ? ['supervisor', 'representante'] : ['representante']), tipos: new Set(TIPOS_AVISO.map((t) => t.id)), fechados: new Set(), editarNiveis: false };
-  const memoria = memoriaDaTela('avisos', usuario);   // ao voltar da ficha, os tipos marcados e os ramos fechados continuam
+  const estado = { niveis: lerNiveis(possiveis, tudo ? ['supervisor', 'representante'] : ['representante']), tipos: new Set(TIPOS_AVISO.map((t) => t.id)), abertos: new Set(), editarNiveis: false };
+  const memoria = memoriaDaTela('avisos', usuario);   // ao voltar da ficha, os tipos marcados continuam; a grade abre sempre recolhida
   const salvo = memoria.ler();
-  if (salvo && JSON.stringify(salvo.niveis) === JSON.stringify(estado.niveis)) Object.assign(estado, { tipos: new Set(salvo.tipos ?? []), fechados: new Set(salvo.fechados ?? []) });
+  if (salvo && JSON.stringify(salvo.niveis) === JSON.stringify(estado.niveis)) Object.assign(estado, { tipos: new Set(salvo.tipos ?? []) });
   const cont = contarAvisos(avisos);
   const area = h('div', { id: 'av-tela', class: 'av-tela' });
-  const mudarNiveis = (n) => { estado.niveis = n; estado.fechados = new Set(); try { localStorage.setItem(CHAVE_NIVEIS, JSON.stringify(n)); } catch { /* só nesta visita */ } desenhar(); };
+  const mudarNiveis = (n) => { estado.niveis = n; estado.abertos = new Set(); try { localStorage.setItem(CHAVE_NIVEIS, JSON.stringify(n)); } catch { /* só nesta visita */ } desenhar(); };
   const escolhidos = () => avisos.filter((a) => estado.tipos.has(a.tipo));
 
   const botaoExcel = h('button', { type: 'button', class: 'secundario', id: 'excel-avisos', onclick: () => comEspera(botaoExcel, async () => {
@@ -48,7 +48,7 @@ export async function render(conteudo, { usuario }) {
       { titulo: 'Aviso', valor: (l) => TIPO_AVISO[l.tipo].nome, largura: 30 }, { titulo: 'Código', valor: (l) => l.codigo_cliente_erp ?? '', largura: 10 },
       { titulo: 'Razão social', valor: (l) => l.razao_social ?? '', largura: 40 }, { titulo: 'CNPJ', valor: (l) => documento(l.cnpj), largura: 20 },
       { titulo: 'Cidade', valor: (l) => [l.cidade, l.uf].filter(Boolean).join('/'), largura: 22 }, { titulo: 'Rota', valor: (l) => l.rota ?? '', largura: 16 },
-      { titulo: 'Desde', valor: (l) => formatar.data(l.data_ref), largura: 12 }, { titulo: 'O que é a data', valor: (l) => TIPO_AVISO[l.tipo].desde, largura: 16 },
+      { titulo: 'Desde', valor: (l) => formatar.data(l.data_ref), largura: 12 }, { titulo: 'O que é a data', valor: (l) => rotuloDesde(l, parametros), largura: 18 },
       { titulo: 'Atraso (dias)', valor: (l) => l.atraso ?? 'nunca registrou', largura: 14 },
     ], lista, { aba: 'Avisos' });
     aviso(`Excel gerado: ${plural(lista.length, 'aviso', 'avisos')}.`);
@@ -58,6 +58,7 @@ export async function render(conteudo, { usuario }) {
     const conferir = (await lerComCache(db, consultaParaConferir({ usuario }), 120)).rows;
     const reps = pendenciasPorRepresentante(escolhidos(), conferir);
     const hoje = hojeSaoPaulo();
+    for (const r of reps) for (const a of r.avisos) a.desdeRotulo = rotuloDesde(a, parametros);
     await gerarPdfPendencias({ reps, tipos: TIPOS_AVISO.filter((t) => estado.tipos.has(t.id)).map((t) => ({ ...t, textoParam: textoParametro(t.id, parametros) })),
       equipe: tudo ? 'Todas as equipes' : `Equipe: ${usuario.nome}`, comSupervisor: tudo, emissao: formatar.data(hoje), nomeArquivo: `pendencias-${hoje}.pdf` });
   }) }, 'PDF de pendências');
@@ -82,11 +83,11 @@ export async function render(conteudo, { usuario }) {
     const sub = `${plural(lista.length, 'pendência', 'pendências')}${estado.niveis.length ? ` · por ${estado.niveis.map(nome).join(' › ')}` : ''} · mais atrasados primeiro`;
     botaoExcel.disabled = !lista.length; botaoPdf.disabled = !lista.length;
     const comRep = estado.niveis.includes('representante');
-    const linhas = montarGradeAvisos({ avisos: lista, niveis: estado.niveis, fechados: estado.fechados });
+    const linhas = montarGradeAvisos({ avisos: lista, niveis: estado.niveis, abertos: estado.abertos });
     const recuo = (prof) => `padding-left:${12 + prof * 22}px`;
     const corpo = linhas.map((l) => {
       if (l.grupo) {
-        const alternar = () => { if (l.aberto) estado.fechados.add(l.caminho); else estado.fechados.delete(l.caminho); desenhar(); };
+        const alternar = () => { if (l.aberto) estado.abertos.delete(l.caminho); else estado.abertos.add(l.caminho); desenhar(); };
         return h('tr', { class: `av-grupo${l.prof ? '' : ' raiz'}`, dados: { caminho: l.caminho } }, h('td', { colspan: 6, style: recuo(l.prof) },
           h('button', { type: 'button', class: 'av-abre', 'aria-expanded': l.aberto ? 'true' : 'false', onclick: alternar },
             h('span', { class: 'seta', 'aria-hidden': 'true' }, l.aberto ? '▼' : '▶'), h('b', {}, l.rotulo),
@@ -102,7 +103,7 @@ export async function render(conteudo, { usuario }) {
           h('small', {}, sub)),
         h('td', { class: 'cen', 'data-r': 'Aviso' }, h('span', { class: `selo av-tipo ${a.tipo}` }, t.curto)),
         h('td', { 'data-r': 'Cidade' }, doRep ? '—' : [a.cidade, a.uf].filter(Boolean).join('/')),
-        h('td', { class: 'cen', 'data-r': 'Desde' }, a.data_ref ? formatar.data(a.data_ref) : '—', h('small', {}, t.desde)),
+        h('td', { class: 'cen', 'data-r': 'Desde' }, a.data_ref ? formatar.data(a.data_ref) : '—', h('small', {}, rotuloDesde(a, parametros))),
         h('td', { class: 'cen', 'data-r': 'Atraso' }, h('span', { class: 'selo erro' }, dias(a))),
         h('td', { class: 'cen', 'data-r': '' }, acao));
     });
@@ -115,7 +116,7 @@ export async function render(conteudo, { usuario }) {
   }
 
   function desenhar() {
-    memoria.guardar({ niveis: estado.niveis, tipos: [...estado.tipos], fechados: [...estado.fechados] });
+    memoria.guardar({ niveis: estado.niveis, tipos: [...estado.tipos] });
     montar(area, ...blocoNiveis({ estado, possiveis, nome, mudarNiveis, desenhar }), cards(), grade());
   }
 

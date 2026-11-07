@@ -278,7 +278,8 @@ export async function gerarPdfPendencias({ reps, tipos, equipe, comSupervisor = 
         doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(17, 24, 39);
         doc.text(a.atraso == null ? 'Nunca registrou atendimento no app' : `Sem registrar há ${dias(a)}`, M + 3, y + 5.2);
         doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(75, 85, 99);
-        doc.text(`${a.data_ref ? `Último registro em ${data(a.data_ref)}. ` : ''}${b.tipo.textoParam}. ${b.tipo.acao}`, M + 3, y + 10);
+        const desde = !a.data_ref ? '' : a.desdeRotulo === 'início da campanha' ? `Sem registro desde o início da campanha (${data(a.data_ref)}). ` : `Último registro em ${data(a.data_ref)}. `;
+        doc.text(`${desde}${b.tipo.textoParam}. ${b.tipo.acao}`, M + 3, y + 10);
         y += 18;
         continue;
       }
@@ -288,7 +289,7 @@ export async function gerarPdfPendencias({ reps, tipos, equipe, comSupervisor = 
       doc.text(doc.splitTextToSize(`${b.tipo.regra} O que fazer: ${b.tipo.acao}`, util), M, y + 5.5);
       doc.autoTable({ ...tabelaBase, startY: y + 8,
         head: [['', 'Cliente · CNPJ', 'Cidade', 'Desde', 'Atraso', 'Combinado']],
-        body: b.avisos.map((a) => ['', `${a.codigo_cliente_erp ? `${a.codigo_cliente_erp} - ` : ''}${a.razao_social ?? ''}\n${cnpj(a.cnpj)}`, [a.cidade, a.uf].filter(Boolean).join('/'), `${data(a.data_ref)}\n${b.tipo.desde}`, dias(a), '']),
+        body: b.avisos.map((a) => ['', `${a.codigo_cliente_erp ? `${a.codigo_cliente_erp} - ` : ''}${a.razao_social ?? ''}\n${cnpj(a.cnpj)}`, [a.cidade, a.uf].filter(Boolean).join('/'), `${data(a.data_ref)}\n${a.desdeRotulo ?? b.tipo.desde}`, dias(a), '']),
         columnStyles: { 0: { cellWidth: 6 }, 1: { cellWidth: 62 }, 2: { cellWidth: 42, fontSize: 7.5 }, 3: { cellWidth: 22, halign: 'center', fontSize: 7.5 }, 4: { cellWidth: 18, halign: 'center', fontStyle: 'bold', textColor: [153, 27, 27] }, 5: { cellWidth: util - 150 } },
         didDrawCell: (d) => {
           if (d.section !== 'body') return;
