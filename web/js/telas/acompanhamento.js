@@ -10,6 +10,7 @@ import { hojeSaoPaulo } from '../../shared/datas.mjs';
 import { STATUS_ENCERRADOS } from '../../shared/status.mjs';
 import { h, montar, formatar, selo, baixarCsv, comEspera, semRolagem } from '../ui.js';
 import { gerarPdfLista } from '../relatorio.js';
+import { blocosParaPdf } from '../../shared/listas-equipe.mjs';
 import { memoriaDaTela } from '../memoria.js';
 import { nomeStatus, seloStatus } from './_carteira.js';
 import { blocoNiveis, textoChave, chaveVerPor, documento, lerPedidos, lerVerPor, moeda, razaoSocial, seloSituacao, valor } from './_pedidos.js';
@@ -219,7 +220,9 @@ export async function render(conteudo, { usuario, parametros }) {
     const linhaPdf = (p) => [p.razao_social ?? '', p.nome_fantasia && p.nome_fantasia !== p.razao_social ? p.nome_fantasia : '', formatar.cnpj(p.cnpj), p.endereco ?? '', p.bairro ?? '', p.cidade ? `${p.cidade}/${p.uf ?? ''}` : '', p.telefone ?? '', p.onda ?? '', p.tipologia_gtm ?? '',
       nomeStatus(p) ?? '', String(p.tentativas ?? 0), formatar.data(p.dt_primeiro_contato) || '—', p.dias_corridos != null ? String(p.dias_corridos) : '—'];
     await comEspera(botao, () => gerarPdfLista({ titulo: 'Acompanhamento', representante: usuario.perfil === 'vendedor' ? usuario.nome : 'Equipe', supervisor: '', emissao: formatar.data(hoje), resumo: [['Clientes', lista.length]],
-      filtros: [titulo, estado.porGrupo ? 'Por grupo de CNPJ' : null, estado.busca ? `Busca: "${estado.busca}"` : null].filter(Boolean).join(' · '), blocos: [{ grupo: null, linhas: lista.map(linhaPdf) }], nomeArquivo: `acompanhamento-${hoje}.pdf` }));
+      filtros: [titulo, estado.porGrupo ? 'Por grupo de CNPJ' : null, estado.busca ? `Busca: "${estado.busca}"` : null].filter(Boolean).join(' · '),
+      // sempre cidade › bairro › segmento, uma faixa por cidade (como as Listas por equipe)
+      blocos: blocosParaPdf(lista).map((b) => ({ grupo: b.grupo, linhas: b.linhas.map(linhaPdf) })), nomeArquivo: `acompanhamento-${hoje}.pdf` }));
   }
 
   function desenhar() {

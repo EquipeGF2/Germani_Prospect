@@ -3,7 +3,7 @@ import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import JSZip from 'jszip';
 import { bancoTeste, criarEquipe, criarProspect, evento, registrarContato } from './auxiliar.mjs';
-import { consultaContagemListas, consultaListasEquipe, montarListasEquipe, nomeSeguro } from '../shared/listas-equipe.mjs';
+import { blocosParaPdf, consultaContagemListas, consultaListasEquipe, montarListasEquipe, nomeSeguro } from '../shared/listas-equipe.mjs';
 import { crc32, montarZip } from '../shared/zip.mjs';
 
 let db; let p;
@@ -66,4 +66,15 @@ test('ZIP com pastas abre e devolve os mesmos bytes', async () => {
   assert.deepEqual(await zip.file('Sup Um/10 - Vend Dez.pdf').async('uint8array'), a);
   assert.deepEqual(await zip.file('Sup Dois/Ação.pdf').async('uint8array'), b);
   assert.equal(crc32(new TextEncoder().encode('123456789')), 0xCBF43926);
+});
+
+test('PDF de clientes (Lista e Acompanhamento): sempre cidade › bairro › segmento; com grupos da tela, cada grupo nessa ordem', () => {
+  const l = (razao, cidade, bairro, seg) => ({ razao_social: razao, cidade, uf: 'RS', bairro, tipologia_gtm: seg });
+  const linhas = [l('Zeta', 'Venâncio Aires', 'Centro', 'Mercado'), l('Alfa', 'Lajeado', 'São Cristóvão', 'Padaria'), l('Beta', 'Lajeado', 'Centro', 'Padaria'),
+    l('Gama', 'Lajeado', 'Centro', 'Mercado'), l('Delta', 'ÁGUA SANTA', 'Centro', 'Mercado')];
+  const blocos = blocosParaPdf(linhas);
+  assert.deepEqual(blocos.map((b) => [b.grupo, b.linhas.map((x) => x.razao_social)]), [
+    ['ÁGUA SANTA/RS', ['Delta']], ['Lajeado/RS', ['Gama', 'Beta', 'Alfa']], ['Venâncio Aires/RS', ['Zeta']]]);
+  const porRota = blocosParaPdf([], [{ grupo: 'Rota R1', linhas: [linhas[0], linhas[1], linhas[2]] }]);
+  assert.deepEqual(porRota[0].linhas.map((x) => x.razao_social), ['Beta', 'Alfa', 'Zeta'], 'o grupo fica; dentro, cidade › bairro › segmento');
 });
