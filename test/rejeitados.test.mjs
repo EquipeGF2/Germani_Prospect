@@ -21,7 +21,7 @@ before(async () => {
   await evento(db, { prospectId: p[5], tipo: 'baixa', data: '2026-10-10' });
   await db.batch(comandosExpurgo({ usuario: ADMIN, prospectIds: [p[6]], acao: 'expurgar', motivo: 'Já é cliente no ERP (mesmo CNPJ)', data: '2026-10-23' }), 'write');
   await registrarContato(db, { prospectId: p[7], usuarioId: 3, resultado: 'atendido', data: '2026-10-05' });   // atendido: não é rejeitado
-  clientes = (await db.execute(consultaRejeitados())).rows.map(prepararRejeitado);
+  clientes = (await db.execute(consultaRejeitados({ usuario: ADMIN }))).rows.map(prepararRejeitado);
   base = (await db.execute(consultaResumo({ usuario: ADMIN }))).rows;
 });
 
@@ -54,14 +54,24 @@ test('motivos por tipo de sem interesse, busca e exportação de um ou mais tipo
   assert.deepEqual(paraExportar(clientes, []), []);
 });
 
-test('só gerente e administrador veem a tela', () => {
+test('gerente, administrador e supervisor veem a tela; o supervisor só a equipe dele', async () => {
   assert.ok(podeTela({ id: 4, perfil: 'administrador' }, 'rejeitados'));
   assert.ok(podeTela({ id: 9, perfil: 'gerente' }, 'rejeitados'));
-  for (const perfil of ['supervisor', 'vendedor', 'financeiro']) assert.ok(!podeTela({ id: 1, perfil, telas: ['rejeitados'] }, 'rejeitados'), perfil);
+  assert.ok(podeTela({ id: 1, perfil: 'supervisor' }, 'rejeitados'));
+  for (const perfil of ['vendedor', 'financeiro']) assert.ok(!podeTela({ id: 1, perfil, telas: ['rejeitados'] }, 'rejeitados'), perfil);
+  const ler = async (usuario) => (await db.execute(consultaRejeitados({ usuario }))).rows.length;
+  const resumo = async (usuario) => contarRejeitados((await db.execute(consultaResumoRejeitados({ usuario }))).rows.map(prepararRejeitado)).total;
+  assert.equal(await ler({ id: 1, perfil: 'supervisor' }), 5, 'Sup Um: a equipe dele (Vend Dez e Vend Onze)');
+  assert.equal(await resumo({ id: 1, perfil: 'supervisor' }), 5);
+  assert.equal(await ler({ id: 5, perfil: 'supervisor' }), 0, 'Sup Dois: outra equipe, nada');
+  assert.equal(await resumo({ id: 5, perfil: 'supervisor' }), 0);
+  assert.throws(() => consultaRejeitados(), /usuário obrigatório/);
+  const tela = (await db.execute("SELECT 1 FROM perfil_telas t JOIN perfis p ON p.id = t.perfil_id WHERE p.sistema = 1 AND p.base = 'supervisor' AND t.tela = 'rejeitados'")).rows.length;
+  assert.equal(tela, 1, 'o perfil Supervisor já vem com a tela (0030)');
 });
 
 test('a tela lê só as contagens: mesmas contas, árvore e motivos que o detalhe; o detalhe vem só na exportação', async () => {
-  const resumo = (await db.execute(consultaResumoRejeitados())).rows.map(prepararRejeitado);
+  const resumo = (await db.execute(consultaResumoRejeitados({ usuario: ADMIN }))).rows.map(prepararRejeitado);
   assert.ok(resumo.length <= clientes.length);
   assert.deepEqual(contarRejeitados(resumo), contarRejeitados(clientes));
   assert.deepEqual(contarMotivos(resumo, 'cliente'), contarMotivos(clientes, 'cliente'));

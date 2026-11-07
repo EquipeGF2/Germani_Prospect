@@ -1,5 +1,5 @@
 // Rejeitados: baixados, expurgados e sem interesse (do cliente e do representante), com hierarquia de níveis, motivos e
-// o botão Excel do que está na tela. Só gerente e administrador. docs/03 §16
+// o botão Excel do que está na tela. Gerente e administrador veem tudo; o supervisor, só a equipe dele. docs/03 §16
 // A tela lê só as contagens (por chave dos níveis, tipo, motivo e mês) e o resumo da carteira, em cache; os dados de cada
 // cliente são lidos só ao exportar.
 import { bancoApp, lerComCache } from '../db.js';
@@ -9,24 +9,26 @@ import { h, montar, formatar, comEspera, aviso, semRolagem } from '../ui.js';
 import { blocoNiveis } from './_pedidos.js';
 import { exportarRejeitados } from './_rejeitados-excel.js';
 import { memoriaDaTela } from '../memoria.js';
+import { veTodasEquipes } from '../../shared/perfis.mjs';
 
 const CHAVE_NIVEIS = 'germani.rejeitadosNiveis';
 const n0 = (x) => formatar.numero(Math.round(Number(x) || 0));
 const pct = (a, b) => (b ? `${((a / b) * 100).toFixed(1).replace('.', ',')}%` : '—');
 const DETALHE = { baixado: 'CNPJ baixado na Receita', expurgado: 'já eram clientes (grupo)', cliente: 'o cliente recusou', representante: 'o representante não vai trabalhar' };
 
-function lerNiveis(possiveis) {
+function lerNiveis(possiveis, padrao) {
   try { const s = JSON.parse(localStorage.getItem(CHAVE_NIVEIS) ?? 'null'); if (Array.isArray(s)) { const ok = s.filter((n) => possiveis.includes(n)); if (ok.length) return ok; } } catch { /* padrão */ }
-  return ['supervisor', 'representante'];
+  return padrao;
 }
 
 export async function render(conteudo, { usuario }) {
   const db = await bancoApp();
-  const [linhas, base] = (await Promise.all([lerComCache(db, consultaResumoRejeitados(), 300), lerComCache(db, consultaResumo({ usuario }), 300)])).map((r) => r.rows);
+  const [linhas, base] = (await Promise.all([lerComCache(db, consultaResumoRejeitados({ usuario }), 300), lerComCache(db, consultaResumo({ usuario }), 300)])).map((r) => r.rows);
   const clientes = linhas.map(prepararRejeitado);
   const possiveis = Object.keys(NIVEIS_REJEITADOS);
   const nome = (n) => NIVEIS_REJEITADOS[n].nome;
-  const estado = { niveis: lerNiveis(possiveis), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'todos' };
+  const tudo = veTodasEquipes(usuario);   // supervisor sem "vê todas as equipes": só a equipe dele, aberta por representante
+  const estado = { niveis: lerNiveis(possiveis, tudo ? ['supervisor', 'representante'] : ['representante']), abertos: new Set(['']), sel: '', editarNiveis: false, tipo: 'todos' };
   const memoria = memoriaDaTela('rejeitados', usuario);   // ao voltar, a linha, as abertas e o tipo continuam como estavam
   const salvo = memoria.ler();
   if (salvo && JSON.stringify(salvo.niveis) === JSON.stringify(estado.niveis)) Object.assign(estado, { sel: salvo.sel ?? '', abertos: new Set(salvo.abertos ?? ['']), tipo: salvo.tipo ?? 'todos' });
@@ -35,7 +37,7 @@ export async function render(conteudo, { usuario }) {
   // Excel do que está na tela: a linha escolhida na hierarquia e o tipo do card (Rejeitados = os quatro tipos, uma aba cada)
   const botaoExcel = h('button', { type: 'button', id: 'excel-rejeitados', onclick: () => comEspera(botaoExcel, async () => {
     const tipos = estado.tipo === 'todos' ? [...TIPOS_REJEICAO] : [estado.tipo];
-    const n = await exportarRejeitados(db, { tipos, filtro: (l) => naLinha(escolhido.caminho, l) });
+    const n = await exportarRejeitados(db, { usuario, tipos, filtro: (l) => naLinha(escolhido.caminho, l) });
     aviso(`Excel gerado: ${n0(n)} clientes.`);
   }) });
 
@@ -82,7 +84,7 @@ export async function render(conteudo, { usuario }) {
 
   function desenhar() {
     memoria.guardar({ niveis: estado.niveis, sel: estado.sel, abertos: [...estado.abertos], tipo: estado.tipo });
-    const arvore = montarArvoreRejeitados({ clientes, base, niveis: estado.niveis, abertos: estado.abertos });
+    const arvore = montarArvoreRejeitados({ clientes, base, niveis: estado.niveis, abertos: estado.abertos, rotuloRaiz: tudo ? 'Todos os clientes' : 'Minha equipe' });
     escolhido = arvore.find((n) => n.caminho === estado.sel) ?? arvore[0];
     const etapas = arvore.filter((n) => estado.sel === n.caminho || estado.sel.startsWith(`${n.caminho}/`) || n.caminho === '').sort((a, b) => a.profundidade - b.profundidade);
     const migalhas = h('nav', { class: 'exp-caminho', 'aria-label': 'Linha escolhida' }, etapas.flatMap((n, i) => [

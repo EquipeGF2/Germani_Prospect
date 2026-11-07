@@ -509,7 +509,7 @@ Um único conteúdo alimenta três saídas, para não haver textos diferentes: a
 |---|---|---|
 | Administrador | tudo, sem restrição | todas (o perfil Administrador do sistema tem sempre todas) |
 | Gerente comercial | todos os dados; não libera crédito | Início, Lista principal, Acompanhamento, Registrar |
-| Supervisor | só a equipe dele | Início, Lista principal, Acompanhamento, Registrar |
+| Supervisor | só a equipe dele | Início, Lista principal, Acompanhamento, Registrar, Rejeitados (só a equipe, migração 0030) |
 | Vendedor / representante | só a própria carteira | Início, Lista principal, Acompanhamento, Registrar |
 | Analista financeiro | só a análise de crédito | Console de crédito (+ Início, Lista, Acompanhamento, se marcados) |
 
@@ -634,10 +634,13 @@ desistências a partir de `alerta_desistencias_cliente` (5) · pedido em carteir
 **Apagar um arquivo** (Administração → Importações): tira os pedidos, as linhas e o histórico que o arquivo trouxe e volta o cliente ao que era antes, considerando os atendimentos registrados depois.
 Mantém atendimentos, cadastro, crédito e baixados. Vai do arquivo mais novo para o mais antigo, só pelo administrador, digitando o nome do arquivo; fica o registro de quem apagou o quê. ADR-0007.
 
-## 16. Rejeitados (migração 0025 · `shared/rejeitados.mjs`)
+## 16. Rejeitados (migrações 0025 e 0030 · `shared/rejeitados.mjs`)
 
-Tela **Prospecção › Rejeitados** (`#/rejeitados`), só para **gerente e administrador** (tela `rejeitados`). Mostra os clientes da
-base que saíram da prospecção, por tipo:
+Tela **Prospecção › Rejeitados** (`#/rejeitados`), para **gerente, administrador e supervisor** (tela `rejeitados`). Mostra os
+clientes da base que saíram da prospecção, por tipo. O **supervisor** vê só a equipe dele (o mesmo escopo do Explorar carteira:
+raiz "Minha equipe", aberta por representante; a exportação também sai só com a equipe); o supervisor marcado "vê todas as
+equipes" vê a base toda, como o gerente. A migração 0030 deu a tela a todos os perfis de tipo-base supervisor; o administrador
+pode tirá-la em Usuários → Perfis.
 
 | Tipo | Status | Motivo | Data |
 |---|---|---|---|

@@ -1,7 +1,8 @@
 // Rejeitados: clientes da base que saíram da prospecção — baixados, expurgados (já eram clientes) e sem interesse, do cliente
-// ou do representante. Tela de gerente e administrador, com hierarquia de níveis, motivos e exportação por tipo. docs/03 §16
+// ou do representante. Tela de gerente, administrador e supervisor (este só a equipe), com hierarquia de níveis, motivos e
+// exportação por tipo. docs/03 §16
 // Lê os rejeitados uma vez e o resumo da carteira (Na base, já em cache); níveis, cards e exportação só redesenham no navegador.
-import { colunasUsuario, juntaUsuario, NIVEIS } from './explorar.mjs';
+import { colunasUsuario, escopo, juntaUsuario, NIVEIS } from './explorar.mjs';
 
 export const TIPOS_REJEICAO = Object.freeze(['baixado', 'expurgado', 'cliente', 'representante']);
 export const NOME_TIPO_REJEICAO = Object.freeze({ baixado: 'Baixados', expurgado: 'Expurgados', cliente: 'Sem interesse do cliente', representante: 'Sem interesse do representante' });
@@ -19,25 +20,32 @@ const DE_REJEITADOS = `FROM prospects x
             LEFT JOIN expurgos e ON e.id = (SELECT MAX(id) FROM expurgos WHERE prospect_id = x.id AND acao = 'expurgar')
             ${juntaUsuario}
            WHERE x.status_atual IN ('sem_interesse', 'invalido', 'expurgado')`;
+/** Recorte do usuário: o supervisor lê só a equipe dele (o mesmo escopo do Explorar carteira). */
+function recorte(usuario) {
+  if (!usuario?.id || !usuario?.perfil) throw new Error('usuário obrigatório');
+  return escopo(usuario);
+}
 
 /**
  * Contagem dos rejeitados pelas chaves dos níveis, tipo, motivo e mês: é o que a tela lê (poucas linhas, sem os dados de
  * cada cliente). Chaves no mesmo formato do resumo da carteira (vazio = ''), para os níveis valerem nos dois.
  */
-export function consultaResumoRejeitados() {
+export function consultaResumoRejeitados({ usuario } = {}) {
+  const e = recorte(usuario);
   return {
     sql: `SELECT tipo, motivo, substr(data, 1, 7) || '-01' AS data, vendedor_id, onda, tipologia_gtm, cidade_busca, uf, rota, COUNT(*) AS qtd,
                  MAX(cidade) AS cidade, MAX(vendedor_nome) AS vendedor_nome, MAX(vendedor_codigo) AS vendedor_codigo, MAX(supervisor_id) AS supervisor_id, MAX(supervisor_nome) AS supervisor_nome
             FROM (SELECT ${TIPO} AS tipo, ${MOTIVO} AS motivo, ${DATA} AS data, x.vendedor_id, COALESCE(x.onda, '') AS onda, COALESCE(x.tipologia_gtm, '') AS tipologia_gtm,
                          COALESCE(x.cidade_busca, '') AS cidade_busca, COALESCE(x.uf, '') AS uf, COALESCE(x.rota, '') AS rota, COALESCE(x.cidade, '') AS cidade, ${colunasUsuario}
-                    ${DE_REJEITADOS})
+                    ${DE_REJEITADOS} ${e.where})
            GROUP BY tipo, motivo, substr(data, 1, 7), vendedor_id, onda, tipologia_gtm, cidade_busca, uf, rota`,
-    args: [],
+    args: e.args,
   };
 }
 
 /** Rejeitados com todos os dados cadastrais, o tipo, o motivo, a observação do registro e a data: só na exportação. */
-export function consultaRejeitados() {
+export function consultaRejeitados({ usuario } = {}) {
+  const e = recorte(usuario);
   return {
     sql: `SELECT x.id, x.codigo_cliente_erp, x.razao_social, x.nome_fantasia, x.cnpj, x.endereco, x.bairro, x.cep, x.telefone, COALESCE(x.cidade, '') AS cidade,
                  COALESCE(x.cidade_busca, '') AS cidade_busca, COALESCE(x.uf, '') AS uf, COALESCE(x.onda, '') AS onda, COALESCE(x.tipologia_gtm, '') AS tipologia_gtm,
@@ -45,8 +53,8 @@ export function consultaRejeitados() {
                  ${TIPO} AS tipo, ${MOTIVO} AS motivo, ${DATA} AS data,
                  CASE WHEN x.status_atual = 'sem_interesse' THEN (SELECT c.observacao FROM contatos c WHERE c.prospect_id = x.id AND c.resultado = 'sem_interesse' ORDER BY c.id DESC LIMIT 1) END AS observacao,
                  ${colunasUsuario}
-            ${DE_REJEITADOS}`,
-    args: [],
+            ${DE_REJEITADOS} ${e.where}`,
+    args: e.args,
   };
 }
 
