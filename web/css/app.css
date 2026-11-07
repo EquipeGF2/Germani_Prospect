@@ -1000,7 +1000,8 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .av-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
 .av-card { display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-height: 118px; padding: 12px 14px; text-align: left; font: inherit; color: var(--texto); background: var(--cartao);
   border: 2px solid var(--borda); border-radius: var(--raio); cursor: pointer; box-shadow: var(--sombra); }
-.av-card:hover { border-color: #E8A0A4; }
+.av-card:hover { border-color: #E8A0A4; background: #FFF5F5; color: var(--texto); }   /* o vermelho do botão some: fundo suave, texto legível */
+.av-card.ligado:hover { background: #FDEEEE; }
 .av-card.ligado { border-color: var(--destaque); background: #FFF7F7; }
 .av-card-topo { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .av-card .caixa { flex: none; width: 18px; height: 18px; box-sizing: border-box; border: 2px solid var(--borda-forte); border-radius: 4px; color: #fff; font-size: 12px; line-height: 14px; text-align: center; font-weight: 700; }
@@ -1028,6 +1029,7 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .av-grupo td { padding: 0 !important; background: #FCFCFD; border-top: 1px solid var(--borda); }
 .av-grupo.raiz td { background: #F6F7F9; }
 .av-abre { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 8px 12px 8px 0; font: inherit; color: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; }
+.av-abre:hover { background: #FDF0F0; color: var(--texto); }
 .av-abre .seta { width: 16px; flex: none; font-size: 11px; color: #4B5563; }
 .av-abre b { white-space: nowrap; }
 .av-abre .qtd { flex: none; padding: 1px 9px; border-radius: 999px; background: #FEE2E2; color: #991B1B; font-size: 12px; font-weight: 700; white-space: nowrap; }
@@ -1051,5 +1053,5 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
   .av-card .tit { font-size: 12.5px; }
   .av-card b { font-size: 12.5px; color: inherit !important; }
   .av-card b::before { content: "· "; }
-  .av-card.ligado { background: var(--destaque); color: #fff; }
+  .av-card.ligado, .av-card.ligado:hover { background: var(--destaque); color: #fff; }
 }

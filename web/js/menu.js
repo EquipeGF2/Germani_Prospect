@@ -47,10 +47,11 @@ export function icone(nome) {
 // Grupos do menu. Cada item aparece se o perfil do usuário tem a tela (shared/perfis.mjs); grupo vazio some.
 const GRUPOS = [
   { titulo: 'Prospecção', itens: [
+    // Avisos primeiro: é a página inicial de administrador, gerente e supervisor (quem não tem a tela começa no Explorar)
+    { caminho: '/avisos', rotulo: 'Avisos', icone: 'avisos', tela: 'avisos' },
     { caminho: '/explorar', rotulo: 'Explorar carteira', icone: 'explorar', tela: 'explorar' },
     { caminho: '/carteira', rotulo: 'Lista principal', icone: 'lista', tela: 'lista' },
     { caminho: '/carteira?aba=acompanhamento', rotulo: 'Acompanhamento', icone: 'acompanhamento', tela: 'acompanhamento' },
-    { caminho: '/avisos', rotulo: 'Avisos', icone: 'avisos', tela: 'avisos' },
     { caminho: '/pedidos', rotulo: 'Explorar pedidos', icone: 'erp', tela: 'pedidos' },
     { caminho: '/rejeitados', rotulo: 'Rejeitados', icone: 'rejeitados', tela: 'rejeitados' },
   ] },
