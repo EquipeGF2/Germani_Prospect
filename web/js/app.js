@@ -104,6 +104,8 @@ definirAoErrar(registrarErro);
 capturarErrosGlobais();
 if (modoDemonstracao()) document.getElementById('faixa-demo').hidden = false;
 iniciarCasca();
+// instalar como app (manifest.webmanifest + sw.js): o navegador só oferece "Instalar" com o service worker registrado
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
 addEventListener('hashchange', navegar);
 // Logotipo da empresa (web/logo-germani.jpg): se o arquivo existir, aparece no menu e na tela de entrada;
 // sem ele, fica a marca em texto.
