@@ -155,3 +155,89 @@ export function pendenciasPorRepresentante(avisos, conferir = []) {
     porTipo: TIPOS_AVISO.map((t) => ({ tipo: t, avisos: ordenarAvisos(r.avisos.filter((a) => a.tipo === t.id)) })).filter((b) => b.avisos.length) }))
     .sort((a, b) => a.supervisor.localeCompare(b.supervisor, 'pt-BR') || b.avisos.length - a.avisos.length || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
+
+// ---------- e-mail diário (docs/03 §18): os avisos como estavam num dia ----------
+
+/** As partes de vw_avisos (0033) com a data de hoje trocada por `H` (expressão SQL): a mesma regra, numa data qualquer. */
+const sqlAvisos = (H) => `SELECT 'cadastro' AS tipo, p.id AS prospect_id, p.vendedor_id, COALESCE(p.dt_pedido_informado, p.dt_atendido) AS data_ref,
+       CAST(julianday(${H}) - julianday(p.prazo_cadastro_ate) AS INTEGER) AS atraso
+  FROM prospects p
+ WHERE p.status_atual = 'aguardando_cadastro' AND p.prazo_cadastro_ate < ${H}
+UNION ALL
+SELECT 'analise', p.id, p.vendedor_id, p.dt_cadastro_erp, CAST(julianday(${H}) - julianday(p.analise_financeira_ate) AS INTEGER)
+  FROM prospects p
+ WHERE p.status_atual = 'analise_financeira' AND p.analise_financeira_ate < ${H}
+UNION ALL
+SELECT 'retorno', p.id, p.vendedor_id, p.data_proxima_acao, CAST(julianday(${H}) - julianday(p.data_proxima_acao) AS INTEGER)
+  FROM prospects p JOIN status s ON s.codigo = p.status_atual
+ WHERE p.data_proxima_acao < ${H} AND s.aceita_contato = 1
+UNION ALL
+SELECT 'parado', p.id, p.vendedor_id, MAX(COALESCE(p.dt_ultimo_contato, p.dt_primeiro_contato), COALESCE((SELECT valor FROM parametros WHERE chave = 'data_inicio_campanha'), '')),
+       CAST(julianday(${H}) - julianday(MAX(COALESCE(p.dt_ultimo_contato, p.dt_primeiro_contato), COALESCE((SELECT valor FROM parametros WHERE chave = 'data_inicio_campanha'), ''))) AS INTEGER)
+  FROM prospects p
+ WHERE p.status_atual = 'em_prospeccao' AND p.data_proxima_acao IS NULL
+   AND COALESCE(p.dt_ultimo_contato, p.dt_primeiro_contato) < date(${H}, '-' || (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'dias_alerta_sem_movimento') || ' days')
+   AND COALESCE((SELECT valor FROM parametros WHERE chave = 'data_inicio_campanha'), '') < date(${H}, '-' || (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'dias_alerta_sem_movimento') || ' days')
+UNION ALL
+SELECT 'parado', p.id, p.vendedor_id, MAX(MAX(COALESCE(p.dt_liberacao_credito, p.dt_ultimo_contato), COALESCE(p.dt_ultimo_contato, p.dt_liberacao_credito)), COALESCE((SELECT valor FROM parametros WHERE chave = 'data_inicio_campanha'), '')),
+       CAST(julianday(${H}) - julianday(MAX(MAX(COALESCE(p.dt_liberacao_credito, p.dt_ultimo_contato), COALESCE(p.dt_ultimo_contato, p.dt_liberacao_credito)), COALESCE((SELECT valor FROM parametros WHERE chave = 'data_inicio_campanha'), ''))) AS INTEGER)
+  FROM prospects p
+ WHERE p.status_atual = 'aguardando_pedido' AND p.data_proxima_acao IS NULL
+   AND MAX(COALESCE(p.dt_liberacao_credito, p.dt_ultimo_contato), COALESCE(p.dt_ultimo_contato, p.dt_liberacao_credito)) < date(${H}, '-' || (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'dias_alerta_sem_movimento') || ' days')
+   AND COALESCE((SELECT valor FROM parametros WHERE chave = 'data_inicio_campanha'), '') < date(${H}, '-' || (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'dias_alerta_sem_movimento') || ' days')
+UNION ALL
+SELECT 'sem_lancar', NULL, q.id, NULLIF(MAX(COALESCE(q.ultimo, COALESCE((SELECT valor FROM parametros WHERE chave = 'data_inicio_campanha'), '')), COALESCE((SELECT valor FROM parametros WHERE chave = 'data_inicio_campanha'), '')), ''),
+       CAST(julianday(${H}) - julianday(NULLIF(MAX(COALESCE(q.ultimo, COALESCE((SELECT valor FROM parametros WHERE chave = 'data_inicio_campanha'), '')), COALESCE((SELECT valor FROM parametros WHERE chave = 'data_inicio_campanha'), '')), '')) AS INTEGER)
+  FROM (SELECT u.id, (SELECT MAX(c.data_contato) FROM contatos c WHERE c.usuario_id = u.id AND c.origem = 'app') AS ultimo
+          FROM usuarios u WHERE u.perfil = 'vendedor' AND u.ativo = 1) q
+ WHERE (q.ultimo IS NULL OR q.ultimo < date(${H}, '-' || (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'dias_alerta_sem_lancamento') || ' days'))
+   AND COALESCE((SELECT valor FROM parametros WHERE chave = 'data_inicio_campanha'), '') < date(${H}, '-' || (SELECT CAST(valor AS INTEGER) FROM parametros WHERE chave = 'dias_alerta_sem_lancamento') || ' days')
+   AND EXISTS (SELECT 1 FROM prospects p WHERE p.vendedor_id = q.id AND p.status_atual IN ('nao_contactado', 'em_prospeccao')
+                 AND (COALESCE((SELECT valor FROM parametros WHERE chave = 'ondas_liberadas'), 'todas') = 'todas'
+                      OR COALESCE(p.onda, '') IN (SELECT value FROM json_each(COALESCE(NULLIF((SELECT valor FROM parametros WHERE chave = 'ondas_liberadas'), 'todas'), '[]')))))`;
+
+/**
+ * Avisos de todas as equipes como estavam no dia `data` (o e-mail diário usa o dia útil anterior): a regra de vw_avisos com
+ * aquele dia no lugar de hoje — test/avisos.test.mjs confere que, na data de hoje, as duas dão o mesmo. Lê só o que tinha
+ * vencido, pelos mesmos índices parciais.
+ */
+export function consultaAvisosEm(data) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data ?? ''))) throw new Error('data inválida');
+  return {
+    sql: `SELECT a.tipo, a.prospect_id, a.vendedor_id, a.data_ref, a.atraso, x.codigo_cliente_erp, x.razao_social, x.cnpj,
+                 COALESCE(x.cidade, '') AS cidade, COALESCE(x.cidade_busca, '') AS cidade_busca, COALESCE(x.uf, '') AS uf,
+                 COALESCE(x.tipologia_gtm, '') AS tipologia_gtm, COALESCE(x.onda, '') AS onda, COALESCE(x.rota, '') AS rota, COALESCE(x.subrota, '') AS subrota,
+                 ${colunasUsuario}
+            FROM (${sqlAvisos(`'${data}'`)}) a
+            LEFT JOIN prospects x ON x.id = a.prospect_id
+            ${juntaUsuario.replace('ON v.id = x.vendedor_id', 'ON v.id = a.vendedor_id')}`,
+    args: [],
+  };
+}
+
+/** Sem interesse do representante nos 7 dias até `data` (o "para conferir" do PDF), de todas as equipes. */
+export function consultaParaConferirEm(data, dias = 7) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(data ?? ''))) throw new Error('data inválida');
+  return {
+    sql: `SELECT x.id AS prospect_id, x.vendedor_id, x.razao_social, COALESCE(x.cidade, '') AS cidade, COALESCE(x.uf, '') AS uf, x.dt_ultimo_contato AS data_ref, m.descricao AS motivo,
+                 ${colunasUsuario}
+            FROM prospects x JOIN motivos_sem_interesse m ON m.id = x.motivo_sem_interesse_id
+            ${juntaUsuario}
+           WHERE x.status_atual = 'sem_interesse' AND m.origem = 'representante' AND x.dt_ultimo_contato > date(?, ?) AND x.dt_ultimo_contato <= ?
+           ORDER BY x.dt_ultimo_contato DESC`,
+    args: [data, `-${Number(dias)} days`, data],
+  };
+}
+
+/**
+ * Quem recebe o e-mail: ativos, com e-mail e "receber avisos" marcado. `gestao` = gerente, administrador ou supervisor que vê
+ * todas as equipes (recebe um anexo por supervisor); os demais supervisores recebem a própria equipe.
+ */
+export const consultaDestinatariosAvisos = () => ({
+  sql: `SELECT u.id, u.nome, u.email, u.perfil,
+               CASE WHEN u.perfil IN ('gerente', 'administrador') OR COALESCE(p.ve_todos, 0) = 1 THEN 1 ELSE 0 END AS gestao
+          FROM usuarios u
+          LEFT JOIN perfis p ON p.id = COALESCE(u.perfil_id, (SELECT s.id FROM perfis s WHERE s.sistema = 1 AND s.base = u.perfil))
+         WHERE u.avisos_email = 1 AND u.ativo = 1 AND COALESCE(trim(u.email), '') <> ''`,
+  args: [],
+});

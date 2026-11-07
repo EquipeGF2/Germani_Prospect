@@ -33,7 +33,7 @@ function auditoria(executadoPor, acao, id, detalhes = {}) {
 
 export async function listarUsuarios(db) {
   const r = await db.execute(`
-    SELECT u.id, u.login, u.perfil, u.perfil_id, u.tipo_atuacao, u.codigo_erp, u.nome, u.ativo, u.supervisor_id, s.nome AS supervisor_nome,
+    SELECT u.id, u.login, u.perfil, u.perfil_id, u.tipo_atuacao, u.codigo_erp, u.nome, u.ativo, u.supervisor_id, s.nome AS supervisor_nome, u.email, u.avisos_email,
            CASE WHEN u.senha_hash IS NULL THEN 'sem_acesso' WHEN u.senha_provisoria = 1 THEN 'provisoria' ELSE 'ok' END AS situacao_senha
       FROM usuarios u LEFT JOIN usuarios s ON s.id = u.supervisor_id
      ORDER BY CASE u.perfil WHEN 'administrador' THEN 1 WHEN 'gerente' THEN 2 WHEN 'financeiro' THEN 3 WHEN 'supervisor' THEN 4 ELSE 5 END, u.nome`);
@@ -165,6 +165,22 @@ export async function definirTipoAtuacao(db, { usuarioId, tipo, executadoPor }) 
     { sql: "UPDATE usuarios SET tipo_atuacao = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?", args: [tipo, usuarioId] },
     auditoria(executadoPor, 'tipo_atuacao', usuarioId, { tipo }),
   ], 'write');
+}
+
+/** Perfis que podem receber o e-mail diário de avisos (docs/03 §18, migração 0035). */
+export const PERFIS_AVISOS_EMAIL = Object.freeze(['supervisor', 'gerente', 'administrador']);
+
+/** E-mail do usuário e "receber avisos por e-mail" (o banco confere de novo: trg_usuarios_avisos_email). */
+export async function definirEmailAvisos(db, { usuarioId, perfil, email, receber, executadoPor }) {
+  const e = String(email ?? '').trim().toLowerCase();
+  if (e && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) throw new Error('e-mail inválido');
+  if (receber && !e) throw new Error('informe o e-mail para receber os avisos');
+  if (receber && !PERFIS_AVISOS_EMAIL.includes(perfil)) throw new Error('avisos por e-mail são para supervisor, gerente e administrador');
+  await db.batch([
+    { sql: "UPDATE usuarios SET email = ?, avisos_email = ?, atualizado_em = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?", args: [e || null, receber ? 1 : 0, usuarioId] },
+    auditoria(executadoPor, receber ? 'avisos_email_ligar' : 'avisos_email_desligar', usuarioId),
+  ], 'write');
+  return { email: e || null, receber: Boolean(receber) };
 }
 
 export async function definirAtivo(db, { usuarioId, ativo, executadoPor }) {

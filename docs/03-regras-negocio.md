@@ -738,3 +738,24 @@ configurado em Parâmetros (§4), para saber **o que cobrar e de quem**.
   (`ix_avisos_*`) e lê só o que venceu, nunca a carteira inteira; o último registro de cada representante sai de
   `ix_avisos_contatos_app` (uma linha por representante). Medido com `scripts/medir-consultas.mjs` (casos Avisos).
 - O aviso **some sozinho** quando o cliente avança ou o representante registra: não há o que apagar nem marcar como lido.
+
+### 18.1 E-mail diário de avisos (migração 0035 · `scripts/enviar-avisos.mjs` · `.github/workflows/avisos-email.yml`)
+
+- **Quem recebe:** supervisor, gerente e administrador com e-mail e **Receber avisos por e-mail** marcado (Administração ›
+  Usuários › E-mail; o banco exige o e-mail e o perfil: `trg_usuarios_avisos_email`).
+  - **Supervisor:** a própria equipe — resumo por representante no corpo e o **PDF de pendências** da equipe anexo.
+  - **Gerente, administrador e supervisor que vê todas as equipes:** um e-mail com o resumo por supervisor e **um anexo por
+    supervisor**; em **cópia**, os e-mails do parâmetro `avisos_email_copia` (Parâmetros › E-mails em cópia; ex.: a consultoria).
+  - **Sem pendência, sem e-mail:** supervisor sem pendência não recebe nada e não entra no e-mail da gerência.
+- **Quando:** às **7h dos dias úteis** (seg–sex, fora dos feriados nacionais e cadastrados), com os avisos **como estavam no dia
+  útil anterior**: terça manda os da segunda; segunda, os da sexta; sexta feriado, os da quinta (`diaUtilAnterior`, shared/feriados.mjs).
+  `consultaAvisosEm(data)` é a regra de `vw_avisos` com aquela data no lugar de hoje (test/avisos-email.test.mjs confere que, na
+  data de hoje, as duas dão o mesmo) e lê só o vencido, pelos mesmos índices — **uma leitura** para todas as equipes por dia.
+- **Envio:** rotina no GitHub (sem servidor), pelo Zoho com `contato@svoltagf2.com.br`, remetente **GERMANI PROSPECT**,
+  **Responder para** o responsável (secret `AVISOS_RESPONDER_PARA`). E-mail no padrão GERMANI (mockup aprovado): faixa vinho com
+  o logotipo, resumo, botão "Abrir os avisos no sistema" e o aviso de que os números são do fim do último dia útil.
+- **O PDF** é o mesmo da tela Avisos (`shared/pdf-pendencias.mjs`, usado pela tela e pela rotina).
+- **Teste:** Run workflow em modo **teste** manda tudo só para o responsável, sem a cópia, com "[TESTE]" no assunto. O
+  agendamento diário fica desligado no workflow até o teste ser aprovado.
+- O repositório é público: o log da rotina mostra **só contagens** (nada de e-mail, nome ou cliente). Secrets do ambiente
+  `producao`: `SMTP_SENHA` e `AVISOS_RESPONDER_PARA`, além do Turso.

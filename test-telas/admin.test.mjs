@@ -168,6 +168,16 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.click('button:text("Criar usuário")');
   await pagina.waitForSelector('text=Usuário repmanual criado com a senha definida.');
   assert.equal(await pagina.locator('select[data-perfil-usuario="repmanual"]').inputValue(), 'tipo:representante');
+  // e-mail diário de avisos (0035): só supervisor, gerente e administrador têm o botão; sem e-mail, não marca
+  assert.equal(await pagina.locator('button[data-email-avisos="repmanual"]').count(), 0, 'representante não recebe o e-mail de avisos');
+  await pagina.click('button[data-email-avisos="supmanual"]');
+  await pagina.check('form.definir-email input[type=checkbox]');
+  await pagina.click('form.definir-email button[type=submit]');
+  await pagina.waitForSelector('text=informe o e-mail para receber os avisos');
+  await pagina.fill('form.definir-email input[type=email]', 'sup.manual@exemplo.com');
+  await pagina.click('form.definir-email button[type=submit]');
+  await pagina.waitForSelector('text=Supervisor Manual: recebe os avisos por e-mail.');
+  assert.match(await pagina.locator('small[data-email="supmanual"]').innerText(), /sup\.manual@exemplo\.com · recebe avisos por e-mail/);
   await foto('32-usuarios-equipe-manual');
 
   // 4. arquivo de cadastro do ERP (2 CNPJs da base + 1 de fora)
