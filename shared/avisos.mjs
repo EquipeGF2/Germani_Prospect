@@ -4,18 +4,19 @@
 import { colunasUsuario, juntaUsuario, NIVEIS } from './explorar.mjs';
 import { veTodasEquipes } from './perfis.mjs';
 
-/** Tipos de aviso, na sequência do processo (é a ordem dos cards, do resumo e do PDF): o representante trabalha a lista,
+/** `card`: a frase curta do card (todas do mesmo tamanho, em 2 linhas); `regra`: a explicação completa (ajuda e PDF).
+ * Tipos de aviso, na sequência do processo (é a ordem dos cards, do resumo e do PDF): o representante trabalha a lista,
  * o cliente parado, o retorno marcado no atendimento, o cadastro e a análise do crédito. `param` = chave em parametros (o número aparece no card); `desde` = o que é a data. */
 export const TIPOS_AVISO = Object.freeze([
-  { id: 'sem_lancar', nome: 'Representante sem registrar', curto: 'Sem registrar', desde: 'último registro', param: 'dias_alerta_sem_lancamento', rotuloParam: 'limite',
+  { id: 'sem_lancar', card: 'Sem atendimento no app além do limite.', nome: 'Representante sem registrar', curto: 'Sem registrar', desde: 'último registro', param: 'dias_alerta_sem_lancamento', rotuloParam: 'limite',
     regra: 'Tem clientes a procurar e nenhum atendimento registrado no app há mais dias que o limite.', acao: 'Cobrar os registros da rota.' },
-  { id: 'parado', nome: 'Cliente sem movimento', curto: 'Sem movimento', desde: 'último registro', param: 'dias_alerta_sem_movimento', rotuloParam: 'limite',
+  { id: 'parado', card: 'Parado depois do 1º registro.', nome: 'Cliente sem movimento', curto: 'Sem movimento', desde: 'último registro', param: 'dias_alerta_sem_movimento', rotuloParam: 'limite',
     regra: 'Já teve registro (em prospecção ou aguardando pedido) e está parado. Não contactado não entra.', acao: 'Visitar ou registrar sem interesse.' },
-  { id: 'retorno', nome: 'Retorno vencido', curto: 'Retorno vencido', desde: 'retornar em', param: null, rotuloParam: 'data do representante',
+  { id: 'retorno', card: 'Retorno marcado que já passou.', nome: 'Retorno vencido', curto: 'Retorno vencido', desde: 'retornar em', param: null, rotuloParam: 'data do representante',
     regra: 'A data de retorno marcada no atendimento já passou.', acao: 'Voltar a falar com o cliente e registrar.' },
-  { id: 'cadastro', nome: 'Prazo de cadastro vencido', curto: 'Cadastro vencido', desde: 'atendido em', param: 'prazo_cadastro_dias', rotuloParam: 'prazo',
+  { id: 'cadastro', card: 'Atendido sem cadastro no ERP no prazo.', nome: 'Prazo de cadastro vencido', curto: 'Cadastro vencido', desde: 'atendido em', param: 'prazo_cadastro_dias', rotuloParam: 'prazo',
     regra: 'Atendido e o cadastro ainda não chegou do ERP depois do prazo.', acao: 'Enviar a ficha cadastral ao ERP.' },
-  { id: 'analise', nome: 'Análise financeira fora do prazo', curto: 'Análise financeira', desde: 'cadastro em', param: 'prazo_analise_financeira_dias', rotuloParam: 'prazo',
+  { id: 'analise', card: 'Cadastro sem crédito liberado no prazo.', nome: 'Análise financeira fora do prazo', curto: 'Análise financeira', desde: 'cadastro em', param: 'prazo_analise_financeira_dias', rotuloParam: 'prazo',
     regra: 'Cadastro chegou do ERP e o crédito não foi liberado no prazo.', acao: 'Conferir os documentos pendentes com o cliente e o financeiro.' },
 ]);
 export const TIPO_AVISO = Object.freeze(Object.fromEntries(TIPOS_AVISO.map((t) => [t.id, t])));
