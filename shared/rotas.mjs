@@ -1,4 +1,4 @@
-// Montagem de rotas do VENDEDOR (representante não tem rota). docs/03-regras-negocio.md §7
+// Montagem de rotas do VENDEDOR (o representante vê a rota do cadastro, mas não monta rota). docs/03-regras-negocio.md §7
 // Princípios:
 //   * Rota é um plano editável enquanto 'planejada'; o que foi feito é medido pelos contatos (vw_rotas_execucao).
 //   * Sem cálculo de distância: coordenadas de planilha são aproximadas (ADR-0005). A ordem sugerida
@@ -25,7 +25,7 @@ export function sugerirOrdem(prospects) {
 }
 
 function exigirVendedor(usuario) {
-  if (formaDeTrabalho(usuario) !== 'vendedor') throw new Error('montagem de rota é exclusiva do vendedor (representante não tem rota)');
+  if (formaDeTrabalho(usuario) !== 'vendedor') throw new Error('montagem de rota é exclusiva do vendedor (o representante vê a rota do cadastro, mas não monta rota)');
 }
 
 /** Cria a rota. O banco confere de novo (trigger trg_rotas_somente_vendedor). */

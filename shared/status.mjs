@@ -20,7 +20,7 @@ export const STATUS_ENCERRADOS = Object.freeze(['sem_interesse', STATUS.INVALIDO
 export const STATUS_ACEITAM_CONTATO = Object.freeze([STATUS.NAO_CONTACTADO, STATUS.EM_PROSPECCAO, STATUS.EM_NEGOCIACAO,
   STATUS.SEM_INTERESSE, STATUS.CADASTRADO_ERP]);
 
-/** Tipo de atuação: representante (sem rota) · vendedor (com rota/subrota). NULL é tratado como representante. */
+/** Tipo de atuação: representante · vendedor (monta rotas; a rota/subrota do cadastro aparece para os dois). NULL é tratado como representante. */
 export const TIPOS_ATUACAO = Object.freeze(['representante', 'vendedor']);
 
 export const CANAIS = Object.freeze(['visita', 'telefone', 'whatsapp']);   // os que o banco aceita (registros antigos e futuros)

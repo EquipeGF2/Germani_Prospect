@@ -19,7 +19,7 @@ before(async () => {
   await criarEquipe(db);
   await db.execute("UPDATE usuarios SET tipo_atuacao = 'representante' WHERE id = 2");
   await db.execute("UPDATE usuarios SET tipo_atuacao = 'vendedor' WHERE id = 3");
-  // representante: rota preenchida na planilha, mas não pode aparecer
+  // representante: rota preenchida na planilha (dado de cadastro: aparece para ele também)
   await criarProspect(db, { n: 1, vendedorId: 2, cidade: 'Santa Cruz do Sul', bairro: 'Centro', rota: 'R1', onda: '1', razao: 'Padaria São João' });
   await criarProspect(db, { n: 2, vendedorId: 2, cidade: 'Santa Cruz do Sul', bairro: 'Goiás', rota: 'R1', onda: '2' });
   await criarProspect(db, { n: 3, vendedorId: 2, cidade: 'Venâncio Aires', bairro: 'Centro', onda: '1' });
@@ -34,23 +34,22 @@ before(async () => {
 
 const linhas = async (q) => (await db.execute(q)).rows;
 
-test('forma de trabalho e visões: representante sem rota; vendedor e gestão com rota', () => {
+test('forma de trabalho e visões: rota de cadastro para todos', () => {
   assert.equal(formaDeTrabalho(REP), 'representante');
   assert.equal(formaDeTrabalho({ id: 9, perfil: 'vendedor', tipo_atuacao: null }), 'representante'); // não definido = mais restrito
   assert.equal(formaDeTrabalho(VEND), 'vendedor');
   assert.equal(formaDeTrabalho(SUP), 'gestao');
-  assert.deepEqual(visoesPermitidas(REP), ['lista', 'cidade', 'bairro', 'onda', 'status']);
+  assert.deepEqual(visoesPermitidas(REP), ['lista', 'cidade', 'bairro', 'onda', 'status', 'rota']);
   assert.deepEqual(visoesPermitidas(VEND), ['lista', 'cidade', 'bairro', 'onda', 'status', 'rota']);
-  assert.throws(() => consultaCarteira({ usuario: REP, visao: 'rota' }), /não disponível para representante/);
-  assert.throws(() => consultaCarteira({ usuario: REP, filtros: { rota: 'R1' } }), /não trabalha com rota/);
 });
 
-test('lista do representante: só a própria carteira, só o que está na lista, sem colunas de rota', async () => {
+test('lista do representante: só a própria carteira, só o que está na lista, com a rota do cadastro', async () => {
   const q = consultaCarteira({ usuario: REP });
-  assert.ok(!q.colunas.includes('rota'));
+  assert.ok(q.colunas.includes('rota'));
   const r = await linhas(q);
   assert.equal(r.length, 3); // P4 saiu (pedido)
-  assert.ok(r.every((x) => !('rota' in x)));
+  assert.deepEqual(r.map((x) => x.rota ?? null).sort(), ['R1', 'R1', null]);
+  assert.equal((await linhas(consultaCarteira({ usuario: REP, filtros: { rota: 'R1' } }))).length, 2);
   const todos = await linhas(consultaCarteira({ usuario: REP, incluirForaDaLista: true }));
   assert.equal(todos.length, 4);
 });
@@ -70,13 +69,15 @@ test('visão por cidade e por bairro (com contagens)', async () => {
   assert.deepEqual(b.map((x) => x.rotulo).sort(), ['Centro — Santa Cruz do Sul', 'Goiás — Santa Cruz do Sul']);
 });
 
-test('visão por rota do vendedor; gestão vê rota só de vendedores', async () => {
+test('visão por rota do vendedor e do representante; gestão vê a rota de todas as carteiras', async () => {
   const r = await linhas(consultaCarteira({ usuario: VEND, visao: 'rota' }));
   assert.deepEqual(r.map((x) => [x.rotulo, Number(x.prospects)]), [['R7 / S1', 1], ['R7 / S2', 1]]);
   const g = await linhas(consultaCarteira({ usuario: SUP, visao: 'rota' }));
-  assert.ok(g.every((x) => x.rota !== 'R1')); // R1 é de representante: não aparece
+  assert.ok(g.some((x) => x.rota === 'R1')); // R1 é de representante: aparece também
+  const rep = await linhas(consultaCarteira({ usuario: REP, visao: 'rota' }));
+  assert.deepEqual(rep.map((x) => [x.rotulo, Number(x.prospects)]).sort(), [['(sem rota)', 1], ['R1', 2]]);
   const lista = await linhas(consultaCarteira({ usuario: SUP }));
-  assert.equal(lista.find((x) => x.razao_social === 'Padaria São João').rota, null);
+  assert.equal(lista.find((x) => x.razao_social === 'Padaria São João').rota, 'R1');
 });
 
 test('busca ignora acento e aceita CNPJ formatado', async () => {
@@ -101,7 +102,7 @@ test('indicadores continuam contando quem saiu da lista; agrupamento por bairro 
   const b = await linhas(consultaPosicao({ agrupar: 'bairro' }));
   assert.equal(Number(b.find((x) => x.rotulo === 'Centro — Lajeado/RS').total), 2);
   const r = await linhas(consultaPosicao({ agrupar: 'rota' }));
-  assert.deepEqual(r.map((x) => x.rotulo).sort(), ['R7 / S1', 'R7 / S2', 'R8']); // só prospects de vendedor
+  assert.deepEqual(r.map((x) => x.rotulo).sort(), ['(sem rota)', 'R1', 'R7 / S1', 'R7 / S2', 'R8']); // todas as carteiras
 });
 
 test('acompanhamento por status: carteira inteira, inclusive o que saiu da lista', async () => {
@@ -273,7 +274,7 @@ test('busca pelo dono da carteira (nome sem acento ou código), agrupar e bairro
   const cidades = porCidade.map((p) => p.cidade_busca);
   assert.deepEqual(cidades, [...cidades].sort());
   assert.ok(!agrupamentosPossiveis(ADM, {}).includes('bairro') && agrupamentosPossiveis(ADM, { cidadeBusca: 'lajeado' }).includes('bairro'));
-  assert.ok(!agrupamentosPossiveis(REP, {}).includes('representante') && !agrupamentosPossiveis(REP, {}).includes('rota'));
+  assert.ok(!agrupamentosPossiveis(REP, {}).includes('representante') && agrupamentosPossiveis(REP, {}).includes('rota'));
   assert.ok(agrupamentosPossiveis(VEND, {}).includes('rota'));
   // bairros da cidade, no escopo de quem pede
   const bairros = async (usuario, cidadeBusca) => (await linhas(consultaBairros({ usuario, cidadeBusca }))).map((b) => b.bairro_busca);

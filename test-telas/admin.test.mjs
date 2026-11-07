@@ -15,6 +15,15 @@ import { analisarCnpj } from '../shared/cnpj.mjs';
 const CHROME = process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const FOTOS = process.env.FOTOS_TELAS ?? null;
 let srv, navegador, pagina, base, tmp;
+// Lista principal sem rolagem para o lado: a tabela cabe e nenhum rótulo de filtro ou título de coluna fica cortado
+const listaCabe = (pg) => pg.evaluate(() => {
+  const cortado = (el) => el.getClientRects().length && el.scrollWidth > el.clientWidth + 1;
+  const tabela = document.querySelector('.lista-tabela .tabela-wrap');
+  return [tabela && tabela.scrollWidth > tabela.clientWidth + 1 ? `tabela ${tabela.scrollWidth} > ${tabela.clientWidth}` : null,
+    ...[...document.querySelectorAll('.lista-filtros label, .lista-tabela th')].filter(cortado).map((el) => `cortado: "${el.textContent}"`),
+    ...[...document.querySelectorAll('.lista-grupo-campos > .filtro')].filter((el) => el.getBoundingClientRect().right > el.closest('.lista-grupo').getBoundingClientRect().right + 1)
+      .map((el) => `filtro fora do grupo: "${el.textContent}"`)].filter(Boolean);
+});
 
 before(async () => {
   srv = await servir(0);
@@ -357,6 +366,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   assert.match(await pagina.locator('.ficha-lateral').innerText(), new RegExp(nomeAgente), 'só a carteira escolhida');
   assert.ok(cartoes.length > 0, 'filtro em cascata: só aparece representante com prospects na lista');
   await foto('09d-lista-filtros-gestao');
+  assert.deepEqual(await listaCabe(pagina), [], 'Lista da gestão cabe na tela');
 
   // 6. histórico de importações
   await abaImportacoes('historico');
@@ -430,6 +440,7 @@ test('administrador faz a carga e libera a equipe, tudo pela tela', { timeout: 1
   await pagina.waitForSelector('.lista-tabela tbody tr');
   assert.ok(await pagina.locator('#agrupar option[value=rota]').count(), 'vendedor agrupa por rota');
   await foto('11-lista-principal');
+  assert.deepEqual(await listaCabe(pagina), [], 'Lista do vendedor cabe na tela');
   const primeiro = (await pagina.locator('.lista-tabela a.nome').first().innerText()).trim();
   await pagina.fill('#busca', primeiro.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''));
   await pagina.click('.lista-busca button[type=submit]');

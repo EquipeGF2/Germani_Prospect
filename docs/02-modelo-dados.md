@@ -54,7 +54,7 @@ erDiagram
 | `login` | criado pela importação: vendedor = código; supervisor = `sup` + código. Único, sem diferenciar maiúsculas. |
 | `senha_hash` | PBKDF2; `NULL` = acesso ainda não liberado. A senha é **definida pelo administrador** na tela Usuários (mín. 6 caracteres; administrador, 8, pelo cofre) ou gerada aleatoriamente ("Gerar" / `npm run usuarios -- senha <login>`). `senha_provisoria` = 1 só para a gerada (indicador na tela; não há troca obrigatória no 1º acesso). `cofre_admin` (0005): só administrador — chave de administração cifrada com a senha dele (ADR-0006); senha de administrador com 8+ caracteres (prefira letras e números: é ela que protege o cofre). |
 | `supervisor_id` | obrigatório para vendedor; precisa apontar para um supervisor (trigger). |
-| `tipo_atuacao` | `representante` (sem rota) · `vendedor` (com rota). Preenchido pela lista do administrador (`npm run importar:tipos`). `NULL` = tratado como representante. |
+| `tipo_atuacao` | `representante` · `vendedor` (monta rotas). A rota/subrota do cadastro aparece para os dois. Preenchido pela lista do administrador (`npm run importar:tipos`). `NULL` = tratado como representante. |
 | `ativo` | inativo não registra contato nem recebe transferência. |
 
 Por que não há tabela `supervisores` separada: o supervisor também faz login e também pode ter carteira.

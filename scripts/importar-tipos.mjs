@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Lista de quem é REPRESENTANTE (sem rota) e quem é VENDEDOR (com rota).
+// Lista de quem é REPRESENTANTE e quem é VENDEDOR (monta rotas).
 //   npm run importar:tipos -- tipos.xlsx [--col-codigo COD] [--col-tipo TIPO] [--simular]
 // Arquivo mínimo: uma coluna com o código do representante/vendedor (o mesmo COD da planilha base)
 // e uma coluna com REPRESENTANTE ou VENDEDOR. Outras colunas (ex.: NOME) são ignoradas.

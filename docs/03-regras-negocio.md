@@ -178,8 +178,8 @@ crédito · arquivos de cadastro/pedido · baixas · transferências.
 
 Mais a **execução de rotas** (planejadas × atendidas, §7). Todos contam **toda a base** (dentro e fora da lista) e podem ser agrupados por **total geral, vendedor,
 supervisor (= equipe), cidade, bairro, onda e rota** e filtrados por
-vendedor, supervisor, cidade, bairro, onda e UF. O agrupamento por **rota considera só prospects de vendedores**
-(representante não tem rota).
+vendedor, supervisor, cidade, bairro, onda e UF. O agrupamento por **rota** usa a rota/subrota do cadastro de todas as
+carteiras (representante e vendedor).
 
 > Mudança em relação à especificação original: "conversão declarada" (venda informada pelo vendedor)
 > deixou de existir — a venda só é registrada pelo arquivo de pedidos do ERP.
@@ -216,9 +216,16 @@ movimentação conta sempre nos indicadores.
 | | Representante | Vendedor | Supervisor / admin |
 |---|---|---|---|
 | Papel no app | **filtro e consulta** + registro das datas de atendimento / sem interesse | o mesmo + **montagem de rotas** (§7) | gestão |
-| Visões | Lista · Cidade · Bairro · **Onda** · Status | Lista · Cidade · Bairro · **Onda** · Status · **Rota** (rota/subrota) | todas |
-| Rota / subrota | **nunca** (não agrupa, não filtra, não recebe as colunas, não monta rota) | sim | consulta as rotas da equipe |
+| Visões | Lista · Cidade · Bairro · **Onda** · Status · **Rota** | Lista · Cidade · Bairro · **Onda** · Status · **Rota** | todas |
+| Rota / subrota do cadastro | **sim**: vê, filtra e agrupa (é dado de cadastro da base) | sim | sim |
+| Montagem de rotas (§7) | **não** | sim | consulta as rotas da equipe |
 | Escopo | própria carteira | própria carteira | equipe / tudo |
+
+**Rota do cadastro × montagem de rotas** (desde 2026-11-07): a rota e a subrota que vêm na planilha base são **dado de
+cadastro** e aparecem para todos — representante, vendedor e gestão: coluna Rota na Lista principal (do representante/vendedor),
+filtros **Rota** e **Subrota** (a subrota depois de escolher a rota), visão e agrupamento por rota, ficha e indicadores. Com o
+filtro da rota e a caixa do título que marca todos, registra-se a rota do dia em lote (§2.1). **Montar rota** (§7) continua
+exclusivo do vendedor.
 
 - A forma de trabalho vem de `usuarios.tipo_atuacao` (`representante` | `vendedor`), informada pelo
   administrador numa **lista** (`npm run importar:tipos`, ver 05 §3) ou individualmente
@@ -243,7 +250,7 @@ movimentação conta sempre nos indicadores.
   **vendedor/representante** (a lista de vendedores se restringe à equipe do supervisor escolhido; cada opção mostra
   se é vendedor ou representante); o supervisor filtra por vendedor/representante da equipe. Para a gestão, cada
   cartão mostra de quem é a carteira.
-- Cada cartão: razão social, selo do status, CNPJ, fantasia, bairro/cidade, onda, rota (só vendedor),
+- Cada cartão: razão social, selo do status, CNPJ, fantasia, bairro/cidade, onda, rota,
   "atendido em…", dias corridos, retorno vencido e prazo de cadastro vencido. 50 por página.
 - **Celular — a Lista principal não lê nada antes de um filtro ou busca** (`precisaFiltro(…, { celular: true })`), também
   para o representante/vendedor: a tela mostra as **cidades da carteira com quantos ainda estão na lista** (do resumo pronto,
@@ -284,8 +291,8 @@ movimentação conta sempre nos indicadores.
     Fantasia, CNPJ, Endereço, Bairro, Cidade/UF, Telefone, Onda, Segmento, Status (situação atual), Tent., 1º registro
     em e Dias (as numéricas centralizadas); rótulos centralizados e **repetidos em cada página**; um prospect nunca
     se divide entre páginas; rodapé "uso interno" e **Página X de N**.
-  - Colunas: prospect (CNPJ), cidade · bairro, onda, segmento, rota (só vendedor), representante (gestão, com o código),
-    status; na Lista: tentativas, **1º registro em** (data do 1º registro) e dias; no Acompanhamento: último registro, próxima ação (retorno)
+  - Colunas: prospect (CNPJ), cidade · bairro, onda, segmento, rota (na carteira do representante/vendedor), representante (gestão, com o código),
+    status; na Lista: tentativas e **1º registro** (data do 1º registro com os dias embaixo; a rota fica embaixo do segmento, em **Segmento · rota**); a tabela vira cartões se não couber na largura; no Acompanhamento: último registro, próxima ação (retorno)
     e dias; e Registrar. Rótulos centralizados; status, tentativas, datas e dias centralizados. Uma linha por prospect (textos longos cortados). O **rótulo da coluna ordena** (▲, ▼, volta à
     ordem de trabalho). Na Lista não há coluna Representante (ele é o filtro); no Acompanhamento há.
   - **Clicar na linha abre a ficha ao lado** (dados, últimos 5 movimentos, Registrar e Abrir ficha completa) sem sair
@@ -487,7 +494,7 @@ Um único conteúdo alimenta três saídas, para não haver textos diferentes: a
 
 **Capítulos** (`CAPITULOS`), escritos para quem não é da área de tecnologia: Para que serve, Em 30 segundos, A tela parte por parte (recortes pequenos de cada parte da tela, com o botão Ampliar imagem, e o que é cada item), Opções do topo, Termos e Perguntas comuns. Os recortes ficam em `web/img/ajuda`, com dados fictícios, e são gerados de novo por `IMAGENS_AJUDA=web/img/ajuda npm run test:telas`; no PDF, os mesmos blocos saem como texto, recorte e tabela (`blocosSimples`).
 
-**Ajuda por perfil:** cada trecho de capítulo, item, opção do topo, termo e pergunta pode dizer quem o vê (`GESTAO`, `CARTEIRA`, `TODAS_EQUIPES`, `COM_ROTA`, `SO_ADMIN` em `shared/ajuda.mjs`). O representante/vendedor vê só a própria carteira: sem escolha de equipe, sem níveis de supervisor e representante, sem administração nem Rejeitados; o representante não vê rota. Onde a tela dele é diferente, há recorte próprio (menu e filtros da Lista principal). `test/ajuda.test.mjs` confere o que cada perfil vê. Tela ou opção nova só para um perfil: marque o trecho.
+**Ajuda por perfil:** cada trecho de capítulo, item, opção do topo, termo e pergunta pode dizer quem o vê (`GESTAO`, `CARTEIRA`, `TODAS_EQUIPES`, `COM_ROTA`, `SO_ADMIN` em `shared/ajuda.mjs`). O representante/vendedor vê só a própria carteira: sem escolha de equipe, sem níveis de supervisor e representante, sem administração nem Rejeitados; a rota do cadastro aparece para todos. Onde a tela dele é diferente, há recorte próprio (menu e filtros da Lista principal). `test/ajuda.test.mjs` confere o que cada perfil vê. Tela ou opção nova só para um perfil: marque o trecho.
 
 **Opções do topo e significado dos termos**, no botão **?** de cada tela (e no fim do manual em PDF): cada opção das chaves e filtros do topo (`OPCOES_TOPO`: Fluxo | Crédito × Pedido, Ver por Empresa | Ver por Grupo…) e tudo o que aparece na tela, inclusive as abreviações (`TERMOS`: Invest., Ag. fin., S.I. cli., Créd. Cliente…). Não há tela separada no menu. Só entra o que existe no sistema: `test/ajuda.test.mjs` procura cada termo e cada opção no código das telas. Rótulo ou opção nova em tela: inclua o significado. Ao entrar, o sistema abre sempre na página inicial (Explorar carteira).
 
@@ -521,7 +528,7 @@ Um único conteúdo alimenta três saídas, para não haver textos diferentes: a
   passa a ser precisa ter a senha definida na tela para receber o cofre (ADR-0006). Ninguém troca o tipo do próprio usuário.
 - Lista de usuários numa linha por usuário: Nome · Login · **Perfil** · Acesso · Ações. O seletor de Perfil mostra
   **todos** os perfis cadastrados, agrupados por tipo; os que não servem para aquele usuário aparecem desabilitados com o
-  motivo. Para vendedor, o perfil do sistema aparece como **Representante (sem rota)** e **Vendedor (com rota)** — a
+  motivo. Para vendedor, o perfil do sistema aparece como **Representante** e **Vendedor (monta rotas)** — a
   escolha grava o tipo de atuação.
 - **Supervisor que também é gerente** (ex.: o supervisor 2): perfil de tipo-base Supervisor com **"Vê os dados de todas
   as equipes"** marcado (migração 0009). Ele continua dono da própria equipe (os representantes ligados a ele) e passa a

@@ -1,6 +1,6 @@
 // Ficha do cliente: dados, situação, crédito e a linha do tempo (histórico de movimentação). docs/08
 import { bancoApp } from '../db.js';
-import { ajustarFicha, consultaCreditoErp, consultaFicha, consultaGrupoCnpj, consultaLinhaTempo } from '../../shared/carteira.mjs';
+import { consultaCreditoErp, consultaFicha, consultaGrupoCnpj, consultaLinhaTempo } from '../../shared/carteira.mjs';
 import { linkMapa, telefoneParaLink } from '../../shared/rotas.mjs';
 import { consultaPedidos, consultaPedidosGrupo, porRepresentante, resumirPedidos, rotuloRepresentante } from '../../shared/pedidos.mjs';
 import { h, montar, mensagem, formatar, tabela } from '../ui.js';
@@ -40,7 +40,7 @@ export async function render(conteudo, { usuario, parametros }) {
   const id = Number(parametros.get('id'));
   const linha = id ? (await db.execute(consultaFicha({ usuario, prospectId: id }))).rows[0] : null;
   if (!linha) return montar(conteudo, mensagem('Prospect não encontrado ou fora da sua carteira.', 'erro'));
-  const p = ajustarFicha(usuario, linha);
+  const p = linha;
   const [movimentos, [erp], grupo] = (await Promise.all([consultaLinhaTempo({ prospectId: id }), consultaCreditoErp({ prospectId: id }), consultaGrupoCnpj({ prospectId: id })]
     .map((c) => db.execute(c)))).map((r) => r.rows);
   // supervisor que vê todas as equipes registra só na própria equipe (regra do banco)

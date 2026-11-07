@@ -1,7 +1,7 @@
 // Registro no app: Atendido · Sem interesse do cliente / do representante (motivo de cada um) · Reabrir com pedido. docs/03 §2
 // "Não atendido" não gera registro. A data é a do aparelho; o banco confere tudo de novo (triggers).
 import { bancoApp } from '../db.js';
-import { ajustarFicha, consultaFicha } from '../../shared/carteira.mjs';
+import { consultaFicha } from '../../shared/carteira.mjs';
 import { comandoRegistrarContato, listarMotivos } from '../../shared/registro.mjs';
 import { CANAIS_EM_USO, motivosDaOrigem, ORIGENS_SEM_INTERESSE, ROTULOS_RESULTADO, validarContato } from '../../shared/status.mjs';
 import { hojeSaoPaulo } from '../../shared/datas.mjs';
@@ -25,7 +25,7 @@ export async function render(conteudo, ctx) {
   const id = Number(parametros.get('id'));
   const linha = id ? (await db.execute(consultaFicha({ usuario, prospectId: id }))).rows[0] : null;
   if (!linha || usuario.perfil === 'financeiro') return montar(conteudo, mensagem('Prospect não encontrado ou fora da sua carteira.', 'erro'));
-  const p = ajustarFicha(usuario, linha);
+  const p = linha;
   if (!Number(p.aceita_contato)) {
     return montar(conteudo, mensagem(`${p.status_nome}: este cliente não aceita novo registro.`, 'info'),
       h('a', { href: `#/ficha?id=${id}` }, '‹ Voltar à ficha'));

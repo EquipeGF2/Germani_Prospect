@@ -83,7 +83,7 @@ navegador nunca misturar arquivos novos com antigos do cache do GitHub Pages. `t
 |---|---|---|
 | Motivo obrigatório em "sem interesse" | CHECK em `contatos` | `validarContato` |
 | Data de retorno (opcional) não anterior ao contato | CHECK em `contatos` | `validarContato` |
-| Representante não usa rota; vendedor usa | coluna `usuarios.tipo_atuacao` + trigger `trg_rotas_somente_vendedor` | `shared/carteira.mjs`, `shared/rotas.mjs` |
+| Só o vendedor monta rota (a rota do cadastro aparece para todos) | coluna `usuarios.tipo_atuacao` + trigger `trg_rotas_somente_vendedor` | `shared/rotas.mjs` |
 | Rota encerrada travada; parada só da própria carteira | triggers `trg_rotas_*`, `trg_rota_paradas_*` | — |
 | Saída da lista (Aguardando cadastro, 2 sem interesse, ERP) sem sair dos indicadores | `status.lista_trabalho` + `vw_prospects.na_lista` | `shared/carteira.mjs` |
 | 2 atendimentos sem interesse → Sem interesse | trigger `trg_contatos_aplicar` + `parametros` | — |

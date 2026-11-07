@@ -5,15 +5,13 @@ import { podeTela, veTodasEquipes } from './perfis.mjs';
 const REP = 'Representante/vendedor';
 
 // ---------- quem vê cada trecho: o representante/vendedor tem uma visão reduzida (a própria carteira, sem equipe nem
-// administração), e o representante não tem rota. Um trecho marcado só aparece para quem o predicado aceita. ----------
+// administração). Um trecho marcado só aparece para quem o predicado aceita. ----------
 /** Gestão: administrador, gerente, supervisor e financeiro (escolhem equipe, veem níveis de equipe). */
 export const GESTAO = (u) => u?.perfil !== 'vendedor';
 /** Representante/vendedor: a própria carteira. */
 export const CARTEIRA = (u) => u?.perfil === 'vendedor';
 /** Quem vê todas as equipes (nível Supervisor). */
 export const TODAS_EQUIPES = (u) => veTodasEquipes(u);
-/** Quem trabalha com rota: a gestão e o vendedor (o representante não tem rota). */
-export const COM_ROTA = (u) => u?.perfil !== 'vendedor' || u?.tipo_atuacao === 'vendedor';
 /** Quem vê no filtro só as ondas liberadas (0024): representante/vendedor e supervisor. */
 export const ONDAS_LIBERADAS = (u) => ['vendedor', 'supervisor'].includes(u?.perfil);
 const ONDAS_TODAS = (u) => !ONDAS_LIBERADAS(u);
@@ -101,7 +99,7 @@ export const CAPITULOS = Object.freeze([
     S(GESTAO, ['parte', 'lista-filtros', 'Os filtros do topo', 'Escolha de quem é a carteira e onde estão os clientes. Supervisor e gestão escolhem a equipe primeiro.', [['Equipe', 'Supervisor e representante/vendedor.'], ['Local', 'UF, cidade e bairro.'], ['Carteira', 'Onda e segmento.'], ['Exibição', 'Agrupar a lista por cidade, onda ou outra opção.']]]),
     S(CARTEIRA, ['parte', 'lista-filtros-carteira', 'Os filtros do topo', 'A lista já abre com a sua carteira. Os filtros ajudam a achar os clientes.', [['Local', 'UF, cidade e bairro.'], ['Carteira', 'Onda e segmento. Só aparecem as ondas que o administrador liberou.'], ['Exibição', 'Agrupar a lista por cidade, onda ou outra opção.']]]),
     ['parte', 'lista-situacao', 'A situação', 'Separa a lista por status, com a quantidade de cada um. Clique para ver só aquele grupo.', [['Todos', 'A lista inteira.'], ['Não contactado', 'Ainda sem nenhum contato.'], ['Em prospecção (contato da planilha)', 'Teve contato na planilha da base, ainda sem resultado no sistema.']]],
-    ['parte', 'lista-tabela', 'A lista de clientes', 'Um cliente por linha. Clique no título de uma coluna para ordenar.', [['Tentativas', 'Quantos contatos já foram registrados.'], ['1º registro em', 'Data do primeiro contato.'], ['Dias', 'Dias desde o primeiro registro.'], ['Registrar', 'Abre o registro do atendimento.']]],
+    ['parte', 'lista-tabela', 'A lista de clientes', 'Um cliente por linha. Clique no título de uma coluna para ordenar.', [['Tentativas', 'Quantos contatos já foram registrados.'], ['1º registro', 'Data do primeiro contato e, embaixo, os dias desde ele.'], ['Segmento · rota', 'Segmento e, embaixo, a rota/subrota do cadastro.'], ['Registrar', 'Abre o registro do atendimento.']]],
     ['parte', 'registrar', 'Registrar atendimento', 'O resultado move o cliente no fluxo.', [['Canal', 'Por enquanto, sempre Visita: o campo fica fixo.'], ['Atendido', 'O cliente aceitou: vai para Aguardando cadastro.'], ['Sem interesse', 'Do cliente ou do representante/vendedor, sempre com o motivo.'], ['Reabrir: pedido identificado', 'Para quem estava em sem interesse e fez pedido.']]],
     ['opcoes', '/carteira'],
     ['termos', 'lista'],
@@ -223,7 +221,7 @@ export const AJUDA_TELAS = Object.freeze({
     analisar: ['Compare o funil entre equipes para ver onde a campanha trava.'], comuns: [F('A tela não está no menu', 'Os mesmos números estão no Explorar carteira.')], proximo: 'Use o Explorar carteira para descer até o cliente.' },
   '/carteira': { titulo: 'Lista principal', cap: 3, objetivo: 'Mostrar quem ainda precisa ser procurado: Não contactados e Em prospecção.',
     como: [P(GESTAO, 'Supervisor e gestão escolhem o supervisor e o representante/vendedor e clicam em Buscar.'), P(CARTEIRA, 'A lista já abre com a sua carteira: use os filtros para achar os clientes.'), 'Clique em Registrar para gravar o atendimento.', 'Clique no título de uma coluna para ordenar.', 'Marque clientes para o Registrar em lote; a caixa do título marca todos da lista.'],
-    campos: [F('Prospect', 'Razão social e CNPJ'), F('Onda', 'Grupo de trabalho da campanha'), F('Segmento', 'Tipologia do cliente'), F('Tentativas', 'Contatos já registrados'), F('1º registro em', 'Data do primeiro contato'), F('Dias', 'Dias desde o primeiro registro'), F('Agrupar por', 'Junta a lista por cidade, onda ou outra opção')],
+    campos: [F('Prospect', 'Razão social e CNPJ'), F('Onda', 'Grupo de trabalho da campanha'), F('Segmento', 'Tipologia do cliente'), F('Tentativas', 'Contatos já registrados'), F('1º registro', 'Data do primeiro contato e, embaixo, os dias desde ele'), F('Segmento · rota', 'Segmento e, embaixo, a rota/subrota do cadastro'), F('Agrupar por', 'Junta a lista por cidade, onda ou outra opção')],
     analisar: ['Clientes com mais dias e sem avanço pedem prioridade.', 'Use Gerar PDF para levar a lista como está na tela.'], comuns: [F('O cliente sumiu', 'Depois do registro, ele sai da lista: veja o Acompanhamento.'), F('O cliente não atendeu', 'Não gera registro: ele continua na lista.')], proximo: 'Depois do atendimento, acompanhe o cliente no Acompanhamento.' },
   '/carteira?aba=acompanhamento': { titulo: 'Acompanhamento', cap: 4, objetivo: 'Ver onde está cada cliente da base, do cadastro identificado ao pedido faturado, e o que está parado.',
     como: ['Clique numa etapa para listar os clientes dela.', P(GESTAO, 'Use os níveis para ver por equipe, cidade ou mês do cadastro.'), P(CARTEIRA, 'Use os níveis para ver por cidade, segmento, onda ou mês do cadastro.'), 'Recolha ou reexiba a cascata pelas setas.', 'Troque entre Fluxo e Crédito × Pedido no topo.', 'Clique no cliente para abrir a ficha.'],
@@ -282,7 +280,7 @@ export const AJUDA_TELAS = Object.freeze({
     analisar: ['Leia Pontos para conferir: falta de cadastro, representante sem código e bonificação sem venda.', 'Veja quantos clientes ficam fora da base.'], comuns: [F('Cliente sem registro de cadastro', 'O pedido fica guardado; importe o relatório de cadastro e crédito.'), F('Código novo', 'Classifique a transação ou situação para seguir.')], proximo: 'Veja o resultado em Explorar pedidos e no Acompanhamento.' },
   '/admin/importar/tipos': { titulo: 'Representantes e vendedores', cap: 8, objetivo: 'Definir por lista quem é representante e quem é vendedor.',
     como: ['Escolha o arquivo ou cole a lista com o cabeçalho.', 'Confira a simulação e grave.'],
-    campos: [F('Representante', 'Sem rota'), F('Vendedor', 'Com rota e subrota')], analisar: ['Confira quem ficou sem tipo.'], comuns: [F('A tela não está no menu', 'O cadastro do dia a dia fica em Usuários.')], proximo: 'Veja o resultado em Usuários.' },
+    campos: [F('Representante', 'Vê a rota do cadastro; não monta rota'), F('Vendedor', 'Vê a rota do cadastro e monta rotas')], analisar: ['Confira quem ficou sem tipo.'], comuns: [F('A tela não está no menu', 'O cadastro do dia a dia fica em Usuários.')], proximo: 'Veja o resultado em Usuários.' },
   '/admin/grupos': { titulo: 'Grupos de CNPJ', cap: 8, objetivo: 'Cruzar a base com o cadastro do ERP pelo CNPJ e pela raiz, e expurgar quem já é cliente.',
     como: ['Carregue o arquivo com a coluna CPF / CNPJ.', 'Veja a sugestão de cada empresa.', 'Escolha a ação, informe o motivo e aplique.'],
     campos: [F('Raiz', 'Os 8 primeiros dígitos do CNPJ'), F('Sugestão', 'Expurgar ou Manter'), F('No arquivo', 'Se o mesmo CNPJ está no arquivo'), F('Cadastro no ERP', 'Data do cadastro')],
@@ -463,14 +461,14 @@ const VER_POR = O('Ver por Empresa | Ver por Grupo', [
   ['Ver por Grupo', 'Junta as empresas pela raiz do CNPJ (os 8 primeiros dígitos) e inclui as filiais que não estão na base.']]);
 export const OPCOES_TOPO = Object.freeze({
   '/explorar': [O('Todos | Representantes | Vendedores', [
-    ['Todos', 'Toda a carteira que você vê.'], ['Representantes', 'Só as carteiras de representante (sem rota).'], ['Vendedores', 'Só as carteiras de vendedor (com rota e subrota).']], GESTAO)],
+    ['Todos', 'Toda a carteira que você vê.'], ['Representantes', 'Só as carteiras de representante.'], ['Vendedores', 'Só as carteiras de vendedor (os que montam rotas).']], GESTAO)],
   '/carteira': [
     O('Equipe', [['Supervisor', 'Escolhe a equipe (para quem vê todas as equipes).', TODAS_EQUIPES], ['Representante', 'Escolhe a carteira de um representante/vendedor.']], GESTAO),
     O('Local', [['UF', 'Filtra pelo estado.'], ['Cidade', 'Filtra pela cidade.'], ['Bairro', 'Filtra pelo bairro (aparece depois de escolher a cidade).']]),
-    O('Carteira', [['Onda', 'Filtra pela onda da campanha.', ONDAS_TODAS], ['Onda', 'Filtra pela onda da campanha. Só aparecem as ondas que o administrador liberou.', ONDAS_LIBERADAS], ['Segmento', 'Filtra pela tipologia do cliente.']]),
+    O('Carteira', [['Onda', 'Filtra pela onda da campanha.', ONDAS_TODAS], ['Onda', 'Filtra pela onda da campanha. Só aparecem as ondas que o administrador liberou.', ONDAS_LIBERADAS], ['Segmento', 'Filtra pela tipologia do cliente.'], ['Rota', 'Filtra pela rota do cadastro (ex.: a rota do dia).'], ['Subrota', 'Aparece depois de escolher a rota.']]),
     O('Exibição', [['Agrupar por', 'Junta a lista por cidade, onda ou outra opção; Nenhum mostra a lista corrida.']]),
     O('Situação', [['Todos', 'Todos os clientes da lista.'], ['Não contactado', 'Ainda sem nenhum contato.'], ['Em prospecção (contato da planilha)', 'Teve contato na planilha da base, ainda sem resultado no sistema.']]),
-    O('No celular: Lista | Cidade | Bairro | Onda | Rota', [['Lista', 'Os clientes um a um.'], ['Cidade', 'Agrupados por cidade.'], ['Bairro', 'Agrupados por bairro.'], ['Onda', 'Agrupados por onda.'], ['Rota', 'Agrupados por rota (só vendedor).', COM_ROTA]])],
+    O('No celular: Lista | Cidade | Bairro | Onda | Rota', [['Lista', 'Os clientes um a um.'], ['Cidade', 'Agrupados por cidade.'], ['Bairro', 'Agrupados por bairro.'], ['Onda', 'Agrupados por onda.'], ['Rota', 'Agrupados por rota e subrota do cadastro.']])],
   '/carteira?aba=acompanhamento': [
     O('Fluxo | Crédito × Pedido', [
       ['Fluxo', 'Mostra em que etapa está cada cliente, do cadastro ao pedido faturado.'],

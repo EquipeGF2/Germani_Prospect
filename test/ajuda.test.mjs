@@ -135,11 +135,11 @@ test('ajuda do representante/vendedor: só o que ele vê e usa, sem gestão nem 
     ajudaDaTela('/carteira', 'aba=acompanhamento', u), opcoesDaTela('/carteira', 'aba=acompanhamento', u), grupoDeTermos('/carteira', 'aba=acompanhamento', u), capituloDeTermos(u)]);
   const rep = texto(REPRESENTANTE);
   for (const fora of ['Todos | Representantes | Vendedores', 'Supervisor e gestão escolhem', '"Equipe"', 'Rejeitados (gerente', 'A tela Rejeitados', 'Rep. sem código', 'Importações, usuários e parâmetros',
-    'separados por supervisor e representante', 'Agrupados por rota', 'arquivos do ERP, exportar'])
+    'separados por supervisor e representante', 'arquivos do ERP, exportar'])
     assert.ok(!rep.includes(fora), `o representante não deveria ver: ${fora}`);
   for (const dentro of ['A lista já abre com a sua carteira', 'menu-carteira', 'lista-filtros-carteira', 'Os mesmos números da sua carteira', 'Por que não vejo todos os meus clientes?'])
     assert.ok(rep.includes(dentro), `o representante deveria ver: ${dentro}`);
-  assert.ok(texto(VENDEDOR).includes('Agrupados por rota'), 'o vendedor tem rota');
+  assert.ok(rep.includes('Agrupados por rota') && texto(VENDEDOR).includes('Agrupados por rota'), 'rota de cadastro para representante e vendedor');
   const adm = texto(ADMIN_T);
   for (const dentro of ['Todos | Representantes | Vendedores', 'Supervisor e gestão escolhem', 'A tela Rejeitados', 'Rep. sem código', 'separados por supervisor e representante'])
     assert.ok(adm.includes(dentro), `a gestão deveria ver: ${dentro}`);

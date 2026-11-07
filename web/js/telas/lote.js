@@ -2,7 +2,7 @@
 // Sem interesse: justificativa para o lote todo e/ou por cliente. Atendido: sem motivo, com retorno opcional.
 // Cada item vira um registro normal (mesmas regras do banco); se um for recusado, os outros ficam gravados.
 import { bancoApp } from '../db.js';
-import { ajustarFicha, consultaFicha } from '../../shared/carteira.mjs';
+import { consultaFicha } from '../../shared/carteira.mjs';
 import { listarMotivos } from '../../shared/registro.mjs';
 import { prepararLote, registrarLote } from '../../shared/lote.mjs';
 import { motivosDaOrigem, ORIGENS_SEM_INTERESSE, ROTULOS_RESULTADO } from '../../shared/status.mjs';
@@ -18,7 +18,7 @@ export async function render(conteudo, ctx) {
   const prospects = [];
   for (const id of lerLote()) {
     const p = (await db.execute(consultaFicha({ usuario, prospectId: id }))).rows[0];
-    if (p && Number(p.na_lista)) prospects.push(ajustarFicha(usuario, p));
+    if (p && Number(p.na_lista)) prospects.push(p);
   }
   if (!prospects.length) {
     return montar(conteudo, h('h1', {}, 'Registro em lote'),

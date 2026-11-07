@@ -518,16 +518,16 @@ td.pct { min-width: 96px; }
 
 /* Lista principal e Acompanhamento no computador (web/js/telas/_lista.js) */
 .lista-filtros { padding: 14px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
-.lista-filtros-grupos { display: grid; gap: 12px; grid-template-columns: 1.7fr 1.5fr 1.1fr; }
-.lista-filtros-grupos.g4 { grid-template-columns: 1.7fr 1.5fr 1.1fr 1fr; }
-.lista-filtros-grupos.g2 { grid-template-columns: 1.6fr 1.1fr; }
+/* grupos lado a lado; o que não cabe desce para a linha de baixo (nenhum campo fica espremido) */
+.lista-filtros-grupos { display: flex; flex-wrap: wrap; gap: 12px; }
+.lista-filtros-grupos > .lista-grupo { flex: 1 1 auto; }
 .lista-grupo { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--borda); border-radius: 10px; background: #FAFAFB; min-width: 0; }
 .lista-grupo.falta { border-color: #E8A0A4; background: #FFF7F7; }
 .lista-grupo-tit { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--suave); white-space: nowrap; }
 .lista-grupo-tit .obrigatorio { color: var(--destaque); }
 .lista-grupo-campos { display: flex; gap: 8px; min-width: 0; }
-.lista-grupo-campos > .filtro { flex: 1 1 0; min-width: 0; }
-.lista-grupo-campos > .filtro.estreito { flex: 0 0 84px; }
+.lista-grupo-campos > .filtro { flex: 1 1 0; min-width: 118px; max-width: 320px; }
+.lista-grupo-campos > .filtro.estreito { flex: 0 0 84px; min-width: 84px; }
 .lista-grupo-campos label { font-size: 12px; margin-bottom: 4px; white-space: nowrap; display: block; }
 .lista-grupo-campos select { width: 100%; font-size: 14px; padding: 8px 10px; }
 .lista-grupo-campos .datas { display: flex; gap: 6px; } .lista-grupo-campos input[type=date] { width: 100%; min-width: 0; font-size: 13.5px; padding: 8px; }
@@ -548,8 +548,15 @@ td.pct { min-width: 96px; }
 .lista-tabela td, .lista-tabela th { white-space: nowrap; padding-top: 7px; padding-bottom: 7px; }
 /* rótulos das colunas centralizados; status, tentativas, datas e dias também no corpo */
 .lista-tabela th, .lista-tabela td.centro { text-align: center; vertical-align: middle; }
-.lista-tabela td .nome, .lista-tabela td small, .lista-tabela td .corta { display: block; max-width: 250px; overflow: hidden; text-overflow: ellipsis; }
-.lista-tabela td .corta { max-width: 150px; }
+.lista-tabela td .nome, .lista-tabela td small, .lista-tabela td .corta { display: block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.lista-tabela td .corta, .lista-tabela td small.corta { max-width: 120px; }
+.lista-tabela .tabela-carteira th, .lista-tabela .tabela-carteira td { padding-left: 6px; padding-right: 6px; }
+.lista-tabela .tabela-wrap.cartoes td .nome, .lista-tabela .tabela-wrap.cartoes td small, .lista-tabela .tabela-wrap.cartoes td .corta { max-width: none; }
+.lista-tabela .tabela-wrap.cartoes tr.linha-grupo td { display: block; text-align: left !important; }
+.lista-tabela .tabela-wrap.cartoes td > small, .lista-tabela .tabela-wrap.cartoes td > .corta { display: inline; margin-left: 6px; }
+.lista-tabela .tabela-wrap.cartoes td > :first-child { margin-left: auto; }
+.lista-tabela .tabela-wrap.cartoes td.rz > *, .lista-tabela .tabela-wrap.cartoes td.rz > small { display: block; margin-left: 0; }
+.lista-tabela .tabela-wrap.cartoes tr.linha-grupo td::before { content: none; }
 .lista-tabela tbody tr.aberta td { background: var(--destaque-claro); }
 .lista-tabela tbody tr.aberta td:first-child { box-shadow: inset 3px 0 0 var(--destaque); }
 .lista-tabela .linha-grupo td { background: #F3F4F6; font-weight: 600; font-size: 13px; color: #374151; cursor: default; }
@@ -566,7 +573,7 @@ td.pct { min-width: 96px; }
 .ficha-lateral .k { display: block; font-size: 12px; color: var(--suave); } .ficha-lateral .v { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
 .ficha-historico { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; }
 .ficha-lateral .ficha-acoes { display: flex; gap: 8px; margin-top: auto; flex-wrap: wrap; }
-@media (max-width: 1200px) { .lista-filtros-grupos, .lista-filtros-grupos.g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1200px) { .lista-filtros-grupos > .lista-grupo { flex-basis: calc(50% - 6px); } }
 
 /* Explorar: "Da totalidade" (barra 100%) e "Dos contactados" (etapas do processo) */
 .exp-grafico { margin: 0; flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; }
@@ -629,6 +636,8 @@ button.chip-situacao { font: inherit; font-size: 13.5px; cursor: pointer; min-he
 button.chip-situacao:hover { background: #F9FAFB; color: var(--texto); }
 button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var(--destaque-escuro); }
 .lista-situacao-acoes { margin-left: auto; }
+.marcar-todos { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; white-space: nowrap; cursor: pointer; margin-right: 10px; }
+.marcar-todos input { width: 18px; height: 18px; min-height: 0; accent-color: var(--destaque); }
 .tabela-carteira th button.ordenar { border: 0; background: transparent; color: inherit; font: inherit; text-transform: inherit; letter-spacing: inherit; padding: 0; min-height: 0; cursor: pointer; white-space: nowrap; }
 .tabela-carteira th button.ordenar:hover, .tabela-carteira th button.ordenar.ativa { color: var(--destaque); background: transparent; }
 .lista-tabela .linha-grupo td { padding: 0; }
@@ -646,7 +655,8 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 .filtros-celular[open] > summary::after { content: "▴"; }
 .filtros-celular > summary .ajuda { font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .filtros-celular .lista-filtros { border-top-left-radius: 0; border-top-right-radius: 0; margin: 0; padding: 14px; }
-.filtros-celular .lista-filtros-grupos { grid-template-columns: 1fr !important; }
+.filtros-celular .lista-filtros-grupos { flex-direction: column; }
+.filtros-celular .lista-grupo-campos > .filtro { min-width: 0; }
 .filtros-celular .lista-busca { flex-wrap: wrap; }
 @media (max-width: 900px) {
   .lista-situacao:has(#ordem-celular) { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }

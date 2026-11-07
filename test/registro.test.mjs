@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bancoTeste, criarEquipe, criarProspect, prospect } from './auxiliar.mjs';
 import { comandoRegistrarContato, listarMotivos } from '../shared/registro.mjs';
-import { ajustarFicha, consultaFicha, consultaLinhaTempo } from '../shared/carteira.mjs';
+import { consultaFicha, consultaLinhaTempo } from '../shared/carteira.mjs';
 
 test('registro pelo app: atendido, sem interesse (motivo) e reabertura com pedido; ficha e linha do tempo', async () => {
   const db = await bancoTeste();
@@ -13,7 +13,7 @@ test('registro pelo app: atendido, sem interesse (motivo) e reabertura com pedid
   const motivos = await listarMotivos(db);
   assert.ok(motivos.length >= 10 && motivos.every((m) => m.codigo !== 'NAO_INFORMADO'));
   let ficha = (await db.execute(consultaFicha({ usuario: REP, prospectId: id }))).rows[0];
-  assert.equal(ajustarFicha(REP, ficha).rota, undefined);           // representante não recebe rota
+  assert.equal(ficha.rota, 'R1');                                   // rota é dado de cadastro: o representante também vê
   assert.throws(() => comandoRegistrarContato({ usuario: REP, prospect: ficha, canal: 'visita', resultado: 'sem_interesse', dataContato: '2026-10-02' }), /motivo obrigatório/);
   const preco = motivos.find((m) => m.codigo === 'PRECO');
   await db.execute(comandoRegistrarContato({ usuario: REP, prospect: ficha, canal: 'visita', resultado: 'sem_interesse', motivoId: preco.id, observacao: 'Tabela alta', dataContato: '2026-10-02' }));

@@ -36,7 +36,7 @@ Navegação pelo **menu lateral** (grupos Prospecção e Administração; recolh
 | Tela | Quem | O que faz |
 |---|---|---|
 | `#/inicio` | todos (escopo do perfil) | **dashboard de acompanhamento** — no computador, 3 visualizações à escolha (Executivo · Arrojado · Equipe) e filtro por período; no celular, cartões |
-| `#/carteira` | todos (escopo do perfil) | **lista principal** (não contactado / em prospecção): visões lista · cidade · bairro · onda · rota (só vendedor), busca sem acento, filtros, seleção para lote |
+| `#/carteira` | todos (escopo do perfil) | **lista principal** (não contactado / em prospecção): visões lista · cidade · bairro · onda · rota, busca sem acento, filtros, seleção para lote |
 | `#/carteira?aba=acompanhamento` | todos | **acompanhamento**: cartões por status → lista do status |
 | `#/ficha?id=` | todos | situação, dias corridos, prazos, crédito, **histórico de movimentação**, cadastro, ligar / WhatsApp / mapa |
 | `#/registrar?id=` | vendedor, supervisor, admin | Atendido · Sem interesse (motivo) · Reabrir com pedido identificado |
