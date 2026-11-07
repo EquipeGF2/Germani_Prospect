@@ -12,6 +12,7 @@ import { normalizarBusca } from '../shared/texto.mjs';
 import { consultaBairros, consultaCarteira, consultaOndas } from '../shared/carteira.mjs';
 import { consultaPainel } from '../shared/painel.mjs';
 import { consultaPedidosResumo, consultaResumo } from '../shared/explorar.mjs';
+import { consultaAvisos } from '../shared/avisos.mjs';
 
 const N = Number(process.argv[2]) || 50000;
 const PLANO = process.argv.includes('--plano');
@@ -101,6 +102,8 @@ const CASOS = [
   ['Explorar carteira: pedidos', consultaPedidosResumo({ usuario: ADM })],
   ['Início (período: mês)', consultaPainel({ usuario: ADM, periodo: { inicio: '2026-05-01', fim: '2026-05-31' } })],
   ['Início (supervisor)', consultaPainel({ usuario: SUP })],
+  ['Avisos (admin)', consultaAvisos({ usuario: ADM })],
+  ['Avisos (supervisor)', consultaAvisos({ usuario: SUP })],
 ];
 const largura = Math.max(...CASOS.map(([n]) => n.length));
 for (const [nome, q] of CASOS) {

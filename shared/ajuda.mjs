@@ -115,12 +115,16 @@ export const CAPITULOS = Object.freeze([
     S(CARTEIRA, ['h', 'A hierarquia'], ['p', 'Os mesmos números da sua carteira, separados pelos níveis que você escolher: cidade, segmento, onda ou mês do cadastro.'], ['lista', [['▶ e ▼', 'abrem e fecham a linha para ver o que está dentro.'], ['Linha em vermelho', 'é a linha escolhida: etapas e lista seguem ela.']]]),
     S(GESTAO, ['parte', 'acomp-lista', 'A lista de clientes', 'Os clientes da etapa escolhida, agrupados por equipe.', [['Situação', 'No prazo (verde) ou Vencida (vermelho).'], ['Registrar', 'Abre o registro de um novo atendimento.'], ['Gerar PDF e Baixar CSV', 'Levam a lista como está na tela.']]]),
     S(CARTEIRA, ['h', 'A lista de clientes'], ['p', 'Os seus clientes da etapa escolhida.'], ['lista', [['Situação', 'No prazo (verde) ou Vencida (vermelho).'], ['Registrar', 'abre o registro de um novo atendimento.'], ['Gerar PDF e Baixar CSV', 'levam a lista como está na tela.']]]),
+    S((u) => podeTela(u, 'avisos'), ['h', 'Avisos (gestão e supervisor)'], ['parte', 'avisos', 'A tela Avisos', 'O que passou do prazo configurado em Parâmetros, numa grade só, quebrada pelos níveis (padrão: representante): o que cobrar e de quem. É a tela inicial da gestão e do supervisor; o supervisor vê só a equipe dele.',
+      [['Níveis', 'Montam a quebra da grade, como no Explorar carteira.'], ['Cards', 'Um por tipo de aviso, com o prazo dos Parâmetros. Marque um ou mais; Todos os avisos marca ou desmarca todos.'], ['Linha do representante', 'Total de avisos e o resumo do que cobrar; ▶ e ▼ abrem e fecham.'], ['PDF de pendências', 'Resumo da equipe e uma página por representante, com espaço para anotar o combinado.']]],
+      ['opcoes', '/avisos'], ['termos', 'avisos']),
     ['h', 'As etapas'],
     ETAPAS_TABELA,
     ['opcoes', '/carteira?aba=acompanhamento'],
     ['termos', 'acompanhamento'],
     ['perguntas', [['O cliente não aparece. Por quê?', 'Ele ainda não foi atendido (está na Lista principal) ou o cadastro não chegou do ERP: veja Aguardando cadastro, embaixo das etapas.'],
       ['O que faço com uma análise vencida?', 'Avise o financeiro: o cliente está esperando a liberação do crédito.'],
+      ['Quando um aviso some?', 'Sozinho, quando o cliente avança de etapa ou o representante registra. Não há o que apagar.', (u) => podeTela(u, 'avisos')],
       ['Apareceu Pedido sem cadastro.', 'O arquivo de pedidos chegou antes do cadastro. Peça a importação do relatório de cadastro e crédito: os pedidos não precisam ser importados de novo.']]],
   ] },
   { n: 5, nome: 'Crédito', desc: 'Console de crédito e Crédito × Pedido.', para: (u) => podeTela(u, 'credito') || (podeTela(u, 'acompanhamento') && u.perfil !== 'vendedor'), blocos: [
@@ -150,7 +154,7 @@ export const CAPITULOS = Object.freeze([
   ] },
   { n: 7, nome: 'Indicadores', desc: 'Explorar carteira e os números da base.', para: (u) => podeTela(u, 'explorar'), blocos: [
     ['serve', 'Mostrar como está a base inteira (sem baixados e expurgados), do total até o cliente: quanto já foi trabalhado, quanto está sem interesse e em que etapa estão os clientes.'],
-    ['rapido', ['Abra Prospecção › Explorar carteira (é a tela inicial).', P(GESTAO, 'Arraste os níveis para montar a hierarquia: supervisor, representante/vendedor, cidade, segmento, onda.'), P(CARTEIRA, 'Arraste os níveis para montar a hierarquia da sua carteira: cidade, segmento e onda.'), 'Clique numa linha para ver os números daquela parte.']],
+    ['rapido', [P(CARTEIRA, 'Abra Prospecção › Explorar carteira (é a tela inicial).'), P(GESTAO, 'Abra Prospecção › Explorar carteira.'), P(GESTAO, 'Arraste os níveis para montar a hierarquia: supervisor, representante/vendedor, cidade, segmento, onda.'), P(CARTEIRA, 'Arraste os níveis para montar a hierarquia da sua carteira: cidade, segmento e onda.'), 'Clique numa linha para ver os números daquela parte.']],
     ['parte', 'carteira-niveis', 'Os níveis', 'Montam a hierarquia, na ordem que você quiser. No celular, use o botão Mudar.', [['Níveis', 'Os que estão em uso, na ordem.'], ['Disponíveis', 'Clique ou arraste para incluir.']]],
     ['parte', 'carteira-graficos', 'Os gráficos', 'Da totalidade mostra como a base se divide. Dos contactados mostra em que etapa estão os que seguem no processo.', [['Rejeitados', 'No card, a base inteira: sem interesse, baixados e expurgados juntos.'], ['Prospects', 'Na hierarquia, só os válidos: sem baixados e expurgados.'], ['Cobertura', 'Quanto da base já foi trabalhado.'], ['Potencial', 'Estimativa do que os clientes em andamento podem vender.']]],
     ['parte', 'carteira-arvore', 'A hierarquia', 'Os números de cada linha. Clique numa linha para os gráficos seguirem ela.', [['Prospects', 'Clientes da base na linha.'], ['Ag. cadastro, Ag. financeiro, Ag. pedido', 'Quantos estão em cada etapa.']]],
@@ -236,6 +240,12 @@ export const AJUDA_TELAS = Object.freeze({
     como: ['Em Listas por equipe, escolha a onda, quem entra e, se quiser, um supervisor; clique em Gerar PDFs.', 'Abra o ZIP: uma pasta por supervisor, com um PDF por representante.', 'Em Rejeitados, marque um ou mais tipos e, se quiser, o supervisor, o representante e a onda: cada tipo vai numa aba da planilha.', 'Clique em Exportar Excel no bloco que quer baixar.'],
     campos: [F('Listas por equipe', 'Um PDF da Lista por representante, em ordem de cidade, bairro e segmento'), F('Clientes válidos', 'Todos, menos baixados e expurgados'), F('Só a Lista principal', 'Não contactado e Em prospecção'), F('Rejeitados', 'Baixados, expurgados e sem interesse do cliente e do representante'), F('Base de prospects', 'Todos os clientes, com status, representante e onda'), F('Pedidos', 'Os pedidos dos clientes da base')],
     analisar: ['O número no botão mostra quantos representantes e clientes vão no arquivo.'], comuns: [F('O botão está apagado', 'Nenhum cliente com os tipos e filtros marcados.'), F('Gerar PDFs demora', 'Cada representante é um PDF; o botão mostra quantos já foram.')], proximo: 'Abra o arquivo no Excel ou envie o PDF a cada representante.' },
+  '/avisos': { titulo: 'Avisos', cap: 4, objetivo: 'Ver o que passou do prazo na equipe, por representante: o que cobrar e de quem.',
+    como: ['Monte os níveis da grade, como no Explorar carteira (o padrão é Rep.).', 'Marque um ou mais cards: a grade mostra só os avisos daqueles tipos.', 'Clique na linha do representante para abrir ou fechar os avisos dele.', 'Clique em Abrir ficha para tratar o cliente; no Sem registrar, Ver carteira abre a lista do representante.', 'Clique em PDF de pendências para levar a cobrança: resumo da equipe e uma página por representante.'],
+    campos: [F('Desde', 'A data de referência do aviso: o que ela é aparece embaixo'), F('Atraso', 'Dias depois do prazo; no Sem movimento e no Sem registrar, dias parado'), F('Combinado', 'No PDF: espaço para anotar a conversa com o representante')],
+    analisar: ['Comece pelo representante com mais avisos e pelo Sem registrar: é quem parou de trabalhar a lista.', 'Cadastro vencido repetido no mesmo representante pede conversa sobre o envio da ficha.', 'Muitos Sem atendimento: o representante vende sem registrar no app.'],
+    comuns: [F('Um cliente aparece em dois avisos', 'São cobranças diferentes, como cadastro vencido e retorno vencido.'), F('O não contactado não aparece', 'Ele ainda não teve registro: é cobertura da carteira (Explorar carteira), não pendência.'), F('O número do sino não bate', 'Ele conta todos os tipos; a grade mostra só os cards marcados.')],
+    proximo: 'Cobre o representante e acompanhe: o aviso some sozinho quando o cliente avança ou ele registra.' },
   '/rejeitados': { titulo: 'Rejeitados', cap: 7, objetivo: 'Ver quem saiu da prospecção (baixados, expurgados e sem interesse), por que saiu, e exportar essa base em Excel.',
     como: ['Monte os níveis da hierarquia, como no Explorar carteira.', 'Clique numa linha da hierarquia e num card de tipo: tudo abaixo segue a escolha.', 'Clique em Excel para baixar o que está na tela: a linha escolhida e o tipo do card, com os dados cadastrais completos (uma aba por tipo).'],
     campos: [F('Na base', 'Todos os prospects da linha'), F('Rejeitados', 'Baixados, expurgados e sem interesse'), F('% da base', 'Rejeitados ÷ Na base')],
@@ -353,6 +363,18 @@ export const TERMOS = Object.freeze([
     T('Sem interesse do representante', 'O representante/vendedor não vai trabalhar o cliente. Pede o motivo.'),
     T('Reabrir: pedido identificado', 'Para quem estava em sem interesse e fez pedido: volta ao fluxo.'),
     T('Retornar em (opcional)', 'Data para voltar a falar com o cliente.'),
+  ] },
+  { id: 'avisos', nome: 'Avisos', tela: 'avisos', caminho: '/avisos', termos: [
+    T('Cadastro vencido', 'Atendido e o cadastro ainda não chegou do ERP depois do prazo do cadastro (Parâmetros).', 'atraso = hoje − prazo do cadastro'),
+    T('Análise financeira', 'O cadastro chegou e o crédito não foi liberado no prazo da análise (Parâmetros).', 'atraso = hoje − prazo da análise'),
+    T('Retorno vencido', 'A data de retorno marcada pelo representante já passou.', 'atraso = hoje − data do retorno'),
+    T('Sem registrar', 'O representante tem clientes a procurar nas ondas liberadas e não registra atendimento no app há mais dias que o alerta sem lançamento.', 'atraso = dias desde o último registro'),
+    T('Sem movimento', 'Cliente que já teve registro (em prospecção) ou com crédito liberado sem pedido, parado há mais dias que o alerta sem movimento. Não contactado não entra.', 'atraso = dias desde o último registro ou a liberação'),
+    T('Sem atendimento', 'O cadastro ou o pedido chegou do ERP sem atendimento registrado pelo representante.'),
+    T('Desde', 'A data de referência do aviso; embaixo, o que ela é (atendido em, cadastro em, retornar em, último registro).'),
+    T('Atraso', 'Dias depois do prazo; no Sem movimento e no Sem registrar, dias parado.'),
+    T('nunca registrou', 'O representante não tem nenhum atendimento registrado no app.'),
+    T('Do representante', 'Ramo dos avisos que não têm cliente (Sem registrar) quando a grade é quebrada por cidade, rota, onda ou segmento.'),
   ] },
   { id: 'rejeitados', nome: 'Rejeitados', tela: 'rejeitados', caminho: '/rejeitados', termos: [
     T('Na base', 'Todos os prospects da linha da hierarquia, em qualquer situação.'),
@@ -487,6 +509,10 @@ export const OPCOES_TOPO = Object.freeze({
     ['Base de prospects', '1º passo: os clientes a trabalhar, cada um na carteira de um representante/vendedor.'], ['Grupos de CNPJ', '2º passo: sugere quem expurgar por já ser cliente.'],
     ['Cadastro e crédito', '3º passo: cadastro no ERP e crédito liberado.'], ['Pedidos', '4º passo: pedidos do ERP, ligados a cada cliente.'], ['Baixados', '5º passo: CNPJs baixados na Receita.'],
     ['Exportar', 'Listas por equipe em PDF; rejeitados, base de prospects e pedidos em Excel.'], ['Histórico', 'Tudo o que foi importado; o arquivo de pedidos mais novo e uma importação da base ainda não trabalhada podem ser apagados.']])],
+  '/avisos': [O('Cards do topo (um ou mais)', [
+    ['Todos os avisos', 'Marca ou desmarca todos os tipos de uma vez.'], ['Cadastro vencido', 'Atendidos com o cadastro atrasado.'], ['Análise financeira', 'Cadastros com o crédito atrasado.'],
+    ['Retorno vencido', 'Retornos marcados que já passaram.'], ['Sem registrar', 'Representantes que não registram atendimento há mais dias que o limite.'],
+    ['Sem movimento', 'Clientes parados depois do primeiro registro.'], ['Sem atendimento', 'Cadastros do ERP sem atendimento no app.']])],
   '/rejeitados': [O('Cards do topo', [
     ['Rejeitados', 'Todos os tipos juntos.'], ['Baixados', 'CNPJ baixado na Receita: não pode mais ser faturado.'], ['Expurgados', 'Tirados da base por já serem clientes (grupo de CNPJ).'],
     ['Sem interesse do cliente', 'O cliente recusou a proposta. Mostra os motivos.'], ['Sem interesse do representante', 'O representante/vendedor não vai trabalhar o cliente. Mostra os motivos.']])],
@@ -546,7 +572,7 @@ export function capituloDeTermos(usuario) {
     ...telas.flatMap(([c]) => [['h', AJUDA_TELAS[c].titulo], ...blocosDeOpcoes(opcoesPara(c, usuario))])] };
 }
 const blocosDeOpcoes = (opcoes) => (opcoes.length ? [['tabela', ['Opção do topo', 'O que mostra'], opcoes.flatMap((o) => o.opcoes.map((x) => [`${x.opcao} (${o.nome})`, x.significado]))]] : []);
-const TELA_DO_CAMINHO = { '/importacoes': 'admin_importacoes', '/rejeitados': 'rejeitados', '/explorar': 'explorar', '/carteira': 'lista', '/carteira?aba=acompanhamento': 'acompanhamento', '/pedidos': 'pedidos', '/financeiro': 'credito', '/admin/grupos': 'admin_grupos' };
+const TELA_DO_CAMINHO = { '/avisos': 'avisos', '/importacoes': 'admin_importacoes', '/rejeitados': 'rejeitados', '/explorar': 'explorar', '/carteira': 'lista', '/carteira?aba=acompanhamento': 'acompanhamento', '/pedidos': 'pedidos', '/financeiro': 'credito', '/admin/grupos': 'admin_grupos' };
 const podeVerTela = (usuario, c) => !TELA_DO_CAMINHO[c] || podeTela(usuario, TELA_DO_CAMINHO[c]);
 
 /** Significado de um termo (dica do rótulo no computador), ou null. */

@@ -132,9 +132,10 @@ Views: `vw_pedidos` (situação atual de cada pedido, classificada, com represen
 
 | View | Uso |
 |---|---|
-| `vw_prospects` | carteira/ficha: prospect + status (nome, cor) + vendedor + supervisor + motivo + `vendedor_tipo_atuacao`, `status_descricao` ("Aguardando cadastro · atendido em dd/mm/aaaa"), `dias_corridos` (desde o 1º atendimento), `na_lista`, `pendente_hoje`, `retorno_pendente`, `atendido`, `prazo_cadastro_vencido`, `em_analise_financeira`, `dias_sem_movimento`, `parado` |
+| `vw_prospects` | carteira/ficha: prospect + status (nome, cor) + vendedor + supervisor + motivo + `vendedor_tipo_atuacao`, `status_descricao` ("Aguardando cadastro · atendido em dd/mm/aaaa"), `dias_corridos` (desde o 1º atendimento), `na_lista`, `pendente_hoje`, `retorno_pendente`, `atendido`, `prazo_cadastro_vencido`, `em_analise_financeira`, `dias_sem_movimento`, `parado` (0031: só depois do 1º registro, docs/03 §4) |
 | `vw_movimentacoes` | histórico de movimentação com nomes (status, quem fez, vendedor da época, cidade/bairro) — linha do tempo da ficha e base de filtros |
 | `vw_ultimo_lancamento` | dias sem lançar por vendedor (bloco de atenção) |
+| `vw_avisos` (0031) | um aviso por linha — tipo, cliente (vazio no sem registrar), dono da carteira, data de referência e atraso; cada parte lê só o vencido por um índice parcial (`ix_avisos_*`). Tela Avisos, Excel, PDF e número do menu |
 | `vw_rota_paradas` | paradas de cada rota, na ordem, com dados do prospect e `atendida` |
 | `vw_rotas_execucao` | por rota: paradas planejadas × atendidas (vendedor, equipe) |
 | `vw_ranking_motivos` | motivos finais de "sem interesse" por vendedor/supervisor |

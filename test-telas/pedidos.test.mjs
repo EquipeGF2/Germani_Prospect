@@ -48,7 +48,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await pagina.fill('#login', 'admin');
   await pagina.fill('#senha', 'demo1234');
   await pagina.click('button[type=submit]');
-  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
+  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/avisos');
   await ir('#/inicio');
   await pagina.click('#carregar-exemplo');
   await pagina.waitForSelector('text=Dados de exemplo carregados', { timeout: 120000 });
@@ -207,9 +207,9 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   assert.match(await texto(), /Rep\. sem código/);
   assert.doesNotMatch(await texto(), /Venda fora da lista/, 'venda por outro representante não é alerta');
 
-  // o logo leva à página inicial: Explorar carteira, não o Início antigo
+  // o logo leva à página inicial (Avisos, para o administrador), não o Início antigo
   await pagina.click('a.marca');
-  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
+  await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/avisos');
 
   // Acompanhamento: o fluxo do cadastro ao faturado, a hierarquia, a cascata e o crédito
   await ir('#/carteira?aba=acompanhamento');
@@ -427,7 +427,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   });
   for (const largura of [360, 390, 768, 1024, 1366]) {
     await pagina.setViewportSize({ width: largura, height: 900 });
-    for (const rota of ['#/pedidos', '#/carteira?aba=acompanhamento', '#/ajuda', '#/rejeitados', '#/importacoes?aba=exportar', '#/importacoes?aba=pedidos']) {
+    for (const rota of ['#/pedidos', '#/carteira?aba=acompanhamento', '#/ajuda', '#/rejeitados', '#/avisos', '#/importacoes?aba=exportar', '#/importacoes?aba=pedidos']) {
       await ir(rota);
       await pagina.waitForTimeout(150);
       const m = await medir();
@@ -517,6 +517,8 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
     await ir('#/rejeitados');
     await pagina.click('#rej-cliente');
     await recorte('rejeitados', '#rejeitados', { altura: 460 });
+    await ir('#/avisos');
+    await recorte('avisos', '#av-tela', { altura: 520 });
     // a visão do representante: o menu e os filtros da Lista principal dele (sem equipe nem administração)
     await pagina.click('.menu-sair');
     await pagina.waitForSelector('#login');
@@ -533,7 +535,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
     await pagina.fill('#login', 'admin');
     await pagina.fill('#senha', 'demo1234');
     await pagina.click('button[type=submit]');
-    await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/explorar');
+    await pagina.waitForFunction(() => document.getElementById('conteudo').dataset.pronto === '#/avisos');
     await limpa.evaluate((e) => e.remove());
     await pagina.setViewportSize({ width: 1360, height: 900 });
   }
@@ -542,7 +544,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   await ir('#/ajuda?cap=4');
   await pagina.waitForSelector('.ajf-recorte img');
   await pagina.waitForFunction(() => { const i = document.querySelector('.ajf-recorte img'); i.loading = 'eager'; return i.complete && i.naturalWidth > 0; });
-  for (const bloco of ['opcoes', 'termos', 'perguntas']) assert.equal(await pagina.locator(`[data-bloco="${bloco}"]`).count(), 1, `capítulo com ${bloco}`);
+  for (const bloco of ['opcoes', 'termos', 'perguntas']) assert.ok(await pagina.locator(`[data-bloco="${bloco}"]`).count() >= 1, `capítulo com ${bloco}`);   // o 4 tem os de Avisos e os do Acompanhamento
   assert.match(await pagina.locator('.ajf-serve').innerText(), /Para que serve/);
   // no computador, o nome do termo e da opção do topo fica numa linha só
   const rotulosQuebrados = await pagina.locator('[data-bloco] .ajf-pares dt').evaluateAll((dts) => dts.filter((d) => { const r = document.createRange(); r.selectNodeContents(d); return new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size > 1; }).map((d) => d.textContent));
@@ -561,7 +563,7 @@ test('importa, acompanha e apaga o arquivo de pedidos pela tela', { timeout: 240
   assert.equal(await pagina.locator('#ver-grupo').count(), 0, 'Explorar carteira não muda');
 
   // níveis e disponíveis numa linha só, como no Explorar carteira, em todas as telas com hierarquia
-  for (const rota of ['#/explorar', '#/pedidos', '#/carteira?aba=acompanhamento', '#/rejeitados']) {
+  for (const rota of ['#/explorar', '#/pedidos', '#/carteira?aba=acompanhamento', '#/rejeitados', '#/avisos']) {
     await ir(rota);
     const topos = await pagina.locator('.exp-niveis .zona').evaluateAll((zs) => zs.map((z) => Math.round(z.getBoundingClientRect().top)));
     assert.equal(topos.length, 2, `${rota}: níveis e disponíveis`);

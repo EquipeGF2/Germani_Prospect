@@ -987,3 +987,69 @@ button.chip-situacao.ativa:hover { background: var(--destaque-claro); color: var
 @media (min-width: 701px) {
   #arvore-carteira .exp-linha { grid-template-columns: var(--largura-ramo, minmax(170px, 240px)) repeat(3, minmax(84px, 1fr)) repeat(6, minmax(66px, 1fr)) repeat(2, minmax(96px, 1fr)); min-width: calc(var(--largura-ramo, 240px) + 960px); }
 }
+
+/* ---------- Avisos (docs/03 §18): número no menu, sino no topo, cards de seleção múltipla e grade por níveis ---------- */
+.menu-numero { margin-left: auto; flex: none; min-width: 20px; padding: 1px 7px; border-radius: 999px; background: #DC2626; color: #fff; font-size: 11.5px; font-weight: 700; text-align: center; }
+.casca.recolhido #menu a { position: relative; }
+.casca.recolhido .menu-numero { position: absolute; top: 4px; right: 10px; padding: 0 5px; font-size: 10px; }
+.sino-avisos { position: relative; margin-left: auto; flex: none; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid var(--borda); border-radius: 50%; background: #fff; color: var(--texto); }
+.sino-avisos:hover { border-color: var(--destaque); color: var(--destaque); }
+.sino-avisos[hidden] { display: none; }
+.sino-avisos:not([hidden]) + .botao-ajuda { margin-left: 8px; }
+.sino-numero { position: absolute; top: -5px; right: -7px; padding: 0 6px; border-radius: 999px; background: #DC2626; color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; }
+.av-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.av-card { display: flex; flex-direction: column; align-items: stretch; gap: 4px; min-height: 118px; padding: 12px 14px; text-align: left; font: inherit; color: var(--texto); background: var(--cartao);
+  border: 2px solid var(--borda); border-radius: var(--raio); cursor: pointer; box-shadow: var(--sombra); }
+.av-card:hover { border-color: #E8A0A4; }
+.av-card.ligado { border-color: var(--destaque); background: #FFF7F7; }
+.av-card-topo { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.av-card .caixa { flex: none; width: 18px; height: 18px; box-sizing: border-box; border: 2px solid var(--borda-forte); border-radius: 4px; color: #fff; font-size: 12px; line-height: 14px; text-align: center; font-weight: 700; }
+.av-card.ligado .caixa { border-color: var(--destaque); background: var(--destaque); }
+.av-card .tit { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.av-card b { font-size: 26px; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.av-card b.alto { color: #B91C1C; } .av-card b.medio { color: #B45309; }
+.av-card .regra { font-size: 12px; color: #4B5563; line-height: 1.3; }
+.av-card .param { margin-top: auto; font-size: 11.5px; color: var(--suave); }
+.av-grade { padding: 0; overflow: hidden; }
+.av-grade-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 12px 16px; border-bottom: 1px solid var(--borda); }
+.av-grade-topo h2 { margin: 0; font-size: 17px; white-space: nowrap; }
+.av-grade-topo .sub { font-size: 13px; color: var(--suave); white-space: nowrap; }
+.av-grade-topo .espaco { flex-grow: 1; }
+.av-grade-topo button { white-space: nowrap; }
+.av-vazio { margin: 0; padding: 20px 16px; }
+.av-grade .tabela-wrap { border: 0; border-radius: 0; box-shadow: none; margin: 0; }
+.av-tabela { width: 100%; }
+.av-tabela th { text-align: center; white-space: nowrap; }
+.av-tabela td { text-align: left; vertical-align: middle; padding: 8px 10px; }
+.av-tabela td.cen { text-align: center; white-space: nowrap; }
+.av-tabela td small { display: block; font-size: 12px; color: var(--suave); white-space: nowrap; }
+.av-tabela td.rz .nome { display: block; max-width: 360px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.av-tabela td.rz small { max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+.av-grupo td { padding: 0 !important; background: #FCFCFD; border-top: 1px solid var(--borda); }
+.av-grupo.raiz td { background: #F6F7F9; }
+.av-abre { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 8px 12px 8px 0; font: inherit; color: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; }
+.av-abre .seta { width: 16px; flex: none; font-size: 11px; color: #4B5563; }
+.av-abre b { white-space: nowrap; }
+.av-abre .qtd { flex: none; padding: 1px 9px; border-radius: 999px; background: #FEE2E2; color: #991B1B; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.av-abre .resumo { min-width: 0; font-size: 12.5px; color: #4B5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.av-tipo { white-space: nowrap; border-radius: 6px; }
+.av-tipo.cadastro { background: #FEE2E2; color: #991B1B; } .av-tipo.analise { background: #FFEDD5; color: #9A3412; } .av-tipo.retorno { background: #FEF3C7; color: #92400E; }
+.av-tipo.sem_lancar { background: #FCE7F3; color: #9D174D; } .av-tipo.parado { background: #E0F2FE; color: #075985; } .av-tipo.sem_registro { background: #EDE9FE; color: #5B21B6; }
+.av-grade .tabela-wrap.cartoes { padding: 8px; }
+.av-grade .tabela-wrap.cartoes tr.av-grupo { padding: 0; background: #F6F7F9; }
+.av-grade .tabela-wrap.cartoes tr.av-grupo td { display: block; padding: 0 0 0 8px !important; background: transparent; border: 0; }
+.av-grade .tabela-wrap.cartoes tr.av-grupo td::before { content: none; }
+.av-grade .tabela-wrap.cartoes .av-abre .resumo { white-space: normal; }
+.av-grade .tabela-wrap.cartoes td.rz { padding-left: 0 !important; }
+.av-grade .tabela-wrap.cartoes td.rz .nome, .av-grade .tabela-wrap.cartoes td.rz small { max-width: none; white-space: normal; }
+.av-grade .tabela-wrap.cartoes td small { display: inline; margin-left: 6px; }
+@media (max-width: 600px) {
+  /* celular: os tipos viram chips (nome e número), como no mockup */
+  .av-cards { display: flex; flex-wrap: wrap; gap: 6px; }
+  .av-card { flex-direction: row; align-items: center; min-height: 36px; padding: 0 12px; border-width: 1px; border-radius: 999px; box-shadow: none; }
+  .av-card .caixa, .av-card .regra, .av-card .param { display: none; }
+  .av-card .tit { font-size: 12.5px; }
+  .av-card b { font-size: 12.5px; color: inherit !important; }
+  .av-card b::before { content: "· "; }
+  .av-card.ligado { background: var(--destaque); color: #fff; }
+}

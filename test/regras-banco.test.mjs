@@ -313,8 +313,8 @@ test('hierarquia: vendedor precisa de supervisor válido', async () => {
 });
 
 test('alerta de prospect parado e ranking de motivos', async () => {
-  const id = await criarProspect(db, { n: 1 }); // dt_entrada_base 2026-01-01 → parado há mais de 30 dias
-  assert.equal((await prospect(db, id)).parado, 1);
+  const id = await criarProspect(db, { n: 1 }); // dt_entrada_base 2026-01-01, nunca contactado: não é parado (0031, só depois do 1º registro)
+  assert.equal((await prospect(db, id)).parado, 0);
   const id2 = await criarProspect(db, { n: 2 });
   await registrarContato(db, { prospectId: id2, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-01' });
   await registrarContato(db, { prospectId: id2, resultado: 'sem_interesse', motivo: 'PRECO', data: '2026-10-02' });

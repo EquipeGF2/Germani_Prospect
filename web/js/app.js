@@ -14,6 +14,7 @@ const ROTAS = [
   { caminho: '/explorar', tela: () => import('./telas/explorar.js'), telas: ['explorar'] },
   { caminho: '/carteira', tela: () => import('./telas/carteira.js'), telas: (q) => [q.get('aba') === 'acompanhamento' ? 'acompanhamento' : 'lista'] },
   { caminho: '/pedidos', tela: () => import('./telas/pedidos.js'), telas: ['pedidos'] },
+  { caminho: '/avisos', tela: () => import('./telas/avisos.js'), telas: ['avisos'] },
   { caminho: '/rejeitados', tela: () => import('./telas/rejeitados.js'), telas: ['rejeitados'] },
   { caminho: '/ficha', tela: () => import('./telas/ficha.js'), telas: ['lista', 'acompanhamento', 'credito'] },
   { caminho: '/registrar', tela: () => import('./telas/registrar.js'), telas: ['registrar'] },
@@ -35,8 +36,9 @@ const ROTAS = [
   { caminho: '/admin/feriados', tela: () => import('./telas/admin-feriados.js'), telas: ['admin_feriados'] },
   { caminho: '/admin/erros', tela: () => import('./telas/admin-erros.js'), telas: ['admin_parametros'] },
 ];
-// página inicial: Explorar carteira; sem ela no perfil, a primeira tela permitida
-const ENTRADAS = [['explorar', '/explorar'], ['inicio', '/inicio'], ['lista', '/carteira'], ['acompanhamento', '/carteira?aba=acompanhamento'], ['credito', '/financeiro'],
+// página inicial: Avisos (administrador, gerente e supervisor: o que cobrar e de quem); sem ela, Explorar carteira; sem
+// as duas, a primeira tela permitida
+const ENTRADAS = [['avisos', '/avisos'], ['explorar', '/explorar'], ['inicio', '/inicio'], ['lista', '/carteira'], ['acompanhamento', '/carteira?aba=acompanhamento'], ['credito', '/financeiro'],
   ['admin_usuarios', '/admin/usuarios'], ['admin_base', '/admin/importar/base']];
 export function telaInicial(usuario) {
   return ENTRADAS.find(([t]) => podeTela(usuario, t))?.[1] ?? '/inicio';
